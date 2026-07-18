@@ -17,4 +17,14 @@
     <Content Update="catalog\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Only build the SPA for Release (the real deployable). Debug/test builds stay fast and node-free. -->
+  <Target Name="BuildSpa" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="npm install" WorkingDirectory="../../web" />
+    <Exec Command="npm run build" WorkingDirectory="../../web" />
+    <ItemGroup>
+      <SpaFiles Include="../../web/dist/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SpaFiles)" DestinationFolder="wwwroot/%(RecursiveDir)" />
+  </Target>
+
 </Project>
