@@ -76,6 +76,9 @@ public static class StackEndpoints
             return Results.File(export.Zip(Dir(id)), "application/zip", $"{id}.zip");
         });
 
+        app.MapGet("/stacks/{id}/preview", (string id) =>
+            store.Get(id) is { } s ? Results.Text(gen.GenerateProgram(s), "text/plain") : Results.NotFound());
+
         app.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");

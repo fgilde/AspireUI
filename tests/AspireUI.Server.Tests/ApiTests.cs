@@ -35,5 +35,16 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains(cat!, r => r.AddMethod == "AddPostgres");
         Assert.Contains(cat!, r => r.AddMethod == "AddContainer");
     }
+
+    [Fact]
+    public async Task Preview_ReturnsGeneratedCode()
+    {
+        var create = await _c.PostAsJsonAsync("/stacks",
+            new StackModel("", "PrevStack", "net10.0", [], []));
+        var created = await create.Content.ReadFromJsonAsync<StackModel>();
+        var code = await _c.GetStringAsync($"/stacks/{created!.Id}/preview");
+        Assert.Contains("DistributedApplication.CreateBuilder", code);
+        Assert.Contains("aspireui:begin", code);
+    }
     public record ResourceTypeDto(string AddMethod, string Label);
 }
