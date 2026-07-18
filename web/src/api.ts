@@ -1,4 +1,4 @@
-import { Stack, Node, Edge } from "./model";
+import type { Stack, Node, Edge } from "./model";
 const base = "";
 export const getCatalog = () => fetch(`${base}/catalog`).then(r => r.json());
 export const listStacks = () => fetch(`${base}/stacks`).then(r => r.json());
