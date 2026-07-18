@@ -11,4 +11,10 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- catalog/*.json is already picked up by the SDK's default Content items (like appsettings.json);
+         Update (not Include) just adds CopyToOutputDirectory without duplicating the item. -->
+    <Content Update="catalog\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
