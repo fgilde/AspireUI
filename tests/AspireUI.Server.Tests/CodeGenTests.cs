@@ -34,6 +34,16 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Csproj_IncludesResourcePackages()
+    {
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], []);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.Contains("Aspire.Hosting.Redis", csproj);
+        Assert.Contains("Aspire.Hosting.AppHost", csproj);
+    }
+
+    [Fact]
     public void Materialize_WritesFilesAndSidecar()
     {
         var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());

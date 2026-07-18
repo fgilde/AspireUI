@@ -1,5 +1,42 @@
 {
-  "AddRedis":    { "label": "Redis",    "icon": "redis",    "group": "Cache",    "withs": ["WithDataVolume", "WithRedisCommander"] },
-  "AddPostgres": { "label": "Postgres", "icon": "postgres", "group": "Database", "withs": ["WithDataVolume", "WithPgAdmin"] },
-  "AddContainer":{ "label": "Container","icon": "docker",   "group": "Generic",  "withs": ["WithVolume", "WithEnvironment", "WithHttpEndpoint"] }
+  "AddContainer": {
+    "label": "Container", "icon": "docker", "group": "Generic",
+    "addParams": [
+      { "name": "image", "type": "string", "required": true, "label": "Image" },
+      { "name": "tag", "type": "string", "required": false, "label": "Tag" }
+    ],
+    "withs": [
+      { "method": "WithHttpEndpoint", "label": "HTTP Endpoint", "params": [
+        { "name": "port", "type": "int", "label": "Port" },
+        { "name": "targetPort", "type": "int", "label": "Target Port" } ] },
+      { "method": "WithEnvironment", "label": "Env Var", "params": [
+        { "name": "name", "type": "string", "label": "Name" },
+        { "name": "value", "type": "string", "label": "Value" } ] },
+      { "method": "WithVolume", "label": "Volume", "params": [
+        { "name": "name", "type": "string", "label": "Name" },
+        { "name": "target", "type": "string", "label": "Target Path" } ] },
+      { "method": "WithBindMount", "label": "Bind Mount", "params": [
+        { "name": "source", "type": "string", "label": "Source" },
+        { "name": "target", "type": "string", "label": "Target" } ] }
+    ]
+  },
+  "AddPostgres": {
+    "label": "Postgres", "icon": "postgres", "group": "Database", "package": "Aspire.Hosting.PostgreSQL",
+    "addParams": [],
+    "withs": [
+      { "method": "WithDataVolume", "label": "Data Volume", "params": [] },
+      { "method": "WithPgAdmin", "label": "pgAdmin", "params": [] },
+      { "method": "WithEnvironment", "label": "Env Var", "params": [
+        { "name": "name", "type": "string", "label": "Name" },
+        { "name": "value", "type": "string", "label": "Value" } ] }
+    ]
+  },
+  "AddRedis": {
+    "label": "Redis", "icon": "redis", "group": "Cache", "package": "Aspire.Hosting.Redis",
+    "addParams": [],
+    "withs": [
+      { "method": "WithDataVolume", "label": "Data Volume", "params": [] },
+      { "method": "WithRedisCommander", "label": "Redis Commander", "params": [] }
+    ]
+  }
 }

@@ -3,8 +3,9 @@ using System.Text.Json;
 
 namespace AspireUI.Server.Services;
 
-public record CatalogWith(string Method, List<string> Params);
-public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogWith> Withs);
+public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string Label);
+public record CatalogWith(string Method, string Label, List<CatalogParam> Params);
+public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogParam> AddParams, List<CatalogWith> Withs);
 
 public class CatalogService
 {
@@ -30,18 +31,44 @@ public class CatalogService
             if (p.Length == 0 || !IsAppBuilder(p[0].ParameterType)) continue; // extension on IDistributedApplicationBuilder
 
             var over = _overlay.TryGetValue(m.Name, out var o) ? o : (JsonElement?)null;
-            var withs = (over?.TryGetProperty("withs", out var w) == true)
-                ? w.EnumerateArray().Select(x => new CatalogWith(x.GetString()!, [])).ToList()
-                : new List<CatalogWith>();
             result.Add(new ResourceType(
                 m.Name,
-                over?.GetProperty("label").GetString() ?? m.Name[3..],
+                over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : m.Name[3..],
                 over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
-                withs));
+                ParseParams(over, "addParams"),
+                ParseWiths(over)));
         }
         // Dedup by AddMethod (same extension can appear via multiple overloads).
         return result.GroupBy(r => r.AddMethod).Select(gr => gr.First()).OrderBy(r => r.AddMethod).ToList();
+    }
+
+    private static List<CatalogParam> ParseParams(JsonElement? over, string prop)
+    {
+        var list = new List<CatalogParam>();
+        if (over?.TryGetProperty(prop, out var arr) == true)
+            foreach (var p in arr.EnumerateArray()) list.Add(ReadParam(p));
+        return list;
+    }
+
+    private static CatalogParam ReadParam(JsonElement p) => new(
+        p.GetProperty("name").GetString()!,
+        p.TryGetProperty("type", out var t) ? t.GetString()! : "string",
+        p.TryGetProperty("required", out var r) && r.GetBoolean(),
+        p.TryGetProperty("default", out var d) ? d.GetString() : null,
+        p.TryGetProperty("options", out var o) ? o.EnumerateArray().Select(x => x.GetString()!).ToList() : null,
+        p.TryGetProperty("label", out var l) ? l.GetString()! : p.GetProperty("name").GetString()!);
+
+    private static List<CatalogWith> ParseWiths(JsonElement? over)
+    {
+        var list = new List<CatalogWith>();
+        if (over?.TryGetProperty("withs", out var arr) == true)
+            foreach (var w in arr.EnumerateArray())
+                list.Add(new CatalogWith(
+                    w.GetProperty("method").GetString()!,
+                    w.TryGetProperty("label", out var l) ? l.GetString()! : w.GetProperty("method").GetString()!,
+                    w.TryGetProperty("params", out var ps) ? ps.EnumerateArray().Select(ReadParam).ToList() : []));
+        return list;
     }
 
     private static bool ReturnsResourceBuilder(Type t) =>
