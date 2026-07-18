@@ -14,11 +14,13 @@ public class CodeGenService
     public string GenerateProgram(StackModel s)
     {
         var sb = new StringBuilder();
+        sb.AppendLine("using Aspire.Hosting;");
+        sb.AppendLine();
         sb.AppendLine("var builder = DistributedApplication.CreateBuilder(args);");
         sb.AppendLine();
         sb.AppendLine(Begin);
         foreach (var n in s.Nodes)
-            sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}(\"{n.ResourceName}\");");
+            sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}(\"{Escape(n.ResourceName)}\");");
         foreach (var n in s.Nodes)
             foreach (var w in n.WithCalls)
                 sb.AppendLine($"{n.VarName}.{w.Method}({string.Join(", ", w.Args)});");
@@ -33,6 +35,9 @@ public class CodeGenService
     private static string Var(StackModel s, string nodeId) =>
         s.Nodes.First(n => n.Id == nodeId).VarName;
 
+    private static string Escape(string name) =>
+        name.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
     public string GenerateCsproj(StackModel s) =>
         $"""
         <Project Sdk="Microsoft.NET.Sdk">
@@ -41,6 +46,7 @@ public class CodeGenService
             <OutputType>Exe</OutputType>
             <TargetFramework>{s.TargetFramework}</TargetFramework>
             <IsAspireHost>true</IsAspireHost>
+            <ImplicitUsings>enable</ImplicitUsings>
           </PropertyGroup>
           <ItemGroup>
             <PackageReference Include="Aspire.Hosting.AppHost" Version="9.0.0" />
@@ -52,7 +58,8 @@ public class CodeGenService
     {
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s));
-        File.WriteAllText(Path.Combine(dir, $"{s.Name}.csproj"), GenerateCsproj(s));
+        var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
     }
@@ -60,9 +67,6 @@ public class CodeGenService
     public IReadOnlyList<string> CompileErrors(string programCs)
     {
         var tree = CSharpSyntaxTree.ParseText(programCs);
-        var comp = CSharpCompilation.Create("check")
-            .AddSyntaxTrees(tree)
-            .WithOptions(new CSharpCompilationOptions(OutputKind.ConsoleApplication));
         // Only surface syntax errors here; full semantic check needs Aspire refs (later slice).
         return tree.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)

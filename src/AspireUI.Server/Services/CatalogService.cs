@@ -54,11 +54,19 @@ public class CatalogService
         try { return a.GetTypes(); } catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t != null)!; }
     }
 
-    private static Assembly[] LoadDefault() =>
-        AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true
-                     || a.GetName().Name?.Contains("Aspire") == true)
+    private static Assembly[] LoadDefault()
+    {
+        // PackageReference alone doesn't load an assembly into the AppDomain until code
+        // touches a type from it. Force-load each hosting integration we ship a catalog
+        // overlay for, then scan whatever "Aspire.Hosting*" assemblies are now loaded.
+        _ = typeof(Aspire.Hosting.IDistributedApplicationBuilder).Assembly;
+        _ = typeof(Aspire.Hosting.RedisBuilderExtensions).Assembly;
+        _ = typeof(Aspire.Hosting.PostgresBuilderExtensions).Assembly;
+
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true)
             .ToArray();
+    }
 
     private Dictionary<string, JsonElement> LoadOverlays()
     {

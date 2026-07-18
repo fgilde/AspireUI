@@ -26,5 +26,14 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/catalog");
         Assert.NotNull(cat);
     }
+
+    [Fact]
+    public async Task Catalog_ContainsCoreResourceTypes()
+    {
+        var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/catalog");
+        Assert.Contains(cat!, r => r.AddMethod == "AddRedis");
+        Assert.Contains(cat!, r => r.AddMethod == "AddPostgres");
+        Assert.Contains(cat!, r => r.AddMethod == "AddContainer");
+    }
     public record ResourceTypeDto(string AddMethod, string Label);
 }
