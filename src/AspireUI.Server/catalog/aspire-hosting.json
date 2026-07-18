@@ -1,0 +1,5 @@
+{
+  "AddRedis":    { "label": "Redis",    "icon": "redis",    "group": "Cache",    "withs": ["WithDataVolume", "WithRedisCommander"] },
+  "AddPostgres": { "label": "Postgres", "icon": "postgres", "group": "Database", "withs": ["WithDataVolume", "WithPgAdmin"] },
+  "AddContainer":{ "label": "Container","icon": "docker",   "group": "Generic",  "withs": ["WithVolume", "WithEnvironment", "WithHttpEndpoint"] }
+}

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- catalog/*.json is already picked up by the SDK's default Content items (like appsettings.json);
+         Update (not Include) just adds CopyToOutputDirectory without duplicating the item. -->
+    <Content Update="catalog\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Only build the SPA for Release (the real deployable). Debug/test builds stay fast and node-free. -->
+  <Target Name="BuildSpa" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Exec Command="npm install" WorkingDirectory="../../web" />
+    <Exec Command="npm run build" WorkingDirectory="../../web" />
+    <ItemGroup>
+      <SpaFiles Include="../../web/dist/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SpaFiles)" DestinationFolder="wwwroot/%(RecursiveDir)" />
+  </Target>
+
+</Project>
