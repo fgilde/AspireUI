@@ -8,7 +8,7 @@ public class StackStoreTests
     {
         var store = new StackStore(":memory:");
         var s = new StackModel("s1", "demo", "net9.0",
-            [new NodeModel("n1", "db", "AddPostgres", "db", [], 10, 20)],
+            [new NodeModel("n1", "db", "AddPostgres", "db", [], 10, 20, [])],
             []);
         store.Save(s);
         var got = store.Get("s1");

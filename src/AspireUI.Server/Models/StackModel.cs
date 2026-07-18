@@ -14,7 +14,8 @@ public record NodeModel(
     string ResourceName,  // string arg, e.g. "db"
     List<WithCall> WithCalls,
     double X,
-    double Y);
+    double Y,
+    List<string> AddArgs); // positional args after ResourceName, raw C# literals e.g. "\"nginx\""
 
 public record EdgeModel(string Id, string FromNodeId, string ToNodeId, string Kind); // Kind = "reference"
 

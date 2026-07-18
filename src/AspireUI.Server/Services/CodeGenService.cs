@@ -20,7 +20,11 @@ public class CodeGenService
         sb.AppendLine();
         sb.AppendLine(Begin);
         foreach (var n in s.Nodes)
-            sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}(\"{Escape(n.ResourceName)}\");");
+        {
+            var args = new List<string> { $"\"{Escape(n.ResourceName)}\"" };
+            args.AddRange(n.AddArgs);
+            sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}({string.Join(", ", args)});");
+        }
         foreach (var n in s.Nodes)
             foreach (var w in n.WithCalls)
                 sb.AppendLine($"{n.VarName}.{w.Method}({string.Join(", ", w.Args)});");
@@ -41,15 +45,16 @@ public class CodeGenService
     public string GenerateCsproj(StackModel s) =>
         $"""
         <Project Sdk="Microsoft.NET.Sdk">
-          <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+          <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.6" />
           <PropertyGroup>
             <OutputType>Exe</OutputType>
             <TargetFramework>{s.TargetFramework}</TargetFramework>
-            <IsAspireHost>true</IsAspireHost>
             <ImplicitUsings>enable</ImplicitUsings>
+            <Nullable>enable</Nullable>
+            <IsAspireHost>true</IsAspireHost>
           </PropertyGroup>
           <ItemGroup>
-            <PackageReference Include="Aspire.Hosting.AppHost" Version="9.0.0" />
+            <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
           </ItemGroup>
         </Project>
         """;

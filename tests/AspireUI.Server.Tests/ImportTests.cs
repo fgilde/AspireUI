@@ -4,10 +4,11 @@ using AspireUI.Server.Services;
 
 public class ImportTests
 {
-    private static StackModel Fixture() => new("s1", "Demo", "net9.0",
+    private static StackModel Fixture() => new("s1", "Demo", "net10.0",
         [
-            new NodeModel("n1", "db", "AddPostgres", "db", [new WithCall("WithDataVolume", [])], 5, 6),
-            new NodeModel("n2", "cache", "AddRedis", "cache", [], 7, 8)
+            new NodeModel("n1", "db", "AddPostgres", "db", [new WithCall("WithDataVolume", [])], 5, 6, []),
+            new NodeModel("n2", "cache", "AddRedis", "cache", [], 7, 8, []),
+            new NodeModel("n3", "web", "AddContainer", "web", [], 9, 10, ["\"nginx\""])
         ],
         [new EdgeModel("e1", "n1", "n2", "reference")]);
 
@@ -23,6 +24,7 @@ public class ImportTests
 
         // Compare code-relevant shape: (varName, addMethod, resourceName, withCalls) per node, ignoring ids/xy.
         string Key(NodeModel n) => $"{n.VarName}|{n.AddMethod}|{n.ResourceName}|" +
+            string.Join(",", n.AddArgs) + "|" +
             string.Join(",", n.WithCalls.Select(w => w.Method + "(" + string.Join(";", w.Args) + ")"));
         Assert.Equal(m.Nodes.Select(Key).OrderBy(x => x),
                      back.Nodes.Select(Key).OrderBy(x => x));

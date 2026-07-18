@@ -37,9 +37,10 @@ public class ImportService
             var addMethod = ma.Name.Identifier.Text;
             var resourceName = (inv.ArgumentList.Arguments.FirstOrDefault()?.Expression
                 as LiteralExpressionSyntax)?.Token.ValueText ?? varName;
+            var addArgs = inv.ArgumentList.Arguments.Skip(1).Select(a => a.Expression.ToString()).ToList();
             var nodeId = "n" + (++nId);
             varToNodeId[varName] = nodeId;
-            nodes.Add(new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0));
+            nodes.Add(new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0, addArgs));
         }
 
         // Pass 2: modifications "X.WithY(...);" and "X.WithReference(Y);"

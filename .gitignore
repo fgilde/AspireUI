@@ -3,3 +3,6 @@ obj/
 *.user
 .vs/
 src/AspireUI.Server/wwwroot/
+
+src/AspireUI.Server/workspace/
+src/AspireUI.Server/*.db

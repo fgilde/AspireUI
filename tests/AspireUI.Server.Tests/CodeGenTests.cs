@@ -4,12 +4,20 @@ using AspireUI.Server.Services;
 
 public class CodeGenTests
 {
-    private static StackModel Fixture() => new("s1", "Demo", "net9.0",
+    private static StackModel Fixture() => new("s1", "Demo", "net10.0",
         [
-            new NodeModel("n1", "db", "AddPostgres", "db", [new WithCall("WithDataVolume", [])], 0, 0),
-            new NodeModel("n2", "cache", "AddRedis", "cache", [], 0, 0)
+            new NodeModel("n1", "db", "AddPostgres", "db", [new WithCall("WithDataVolume", [])], 0, 0, []),
+            new NodeModel("n2", "cache", "AddRedis", "cache", [], 0, 0, []),
+            new NodeModel("n3", "web", "AddContainer", "web", [], 0, 0, ["\"nginx\""])
         ],
         [new EdgeModel("e1", "n1", "n2", "reference")]);
+
+    [Fact]
+    public void Generate_EmitsAddArgs()
+    {
+        var code = new CodeGenService().GenerateProgram(Fixture());
+        Assert.Contains("var web = builder.AddContainer(\"web\", \"nginx\");", code);
+    }
 
     [Fact]
     public void Generate_EmitsMarkerBlockInCanonicalOrder()
