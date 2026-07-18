@@ -12,6 +12,7 @@ public static class StackEndpoints
         var import = new ImportService();
         var export = new ExportService();
         var catalog = new CatalogService();
+        var run = new RunService();
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? "workspace";
 
         string Dir(string id) => Path.Combine(wsRoot, id);
@@ -84,6 +85,11 @@ public static class StackEndpoints
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
             return Persist(s);
         });
+
+        app.MapPost("/stacks/{id}/run", (string id) =>
+            Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
+        app.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
+        app.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
     }
 
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
