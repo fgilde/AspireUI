@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Target framework: `net9.0` everywhere.
-- Generated stacks target `net9.0` and reference `Aspire.Hosting.AppHost`.
+- Tool projects (`AspireUI.Server`, `AspireUI.Server.Tests`) target `net10.0` (matches installed SDK 10.0.300).
+- Generated stacks (the on-disk `.csproj` produced by CodeGen) target `net9.0` and reference `Aspire.Hosting.AppHost`. These are text artifacts, not built in this slice.
 - The tool owns ONLY the text between `// >>> aspireui:begin` and `// <<< aspireui:end` in a generated `Program.cs`. Never rewrite code outside the markers.
 - Marker block canonical form: all `var x = builder.AddX("name");` declarations first (node order), then all `x.WithY(...);` and `x.WithReference(y);` statements. One statement per line. This ordering guarantees the block compiles regardless of reference direction.
 - Canvas positions (x/y) are NOT in the C#. They live only in `aspireui.json` and in the SQLite model. Round-trip equality is defined on the code-relevant model (nodes without x/y, edges) only.
@@ -93,8 +93,8 @@ public record WithCall(string Method, List<string> Args); // Args = raw C# liter
 
 Run:
 ```bash
-cd src/AspireUI.Server && dotnet new web -f net9.0 -n AspireUI.Server -o . && cd ../..
-dotnet new xunit -f net9.0 -n AspireUI.Server.Tests -o tests/AspireUI.Server.Tests
+cd src/AspireUI.Server && dotnet new web -f net10.0 -n AspireUI.Server -o . && cd ../..
+dotnet new xunit -f net10.0 -n AspireUI.Server.Tests -o tests/AspireUI.Server.Tests
 dotnet new sln -n AspireUI && dotnet sln add src/AspireUI.Server tests/AspireUI.Server.Tests
 dotnet add tests/AspireUI.Server.Tests reference src/AspireUI.Server
 dotnet add src/AspireUI.Server package Microsoft.Data.Sqlite
