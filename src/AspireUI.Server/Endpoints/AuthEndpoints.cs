@@ -3,6 +3,7 @@ using AspireUI.Server.Models;
 using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace AspireUI.Server.Endpoints;
@@ -92,7 +93,36 @@ public static class AuthEndpoints
                 docker = new { ok = r.Docker.Ok, detail = r.Docker.Detail },
             });
         });
+
+        // Admin-only user management. Cookie carries Role=Admin for admins (see SignInUserAsync),
+        // so gating on that role claim is enough — no separate admin check needed per handler.
+        var users = app.MapGroup("/users").RequireAuthorization(policy => policy.RequireRole("Admin"));
+
+        users.MapGet("/", () => Results.Ok(store.List().Select(ToDto)));
+
+        users.MapPost("/", (CreateUserRequest body) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.Username)) return Results.BadRequest(new { message = "username required" });
+            if (body.Password.Length < 8) return Results.BadRequest(new { message = "password must be at least 8 characters" });
+            if (store.FindByUsername(body.Username) is not null) return Results.Conflict(new { message = "username already exists" });
+
+            var hash = hasher.HashPassword(HasherUser, body.Password);
+            var user = store.Create(body.Username, hash, body.IsAdmin);
+            return Results.Ok(ToDto(user));
+        });
+
+        users.MapDelete("/{id}", (string id) =>
+        {
+            var user = store.Get(id);
+            if (user is null) return Results.NotFound();
+            // Last-admin guard: refuse if deleting this user would drop AdminCount to 0.
+            if (user.IsAdmin && store.AdminCount() <= 1)
+                return Results.BadRequest(new { message = "cannot delete the last admin" });
+            store.Delete(id);
+            return Results.NoContent();
+        });
     }
 
     public record AuthRequest(string Username, string Password);
+    public record CreateUserRequest(string Username, string Password, bool IsAdmin);
 }
