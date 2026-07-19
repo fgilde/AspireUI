@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ScrollArea, Code, Group, Text, CopyButton, Button } from "@mantine/core";
 import * as api from "../api";
 
-export function CodePreview({ stackId, version }: { stackId: string; version: number }) {
+export function CodePreview({ stackId, version }: { stackId: string; version: string }) {
   const [code, setCode] = useState("");
   useEffect(() => { api.previewStack(stackId).then(setCode); }, [stackId, version]);
   return (

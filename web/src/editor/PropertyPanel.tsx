@@ -59,7 +59,7 @@ export function PropertyPanel({ stack, nodeId, setStack }:
           </Tabs.Panel>
         </ScrollArea>
       </Tabs>
-      <CodePreview stackId={stack.id} version={JSON.stringify(stack).length} />
+      <CodePreview stackId={stack.id} version={JSON.stringify(stack)} />
     </div>
   );
 }

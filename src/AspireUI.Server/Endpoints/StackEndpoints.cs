@@ -49,6 +49,7 @@ public static class StackEndpoints
 
         app.MapDelete("/stacks/{id}", (string id) =>
         {
+            run.Stop(id);
             store.Delete(id);
             if (Directory.Exists(Dir(id))) Directory.Delete(Dir(id), true);
             return Results.NoContent();

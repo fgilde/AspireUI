@@ -40,6 +40,9 @@ public class RunService : IDisposable
         // Aspire refuses to start on a plain-http dashboard unless this is set; the
         // generated project has no launch profile, so allow unsecured transport for local runs.
         psi.Environment["ASPIRE_ALLOW_UNSECURED_TRANSPORT"] = "true";
+        // Don't let the child inherit the parent server's ASPNETCORE_URLS, or the
+        // generated Aspire app will try to bind the same port and collide.
+        psi.Environment.Remove("ASPNETCORE_URLS");
         return psi;
     }
 
