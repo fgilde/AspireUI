@@ -30,6 +30,11 @@ public class ImportService
         var varToNodeId = new Dictionary<string, string>();
         int nId = 0, eId = 0;
 
+        // Pass 0: pre-scan every `var X = builder.AddX(...)` declaration in the span so a
+        // synthesized name (below) never collides with a name the user actually declared —
+        // declared vars are referenced elsewhere by that exact identifier and must not be renamed.
+        var declaredVarNames = DeclaredVarNames(statements);
+
         // Single pass, in source order, so raw statements interleaved between declarations,
         // withCalls and edges are preserved in their original relative order.
         foreach (var st in statements)
@@ -92,7 +97,7 @@ public class ImportService
                     {
                         var literalName = (calls[0].Args.Arguments.FirstOrDefault()?.Expression
                             as LiteralExpressionSyntax)?.Token.ValueText;
-                        var varName = UniqueVarName(SanitizeIdentifier(literalName ?? "res" + (nId + 1)), varToNodeId);
+                        var varName = UniqueVarName(SanitizeIdentifier(literalName ?? "res" + (nId + 1)), varToNodeId, declaredVarNames);
                         var nodeId = "n" + (++nId);
                         varToNodeId[varName] = nodeId;
                         nodes.Add(MakeNode(varName, calls[0], nodeId));
@@ -136,13 +141,45 @@ public class ImportService
     }
 
     // Ensures a candidate var name doesn't collide with one already assigned to another node
-    // (varToNodeId doubles as the used-names set), appending a numeric suffix until it's unique.
-    private static string UniqueVarName(string candidate, Dictionary<string, string> varToNodeId)
+    // (varToNodeId doubles as the used-names set) NOR with a name the user actually declared
+    // elsewhere in the span (reservedDeclaredNames) — appending a numeric suffix until it's unique.
+    private static string UniqueVarName(string candidate, Dictionary<string, string> varToNodeId, ISet<string> reservedDeclaredNames)
     {
-        if (!varToNodeId.ContainsKey(candidate)) return candidate;
+        bool Taken(string c) => varToNodeId.ContainsKey(c) || reservedDeclaredNames.Contains(c);
+        if (!Taken(candidate)) return candidate;
         var i = 2;
-        while (varToNodeId.ContainsKey(candidate + i)) i++;
+        while (Taken(candidate + i)) i++;
         return candidate + i;
+    }
+
+    // Pass 0: collects the identifier of every `var X = builder.AddX(...)` declaration in the
+    // span (mirrors the condition in the main loop's declaration branch, minus the synthesized
+    // `var builder = DistributedApplication.CreateBuilder(args);` line, which isn't a resource).
+    private static HashSet<string> DeclaredVarNames(List<StatementSyntax> statements)
+    {
+        var declared = new HashSet<string>();
+        foreach (var st in statements)
+        {
+            if (st is LocalDeclarationStatementSyntax lds
+                && lds.Declaration.Variables.Count == 1
+                && lds.Declaration.Variables[0].Initializer?.Value is InvocationExpressionSyntax initInv)
+            {
+                var (calls, chainRoot) = WalkChain(initInv);
+                var varName = lds.Declaration.Variables[0].Identifier.Text;
+
+                if (varName == "builder" && calls is [("CreateBuilder", _)]
+                    && chainRoot is IdentifierNameSyntax cbRoot && cbRoot.Identifier.Text == "DistributedApplication")
+                {
+                    continue;
+                }
+
+                if (calls.Count > 0 && chainRoot is IdentifierNameSyntax rootId && rootId.Identifier.Text == "builder")
+                {
+                    declared.Add(varName);
+                }
+            }
+        }
+        return declared;
     }
 
     // Builds a fresh node from the AddX root of a chain (root-to-outer's first entry), shared by

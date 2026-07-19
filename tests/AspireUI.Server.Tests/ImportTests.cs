@@ -129,6 +129,29 @@ public class ImportTests
     }
 
     [Fact]
+    public void UnassignedAdd_CollidingWithDeclaredVar_DoesNotRenameTheDeclaredVar()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            builder.AddRedis("cache");
+            var cache = builder.AddPostgres("pg");
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        Assert.Equal(2, m.Nodes.Count);
+        var declared = Assert.Single(m.Nodes, n => n.AddMethod == "AddPostgres");
+        Assert.Equal("cache", declared.VarName);
+
+        var synthesized = Assert.Single(m.Nodes, n => n.AddMethod == "AddRedis");
+        Assert.NotEqual("cache", synthesized.VarName);
+
+        var generated = new CodeGenService().GenerateProgram(m);
+        Assert.Empty(new CodeGenService().CompileErrors(generated));
+    }
+
+    [Fact]
     public void MarkerlessProgram_CustomBuilderStatement_IsPreserved_BuildRunSkipped()
     {
         const string code = """
