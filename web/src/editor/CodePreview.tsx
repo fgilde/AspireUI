@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
-import { ScrollArea, Code, Group, Text, CopyButton, Button } from "@mantine/core";
+import { ScrollArea, Group, Text, CopyButton, Button } from "@mantine/core";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import * as api from "../api";
+
+SyntaxHighlighter.registerLanguage("csharp", csharp);
 
 export function CodePreview({ stackId, version }: { stackId: string; version: string }) {
   const [code, setCode] = useState("");
@@ -14,7 +19,10 @@ export function CodePreview({ stackId, version }: { stackId: string; version: st
         </CopyButton>
       </Group>
       <ScrollArea style={{ flex: 1 }} px="sm">
-        <Code block style={{ whiteSpace: "pre", fontSize: 12 }}>{code}</Code>
+        <SyntaxHighlighter language="csharp" style={oneDark}
+          customStyle={{ margin: 0, background: "transparent", fontSize: 12 }} wrapLongLines>
+          {code}
+        </SyntaxHighlighter>
       </ScrollArea>
     </div>
   );
