@@ -22,6 +22,10 @@ public static class StackEndpoints
         var catalog = new CatalogService();
         var templates = new TemplateService();
         var run = new RunService();
+        // Real client by default (shared HttpClient); tests register a fake IChatClient in the
+        // DI container before Build(), which this picks up instead.
+        var chatClient = app.Services.GetService<IChatClient>() ?? new HttpChatClient(new HttpClient());
+        var assist = new AssistService(chatClient, catalog);
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
 
         string Dir(string id) => Path.Combine(wsRoot, id);
@@ -114,6 +118,36 @@ public static class StackEndpoints
         app.MapGet("/stacks/{id}/packages", (string id) =>
             store.Get(id) is { } s ? Results.Ok(gen.GetPackages(s)) : Results.NotFound());
 
+        app.MapPost("/stacks/{id}/assist", async (string id, AssistRequest body) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+
+            var appSettings = settings.Get();
+            if (string.IsNullOrEmpty(appSettings.AiBaseUrl))
+                return Results.BadRequest("AI not configured — set it in Settings");
+
+            AssistResult result;
+            try
+            {
+                result = await assist.AssistAsync(s, body.Prompt, appSettings);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
+            }
+
+            if (!result.Ok) return Results.UnprocessableEntity(new { reply = result.Reply });
+
+            var forced = result.Stack! with { Id = id };
+            var persisted = Persist(forced);
+            if (persisted is IStatusCodeHttpResult { StatusCode: StatusCodes.Status422UnprocessableEntity })
+            {
+                var errors = (persisted as IValueHttpResult)?.Value;
+                return Results.UnprocessableEntity(new { reply = result.Reply, errors });
+            }
+            return Results.Ok(new { reply = result.Reply, stack = forced });
+        });
+
         app.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
@@ -140,6 +174,7 @@ public static class StackEndpoints
         app.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
     }
 
+    public record AssistRequest(string Prompt);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }
