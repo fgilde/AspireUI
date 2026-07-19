@@ -41,6 +41,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
         <AddResourceDialog
           rt={selectedRt}
           existingCount={stack.nodes.filter(n => n.addMethod === selectedRt.addMethod).length}
+          totalCount={stack.nodes.length}
           onCreate={onCreate}
           onClose={() => setSelectedRt(null)}
         />

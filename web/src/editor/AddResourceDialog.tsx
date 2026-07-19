@@ -13,8 +13,8 @@ function defaultName(rt: ResourceType, existingCount: number): string {
   return existingCount > 0 ? `${lower}${existingCount}` : lower;
 }
 
-export function AddResourceDialog({ rt, existingCount, onCreate, onClose }: {
-  rt: ResourceType; existingCount: number; onCreate: (node: Node) => void; onClose: () => void;
+export function AddResourceDialog({ rt, existingCount, totalCount, onCreate, onClose }: {
+  rt: ResourceType; existingCount: number; totalCount: number; onCreate: (node: Node) => void; onClose: () => void;
 }) {
   const [name, setName] = useState(() => defaultName(rt, existingCount));
   const [overloadIdx, setOverloadIdx] = useState(0);
@@ -53,8 +53,8 @@ export function AddResourceDialog({ rt, existingCount, onCreate, onClose }: {
       addMethod: rt.addMethod,
       addArgs: literals.slice(0, end),
       withCalls: [],
-      x: 60 + existingCount * 24,
-      y: 60 + existingCount * 24,
+      x: 60 + totalCount * 28,
+      y: 60 + totalCount * 28,
     };
     onCreate(node);
   };

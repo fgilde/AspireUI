@@ -45,6 +45,7 @@ export function Canvas({ stack, setStack, onSelect }:
   return (
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes}
       onNodesChange={onNodesChange} onConnect={onConnect}
+      deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => onSelect(n.id)} fitView>
       <Background /><Controls />
     </ReactFlow>
