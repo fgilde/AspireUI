@@ -1,4 +1,4 @@
-import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth } from "./model";
+import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth, PublishResult, DeployResult } from "./model";
 const base = "";
 
 export interface TemplateInfo { id: string; name: string; description: string }
@@ -60,6 +60,9 @@ export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { meth
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
 export const getPackages = (id: string): Promise<PackageInfo[]> => fetch(`${base}/stacks/${id}/packages`).then(ok);
+export const publishStack = (id: string): Promise<PublishResult> => fetch(`${base}/stacks/${id}/publish`, { method: "POST" }).then(ok);
+export const deployStack = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy`, { method: "POST" }).then(ok);
+export const deployDown = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy/down`, { method: "POST" }).then(ok);
 export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);
 
