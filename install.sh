@@ -16,4 +16,7 @@ fi
 cd "$(dirname "$0")"
 docker compose up -d --build
 
-echo "AspireUI running at http://localhost:8080"
+echo
+echo "AspireUI is starting at http://localhost:8080"
+echo "First run builds the SPA inside the container — give it a minute before the page loads."
+echo "Follow startup:  docker compose logs -f"
