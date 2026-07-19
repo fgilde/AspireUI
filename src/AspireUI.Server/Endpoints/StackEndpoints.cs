@@ -14,6 +14,7 @@ public static class StackEndpoints
         Directory.CreateDirectory(dataDir);
 
         var store = new StackStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
+        var settings = new SettingsStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var gen = new CodeGenService();
         var import = new ImportService();
         var bundle = new BundleImporter();
@@ -34,6 +35,23 @@ public static class StackEndpoints
             gen.Materialize(s, Dir(s.Id));
             return Results.Ok(s);
         }
+
+        app.MapGet("/settings", () =>
+        {
+            var s = settings.Get();
+            var masked = string.IsNullOrEmpty(s.AiApiKey) ? null : "***";
+            return Results.Ok(s with { AiApiKey = masked });
+        });
+
+        app.MapPut("/settings", (AppSettings body) =>
+        {
+            var current = settings.Get();
+            var apiKey = body.AiApiKey == "***" ? current.AiApiKey
+                : string.IsNullOrEmpty(body.AiApiKey) ? null
+                : body.AiApiKey;
+            settings.Save(body with { AiApiKey = apiKey });
+            return Results.Ok();
+        });
 
         app.MapGet("/catalog", () => catalog.GetCatalog());
         app.MapGet("/templates", () => templates.List());
