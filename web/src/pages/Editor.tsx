@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button } from "@mantine/core";
 import { IconArrowLeft, IconLayoutGrid } from "@tabler/icons-react";
@@ -41,10 +41,16 @@ export function Editor() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [stack?.id]);
 
+  // Memoize the context value so the 2s status poller doesn't re-render every
+  // dock panel each tick — only when the data a panel actually reads changes.
+  const ctx = useMemo(
+    () => ({ stack, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus }),
+    [stack, sel, runStatus]);
+
   if (!stack) return null;
 
   return (
-    <EditorContext.Provider value={{ stack, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus }}>
+    <EditorContext.Provider value={ctx}>
       <AppShell header={{ height: HEADER_HEIGHT }} padding={0}>
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
