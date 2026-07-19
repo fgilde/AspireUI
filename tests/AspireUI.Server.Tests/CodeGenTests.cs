@@ -141,4 +141,16 @@ public class CodeGenTests
         Assert.False(File.Exists(Path.Combine(Path.GetTempPath(), "evil.cs")));
         Directory.Delete(dir, true);
     }
+
+    [Fact]
+    public void Materialize_ExtraFileNamedProgramCs_DoesNotOverwriteGeneratedProgram()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());
+        var m = Fixture() with { ExtraFiles = [new ExtraFile("Program.cs", "// evil overwrite")] };
+        new CodeGenService().Materialize(m, dir);
+        var content = File.ReadAllText(Path.Combine(dir, "Program.cs"));
+        Assert.Contains(CodeGenService.Begin, content);
+        Assert.DoesNotContain("evil overwrite", content);
+        Directory.Delete(dir, true);
+    }
 }

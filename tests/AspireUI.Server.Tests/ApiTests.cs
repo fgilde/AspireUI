@@ -149,6 +149,17 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, resp.StatusCode);
     }
 
+    [Fact]
+    public async Task ImportBundle_OverSizeLimit_Returns413WithMessage()
+    {
+        var files = new List<BundleFile> { new("Big.cs", new string('a', 6 * 1024 * 1024)) };
+        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+            new ImportBundleRequestDto("TooBig", files, null));
+        Assert.Equal(System.Net.HttpStatusCode.RequestEntityTooLarge, resp.StatusCode);
+        var body = await resp.Content.ReadAsStringAsync();
+        Assert.False(string.IsNullOrWhiteSpace(body));
+    }
+
     public record ResourceTypeDto(string AddMethod, string Label);
     public record PackageDto(string Id, string Version, List<string> Resources);
     public record BundleFile(string Path, string Content);

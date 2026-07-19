@@ -133,11 +133,20 @@ public class CodeGenService
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
 
         var root = Path.GetFullPath(dir);
+        // Reserved root-level filenames: an ExtraFile with one of these names would otherwise
+        // clobber the generated source-of-truth file written above.
+        var reservedRootNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Program.cs", "aspireui.json", $"{safeName}.csproj"
+        };
         foreach (var f in s.ExtraFiles)
         {
             // Guard against ".." path traversal: resolve and reject anything landing outside dir.
             var fullPath = Path.GetFullPath(Path.Combine(root, f.Name));
             if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                continue;
+            if (string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase)
+                && reservedRootNames.Contains(Path.GetFileName(fullPath)))
                 continue;
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
             File.WriteAllText(fullPath, f.Content);

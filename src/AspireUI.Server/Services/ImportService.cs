@@ -128,7 +128,7 @@ public class ImportService
             if (positions.TryGetValue(nodes[i].Id, out var xy) && xy.Length == 2)
                 nodes[i] = nodes[i] with { X = xy[0], Y = xy[1] };
 
-        return new StackModel(id, name, "net9.0", nodes, edges, raws, [], []);
+        return new StackModel(id, name, "net10.0", nodes, edges, raws, [], []);
     }
 
     // Turns an arbitrary resource-name literal into a valid, non-empty C# identifier: any character

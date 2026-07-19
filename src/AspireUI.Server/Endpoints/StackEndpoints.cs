@@ -111,7 +111,7 @@ public static class StackEndpoints
             var (stack, error, status) = bundle.Import(id, body.Name, body.Files, body.ProgramPath);
             if (stack is null)
                 return status == StatusCodes.Status413PayloadTooLarge
-                    ? Results.StatusCode(StatusCodes.Status413PayloadTooLarge)
+                    ? Results.Text(error ?? "payload too large", "text/plain", statusCode: StatusCodes.Status413PayloadTooLarge)
                     : Results.UnprocessableEntity(error);
             return Persist(stack);
         });
