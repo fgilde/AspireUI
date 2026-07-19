@@ -39,6 +39,19 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Catalog_IncludesOllamaAndGithubRepository()
+    {
+        // CommunityToolkit.Aspire.Hosting.Ollama (13.4.0) and Nextended.Aspire (10.1.14) are
+        // force-loaded in CatalogService.LoadDefault(). Real AddMethod names verified via a
+        // reflection dump against the installed packages: Ollama exposes AddOllama; Nextended.Aspire
+        // exposes AddGithubRepository (matches the AiStack.AppHost demo's `builder.AddGithubRepository(...)`
+        // usage) rather than AddGitProject or similar.
+        var cat = new CatalogService().GetCatalog();
+        Assert.Contains(cat, r => r.AddMethod == "AddOllama");
+        Assert.Contains(cat, r => r.AddMethod == "AddGithubRepository");
+    }
+
+    [Fact]
     public void Params_ClassifyEnumAndOptional()
     {
         var cat = new CatalogService().GetCatalog();

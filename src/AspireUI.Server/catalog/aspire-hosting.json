@@ -2,7 +2,9 @@
   "AddContainer": { "label": "Container", "icon": "docker", "group": "Generic" },
   "AddPostgres":  { "label": "Postgres", "icon": "postgres", "group": "Database", "package": "Aspire.Hosting.PostgreSQL" },
   "AddRedis":     { "label": "Redis", "icon": "redis", "group": "Cache", "package": "Aspire.Hosting.Redis" },
-  "AddSupabase":  { "label": "Supabase", "icon": "supabase", "group": "Database", "package": "Nextended.Aspire.Hosting.Supabase", "packageVersion": "10.1.14" },
-  "AddN8n":       { "label": "n8n", "icon": "n8n", "group": "Automation", "package": "Nextended.Aspire.Hosting.N8n", "packageVersion": "10.1.14" },
-  "AddLocalAI":   { "label": "LocalAI", "icon": "localai", "group": "AI", "package": "Nextended.Aspire.Hosting.LocalAI", "packageVersion": "10.1.14" }
+  "AddSupabase":  { "label": "Supabase", "icon": "supabase", "group": "Backend", "package": "Nextended.Aspire.Hosting.Supabase", "packageVersion": "10.1.14" },
+  "AddN8n":       { "label": "n8n", "icon": "n8n", "group": "AI", "package": "Nextended.Aspire.Hosting.N8n", "packageVersion": "10.1.14" },
+  "AddLocalAI":   { "label": "LocalAI", "icon": "localai", "group": "AI", "package": "Nextended.Aspire.Hosting.LocalAI", "packageVersion": "10.1.14" },
+  "AddOllama":    { "label": "Ollama", "icon": "ollama", "group": "AI", "package": "CommunityToolkit.Aspire.Hosting.Ollama", "packageVersion": "13.4.0" },
+  "AddGithubRepository": { "label": "GitHub Repo", "icon": "github", "group": "Source", "package": "Nextended.Aspire", "packageVersion": "10.1.14" }
 }

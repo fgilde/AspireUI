@@ -195,21 +195,24 @@ public class CatalogService
         _ = typeof(Aspire.Hosting.IDistributedApplicationBuilder).Assembly;
         _ = typeof(Aspire.Hosting.RedisBuilderExtensions).Assembly;
         _ = typeof(Aspire.Hosting.PostgresBuilderExtensions).Assembly;
-        // Nextended integrations (Slice 3 Task 2): force-load by name since we don't reference
-        // a stable public type at compile time here; each assembly's AddX/WithX extensions get
-        // picked up by the AppDomain scan below once loaded.
+        // Nextended integrations (Slice 3 Task 2) + Ollama/GitHub integrations (Slice 4 Task 2):
+        // force-load by name since we don't reference a stable public type at compile time here;
+        // each assembly's AddX/WithX extensions get picked up by the AppDomain scan below once loaded.
         foreach (var name in new[]
                  {
                      "Nextended.Aspire.Hosting.Supabase",
                      "Nextended.Aspire.Hosting.N8n",
                      "Nextended.Aspire.Hosting.LocalAI",
+                     "Nextended.Aspire",
+                     "CommunityToolkit.Aspire.Hosting.Ollama",
                  })
         {
             try { Assembly.Load(name); } catch { /* package not present/loadable; catalog just omits it */ }
         }
         return AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true
-                     || a.GetName().Name?.StartsWith("Nextended.Aspire") == true)
+                     || a.GetName().Name?.StartsWith("Nextended.Aspire") == true
+                     || a.GetName().Name?.StartsWith("CommunityToolkit.Aspire") == true)
             .ToArray();
     }
 
