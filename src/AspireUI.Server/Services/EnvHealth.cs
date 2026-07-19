@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace AspireUI.Server.Services;
 
 public record ToolStatus(bool Ok, string Detail);
-public record EnvHealthResult(ToolStatus Dotnet, ToolStatus Docker);
+public record EnvHealthResult(ToolStatus Dotnet, ToolStatus Docker, ToolStatus Git);
 
 public class EnvHealth
 {
@@ -14,7 +14,9 @@ public class EnvHealth
     {
         var dotnet = await RunAsync("dotnet", "--version");
         var docker = await RunAsync("docker", "info");
-        return new EnvHealthResult(dotnet, docker);
+        // git is needed by AddGithubRepository resources (Aspire clones the repo at run time).
+        var git = await RunAsync("git", "--version");
+        return new EnvHealthResult(dotnet, docker, git);
     }
 
     private static async Task<ToolStatus> RunAsync(string file, string args)

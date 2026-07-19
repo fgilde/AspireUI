@@ -103,6 +103,8 @@ public class AuthTests : IClassFixture<NoAuthTestFactory>
     {
         var health = await _f.CreateClient().GetFromJsonAsync<JsonElement>("/env/health");
         Assert.True(health.GetProperty("dotnet").GetProperty("ok").GetBoolean());
+        // git is reported too (needed by AddGithubRepository); presence of the field is the contract.
+        Assert.True(health.TryGetProperty("git", out _));
     }
 
     private record AuthStatusDto(bool NeedsSetup, bool Authenticated, UserDto? User);

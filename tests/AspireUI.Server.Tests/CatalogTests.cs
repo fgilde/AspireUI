@@ -65,6 +65,20 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Catalog_ExcludesInternalHelpers_AndRegroups()
+    {
+        var cat = new CatalogService().GetCatalog();
+        // Overlay "exclude": true drops builder/internal extension methods that match the AddX shape.
+        foreach (var hidden in new[] { "AddWithAutoNaming", "AddDockerfileFactory", "AddDockerfileBuilder",
+                     "AddCertificateAuthorityCollection", "AddContainerRegistry", "AddParameterFromConfiguration",
+                     "AddOllamaLocal" })
+            Assert.DoesNotContain(cat, r => r.AddMethod == hidden);
+        // Legit compute resources are grouped, not dumped in "Other".
+        var proj = cat.FirstOrDefault(r => r.AddMethod == "AddProject");
+        if (proj is not null) Assert.Equal("Compute", proj.Group);
+    }
+
+    [Fact]
     public void Params_ClassifyEnumAndOptional()
     {
         var cat = new CatalogService().GetCatalog();

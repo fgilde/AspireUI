@@ -1,10 +1,29 @@
 {
   "AddContainer": { "label": "Container", "icon": "docker", "group": "Generic" },
+  "AddDockerfile": { "label": "Dockerfile", "icon": "docker", "group": "Generic" },
   "AddPostgres":  { "label": "Postgres", "icon": "postgres", "group": "Database", "package": "Aspire.Hosting.PostgreSQL" },
   "AddRedis":     { "label": "Redis", "icon": "redis", "group": "Cache", "package": "Aspire.Hosting.Redis" },
   "AddSupabase":  { "label": "Supabase", "icon": "supabase", "group": "Backend", "package": "Nextended.Aspire.Hosting.Supabase", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire.Hosting.Supabase.Builders"] },
   "AddN8n":       { "label": "n8n", "icon": "n8n", "group": "AI", "package": "Nextended.Aspire.Hosting.N8n", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire.Hosting.N8n.Builders"] },
   "AddLocalAI":   { "label": "LocalAI", "icon": "localai", "group": "AI", "package": "Nextended.Aspire.Hosting.LocalAI", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire.Hosting.LocalAI"] },
   "AddOllama":    { "label": "Ollama", "icon": "ollama", "group": "AI", "package": "CommunityToolkit.Aspire.Hosting.Ollama", "packageVersion": "13.4.0" },
-  "AddGithubRepository": { "label": "GitHub Repo", "icon": "github", "group": "Source", "package": "Nextended.Aspire", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire"] }
+  "AddGithubRepository": { "label": "GitHub Repo", "icon": "github", "group": "Source", "package": "Nextended.Aspire", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire"] },
+  "AddMinioS3OnNfs": { "label": "MinIO (S3 on NFS)", "group": "Storage", "package": "Nextended.Aspire", "packageVersion": "10.1.14", "usings": ["Nextended.Aspire"] },
+
+  "AddProject":    { "label": "Project (.NET)", "group": "Compute" },
+  "AddExecutable": { "label": "Executable", "group": "Compute" },
+  "AddCSharpApp":  { "label": "C# App", "group": "Compute" },
+  "AddDotnetTool": { "label": ".NET Tool", "group": "Compute" },
+  "AddExternalService": { "label": "External Service", "group": "Integration" },
+
+  "AddParameter":         { "label": "Parameter", "group": "Config" },
+  "AddConnectionString":  { "label": "Connection String", "group": "Config" },
+
+  "AddWithAutoNaming":               { "exclude": true },
+  "AddParameterFromConfiguration":   { "exclude": true },
+  "AddCertificateAuthorityCollection": { "exclude": true },
+  "AddContainerRegistry":            { "exclude": true },
+  "AddDockerfileBuilder":            { "exclude": true },
+  "AddDockerfileFactory":            { "exclude": true },
+  "AddOllamaLocal":                  { "exclude": true }
 }

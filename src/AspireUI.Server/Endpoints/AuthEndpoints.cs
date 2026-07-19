@@ -91,6 +91,7 @@ public static class AuthEndpoints
             {
                 dotnet = new { ok = r.Dotnet.Ok, version = r.Dotnet.Detail },
                 docker = new { ok = r.Docker.Ok, detail = r.Docker.Detail },
+                git = new { ok = r.Git.Ok, detail = r.Git.Detail },
             });
         });
 

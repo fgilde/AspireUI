@@ -91,6 +91,9 @@ public class CatalogService
             var withs = tResource is null ? new List<CatalogMethod>() : BuildWiths(withMethods, tResource);
 
             var over = _overlay.TryGetValue(grp.Key, out var o) ? o : (JsonElement?)null;
+            // Resource-level opt-out: internal/builder helpers (AddWithAutoNaming, AddDockerfileFactory,
+            // …) are extension methods that match the AddX shape but aren't user-facing resources.
+            if (over?.TryGetProperty("exclude", out var ex) == true && ex.GetBoolean()) continue;
             var hidden = over?.TryGetProperty("hidden", out var h) == true
                 ? h.EnumerateArray().Select(x => x.GetString()).ToHashSet() : new HashSet<string?>();
             withs = withs.Where(w => !hidden.Contains(w.Method)).ToList();
