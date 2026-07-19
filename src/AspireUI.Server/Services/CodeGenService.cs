@@ -36,7 +36,9 @@ public class CodeGenService
         _resourceUsings = resourceUsings ?? CatalogService.ResourceUsings();
     }
 
-    public string GenerateProgram(StackModel s)
+    // composeEnv: when set (publish only), inject a Docker Compose environment resource so
+    // `aspire publish` emits docker-compose.yaml. Null for run/preview/export (output unchanged).
+    public string GenerateProgram(StackModel s, string? composeEnv = null)
     {
         var sb = new StringBuilder();
         var usings = BaseUsings
@@ -49,6 +51,10 @@ public class CodeGenService
             sb.AppendLine($"using {u};");
         sb.AppendLine();
         sb.AppendLine("var builder = DistributedApplication.CreateBuilder(args);");
+        // Sits outside the aspireui marker block so round-trip import (which parses only inside it)
+        // is unaffected.
+        if (composeEnv is not null)
+            sb.AppendLine($"builder.AddDockerComposeEnvironment(\"{Escape(composeEnv)}\");");
         sb.AppendLine();
         sb.AppendLine(Begin);
         foreach (var n in s.Nodes)
@@ -79,10 +85,13 @@ public class CodeGenService
     private static string Escape(string name) =>
         name.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-    public string GenerateCsproj(StackModel s)
+    public string GenerateCsproj(StackModel s, string? composeEnv = null)
     {
         var resourcePackageIds = new HashSet<string>(StringComparer.Ordinal) { "Aspire.Hosting.AppHost" };
-        var packages = s.Nodes.Select(n => n.AddMethod)
+        var composePkg = composeEnv is not null && resourcePackageIds.Add("Aspire.Hosting.Docker")
+            ? new[] { (Id: "Aspire.Hosting.Docker", Version: AspireVersion) }
+            : Array.Empty<(string Id, string Version)>();
+        var packages = composePkg.Concat(s.Nodes.Select(n => n.AddMethod)
             .Distinct()
             .Where(_resourcePackages.ContainsKey)
             .Select(m => _resourcePackages[m])
@@ -90,7 +99,7 @@ public class CodeGenService
             .Select(p => { resourcePackageIds.Add(p.Id); return (p.Id, Version: p.Version ?? AspireVersion); })
             .Concat(s.ExtraPackages
                 .Where(p => resourcePackageIds.Add(p.Id))
-                .Select(p => (p.Id, p.Version)));
+                .Select(p => (p.Id, p.Version))));
         var refs = string.Join("\n", packages.Select(p =>
             $"""    <PackageReference Include="{p.Id}" Version="{p.Version}" />"""));
         return $"""
@@ -123,12 +132,12 @@ public class CodeGenService
         return result;
     }
 
-    public void Materialize(StackModel s, string dir)
+    public void Materialize(StackModel s, string dir, string? composeEnv = null)
     {
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s));
+        File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, composeEnv));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-        File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s));
+        File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, composeEnv));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
 

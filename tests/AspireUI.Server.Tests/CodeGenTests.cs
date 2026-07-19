@@ -66,6 +66,42 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Generate_ComposeEnv_InjectsAfterBuilder_OutsideMarkerBlock()
+    {
+        var code = new CodeGenService().GenerateProgram(Fixture(), "aspireui");
+        Assert.Contains("builder.AddDockerComposeEnvironment(\"aspireui\");", code);
+        var builderIdx = code.IndexOf("var builder = DistributedApplication.CreateBuilder(args);");
+        var composeIdx = code.IndexOf("builder.AddDockerComposeEnvironment(\"aspireui\");");
+        Assert.True(builderIdx < composeIdx);
+        Assert.True(composeIdx < code.IndexOf(CodeGenService.Begin));
+    }
+
+    [Fact]
+    public void Generate_NoComposeEnv_ByDefault()
+    {
+        var code = new CodeGenService().GenerateProgram(Fixture());
+        Assert.DoesNotContain("AddDockerComposeEnvironment", code);
+    }
+
+    [Fact]
+    public void Csproj_ComposeEnv_AddsDockerPackage()
+    {
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [], [], []);
+        var csproj = new CodeGenService().GenerateCsproj(m, "aspireui");
+        Assert.Contains("""<PackageReference Include="Aspire.Hosting.Docker" Version="13.4.6" />""", csproj);
+    }
+
+    [Fact]
+    public void Csproj_NoDockerPackage_ByDefault()
+    {
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [], [], []);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.DoesNotContain("Aspire.Hosting.Docker", csproj);
+    }
+
+    [Fact]
     public void Csproj_IncludesResourcePackages()
     {
         var m = new StackModel("s", "Demo", "net10.0",
