@@ -43,8 +43,11 @@ public class ImportService
 
                 // `var builder = DistributedApplication.CreateBuilder(args);` — CodeGenService
                 // always emits this exact line itself; drop it rather than duplicating as a raw.
+                // Must check the chain root is actually `DistributedApplication` — otherwise some
+                // unrelated `var builder = Something.CreateBuilder(...)` would be silently eaten.
                 if (lds.Declaration.Variables[0].Identifier.Text == "builder"
-                    && calls is [("CreateBuilder", _)])
+                    && calls is [("CreateBuilder", _)]
+                    && chainRoot is IdentifierNameSyntax cbRoot && cbRoot.Identifier.Text == "DistributedApplication")
                 {
                     continue;
                 }
@@ -77,16 +80,19 @@ public class ImportService
                 if (chainRoot is IdentifierNameSyntax builderId && builderId.Identifier.Text == "builder")
                 {
                     // "builder.Build().Run();" / "...RunAsync();" — synthesized by CodeGenService; skip.
-                    if (calls.Count > 0 && calls[^1].Method is "Run" or "RunAsync")
+                    // Must match that exact two-call shape — a bare `.Run()`/`.RunAsync()` anywhere in
+                    // the chain used to match too, silently dropping unrelated `builder.Whatever().Run()`
+                    // statements.
+                    if (calls is [("Build", _), (var lastMethod, _)] && lastMethod is "Run" or "RunAsync")
                     {
                         continue;
                     }
 
                     if (calls.Count > 0)
                     {
-                        var resourceName = (calls[0].Args.Arguments.FirstOrDefault()?.Expression
+                        var literalName = (calls[0].Args.Arguments.FirstOrDefault()?.Expression
                             as LiteralExpressionSyntax)?.Token.ValueText;
-                        var varName = resourceName ?? "res" + (nId + 1);
+                        var varName = UniqueVarName(SanitizeIdentifier(literalName ?? "res" + (nId + 1)), varToNodeId);
                         var nodeId = "n" + (++nId);
                         varToNodeId[varName] = nodeId;
                         nodes.Add(MakeNode(varName, calls[0], nodeId));
@@ -116,6 +122,27 @@ public class ImportService
                 nodes[i] = nodes[i] with { X = xy[0], Y = xy[1] };
 
         return new StackModel(id, name, "net9.0", nodes, edges, raws, [], []);
+    }
+
+    // Turns an arbitrary resource-name literal into a valid, non-empty C# identifier: any character
+    // that isn't a letter/digit/underscore becomes '_', and a leading digit gets an underscore prefix
+    // (real Aspire resource names commonly contain hyphens, e.g. "redis-cache").
+    private static string SanitizeIdentifier(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "res";
+        var s = new string(raw.Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_').ToArray());
+        if (char.IsDigit(s[0])) s = "_" + s;
+        return s;
+    }
+
+    // Ensures a candidate var name doesn't collide with one already assigned to another node
+    // (varToNodeId doubles as the used-names set), appending a numeric suffix until it's unique.
+    private static string UniqueVarName(string candidate, Dictionary<string, string> varToNodeId)
+    {
+        if (!varToNodeId.ContainsKey(candidate)) return candidate;
+        var i = 2;
+        while (varToNodeId.ContainsKey(candidate + i)) i++;
+        return candidate + i;
     }
 
     // Builds a fresh node from the AddX root of a chain (root-to-outer's first entry), shared by

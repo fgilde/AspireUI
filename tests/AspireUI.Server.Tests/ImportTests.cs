@@ -93,6 +93,65 @@ public class ImportTests
     }
 
     [Fact]
+    public void UnassignedAdd_HyphenatedName_GetsSanitizedValidVarName()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            builder.AddRedis("redis-cache");
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        var node = Assert.Single(m.Nodes);
+        Assert.Equal("redis-cache", node.ResourceName);
+        Assert.NotEqual("redis-cache", node.VarName);
+
+        var generated = new CodeGenService().GenerateProgram(m);
+        Assert.Empty(new CodeGenService().CompileErrors(generated));
+    }
+
+    [Fact]
+    public void UnassignedAdds_SameLiteral_GetDistinctVarNames()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            builder.AddRedis("cache");
+            builder.AddRedis("cache");
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        Assert.Equal(2, m.Nodes.Count);
+        Assert.Equal(2, m.Nodes.Select(n => n.VarName).Distinct().Count());
+        Assert.All(m.Nodes, n => Assert.Equal("cache", n.ResourceName));
+    }
+
+    [Fact]
+    public void MarkerlessProgram_CustomBuilderStatement_IsPreserved_BuildRunSkipped()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            builder.SomeCustomExtension();
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        // The Build().Run() boilerplate must be gone...
+        Assert.DoesNotContain(m.RawStatements, s => s.Contains("Build()"));
+        Assert.All(m.Nodes, n => Assert.NotEqual("Build", n.AddMethod));
+
+        // ...but the custom builder statement must survive somewhere (as a node or a raw statement),
+        // not be silently dropped.
+        var preservedAsNode = m.Nodes.Any(n => n.AddMethod == "SomeCustomExtension");
+        var preservedAsRaw = m.RawStatements.Any(s => s.Contains("SomeCustomExtension"));
+        Assert.True(preservedAsNode || preservedAsRaw,
+            "builder.SomeCustomExtension(); must be preserved, not dropped");
+    }
+
+    [Fact]
     public void Unparseable_becomesRaw()
     {
         const string code = """
