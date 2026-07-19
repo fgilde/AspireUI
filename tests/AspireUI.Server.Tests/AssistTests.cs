@@ -15,13 +15,13 @@ public class FakeChatClient : IChatClient
 }
 
 [Collection("ServerIntegration")]
-public class AssistTests : IClassFixture<WebApplicationFactory<Program>>
+public class AssistTests : IClassFixture<TestWebAppFactory>
 {
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
     private readonly FakeChatClient _fake = new();
     private readonly HttpClient _c;
 
-    public AssistTests(WebApplicationFactory<Program> factory)
+    public AssistTests(TestWebAppFactory factory)
     {
         var f = factory.WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<IChatClient>(_fake)));
         _c = f.CreateClient();
@@ -62,6 +62,24 @@ public class AssistTests : IClassFixture<WebApplicationFactory<Program>>
         var stack = await CreateStackAsync("AssistStack2");
 
         _fake.Response = "not valid json {{{";
+
+        var resp = await _c.PostAsJsonAsync($"/stacks/{stack.Id}/assist", new { prompt = "add a redis cache" });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, resp.StatusCode);
+
+        var got = await _c.GetFromJsonAsync<StackModel>($"/stacks/{stack.Id}");
+        Assert.Empty(got!.Nodes);
+    }
+
+    [Fact]
+    public async Task Assist_IncompleteStack_Returns422_AndLeavesStackUnchanged()
+    {
+        await _c.PutAsJsonAsync("/settings", new AppSettings("https://fake.example.com", "key", "gpt-4", "Fake"));
+        var stack = await CreateStackAsync("AssistStack4");
+
+        // Model omits nodes/edges/etc entirely - System.Text.Json fills those list properties
+        // with null rather than failing to parse, so this must be treated as a parse failure
+        // (422), not passed through to CodeGenService (which would NRE on the null lists -> 500).
+        _fake.Response = """{"reply":"x","stack":{"id":"s","name":"n","targetFramework":"net10.0"}}""";
 
         var resp = await _c.PostAsJsonAsync($"/stacks/{stack.Id}/assist", new { prompt = "add a redis cache" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, resp.StatusCode);

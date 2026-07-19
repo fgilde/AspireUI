@@ -3,10 +3,11 @@ using AspireUI.Server.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 [Collection("ServerIntegration")]
-public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
+public class ApiTests : IClassFixture<TestWebAppFactory>
 {
     private readonly HttpClient _c;
-    public ApiTests(WebApplicationFactory<Program> f) => _c = f.CreateClient();
+    private readonly TestWebAppFactory _f;
+    public ApiTests(TestWebAppFactory f) { _f = f; _c = f.CreateClient(); }
 
     [Fact]
     public async Task CreateThenGet_Works()
@@ -102,9 +103,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         // ExtraPackages only show up in the generated .csproj, not the catalog-driven /packages
         // endpoint, so check the materialized file on disk directly.
-        var workspace = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AspireUI", "workspace", stack.Id);
+        var workspace = Path.Combine(_f.WorkspaceDir, stack.Id);
         var csprojFile = Directory.GetFiles(workspace, "*.csproj").Single();
         Assert.Contains("Some.Pkg", await File.ReadAllTextAsync(csprojFile));
         Assert.True(File.Exists(Path.Combine(workspace, "Helpers.cs")));

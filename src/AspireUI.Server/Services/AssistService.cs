@@ -19,7 +19,14 @@ public class AssistService(IChatClient chat, CatalogService catalog)
             using var doc = JsonDocument.Parse(raw);
             var reply = doc.RootElement.GetProperty("reply").GetString() ?? "";
             var parsed = doc.RootElement.GetProperty("stack").Deserialize<StackModel>(JsonOpts);
-            return parsed is null ? new AssistResult(raw, null, false) : new AssistResult(reply, parsed, true);
+            // System.Text.Json fills omitted list properties with null rather than failing
+            // deserialization (non-nullable annotations aren't enforced at runtime here), so a
+            // response that skips e.g. "nodes"/"edges" would otherwise look Ok=true and crash
+            // downstream (CodeGenService iterating a null list) outside the endpoint's try/catch.
+            // Treat that the same as any other unusable model reply: a parse failure.
+            var incomplete = parsed is null || parsed.Nodes is null || parsed.Edges is null
+                || parsed.RawStatements is null || parsed.ExtraFiles is null || parsed.ExtraPackages is null;
+            return incomplete ? new AssistResult(raw, null, false) : new AssistResult(reply, parsed!, true);
         }
         catch (Exception)
         {

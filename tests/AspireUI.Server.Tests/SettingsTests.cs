@@ -32,10 +32,10 @@ public class SettingsStoreTests
 }
 
 [Collection("ServerIntegration")]
-public class SettingsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class SettingsEndpointTests : IClassFixture<TestWebAppFactory>
 {
     private readonly HttpClient _c;
-    public SettingsEndpointTests(WebApplicationFactory<Program> f) => _c = f.CreateClient();
+    public SettingsEndpointTests(TestWebAppFactory f) => _c = f.CreateClient();
 
     [Fact]
     public async Task Get_WithNoKeyStored_ReturnsNullKey()

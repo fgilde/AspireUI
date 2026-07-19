@@ -4,10 +4,10 @@ using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 [Collection("ServerIntegration")]
-public class TemplateTests : IClassFixture<WebApplicationFactory<Program>>
+public class TemplateTests : IClassFixture<TestWebAppFactory>
 {
     private readonly HttpClient _c;
-    public TemplateTests(WebApplicationFactory<Program> f) => _c = f.CreateClient();
+    public TemplateTests(TestWebAppFactory f) => _c = f.CreateClient();
 
     [Fact]
     public async Task GetTemplates_ListsLocalAiDemo()
