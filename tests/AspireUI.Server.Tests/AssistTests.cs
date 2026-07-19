@@ -14,6 +14,7 @@ public class FakeChatClient : IChatClient
     public Task<string> CompleteAsync(string system, string user, AppSettings s) => Task.FromResult(Response);
 }
 
+[Collection("ServerIntegration")]
 public class AssistTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);

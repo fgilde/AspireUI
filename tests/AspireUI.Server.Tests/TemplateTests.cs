@@ -3,6 +3,7 @@ using AspireUI.Server.Models;
 using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+[Collection("ServerIntegration")]
 public class TemplateTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _c;

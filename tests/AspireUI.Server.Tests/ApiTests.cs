@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using AspireUI.Server.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+[Collection("ServerIntegration")]
 public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _c;

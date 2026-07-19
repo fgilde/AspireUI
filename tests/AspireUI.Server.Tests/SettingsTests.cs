@@ -31,6 +31,7 @@ public class SettingsStoreTests
     }
 }
 
+[Collection("ServerIntegration")]
 public class SettingsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _c;
