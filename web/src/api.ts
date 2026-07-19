@@ -44,3 +44,6 @@ export const importBundle = (name: string, files: BundleFile[], programPath?: st
 export const getSettings = (): Promise<AppSettings> => fetch(`${base}/settings`).then(ok);
 export const saveSettings = (s: AppSettings): Promise<void> =>
   fetch(`${base}/settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(() => undefined);
+
+export const assistStack = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
+  fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
