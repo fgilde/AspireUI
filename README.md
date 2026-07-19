@@ -87,5 +87,8 @@ environment variables needed for that.
 
 <img width="2374" height="1259" alt="image" src="https://github.com/user-attachments/assets/b968d27a-0b2a-4a39-bbaf-d00d006a33fb" />
 
+<img width="1446" height="558" alt="image" src="https://github.com/user-attachments/assets/61c908be-7bfd-4a36-b2a7-e04cfe4cf621" />
+
+
 
 More detail: **https://fgilde.github.io/AspireUI/**
