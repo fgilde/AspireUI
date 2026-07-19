@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Aspire.Hosting.AppHost's build props default IsPublishable=false (meant for orchestrator
+         AppHost projects). This is a normal web app that must publish, so force it back on. -->
+    <IsPublishable>true</IsPublishable>
   </PropertyGroup>
 
   <ItemGroup>
