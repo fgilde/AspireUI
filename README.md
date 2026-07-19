@@ -80,4 +80,12 @@ environment variables needed for that.
   don't expose its port directly to the internet without a reverse proxy and TLS in front.
 - The built-in AI assistant needs a configured OpenAI-compatible endpoint (see Settings) to do anything.
 
+## Screenshots
+
+<img width="2371" height="1254" alt="image" src="https://github.com/user-attachments/assets/dd24855c-3205-4a8f-bb89-13ef950a5e32" />
+
+
+<img width="2374" height="1259" alt="image" src="https://github.com/user-attachments/assets/b968d27a-0b2a-4a39-bbaf-d00d006a33fb" />
+
+
 More detail: **https://fgilde.github.io/AspireUI/**
