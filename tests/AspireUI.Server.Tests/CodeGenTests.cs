@@ -14,7 +14,9 @@ public class CodeGenTests
             new EdgeModel("e1", "n1", "n2", "reference"),
             new EdgeModel("e2", "n3", "n1", "waitFor")
         ],
-        ["var extra = ReferenceExpression.Create($\"{db.Resource}\");"]);
+        ["var extra = ReferenceExpression.Create($\"{db.Resource}\");"],
+        [],
+        []);
 
     [Fact]
     public void Generate_EmitsAddArgs()
@@ -30,7 +32,7 @@ public class CodeGenTests
         // so a stack using AddLocalAI's Known* enums (KnownTextModel etc.) failed CS1061/CS0103.
         // Overlay-driven usings (CatalogService.ResourceUsings) must add the resource's namespace.
         var m = new StackModel("s", "Demo", "net10.0",
-            [ new NodeModel("n1", "localai", "AddLocalAI", "localai", [], 0, 0, []) ], [], []);
+            [ new NodeModel("n1", "localai", "AddLocalAI", "localai", [], 0, 0, []) ], [], [], [], []);
         var code = new CodeGenService().GenerateProgram(m);
         Assert.Contains("using Aspire.Hosting;", code);
         Assert.Contains("using Aspire.Hosting.ApplicationModel;", code);
@@ -67,7 +69,7 @@ public class CodeGenTests
     public void Csproj_IncludesResourcePackages()
     {
         var m = new StackModel("s", "Demo", "net10.0",
-            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], []);
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [], [], []);
         var csproj = new CodeGenService().GenerateCsproj(m);
         Assert.Contains("Aspire.Hosting.Redis", csproj);
         Assert.Contains("Aspire.Hosting.AppHost", csproj);
@@ -80,7 +82,7 @@ public class CodeGenTests
         // CatalogService.ResourcePackages). Nextended packages ship their own version, not
         // AspireVersion, and the overlay's "packageVersion" must win over the default.
         var m = new StackModel("s", "Demo", "net10.0",
-            [ new NodeModel("n1", "wf", "AddN8n", "wf", [], 0, 0, []) ], [], []);
+            [ new NodeModel("n1", "wf", "AddN8n", "wf", [], 0, 0, []) ], [], [], [], []);
         var csproj = new CodeGenService().GenerateCsproj(m);
         Assert.Contains("""<PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />""", csproj);
     }
@@ -95,6 +97,48 @@ public class CodeGenTests
         var sidecar = JsonSerializer.Deserialize<Dictionary<string, double[]>>(
             File.ReadAllText(Path.Combine(dir, "aspireui.json")));
         Assert.True(sidecar!.ContainsKey("n1"));
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void Csproj_IncludesExtraPackages()
+    {
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [],
+            [], [new PackageRef("Some.Extra.Pkg", "1.2.3")]);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.Contains("""<PackageReference Include="Some.Extra.Pkg" Version="1.2.3" />""", csproj);
+    }
+
+    [Fact]
+    public void Csproj_DedupesExtraPackage_AlreadyEmittedByResource()
+    {
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [],
+            [], [new PackageRef("Aspire.Hosting.Redis", "999.0.0"), new PackageRef("Aspire.Hosting.AppHost", "999.0.0")]);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.DoesNotContain("999.0.0", csproj);
+    }
+
+    [Fact]
+    public void Materialize_WritesExtraFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());
+        var m = Fixture() with { ExtraFiles = [new ExtraFile("Helpers/Foo.cs", "public class Foo {}")] };
+        new CodeGenService().Materialize(m, dir);
+        var path = Path.Combine(dir, "Helpers", "Foo.cs");
+        Assert.True(File.Exists(path));
+        Assert.Equal("public class Foo {}", File.ReadAllText(path));
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void Materialize_SkipsExtraFile_WithPathTraversal()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());
+        var m = Fixture() with { ExtraFiles = [new ExtraFile("../../evil.cs", "// evil")] };
+        new CodeGenService().Materialize(m, dir);
+        Assert.False(File.Exists(Path.Combine(Path.GetTempPath(), "evil.cs")));
         Directory.Delete(dir, true);
     }
 }

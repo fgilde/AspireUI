@@ -6,7 +6,9 @@ public record StackModel(
     string TargetFramework,
     List<NodeModel> Nodes,
     List<EdgeModel> Edges,
-    List<string> RawStatements);
+    List<string> RawStatements,
+    List<ExtraFile> ExtraFiles,
+    List<PackageRef> ExtraPackages);
 
 public record NodeModel(
     string Id,
@@ -21,3 +23,7 @@ public record NodeModel(
 public record EdgeModel(string Id, string FromNodeId, string ToNodeId, string Kind); // Kind = "reference" | "waitFor"
 
 public record WithCall(string Method, List<string> Args); // Args = raw C# literals, e.g. "\"vol\""
+
+public record ExtraFile(string Name, string Content); // Name = relative path, e.g. "Helpers/Foo.cs"
+
+public record PackageRef(string Id, string Version);

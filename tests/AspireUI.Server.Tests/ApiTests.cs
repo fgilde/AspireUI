@@ -11,7 +11,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateThenGet_Works()
     {
         var create = await _c.PostAsJsonAsync("/stacks",
-            new StackModel("", "MyStack", "net9.0", [], [], []));
+            new StackModel("", "MyStack", "net9.0", [], [], [], [], []));
         create.EnsureSuccessStatusCode();
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
         Assert.False(string.IsNullOrEmpty(created!.Id));
@@ -40,7 +40,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Preview_ReturnsGeneratedCode()
     {
         var create = await _c.PostAsJsonAsync("/stacks",
-            new StackModel("", "PrevStack", "net10.0", [], [], []));
+            new StackModel("", "PrevStack", "net10.0", [], [], [], [], []));
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
         var code = await _c.GetStringAsync($"/stacks/{created!.Id}/preview");
         Assert.Contains("DistributedApplication.CreateBuilder", code);
@@ -52,7 +52,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         var redis = new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []);
         var n8n = new NodeModel("n2", "flow", "AddN8n", "flow", [], 0, 0, []);
         var create = await _c.PostAsJsonAsync("/stacks",
-            new StackModel("", "PkgStack", "net10.0", [redis, n8n], [], []));
+            new StackModel("", "PkgStack", "net10.0", [redis, n8n], [], [], [], []));
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
 
         var packages = await _c.GetFromJsonAsync<List<PackageDto>>($"/stacks/{created!.Id}/packages");

@@ -14,7 +14,9 @@ public class ImportTests
             new EdgeModel("e1", "n1", "n2", "reference"),
             new EdgeModel("e2", "n3", "n1", "waitFor")
         ],
-        ["var extra = ReferenceExpression.Create($\"{db.Resource}\");"]);
+        ["var extra = ReferenceExpression.Create($\"{db.Resource}\");"],
+        [],
+        []);
 
     [Fact]
     public void ImportOfGenerate_EqualsOriginal_IgnoringPositions()

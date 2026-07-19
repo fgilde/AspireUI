@@ -67,6 +67,8 @@ public class TemplateService
                 new EdgeModel("e" + Guid.NewGuid().ToString("n")[..8], n8nId, ollamaId, "waitFor"),
                 new EdgeModel("e" + Guid.NewGuid().ToString("n")[..8], n8nId, localaiId, "waitFor"),
             ],
-            ["var localAiOpenAiBase = ReferenceExpression.Create($\"{localai.Resource.HttpEndpoint}/v1\");"]);
+            ["var localAiOpenAiBase = ReferenceExpression.Create($\"{localai.Resource.HttpEndpoint}/v1\");"],
+            [],
+            []);
     }
 }

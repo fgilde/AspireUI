@@ -79,13 +79,18 @@ public class CodeGenService
 
     public string GenerateCsproj(StackModel s)
     {
+        var resourcePackageIds = new HashSet<string>(StringComparer.Ordinal) { "Aspire.Hosting.AppHost" };
         var packages = s.Nodes.Select(n => n.AddMethod)
             .Distinct()
             .Where(_resourcePackages.ContainsKey)
             .Select(m => _resourcePackages[m])
-            .DistinctBy(p => p.Id);
+            .DistinctBy(p => p.Id)
+            .Select(p => { resourcePackageIds.Add(p.Id); return (p.Id, Version: p.Version ?? AspireVersion); })
+            .Concat(s.ExtraPackages
+                .Where(p => resourcePackageIds.Add(p.Id))
+                .Select(p => (p.Id, p.Version)));
         var refs = string.Join("\n", packages.Select(p =>
-            $"""    <PackageReference Include="{p.Id}" Version="{p.Version ?? AspireVersion}" />"""));
+            $"""    <PackageReference Include="{p.Id}" Version="{p.Version}" />"""));
         return $"""
         <Project Sdk="Microsoft.NET.Sdk">
           <Sdk Name="Aspire.AppHost.Sdk" Version="{AspireVersion}" />
@@ -124,6 +129,17 @@ public class CodeGenService
         File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
+
+        var root = Path.GetFullPath(dir);
+        foreach (var f in s.ExtraFiles)
+        {
+            // Guard against ".." path traversal: resolve and reject anything landing outside dir.
+            var fullPath = Path.GetFullPath(Path.Combine(root, f.Name));
+            if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            File.WriteAllText(fullPath, f.Content);
+        }
     }
 
     public IReadOnlyList<string> CompileErrors(string programCs)
