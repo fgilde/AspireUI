@@ -18,6 +18,7 @@ public static class StackEndpoints
         var import = new ImportService();
         var export = new ExportService();
         var catalog = new CatalogService();
+        var templates = new TemplateService();
         var run = new RunService();
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
 
@@ -34,6 +35,7 @@ public static class StackEndpoints
         }
 
         app.MapGet("/catalog", () => catalog.GetCatalog());
+        app.MapGet("/templates", () => templates.List());
         app.MapGet("/stacks", () => store.List());
         app.MapGet("/stacks/{id}", (string id) =>
             store.Get(id) is { } s ? Results.Ok(s) : Results.NotFound());
@@ -43,6 +45,9 @@ public static class StackEndpoints
             var s = body with { Id = Guid.NewGuid().ToString("n") };
             return Persist(s);
         });
+
+        app.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
+            templates.Create(templateId) is { } s ? Persist(s) : Results.NotFound());
 
         app.MapPut("/stacks/{id}", (string id, StackModel body) =>
             store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }));
