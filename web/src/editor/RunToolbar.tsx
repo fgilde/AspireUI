@@ -7,6 +7,18 @@ export function RunToolbar() {
   const { stack, runStatus: st, setRunStatus } = useEditor();
   const color = { NotRunning: "gray", Starting: "yellow", Running: "green", Failed: "red" }[st.state];
 
+  // AddGithubRepository resources make Aspire `git clone` at run time; without git the run dies with a
+  // raw unhandled exception. Pre-check and let the user bail instead of hitting the confusing crash.
+  const start = async () => {
+    if (stack.nodes.some(n => n.addMethod === "AddGithubRepository")) {
+      const health = await api.envHealth().catch(() => null);
+      if (health && !health.git.ok &&
+          !window.confirm("This stack has a GitHub-repository resource, but git was not found on the host. Aspire will fail to clone it at run time. Run anyway?"))
+        return;
+    }
+    setRunStatus(await api.runStack(stack.id));
+  };
+
   return (
     <Group gap="xs">
       <Badge color={color} variant="light">{st.state}</Badge>
@@ -19,7 +31,7 @@ export function RunToolbar() {
             <Button size="xs" color="red" leftSection={<IconPlayerStop size={14} />} onClick={() => api.stopStack(stack.id).then(setRunStatus)}>Stop</Button>
           </Tooltip>
         : <Tooltip label="Run this stack (needs Docker)" withArrow>
-            <Button size="xs" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={() => api.runStack(stack.id).then(setRunStatus)}>Run</Button>
+            <Button size="xs" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={() => void start()}>Run</Button>
           </Tooltip>}
       <Button size="xs" variant="default" leftSection={<IconDownload size={14} />}
         onClick={() => { window.location.href = `/stacks/${stack.id}/export`; }}>Export</Button>

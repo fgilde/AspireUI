@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Tooltip, Alert } from "@mantine/core";
+import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Tooltip, Alert, useMantineColorScheme } from "@mantine/core";
 import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import JSZip from "jszip";
 import { useEditor } from "./DockLayout";
 import type { PublishResult, DeployResult } from "../model";
@@ -34,6 +34,7 @@ function download(name: string, blob: Blob) {
 // docker-compose.yaml/.env, download the bundle, and optionally deploy it locally.
 export function PublishPanel() {
   const { stack } = useEditor();
+  const { colorScheme } = useMantineColorScheme();
   const [result, setResult] = useState<PublishResult | null>(null);
   const [deploy, setDeploy] = useState<DeployResult | null>(null);
   const [busy, setBusy] = useState<null | "publish" | "up" | "down">(null);
@@ -94,7 +95,7 @@ export function PublishPanel() {
                   onClick={() => void downloadBundle()}>Download bundle</Button>
               </Group>
             </Group>
-            <SyntaxHighlighter language="yaml" style={oneDark}
+            <SyntaxHighlighter language="yaml" style={colorScheme === "light" ? oneLight : oneDark}
               customStyle={{ margin: 0, background: "transparent", fontSize: 12 }} wrapLongLines>
               {result.composeYaml}
             </SyntaxHighlighter>

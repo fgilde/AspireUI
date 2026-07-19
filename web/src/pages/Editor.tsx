@@ -9,6 +9,7 @@ import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
+import { ThemeToggle } from "../ThemeToggle";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -67,6 +68,7 @@ export function Editor() {
                   onClick={() => dockRef.current?.resetLayout()}>Reset Layout</Button>
               </Tooltip>
               <HelpButton />
+              <ThemeToggle />
               <UserMenu />
             </Group>
           </Group>

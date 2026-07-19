@@ -1,5 +1,6 @@
 import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef } from "react";
 import type { FunctionComponent } from "react";
+import { useMantineColorScheme } from "@mantine/core";
 import { DockviewReact } from "dockview-react";
 import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
@@ -139,8 +140,10 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
     });
   }, []);
 
+  const { colorScheme } = useMantineColorScheme();
+  const dockTheme = colorScheme === "light" ? "dockview-theme-light" : "dockview-theme-dark";
   return (
-    <div className="dockview-theme-dark" style={{ height: "100%", width: "100%" }}>
+    <div className={dockTheme} style={{ height: "100%", width: "100%" }}>
       <DockviewReact components={components} onReady={onReady} />
     </div>
   );

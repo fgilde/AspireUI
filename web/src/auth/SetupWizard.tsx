@@ -38,7 +38,7 @@ export function SetupWizard() {
   useEffect(() => {
     api.envHealth()
       .then(setHealth)
-      .catch(() => setHealth({ dotnet: { ok: false, version: "unavailable" }, docker: { ok: false, detail: "unavailable" } }));
+      .catch(() => setHealth({ dotnet: { ok: false, version: "unavailable" }, docker: { ok: false, detail: "unavailable" }, git: { ok: false, detail: "unavailable" } }));
   }, []);
 
   const createAdmin = async () => {
@@ -81,6 +81,10 @@ export function SetupWizard() {
                   <CheckRow
                     label="Docker" ok={health.docker.ok} detail={health.docker.detail}
                     hint="Running stacks needs Docker; you can still build/export without it."
+                  />
+                  <CheckRow
+                    label="Git" ok={health.git.ok} detail={health.git.detail}
+                    hint="Only GitHub-repository resources need git; everything else works without it."
                   />
                 </>
               ) : (

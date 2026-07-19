@@ -29,6 +29,7 @@ export interface AuthStatus { needsSetup: boolean; authenticated: boolean; user:
 export interface EnvHealth {
   dotnet: { ok: boolean; version: string };
   docker: { ok: boolean; detail: string };
+  git: { ok: boolean; detail: string };
 }
 
 // Pure mapper the AuthGate renders from: which route (if any) an unauthenticated
