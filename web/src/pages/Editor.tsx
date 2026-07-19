@@ -44,7 +44,7 @@ export function Editor() {
   // Memoize the context value so the 2s status poller doesn't re-render every
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
-    () => ({ stack, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus }),
+    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus }),
     [stack, sel, runStatus]);
 
   if (!stack) return null;
