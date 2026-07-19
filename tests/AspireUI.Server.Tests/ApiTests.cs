@@ -110,6 +110,37 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
+    public async Task ImportBundle_MsBuildPropertyVersion_FallsBackToAspireVersion()
+    {
+        var files = new List<BundleFile>
+        {
+            new("Program.cs", """
+                var builder = DistributedApplication.CreateBuilder(args);
+                builder.AddRedis("cache");
+                builder.Build().Run();
+                """),
+            new("Demo.csproj", """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <ItemGroup>
+                    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+                    <PackageReference Include="Foo" Version="$(AspireVersion)" />
+                  </ItemGroup>
+                </Project>
+                """),
+        };
+
+        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+            new ImportBundleRequestDto("BundleStack2", files, null));
+        resp.EnsureSuccessStatusCode();
+        var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
+
+        // The literal "$(AspireVersion)" is meaningless outside the source csproj — must be
+        // resolved to the concrete Aspire version we generate against instead.
+        Assert.Contains(stack!.ExtraPackages, p => p.Id == "Foo" && p.Version == "13.4.6");
+        Assert.DoesNotContain(stack.ExtraPackages, p => p.Id == "Foo" && p.Version == "$(AspireVersion)");
+    }
+
+    [Fact]
     public async Task ImportBundle_NoAppHostProgram_Returns422()
     {
         var files = new List<BundleFile> { new("Foo.cs", "public class Foo { }") };

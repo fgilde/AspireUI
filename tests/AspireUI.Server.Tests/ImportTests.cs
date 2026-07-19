@@ -175,6 +175,25 @@ public class ImportTests
     }
 
     [Fact]
+    public void MarkerlessProgram_BuildChainWithExtraCalls_IsSkipped()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            var db = builder.AddPostgres("db");
+            builder.Build().EnsureDockerRunningIfLocalDebug().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        // No node/WithCall leaked from the Build-rooted chain, and it isn't kept as a raw statement
+        // either — same treatment as the plain "builder.Build().Run();" boilerplate.
+        Assert.All(m.Nodes, n => Assert.NotEqual("Build", n.AddMethod));
+        Assert.DoesNotContain(m.Nodes, n => n.VarName.StartsWith("res"));
+        Assert.DoesNotContain(m.Nodes, n => n.WithCalls.Any(w => w.Method is "EnsureDockerRunningIfLocalDebug" or "Run"));
+        Assert.DoesNotContain(m.RawStatements, s => s.Contains("Build()"));
+    }
+
+    [Fact]
     public void Unparseable_becomesRaw()
     {
         const string code = """

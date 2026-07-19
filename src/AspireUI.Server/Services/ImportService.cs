@@ -84,11 +84,13 @@ public class ImportService
                 var (calls, chainRoot) = WalkChain(einv);
                 if (chainRoot is IdentifierNameSyntax builderId && builderId.Identifier.Text == "builder")
                 {
-                    // "builder.Build().Run();" / "...RunAsync();" — synthesized by CodeGenService; skip.
-                    // Must match that exact two-call shape — a bare `.Run()`/`.RunAsync()` anywhere in
-                    // the chain used to match too, silently dropping unrelated `builder.Whatever().Run()`
-                    // statements.
-                    if (calls is [("Build", _), (var lastMethod, _)] && lastMethod is "Run" or "RunAsync")
+                    // "builder.Build()...;" — the terminal app build/run chain synthesized/expected by
+                    // CodeGenService (e.g. ".Build().Run()", ".Build().RunAsync()", or real-world
+                    // variants with extra calls in between like
+                    // ".Build().EnsureDockerRunningIfLocalDebug().Run()"). Any chain rooted at `builder`
+                    // whose FIRST call is `Build` is always this terminal statement, never a resource —
+                    // skip it regardless of what follows.
+                    if (calls is [("Build", _), ..])
                     {
                         continue;
                     }

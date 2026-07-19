@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using AspireUI.Server.Models;
 
@@ -64,7 +65,13 @@ public class BundleImporter
         {
             var pkgId = (string?)pr.Attribute("Include");
             if (pkgId is null || skipIds.Contains(pkgId)) continue;
-            extraPackages.Add(new PackageRef(pkgId, (string?)pr.Attribute("Version") ?? ""));
+            var version = (string?)pr.Attribute("Version");
+            // Missing/empty, or an MSBuild property placeholder like "$(AspireVersion)" — that text
+            // is meaningless outside the csproj that defines the property, so fall back to the
+            // concrete Aspire version we actually generate against.
+            if (string.IsNullOrEmpty(version) || Regex.IsMatch(version, @"^\$\(.*\)$"))
+                version = CodeGenService.AspireVersion;
+            extraPackages.Add(new PackageRef(pkgId, version));
         }
 
         foreach (var pref in doc.Descendants("ProjectReference"))
