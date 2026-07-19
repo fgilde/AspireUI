@@ -22,6 +22,8 @@ public static class StackEndpoints
         var catalog = new CatalogService();
         var templates = new TemplateService();
         var run = new RunService();
+        var publish = new PublishService(gen);
+        var deploy = new DeployService();
         // Real client by default (shared HttpClient); tests register a fake IChatClient in the
         // DI container before Build(), which this picks up instead.
         var chatClient = app.Services.GetService<IChatClient>() ?? new HttpChatClient(new HttpClient());
@@ -177,6 +179,28 @@ public static class StackEndpoints
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
+
+        string PublishOut(string id) => Path.Combine(wsRoot, id, "publish", "out");
+
+        // Generate Docker Compose artifacts via `aspire publish` (blocking; ~seconds once restore is warm).
+        app2.MapPost("/stacks/{id}/publish", (string id) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var publishRoot = Path.Combine(wsRoot, id, "publish");
+            if (Directory.Exists(publishRoot)) Directory.Delete(publishRoot, true);
+            return Results.Ok(publish.Publish(s, publishRoot));
+        });
+
+        // Deploy locally: `docker compose up -d` in the last publish output. 409 if never published.
+        app2.MapPost("/stacks/{id}/deploy", (string id) =>
+            File.Exists(Path.Combine(PublishOut(id), "docker-compose.yaml"))
+                ? Results.Ok(deploy.Up(PublishOut(id)))
+                : Results.Conflict(new { message = "publish first" }));
+
+        app2.MapPost("/stacks/{id}/deploy/down", (string id) =>
+            Directory.Exists(PublishOut(id))
+                ? Results.Ok(deploy.Down(PublishOut(id)))
+                : Results.Conflict(new { message = "nothing deployed" }));
     }
 
     public record AssistRequest(string Prompt);
