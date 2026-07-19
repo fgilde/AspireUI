@@ -48,4 +48,62 @@ public class ImportTests
         // Positions restored from sidecar.
         Assert.Equal(5, back.Nodes.First(n => n.VarName == "db").X);
     }
+
+    [Fact]
+    public void FluentChain_ParsesNodeWithChain()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            var db = builder.AddPostgres("db");
+            var web = builder.AddContainer("web", "nginx").WithHttpEndpoint(8080).WithReference(db);
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        var web = Assert.Single(m.Nodes, n => n.VarName == "web");
+        Assert.Equal("AddContainer", web.AddMethod);
+        Assert.Equal("web", web.ResourceName);
+        Assert.Equal(["\"nginx\""], web.AddArgs);
+
+        var withHttp = Assert.Single(web.WithCalls, w => w.Method == "WithHttpEndpoint");
+        Assert.Equal(["8080"], withHttp.Args);
+
+        var db = Assert.Single(m.Nodes, n => n.VarName == "db");
+        var edge = Assert.Single(m.Edges);
+        Assert.Equal(web.Id, edge.FromNodeId);
+        Assert.Equal(db.Id, edge.ToNodeId);
+        Assert.Equal("reference", edge.Kind);
+    }
+
+    [Fact]
+    public void Markerless_UnknownAddIsNode()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            var x = builder.AddMyCustomThing("x");
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        var node = Assert.Single(m.Nodes, n => n.VarName == "x");
+        Assert.Equal("AddMyCustomThing", node.AddMethod);
+        Assert.Equal("x", node.ResourceName);
+    }
+
+    [Fact]
+    public void Unparseable_becomesRaw()
+    {
+        const string code = """
+            var builder = DistributedApplication.CreateBuilder(args);
+            var db = builder.AddPostgres("db");
+            var expr = ReferenceExpression.Create($"{db.Resource}");
+            builder.Build().Run();
+            """;
+
+        var m = new ImportService().Import("s1", "Demo", code, "");
+
+        Assert.Contains("var expr = ReferenceExpression.Create($\"{db.Resource}\");", m.RawStatements);
+    }
 }
