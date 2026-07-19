@@ -3,6 +3,7 @@ import "@xyflow/react/dist/style.css";
 import { useCallback } from "react";
 import { Card, Text, Badge } from "@mantine/core";
 import type { Stack } from "../model";
+import { removeNode } from "../model";
 import * as api from "../api";
 
 function ResourceNode({ data }: any) {
@@ -18,9 +19,9 @@ function ResourceNode({ data }: any) {
 const nodeTypes = { resource: ResourceNode };
 
 export function Canvas({ stack, setStack, onSelect }:
-  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string) => void }) {
+  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void }) {
   const nodes = stack.nodes.map(n => ({
-    id: n.id, type: "resource", position: { x: n.x, y: n.y },
+    id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
     data: { resourceName: n.resourceName, addMethod: n.addMethod },
   }));
   const edges = stack.edges.map(e => ({ id: e.id, source: e.fromNodeId, target: e.toNodeId }));
@@ -30,7 +31,13 @@ export function Canvas({ stack, setStack, onSelect }:
       const node = stack.nodes.find(n => n.id === c.id);
       if (node && c.position) api.patchNode(stack.id, { ...node, x: c.position.x, y: c.position.y }).then(setStack);
     });
-  }, [stack, setStack]);
+    const removed = changes.filter(c => c.type === "remove");
+    if (removed.length > 0) {
+      const next = removed.reduce((s, c) => removeNode(s, c.id), stack);
+      api.saveStack(next).then(setStack);
+      onSelect(null);
+    }
+  }, [stack, setStack, onSelect]);
   const onConnect = useCallback((c: any) =>
     api.addEdge(stack.id, { fromNodeId: c.source, toNodeId: c.target, kind: "reference" }).then(setStack),
     [stack, setStack]);

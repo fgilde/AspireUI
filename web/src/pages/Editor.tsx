@@ -33,7 +33,7 @@ export function Editor() {
       <AppShell.Main style={{ height: "calc(100vh - 56px)" }}>
         <Canvas stack={stack} setStack={setStack} onSelect={setSel} />
       </AppShell.Main>
-      <AppShell.Aside><PropertyPanel stack={stack} nodeId={sel} setStack={setStack} /></AppShell.Aside>
+      <AppShell.Aside><PropertyPanel stack={stack} nodeId={sel} setStack={setStack} onDeleted={() => setSel(null)} /></AppShell.Aside>
     </AppShell>
   );
 }

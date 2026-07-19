@@ -59,3 +59,15 @@ export function setAddArg(node: Node, index: number, literal: string): Node {
   addArgs[index] = literal;
   return { ...node, addArgs };
 }
+export function sanitizeIdentifier(name: string): string {
+  const cleaned = name.replace(/[^A-Za-z0-9_]/g, "");
+  const s = /^[0-9]/.test(cleaned) ? "_" + cleaned : cleaned;
+  return s || "resource";
+}
+export function removeNode(s: Stack, id: string): Stack {
+  return {
+    ...s,
+    nodes: s.nodes.filter(n => n.id !== id),
+    edges: s.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
+  };
+}

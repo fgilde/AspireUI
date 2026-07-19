@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, Button, ScrollArea, Divider } from "@mantine/core";
-import type { Stack, ResourceType } from "../model";
+import type { Stack, ResourceType, Node } from "../model";
 import * as api from "../api";
+import { AddResourceDialog } from "./AddResourceDialog";
 
 export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack) => void }) {
   const [cat, setCat] = useState<ResourceType[]>([]);
   const [q, setQ] = useState("");
+  const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
   useEffect(() => { api.getCatalog().then(setCat); }, []);
 
   const groups = useMemo(() => {
@@ -15,16 +17,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     return by;
   }, [cat, q]);
 
-  const add = (rt: ResourceType) => {
-    const suffix = stack.nodes.filter(n => n.addMethod === rt.addMethod).length || "";
-    const varName = rt.addMethod.replace(/^Add/, "").toLowerCase() + suffix;
-    const node = {
-      id: "n" + crypto.randomUUID().slice(0, 8),
-      varName, addMethod: rt.addMethod, resourceName: varName,
-      withCalls: [], addArgs: (rt.addOverloads[0]?.params ?? []).map(() => '""'),
-      x: 60 + stack.nodes.length * 24, y: 60 + stack.nodes.length * 24,
-    };
+  const onCreate = (node: Node) => {
     api.saveStack({ ...stack, nodes: [...stack.nodes, node] }).then(setStack);
+    setSelectedRt(null);
   };
 
   return (
@@ -35,13 +30,21 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           <div key={g}>
             <Divider my="xs" label={g} labelPosition="left" />
             {items.map(rt => (
-              <Button key={rt.addMethod} variant="light" fullWidth justify="start" mb={4} onClick={() => add(rt)}>
+              <Button key={rt.addMethod} variant="light" fullWidth justify="start" mb={4} onClick={() => setSelectedRt(rt)}>
                 <Text size="sm">{rt.label}</Text>
               </Button>
             ))}
           </div>
         ))}
       </ScrollArea>
+      {selectedRt && (
+        <AddResourceDialog
+          rt={selectedRt}
+          existingCount={stack.nodes.filter(n => n.addMethod === selectedRt.addMethod).length}
+          onCreate={onCreate}
+          onClose={() => setSelectedRt(null)}
+        />
+      )}
     </MStack>
   );
 }

@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { Tabs, ScrollArea, Text, MultiSelect } from "@mantine/core";
+import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon } from "@mantine/core";
+import { IconTrash } from "@tabler/icons-react";
 import type { Stack, ResourceType } from "../model";
+import { removeNode } from "../model";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 import { CodePreview } from "./CodePreview";
 
-export function PropertyPanel({ stack, nodeId, setStack }:
-  { stack: Stack; nodeId: string | null; setStack: (s: Stack) => void }) {
+export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
+  { stack: Stack; nodeId: string | null; setStack: (s: Stack) => void; onDeleted: () => void }) {
   const [catalog, setCatalog] = useState<ResourceType[]>([]);
   useEffect(() => { api.getCatalog().then(setCatalog); }, []);
 
   const node = stack.nodes.find(n => n.id === nodeId) ?? null;
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
+
+  const onDelete = () => {
+    if (!nodeId) return;
+    api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); });
+  };
 
   const others = useMemo(() => stack.nodes.filter(n => n.id !== nodeId), [stack.nodes, nodeId]);
   const refEdges = useMemo(() => stack.edges.filter(e => e.fromNodeId === nodeId), [stack.edges, nodeId]);
@@ -34,6 +41,14 @@ export function PropertyPanel({ stack, nodeId, setStack }:
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {node && (
+        <Group justify="space-between" px="sm" pt="xs">
+          <Text fw={600} size="sm">{node.resourceName}</Text>
+          <ActionIcon color="red" variant="subtle" title="Delete node" onClick={onDelete}>
+            <IconTrash size={16} />
+          </ActionIcon>
+        </Group>
+      )}
       <Tabs defaultValue="props" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Tabs.List>
           <Tabs.Tab value="props">Properties</Tabs.Tab>
