@@ -28,6 +28,11 @@ public static class StackEndpoints
         var assist = new AssistService(chatClient, catalog);
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
 
+        // All app endpoints below require an authenticated session (cookie auth wired in
+        // Program.cs). Anonymous endpoints (/auth/*, /env/health, SPA static files) are mapped
+        // separately and never go through this group.
+        var app2 = app.MapGroup("").RequireAuthorization();
+
         string Dir(string id) => Path.Combine(wsRoot, id);
 
         // Materialize + compile-check; returns error list (empty = ok).
@@ -40,14 +45,14 @@ public static class StackEndpoints
             return Results.Ok(s);
         }
 
-        app.MapGet("/settings", () =>
+        app2.MapGet("/settings", () =>
         {
             var s = settings.Get();
             var masked = string.IsNullOrEmpty(s.AiApiKey) ? null : "***";
             return Results.Ok(s with { AiApiKey = masked });
         });
 
-        app.MapPut("/settings", (AppSettings body) =>
+        app2.MapPut("/settings", (AppSettings body) =>
         {
             var current = settings.Get();
             var apiKey = body.AiApiKey == "***" ? current.AiApiKey
@@ -57,25 +62,25 @@ public static class StackEndpoints
             return Results.Ok();
         });
 
-        app.MapGet("/catalog", () => catalog.GetCatalog());
-        app.MapGet("/templates", () => templates.List());
-        app.MapGet("/stacks", () => store.List());
-        app.MapGet("/stacks/{id}", (string id) =>
+        app2.MapGet("/catalog", () => catalog.GetCatalog());
+        app2.MapGet("/templates", () => templates.List());
+        app2.MapGet("/stacks", () => store.List());
+        app2.MapGet("/stacks/{id}", (string id) =>
             store.Get(id) is { } s ? Results.Ok(s) : Results.NotFound());
 
-        app.MapPost("/stacks", (StackModel body) =>
+        app2.MapPost("/stacks", (StackModel body) =>
         {
             var s = body with { Id = Guid.NewGuid().ToString("n") };
             return Persist(s);
         });
 
-        app.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
+        app2.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
             templates.Create(templateId) is { } s ? Persist(s) : Results.NotFound());
 
-        app.MapPut("/stacks/{id}", (string id, StackModel body) =>
+        app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
             store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }));
 
-        app.MapDelete("/stacks/{id}", (string id) =>
+        app2.MapDelete("/stacks/{id}", (string id) =>
         {
             run.Stop(id);
             store.Delete(id);
@@ -83,7 +88,7 @@ public static class StackEndpoints
             return Results.NoContent();
         });
 
-        app.MapPatch("/stacks/{id}/nodes/{nodeId}", (string id, string nodeId, NodeModel patch) =>
+        app2.MapPatch("/stacks/{id}/nodes/{nodeId}", (string id, string nodeId, NodeModel patch) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             var idx = s.Nodes.FindIndex(n => n.Id == nodeId);
@@ -92,33 +97,33 @@ public static class StackEndpoints
             return Persist(s);
         });
 
-        app.MapPost("/stacks/{id}/edges", (string id, EdgeModel edge) =>
+        app2.MapPost("/stacks/{id}/edges", (string id, EdgeModel edge) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.Add(edge with { Id = "e" + Guid.NewGuid().ToString("n")[..8] });
             return Persist(s);
         });
 
-        app.MapDelete("/stacks/{id}/edges/{edgeId}", (string id, string edgeId) =>
+        app2.MapDelete("/stacks/{id}/edges/{edgeId}", (string id, string edgeId) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.RemoveAll(e => e.Id == edgeId);
             return Persist(s);
         });
 
-        app.MapGet("/stacks/{id}/export", (string id) =>
+        app2.MapGet("/stacks/{id}/export", (string id) =>
         {
             if (!Directory.Exists(Dir(id))) return Results.NotFound();
             return Results.File(export.Zip(Dir(id)), "application/zip", $"{id}.zip");
         });
 
-        app.MapGet("/stacks/{id}/preview", (string id) =>
+        app2.MapGet("/stacks/{id}/preview", (string id) =>
             store.Get(id) is { } s ? Results.Text(gen.GenerateProgram(s), "text/plain") : Results.NotFound());
 
-        app.MapGet("/stacks/{id}/packages", (string id) =>
+        app2.MapGet("/stacks/{id}/packages", (string id) =>
             store.Get(id) is { } s ? Results.Ok(gen.GetPackages(s)) : Results.NotFound());
 
-        app.MapPost("/stacks/{id}/assist", async (string id, AssistRequest body) =>
+        app2.MapPost("/stacks/{id}/assist", async (string id, AssistRequest body) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
 
@@ -148,7 +153,7 @@ public static class StackEndpoints
             return Results.Ok(new { reply = result.Reply, stack = forced });
         });
 
-        app.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
+        app2.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
             return Persist(s);
@@ -157,7 +162,7 @@ public static class StackEndpoints
         // Bundle import: a whole set of source files (folder/zip contents) -> editable stack,
         // carrying extra packages (csproj) and custom code (extra .cs files) the node-graph
         // model can't represent. Text-only /stacks/{id}/import above stays for back-compat.
-        app.MapPost("/stacks/import-bundle", (ImportBundleRequest body) =>
+        app2.MapPost("/stacks/import-bundle", (ImportBundleRequest body) =>
         {
             var id = Guid.NewGuid().ToString("n");
             var (stack, error, status) = bundle.Import(id, body.Name, body.Files, body.ProgramPath);
@@ -168,10 +173,10 @@ public static class StackEndpoints
             return Persist(stack);
         });
 
-        app.MapPost("/stacks/{id}/run", (string id) =>
+        app2.MapPost("/stacks/{id}/run", (string id) =>
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
-        app.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
-        app.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
+        app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
+        app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
     }
 
     public record AssistRequest(string Prompt);
