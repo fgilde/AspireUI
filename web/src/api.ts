@@ -23,3 +23,5 @@ export const deleteStack = (id: string): Promise<void> => fetch(`${base}/stacks/
 export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { method: "POST" }).then(ok);
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
+export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
+  fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);

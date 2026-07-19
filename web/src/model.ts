@@ -24,3 +24,28 @@ export function toFlow(s: Stack) {
 export function applyNodePosition(s: Stack, id: string, x: number, y: number): Stack {
   return { ...s, nodes: s.nodes.map(n => n.id === id ? { ...n, x, y } : n) };
 }
+
+export function toLiteral(value: string, type: CatalogParam["type"]): string {
+  if (type === "int") return value === "" ? "0" : String(parseInt(value, 10));
+  if (type === "bool") return value === "true" ? "true" : "false";
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+export function fromLiteral(literal: string): string {
+  const s = literal.trim();
+  if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  return s;
+}
+export function readWithRows(node: Node, method: string): string[][] {
+  return node.withCalls.filter(w => w.method === method).map(w => w.args);
+}
+export function writeWithRows(node: Node, method: string, rows: string[][]): Node {
+  const others = node.withCalls.filter(w => w.method !== method);
+  const rebuilt = rows.map(args => ({ method, args }));
+  return { ...node, withCalls: [...others, ...rebuilt] };
+}
+export function setAddArg(node: Node, index: number, literal: string): Node {
+  const addArgs = [...node.addArgs];
+  while (addArgs.length <= index) addArgs.push('""');
+  addArgs[index] = literal;
+  return { ...node, addArgs };
+}
