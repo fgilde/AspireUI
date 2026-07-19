@@ -36,11 +36,16 @@ public class CodeGenService
             args.AddRange(n.AddArgs);
             sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}({string.Join(", ", args)});");
         }
+        foreach (var raw in s.RawStatements)
+            sb.AppendLine(raw);
         foreach (var n in s.Nodes)
             foreach (var w in n.WithCalls)
                 sb.AppendLine($"{n.VarName}.{w.Method}({string.Join(", ", w.Args)});");
-        foreach (var e in s.Edges.Where(e => e.Kind == "reference"))
-            sb.AppendLine($"{Var(s, e.FromNodeId)}.WithReference({Var(s, e.ToNodeId)});");
+        foreach (var e in s.Edges)
+        {
+            var method = e.Kind == "waitFor" ? "WaitFor" : "WithReference";
+            sb.AppendLine($"{Var(s, e.FromNodeId)}.{method}({Var(s, e.ToNodeId)});");
+        }
         sb.AppendLine(End);
         sb.AppendLine();
         sb.AppendLine("builder.Build().Run();");

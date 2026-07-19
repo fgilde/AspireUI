@@ -24,46 +24,65 @@ public class ImportService
 
         var nodes = new List<NodeModel>();
         var edges = new List<EdgeModel>();
+        var raws = new List<string>();
         var varToNodeId = new Dictionary<string, string>();
         int nId = 0, eId = 0;
 
-        // Pass 1: declarations "var X = builder.AddM("name");"
-        foreach (var st in statements.OfType<LocalDeclarationStatementSyntax>())
+        // Single pass, in source order, so raw statements interleaved between declarations,
+        // withCalls and edges are preserved in their original relative order.
+        foreach (var st in statements)
         {
-            var decl = st.Declaration.Variables[0];
-            var varName = decl.Identifier.Text;
-            if (decl.Initializer?.Value is not InvocationExpressionSyntax inv) continue;
-            if (inv.Expression is not MemberAccessExpressionSyntax ma) continue;      // builder.AddM
-            var addMethod = ma.Name.Identifier.Text;
-            var resourceName = (inv.ArgumentList.Arguments.FirstOrDefault()?.Expression
-                as LiteralExpressionSyntax)?.Token.ValueText ?? varName;
-            var addArgs = inv.ArgumentList.Arguments.Skip(1).Select(a => a.Expression.ToString()).ToList();
-            var nodeId = "n" + (++nId);
-            varToNodeId[varName] = nodeId;
-            nodes.Add(new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0, addArgs));
-        }
-
-        // Pass 2: modifications "X.WithY(...);" and "X.WithReference(Y);"
-        foreach (var st in statements.OfType<ExpressionStatementSyntax>())
-        {
-            if (st.Expression is not InvocationExpressionSyntax inv) continue;
-            if (inv.Expression is not MemberAccessExpressionSyntax ma) continue;
-            if (ma.Expression is not IdentifierNameSyntax target) continue;
-            if (!varToNodeId.TryGetValue(target.Identifier.Text, out var srcNodeId)) continue;
-            var method = ma.Name.Identifier.Text;
-
-            if (method == "WithReference"
-                && inv.ArgumentList.Arguments.FirstOrDefault()?.Expression is IdentifierNameSyntax refId
-                && varToNodeId.TryGetValue(refId.Identifier.Text, out var toNodeId))
+            // Node declaration: "var X = builder.AddM("name", ...);"
+            if (st is LocalDeclarationStatementSyntax lds
+                && lds.Declaration.Variables.Count == 1
+                && lds.Declaration.Variables[0].Initializer?.Value is InvocationExpressionSyntax inv
+                && inv.Expression is MemberAccessExpressionSyntax ma
+                && ma.Expression is IdentifierNameSyntax recv
+                && recv.Identifier.Text == "builder")
             {
-                edges.Add(new EdgeModel("e" + (++eId), srcNodeId, toNodeId, "reference"));
+                var varName = lds.Declaration.Variables[0].Identifier.Text;
+                var addMethod = ma.Name.Identifier.Text;
+                var resourceName = (inv.ArgumentList.Arguments.FirstOrDefault()?.Expression
+                    as LiteralExpressionSyntax)?.Token.ValueText ?? varName;
+                var addArgs = inv.ArgumentList.Arguments.Skip(1).Select(a => a.Expression.ToString()).ToList();
+                var nodeId = "n" + (++nId);
+                varToNodeId[varName] = nodeId;
+                nodes.Add(new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0, addArgs));
+                continue;
             }
-            else
+
+            // Modification: "X.WithY(...);", "X.WithReference(Y);", "X.WaitFor(Y);"
+            if (st is ExpressionStatementSyntax es
+                && es.Expression is InvocationExpressionSyntax einv
+                && einv.Expression is MemberAccessExpressionSyntax ema
+                && ema.Expression is IdentifierNameSyntax target
+                && varToNodeId.TryGetValue(target.Identifier.Text, out var srcNodeId))
             {
-                var args = inv.ArgumentList.Arguments.Select(a => a.Expression.ToString()).ToList();
-                var idx = nodes.FindIndex(x => x.Id == srcNodeId);
-                nodes[idx] = nodes[idx] with { WithCalls = [.. nodes[idx].WithCalls, new WithCall(method, args)] };
+                var method = ema.Name.Identifier.Text;
+                var firstArg = einv.ArgumentList.Arguments.FirstOrDefault()?.Expression as IdentifierNameSyntax;
+                var edgeKind = method switch
+                {
+                    "WithReference" => "reference",
+                    "WaitFor" => "waitFor",
+                    _ => null
+                };
+
+                if (edgeKind is not null && firstArg is not null
+                    && varToNodeId.TryGetValue(firstArg.Identifier.Text, out var toNodeId))
+                {
+                    edges.Add(new EdgeModel("e" + (++eId), srcNodeId, toNodeId, edgeKind));
+                }
+                else
+                {
+                    var args = einv.ArgumentList.Arguments.Select(a => a.Expression.ToString()).ToList();
+                    var idx = nodes.FindIndex(x => x.Id == srcNodeId);
+                    nodes[idx] = nodes[idx] with { WithCalls = [.. nodes[idx].WithCalls, new WithCall(method, args)] };
+                }
+                continue;
             }
+
+            // Anything else in the marker block is preserved verbatim.
+            raws.Add(st.ToString().Trim());
         }
 
         // Restore positions from sidecar (keyed by node id).
@@ -71,7 +90,7 @@ public class ImportService
             if (positions.TryGetValue(nodes[i].Id, out var xy) && xy.Length == 2)
                 nodes[i] = nodes[i] with { X = xy[0], Y = xy[1] };
 
-        return new StackModel(id, name, "net9.0", nodes, edges);
+        return new StackModel(id, name, "net9.0", nodes, edges, raws);
     }
 
     private static (int from, int to) MarkerSpan(string src)

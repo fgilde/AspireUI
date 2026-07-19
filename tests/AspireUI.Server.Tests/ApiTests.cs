@@ -11,7 +11,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task CreateThenGet_Works()
     {
         var create = await _c.PostAsJsonAsync("/stacks",
-            new StackModel("", "MyStack", "net9.0", [], []));
+            new StackModel("", "MyStack", "net9.0", [], [], []));
         create.EnsureSuccessStatusCode();
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
         Assert.False(string.IsNullOrEmpty(created!.Id));
@@ -40,7 +40,7 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Preview_ReturnsGeneratedCode()
     {
         var create = await _c.PostAsJsonAsync("/stacks",
-            new StackModel("", "PrevStack", "net10.0", [], []));
+            new StackModel("", "PrevStack", "net10.0", [], [], []));
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
         var code = await _c.GetStringAsync($"/stacks/{created!.Id}/preview");
         Assert.Contains("DistributedApplication.CreateBuilder", code);

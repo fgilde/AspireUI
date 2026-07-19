@@ -10,7 +10,11 @@ public class ImportTests
             new NodeModel("n2", "cache", "AddRedis", "cache", [], 7, 8, []),
             new NodeModel("n3", "web", "AddContainer", "web", [], 9, 10, ["\"nginx\""])
         ],
-        [new EdgeModel("e1", "n1", "n2", "reference")]);
+        [
+            new EdgeModel("e1", "n1", "n2", "reference"),
+            new EdgeModel("e2", "n3", "n1", "waitFor")
+        ],
+        ["var extra = ReferenceExpression.Create($\"{db.Resource}\");"]);
 
     [Fact]
     public void ImportOfGenerate_EqualsOriginal_IgnoringPositions()
@@ -29,12 +33,15 @@ public class ImportTests
         Assert.Equal(m.Nodes.Select(Key).OrderBy(x => x),
                      back.Nodes.Select(Key).OrderBy(x => x));
 
-        // Edges compared by (fromVar -> toVar).
+        // Edges compared by (fromVar -> toVar -> kind).
         string EdgeKey(StackModel s, EdgeModel e) =>
             s.Nodes.First(n => n.Id == e.FromNodeId).VarName + "->" +
-            s.Nodes.First(n => n.Id == e.ToNodeId).VarName;
+            s.Nodes.First(n => n.Id == e.ToNodeId).VarName + ":" + e.Kind;
         Assert.Equal(m.Edges.Select(e => EdgeKey(m, e)),
                      back.Edges.Select(e => EdgeKey(back, e)));
+
+        // Raw statements survive verbatim, in order.
+        Assert.Equal(m.RawStatements, back.RawStatements);
 
         // Positions restored from sidecar.
         Assert.Equal(5, back.Nodes.First(n => n.VarName == "db").X);

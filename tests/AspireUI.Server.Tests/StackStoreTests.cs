@@ -9,7 +9,7 @@ public class StackStoreTests
         var store = new StackStore(":memory:");
         var s = new StackModel("s1", "demo", "net9.0",
             [new NodeModel("n1", "db", "AddPostgres", "db", [], 10, 20, [])],
-            []);
+            [], []);
         store.Save(s);
         var got = store.Get("s1");
         Assert.Equal("demo", got!.Name);
@@ -21,7 +21,7 @@ public class StackStoreTests
     public void Delete_Removes()
     {
         var store = new StackStore(":memory:");
-        store.Save(new StackModel("s1", "d", "net9.0", [], []));
+        store.Save(new StackModel("s1", "d", "net9.0", [], [], []));
         store.Delete("s1");
         Assert.Null(store.Get("s1"));
     }
