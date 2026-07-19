@@ -6,6 +6,8 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace AspireUI.Server.Services;
 
+public record PackageInfo(string Id, string Version, List<string> Resources);
+
 public class CodeGenService
 {
     public const string Begin = "// >>> aspireui:begin (nicht von Hand editieren)";
@@ -83,6 +85,18 @@ public class CodeGenService
           </ItemGroup>
         </Project>
         """;
+    }
+
+    // Packages endpoint data: AppHost always first (no resources), then one entry per distinct
+    // overlay-mapped package used by the stack's nodes, grouping the resourceNames that use it.
+    public IReadOnlyList<PackageInfo> GetPackages(StackModel s)
+    {
+        var result = new List<PackageInfo> { new("Aspire.Hosting.AppHost", AspireVersion, new()) };
+        result.AddRange(s.Nodes
+            .Where(n => _resourcePackages.ContainsKey(n.AddMethod))
+            .GroupBy(n => _resourcePackages[n.AddMethod])
+            .Select(g => new PackageInfo(g.Key.Id, g.Key.Version ?? AspireVersion, g.Select(n => n.ResourceName).ToList())));
+        return result;
     }
 
     public void Materialize(StackModel s, string dir)

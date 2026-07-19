@@ -46,5 +46,29 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("DistributedApplication.CreateBuilder", code);
         Assert.Contains("aspireui:begin", code);
     }
+    [Fact]
+    public async Task Packages_GroupsByOverlayMappedPackage()
+    {
+        var redis = new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []);
+        var n8n = new NodeModel("n2", "flow", "AddN8n", "flow", [], 0, 0, []);
+        var create = await _c.PostAsJsonAsync("/stacks",
+            new StackModel("", "PkgStack", "net10.0", [redis, n8n], [], []));
+        var created = await create.Content.ReadFromJsonAsync<StackModel>();
+
+        var packages = await _c.GetFromJsonAsync<List<PackageDto>>($"/stacks/{created!.Id}/packages");
+
+        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == "13.4.6" && p.Resources.Count == 0);
+        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == "13.4.6" && p.Resources.SequenceEqual(["cache"]));
+        Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == "10.1.14" && p.Resources.SequenceEqual(["flow"]));
+    }
+
+    [Fact]
+    public async Task Packages_UnknownStack_Returns404()
+    {
+        var resp = await _c.GetAsync("/stacks/does-not-exist/packages");
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
     public record ResourceTypeDto(string AddMethod, string Label);
+    public record PackageDto(string Id, string Version, List<string> Resources);
 }
