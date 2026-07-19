@@ -1,4 +1,4 @@
-import { Button, Group, Badge, Anchor } from "@mantine/core";
+import { Button, Group, Badge, Anchor, Tooltip } from "@mantine/core";
 import { IconPlayerPlay, IconPlayerStop, IconExternalLink, IconDownload } from "@tabler/icons-react";
 import * as api from "../api";
 import { useEditor } from "./DockLayout";
@@ -15,8 +15,12 @@ export function RunToolbar() {
           <Button size="xs" variant="light" leftSection={<IconExternalLink size={14} />}>Dashboard</Button>
         </Anchor>}
       {st.state === "Running" || st.state === "Starting"
-        ? <Button size="xs" color="red" leftSection={<IconPlayerStop size={14} />} onClick={() => api.stopStack(stack.id).then(setRunStatus)}>Stop</Button>
-        : <Button size="xs" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={() => api.runStack(stack.id).then(setRunStatus)}>Run</Button>}
+        ? <Tooltip label="Stop the running stack" withArrow>
+            <Button size="xs" color="red" leftSection={<IconPlayerStop size={14} />} onClick={() => api.stopStack(stack.id).then(setRunStatus)}>Stop</Button>
+          </Tooltip>
+        : <Tooltip label="Run this stack (needs Docker)" withArrow>
+            <Button size="xs" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={() => api.runStack(stack.id).then(setRunStatus)}>Run</Button>
+          </Tooltip>}
       <Button size="xs" variant="default" leftSection={<IconDownload size={14} />}
         onClick={() => { window.location.href = `/stacks/${stack.id}/export`; }}>Export</Button>
     </Group>

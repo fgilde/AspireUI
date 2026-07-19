@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
   AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon,
-  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu,
+  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip,
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
@@ -13,6 +13,7 @@ import {
 import { pickAppHost, type Stack } from "../model";
 import * as api from "../api";
 import type { TemplateInfo, BundleFile } from "../api";
+import { HelpButton } from "../HelpButton";
 import "./StacksOverview.css";
 
 const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
@@ -124,14 +125,18 @@ export function StacksOverview() {
             </Group>
             <Group gap="sm">
               <Button.Group>
-                <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
-                  New Stack
-                </Button>
+                <Tooltip label="Create a new empty stack" withArrow>
+                  <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
+                    New Stack
+                  </Button>
+                </Tooltip>
                 <Menu position="bottom-end" withArrow>
                   <Menu.Target>
-                    <Button px="xs" aria-label="Create from demo">
-                      <IconChevronDown size={16} />
-                    </Button>
+                    <Tooltip label="Create from a demo template" withArrow>
+                      <Button px="xs" aria-label="Create from demo">
+                        <IconChevronDown size={16} />
+                      </Button>
+                    </Tooltip>
                   </Menu.Target>
                   <Menu.Dropdown>
                     {templates.length === 0 ? (
@@ -153,9 +158,11 @@ export function StacksOverview() {
 
               <Menu position="bottom-end" withArrow>
                 <Menu.Target>
-                  <Button variant="default" leftSection={<IconUpload size={16} />} rightSection={<IconChevronDown size={16} />}>
-                    Import
-                  </Button>
+                  <Tooltip label="Import an existing AppHost (.cs/.csproj or .zip)" withArrow>
+                    <Button variant="default" leftSection={<IconUpload size={16} />} rightSection={<IconChevronDown size={16} />}>
+                      Import
+                    </Button>
+                  </Tooltip>
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Item leftSection={<IconFileZip size={14} />} onClick={() => zipInputRef.current?.click()}>
@@ -169,9 +176,12 @@ export function StacksOverview() {
               <input ref={zipInputRef} type="file" accept=".zip" hidden onChange={onZipPicked} />
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
 
-              <ActionIcon variant="default" size="lg" onClick={() => nav("/settings")} aria-label="Settings">
-                <IconSettings size={18} />
-              </ActionIcon>
+              <Tooltip label="Settings" withArrow>
+                <ActionIcon variant="default" size="lg" onClick={() => nav("/settings")} aria-label="Settings">
+                  <IconSettings size={18} />
+                </ActionIcon>
+              </Tooltip>
+              <HelpButton />
             </Group>
           </Group>
         </Container>

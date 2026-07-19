@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, type Stack, type Node, type CatalogOverload } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, type Stack, type Node, type CatalogOverload } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -84,6 +84,15 @@ describe("log classifier", () => {
   });
   it("leaves normal log lines unflagged", () => {
     expect(isErrorLine("info: Now listening on http://localhost:5000")).toBe(false);
+  });
+});
+
+describe("runStateColor", () => {
+  it("maps run states to badge colors, NotRunning to nothing", () => {
+    expect(runStateColor("NotRunning")).toBeUndefined();
+    expect(runStateColor("Starting")).toBe("yellow");
+    expect(runStateColor("Running")).toBe("green");
+    expect(runStateColor("Failed")).toBe("red");
   });
 });
 

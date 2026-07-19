@@ -1,16 +1,28 @@
 import { ReactFlow, Background, Controls, Handle, Position } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback } from "react";
-import { Card, Text, Badge } from "@mantine/core";
-import type { Stack } from "../model";
-import { removeNode } from "../model";
+import { Card, Text, Badge, Group, Tooltip } from "@mantine/core";
+import type { Stack, RunState } from "../model";
+import { removeNode, runStateColor } from "../model";
 import * as api from "../api";
 
+// Small dot showing the current stack-level run state for this node. This is
+// NOT per-resource Aspire health (needs the Aspire resource gRPC service —
+// see docs/superpowers/specs/2026-07-19-aspireui-polish.md §4 non-goals);
+// every node shows the same shared runStatus for now.
 function ResourceNode({ data }: any) {
+  const color = runStateColor(data.runState as RunState);
   return (
     <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 140 }}>
       <Handle type="target" position={Position.Left} />
-      <Text fw={600} size="sm">{data.resourceName}</Text>
+      <Group justify="space-between" wrap="nowrap" gap={4}>
+        <Text fw={600} size="sm">{data.resourceName}</Text>
+        {color && (
+          <Tooltip label={data.runState} withArrow>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+          </Tooltip>
+        )}
+      </Group>
       <Badge size="xs" variant="light" mt={4}>{data.addMethod}</Badge>
       <Handle type="source" position={Position.Right} />
     </Card>
@@ -18,11 +30,11 @@ function ResourceNode({ data }: any) {
 }
 const nodeTypes = { resource: ResourceNode };
 
-export function Canvas({ stack, setStack, onSelect }:
-  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void }) {
+export function Canvas({ stack, setStack, onSelect, runState }:
+  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
   const nodes = stack.nodes.map(n => ({
     id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
-    data: { resourceName: n.resourceName, addMethod: n.addMethod },
+    data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
   }));
   const edges = stack.edges.map(e => e.kind === "waitFor"
     ? { id: e.id, source: e.fromNodeId, target: e.toNodeId, label: "waits for", style: { strokeDasharray: "6 3" } }

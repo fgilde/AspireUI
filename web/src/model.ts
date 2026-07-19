@@ -92,3 +92,9 @@ export function removeNode(s: Stack, id: string): Stack {
     edges: s.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
   };
 }
+// Stack-level run state shown per node (Running/Starting/Failed dot on the
+// canvas). NOT true per-resource Aspire health/URL — that needs the Aspire
+// resource gRPC service and is a documented follow-up (see polish spec §4).
+export function runStateColor(state: RunState): string | undefined {
+  return { NotRunning: undefined, Starting: "yellow", Running: "green", Failed: "red" }[state];
+}

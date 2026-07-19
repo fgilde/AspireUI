@@ -40,8 +40,8 @@ function PalettePanel() {
   return <Palette stack={stack} setStack={setStack} />;
 }
 function CanvasPanel() {
-  const { stack, setStack, setSelected } = useEditor();
-  return <Canvas stack={stack} setStack={setStack} onSelect={setSelected} />;
+  const { stack, setStack, setSelected, runStatus } = useEditor();
+  return <Canvas stack={stack} setStack={setStack} onSelect={setSelected} runState={runStatus.state} />;
 }
 function PropertiesPanel() {
   const { stack, setStack, selected, setSelected } = useEditor();

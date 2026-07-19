@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button } from "@mantine/core";
+import { AppShell, Group, Title, Button, Tooltip } from "@mantine/core";
 import { IconArrowLeft, IconLayoutGrid } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
 import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
+import { HelpButton } from "../HelpButton";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -60,8 +61,11 @@ export function Editor() {
             </Group>
             <Group>
               <RunToolbar />
-              <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}
-                onClick={() => dockRef.current?.resetLayout()}>Reset Layout</Button>
+              <Tooltip label="Restore the default panel layout" withArrow>
+                <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}
+                  onClick={() => dockRef.current?.resetLayout()}>Reset Layout</Button>
+              </Tooltip>
+              <HelpButton />
             </Group>
           </Group>
         </AppShell.Header>

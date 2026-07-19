@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, Badge } from "@mantine/core";
+import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, Badge, Tooltip } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
@@ -148,15 +148,17 @@ export function PropertyGrid({ stack, node, rt, setStack }:
       })}
 
       {available.length > 0 && (
-        <Select
-          label="Add capability"
-          placeholder="Search…"
-          searchable
-          clearable
-          value={null}
-          data={available.map(w => ({ value: w.method, label: w.label }))}
-          onChange={v => v && addCapability(v)}
-        />
+        <Tooltip label="Add a With*/Add* capability to this resource" position="top-start" withArrow openDelay={400}>
+          <Select
+            label="Add capability"
+            placeholder="Search…"
+            searchable
+            clearable
+            value={null}
+            data={available.map(w => ({ value: w.method, label: w.label }))}
+            onChange={v => v && addCapability(v)}
+          />
+        </Tooltip>
       )}
 
       <Divider my="xs" label="Raw call (advanced)" labelPosition="left" />
