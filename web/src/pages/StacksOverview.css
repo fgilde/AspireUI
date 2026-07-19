@@ -1,0 +1,7 @@
+.stack-card {
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+.stack-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--mantine-color-indigo-6);
+}

@@ -1,7 +1,13 @@
 export interface WithCall { method: string; args: string[] }
-export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number }
+export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[] }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[] }
+
+export interface CatalogParam { name: string; type: "string" | "int" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; label: string }
+export interface CatalogWith { method: string; label: string; params: CatalogParam[] }
+export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addParams: CatalogParam[]; withs: CatalogWith[] }
+export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
+export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 
 export function toFlow(s: Stack) {
   return {
