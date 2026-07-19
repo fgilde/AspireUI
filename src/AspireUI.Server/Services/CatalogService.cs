@@ -3,9 +3,10 @@ using System.Text.Json;
 
 namespace AspireUI.Server.Services;
 
-public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string Label);
-public record CatalogWith(string Method, string Label, List<CatalogParam> Params);
-public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogParam> AddParams, List<CatalogWith> Withs);
+public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string? EnumTypeName, string Label);
+public record CatalogOverload(List<CatalogParam> Params);
+public record CatalogMethod(string Method, string Label, List<CatalogOverload> Overloads);
+public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs);
 
 public class CatalogService
 {
@@ -20,78 +21,164 @@ public class CatalogService
 
     public IReadOnlyList<ResourceType> GetCatalog()
     {
-        var result = new List<ResourceType>();
-        foreach (var asm in _assemblies)
-        foreach (var type in SafeTypes(asm))
-        foreach (var m in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-        {
-            if (!m.Name.StartsWith("Add")) continue;
-            if (!ReturnsResourceBuilder(m.ReturnType)) continue;
-            var p = m.GetParameters();
-            if (p.Length == 0 || !IsAppBuilder(p[0].ParameterType)) continue; // extension on IDistributedApplicationBuilder
+        var methods = _assemblies.SelectMany(SafeTypes)
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(m => m.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false))
+            .ToList();
 
-            var over = _overlay.TryGetValue(m.Name, out var o) ? o : (JsonElement?)null;
+        // WithX methods (receiver IResourceBuilder<W>, returns IResourceBuilder<>)
+        var withMethods = methods
+            .Where(m => m.Name.StartsWith("With"))
+            .Where(m => m.GetParameters().Length >= 1 && IsResourceBuilder(m.GetParameters()[0].ParameterType))
+            .Where(m => ReturnsResourceBuilder(m.ReturnType))
+            .ToList();
+
+        // AddX grouped by name -> (renderable overloads, TResource)
+        var adds = methods
+            .Where(m => m.Name.StartsWith("Add"))
+            .Where(m => ReturnsResourceBuilder(m.ReturnType))
+            .Where(m => { var p = m.GetParameters(); return p.Length >= 2 && IsAppBuilder(p[0].ParameterType) && p[1].ParameterType == typeof(string); })
+            .ToList();
+
+        var result = new List<ResourceType>();
+        foreach (var grp in adds.GroupBy(m => m.Name))
+        {
+            var addOverloads = new List<CatalogOverload>();
+            foreach (var m in grp)
+            {
+                var ov = ReadOverload(m.GetParameters().Skip(2)); // skip builder + name
+                if (ov is not null) addOverloads.Add(ov);
+            }
+            addOverloads = DedupOverloads(addOverloads);
+            if (addOverloads.Count == 0) addOverloads.Add(new CatalogOverload(new())); // name-only
+
+            var tResource = grp.Select(m => ResourceArg(m.ReturnType)).FirstOrDefault(t => t is not null);
+            var withs = tResource is null ? new List<CatalogMethod>() : BuildWiths(withMethods, tResource);
+
+            var over = _overlay.TryGetValue(grp.Key, out var o) ? o : (JsonElement?)null;
+            var hidden = over?.TryGetProperty("hidden", out var h) == true
+                ? h.EnumerateArray().Select(x => x.GetString()).ToHashSet() : new HashSet<string?>();
+            withs = withs.Where(w => !hidden.Contains(w.Method)).ToList();
+
             result.Add(new ResourceType(
-                m.Name,
-                over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : m.Name[3..],
+                grp.Key,
+                over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : grp.Key[3..],
                 over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
-                ParseParams(over, "addParams"),
-                ParseWiths(over)));
+                addOverloads, withs));
         }
-        // Dedup by AddMethod (same extension can appear via multiple overloads).
-        return result.GroupBy(r => r.AddMethod).Select(gr => gr.First()).OrderBy(r => r.AddMethod).ToList();
+        return result.OrderBy(r => r.Group).ThenBy(r => r.AddMethod).ToList();
     }
 
-    private static List<CatalogParam> ParseParams(JsonElement? over, string prop)
+    private static List<CatalogMethod> BuildWiths(List<MethodInfo> withMethods, Type tResource)
+    {
+        var applicable = withMethods.Where(w => WithApplies(w, tResource));
+        var byName = new List<CatalogMethod>();
+        foreach (var grp in applicable.GroupBy(w => w.Name))
+        {
+            var overloads = new List<CatalogOverload>();
+            foreach (var w in grp)
+            {
+                var ov = ReadOverload(w.GetParameters().Skip(1)); // skip receiver
+                if (ov is not null) overloads.Add(ov);
+            }
+            overloads = DedupOverloads(overloads);
+            if (overloads.Count > 0)
+                byName.Add(new CatalogMethod(grp.Key, grp.Key[4..], overloads)); // strip "With"
+        }
+        return byName.OrderBy(m => m.Method).ToList();
+    }
+
+    // A WithX applies to tResource if its receiver IResourceBuilder<W> accepts it.
+    private static bool WithApplies(MethodInfo w, Type tResource)
+    {
+        var recv = w.GetParameters()[0].ParameterType;
+        if (!IsResourceBuilder(recv)) return false;
+        var wArg = recv.GetGenericArguments()[0];
+        if (!wArg.IsGenericParameter)
+            return wArg.IsAssignableFrom(tResource);
+        // generic method: tResource must satisfy the type-parameter constraints
+        foreach (var c in wArg.GetGenericParameterConstraints())
+        {
+            if (c.IsGenericType) { if (!ConstraintLooselyMet(c, tResource)) return false; }
+            else if (!c.IsAssignableFrom(tResource)) return false;
+        }
+        return true;
+    }
+
+    private static bool ConstraintLooselyMet(Type constraint, Type tResource)
+    {
+        // Best-effort for generic constraints (e.g. IResourceWithConnectionString): match by
+        // the constraint's generic type definition against tResource's implemented interfaces/bases.
+        var def = constraint.GetGenericTypeDefinition();
+        return tResource.GetInterfaces().Any(ifc => ifc.IsGenericType && ifc.GetGenericTypeDefinition() == def)
+            || (tResource.BaseType?.IsGenericType == true && tResource.BaseType.GetGenericTypeDefinition() == def);
+    }
+
+    // Read a renderable overload from params after the receiver/name. Truncate at the first
+    // non-renderable param IF it's optional (rest use defaults); a required non-renderable param
+    // makes the whole overload unusable -> null.
+    private static CatalogOverload? ReadOverload(IEnumerable<ParameterInfo> ps)
     {
         var list = new List<CatalogParam>();
-        if (over?.TryGetProperty(prop, out var arr) == true)
-            foreach (var p in arr.EnumerateArray()) list.Add(ReadParam(p));
-        return list;
+        foreach (var p in ps)
+        {
+            var c = Classify(p.ParameterType);
+            if (c is null)
+            {
+                if (p.IsOptional || p.HasDefaultValue) break; // truncate; remaining are defaults
+                return null;                                    // required non-renderable
+            }
+            var required = !(p.HasDefaultValue || p.IsOptional
+                || Nullable.GetUnderlyingType(p.ParameterType) is not null);
+            list.Add(new CatalogParam(
+                p.Name ?? "arg", c.Value.type, required,
+                p.HasDefaultValue ? p.DefaultValue?.ToString() : null,
+                c.Value.options, c.Value.enumType,
+                Humanize(p.Name ?? "arg")));
+        }
+        return new CatalogOverload(list);
     }
 
-    private static CatalogParam ReadParam(JsonElement p) => new(
-        p.GetProperty("name").GetString()!,
-        p.TryGetProperty("type", out var t) ? t.GetString()! : "string",
-        p.TryGetProperty("required", out var r) && r.GetBoolean(),
-        p.TryGetProperty("default", out var d) ? d.GetString() : null,
-        p.TryGetProperty("options", out var o) ? o.EnumerateArray().Select(x => x.GetString()!).ToList() : null,
-        p.TryGetProperty("label", out var l) ? l.GetString()! : p.GetProperty("name").GetString()!);
-
-    private static List<CatalogWith> ParseWiths(JsonElement? over)
+    private static (string type, List<string>? options, string? enumType)? Classify(Type t)
     {
-        var list = new List<CatalogWith>();
-        if (over?.TryGetProperty("withs", out var arr) == true)
-            foreach (var w in arr.EnumerateArray())
-                list.Add(new CatalogWith(
-                    w.GetProperty("method").GetString()!,
-                    w.TryGetProperty("label", out var l) ? l.GetString()! : w.GetProperty("method").GetString()!,
-                    w.TryGetProperty("params", out var ps) ? ps.EnumerateArray().Select(ReadParam).ToList() : []));
-        return list;
+        t = Nullable.GetUnderlyingType(t) ?? t;
+        if (t == typeof(string)) return ("string", null, null);
+        if (t == typeof(bool)) return ("bool", null, null);
+        if (t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(double) || t == typeof(float))
+            return ("int", null, null);
+        if (t.IsEnum) return ("enum", Enum.GetNames(t).ToList(), t.Name);
+        return null;
     }
 
-    private static bool ReturnsResourceBuilder(Type t) =>
-        t.IsGenericType && t.GetGenericTypeDefinition().Name.StartsWith("IResourceBuilder");
+    private static List<CatalogOverload> DedupOverloads(List<CatalogOverload> ovs)
+    {
+        string Sig(CatalogOverload o) => string.Join(",", o.Params.Select(p => p.Name + ":" + p.Type));
+        return ovs.GroupBy(Sig).Select(g => g.First()).OrderBy(o => o.Params.Count).ToList();
+    }
 
+    private static string Humanize(string name) =>
+        string.Concat(name.Select((ch, idx) => idx > 0 && char.IsUpper(ch) ? " " + ch : ch.ToString()))
+              is var s ? char.ToUpper(s[0]) + s[1..] : name;
+
+    private static bool ReturnsResourceBuilder(Type t) => IsResourceBuilder(t);
+    private static bool IsResourceBuilder(Type t) =>
+        t.IsGenericType && t.GetGenericTypeDefinition().Name.StartsWith("IResourceBuilder");
+    private static Type? ResourceArg(Type t) => IsResourceBuilder(t) ? t.GetGenericArguments()[0] : null;
     private static bool IsAppBuilder(Type t) => t.Name == "IDistributedApplicationBuilder";
 
     private static IEnumerable<Type> SafeTypes(Assembly a)
-    {
-        try { return a.GetTypes(); } catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t != null)!; }
-    }
+    { try { return a.GetTypes(); } catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t != null)!; } }
 
     private static Assembly[] LoadDefault()
     {
-        // PackageReference alone doesn't load an assembly into the AppDomain until code
-        // touches a type from it. Force-load each hosting integration we ship a catalog
-        // overlay for, then scan whatever "Aspire.Hosting*" assemblies are now loaded.
         _ = typeof(Aspire.Hosting.IDistributedApplicationBuilder).Assembly;
         _ = typeof(Aspire.Hosting.RedisBuilderExtensions).Assembly;
         _ = typeof(Aspire.Hosting.PostgresBuilderExtensions).Assembly;
-
+        // Nextended integrations force-loaded in Task 2 (add typeof(...) lines there).
         return AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true)
+            .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true
+                     || a.GetName().Name?.StartsWith("Nextended.Aspire") == true)
             .ToArray();
     }
 
@@ -103,8 +190,7 @@ public class CatalogService
         foreach (var f in Directory.GetFiles(dir, "*.json"))
         {
             var doc = JsonDocument.Parse(File.ReadAllText(f));
-            foreach (var prop in doc.RootElement.EnumerateObject())
-                map[prop.Name] = prop.Value.Clone();
+            foreach (var prop in doc.RootElement.EnumerateObject()) map[prop.Name] = prop.Value.Clone();
         }
         return map;
     }
