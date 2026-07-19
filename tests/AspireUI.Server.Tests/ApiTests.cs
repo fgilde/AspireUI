@@ -69,6 +69,57 @@ public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(System.Net.HttpStatusCode.NotFound, resp.StatusCode);
     }
 
+    [Fact]
+    public async Task ImportBundle_ParsesProgramCsprojAndExtraFiles()
+    {
+        var files = new List<BundleFile>
+        {
+            new("Program.cs", """
+                var builder = DistributedApplication.CreateBuilder(args);
+                builder.AddRedis("cache");
+                builder.Build().Run();
+                """),
+            new("Demo.csproj", """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <ItemGroup>
+                    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+                    <PackageReference Include="Some.Pkg" Version="1.2.3" />
+                  </ItemGroup>
+                </Project>
+                """),
+            new("Helpers.cs", "public static class Helpers { }"),
+        };
+
+        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+            new ImportBundleRequestDto("BundleStack", files, null));
+        resp.EnsureSuccessStatusCode();
+        var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
+
+        Assert.Contains(stack!.Nodes, n => n.AddMethod == "AddRedis" && n.ResourceName == "cache");
+        Assert.Contains(stack.ExtraPackages, p => p.Id == "Some.Pkg" && p.Version == "1.2.3");
+        Assert.Contains(stack.ExtraFiles, f => f.Name == "Helpers.cs");
+
+        // ExtraPackages only show up in the generated .csproj, not the catalog-driven /packages
+        // endpoint, so check the materialized file on disk directly.
+        var workspace = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AspireUI", "workspace", stack.Id);
+        var csprojFile = Directory.GetFiles(workspace, "*.csproj").Single();
+        Assert.Contains("Some.Pkg", await File.ReadAllTextAsync(csprojFile));
+        Assert.True(File.Exists(Path.Combine(workspace, "Helpers.cs")));
+    }
+
+    [Fact]
+    public async Task ImportBundle_NoAppHostProgram_Returns422()
+    {
+        var files = new List<BundleFile> { new("Foo.cs", "public class Foo { }") };
+        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+            new ImportBundleRequestDto("NoProgram", files, null));
+        Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, resp.StatusCode);
+    }
+
     public record ResourceTypeDto(string AddMethod, string Label);
     public record PackageDto(string Id, string Version, List<string> Resources);
+    public record BundleFile(string Path, string Content);
+    public record ImportBundleRequestDto(string Name, List<BundleFile> Files, string? ProgramPath);
 }

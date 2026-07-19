@@ -12,7 +12,9 @@ public class CodeGenService
 {
     public const string Begin = "// >>> aspireui:begin (nicht von Hand editieren)";
     public const string End = "// <<< aspireui:end";
-    private const string AspireVersion = "13.4.6";
+    // internal (not private): BundleImporter reuses this as the fallback version for
+    // ProjectReference->package resolution, so it doesn't drift from the csproj-generation version.
+    internal const string AspireVersion = "13.4.6";
 
     // AddMethod -> extra NuGet package a generated stack needs beyond Aspire.Hosting.AppHost.
     // Single source of truth is the catalog overlay's "package"/"packageVersion" fields

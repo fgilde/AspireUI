@@ -16,6 +16,7 @@ public static class StackEndpoints
         var store = new StackStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var gen = new CodeGenService();
         var import = new ImportService();
+        var bundle = new BundleImporter();
         var export = new ExportService();
         var catalog = new CatalogService();
         var templates = new TemplateService();
@@ -101,6 +102,20 @@ public static class StackEndpoints
             return Persist(s);
         });
 
+        // Bundle import: a whole set of source files (folder/zip contents) -> editable stack,
+        // carrying extra packages (csproj) and custom code (extra .cs files) the node-graph
+        // model can't represent. Text-only /stacks/{id}/import above stays for back-compat.
+        app.MapPost("/stacks/import-bundle", (ImportBundleRequest body) =>
+        {
+            var id = Guid.NewGuid().ToString("n");
+            var (stack, error, status) = bundle.Import(id, body.Name, body.Files, body.ProgramPath);
+            if (stack is null)
+                return status == StatusCodes.Status413PayloadTooLarge
+                    ? Results.StatusCode(StatusCodes.Status413PayloadTooLarge)
+                    : Results.UnprocessableEntity(error);
+            return Persist(stack);
+        });
+
         app.MapPost("/stacks/{id}/run", (string id) =>
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
         app.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
@@ -108,4 +123,5 @@ public static class StackEndpoints
     }
 
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
+    public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

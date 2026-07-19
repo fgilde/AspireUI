@@ -40,16 +40,21 @@ public class ImportService
                 && lds.Declaration.Variables[0].Initializer?.Value is InvocationExpressionSyntax initInv)
             {
                 var (calls, chainRoot) = WalkChain(initInv);
+
+                // `var builder = DistributedApplication.CreateBuilder(args);` — CodeGenService
+                // always emits this exact line itself; drop it rather than duplicating as a raw.
+                if (lds.Declaration.Variables[0].Identifier.Text == "builder"
+                    && calls is [("CreateBuilder", _)])
+                {
+                    continue;
+                }
+
                 if (calls.Count > 0 && chainRoot is IdentifierNameSyntax rootId && rootId.Identifier.Text == "builder")
                 {
                     var varName = lds.Declaration.Variables[0].Identifier.Text;
-                    var (addMethod, addArgList) = calls[0];
-                    var resourceName = (addArgList.Arguments.FirstOrDefault()?.Expression
-                        as LiteralExpressionSyntax)?.Token.ValueText ?? varName;
-                    var addArgs = addArgList.Arguments.Skip(1).Select(a => a.Expression.ToString()).ToList();
                     var nodeId = "n" + (++nId);
                     varToNodeId[varName] = nodeId;
-                    nodes.Add(new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0, addArgs));
+                    nodes.Add(MakeNode(varName, calls[0], nodeId));
 
                     // Chain modifiers after the AddX root: .WithReference/.WaitFor(known var) -> edges,
                     // any other .WithY(args) -> WithCalls on this node.
@@ -63,10 +68,33 @@ public class ImportService
                 continue;
             }
 
-            // Standalone chain on a known var: "v.WithY(...).WithReference(w)...;"
+            // Standalone chain: "v.WithY(...).WithReference(w)...;" on a known var, or an unassigned
+            // "builder.AddX(name, args)...;" (very common in real Program.cs — no local needed if the
+            // resource is never referenced again), or the trailing "builder.Build().Run/RunAsync();".
             if (st is ExpressionStatementSyntax es && es.Expression is InvocationExpressionSyntax einv)
             {
                 var (calls, chainRoot) = WalkChain(einv);
+                if (chainRoot is IdentifierNameSyntax builderId && builderId.Identifier.Text == "builder")
+                {
+                    // "builder.Build().Run();" / "...RunAsync();" — synthesized by CodeGenService; skip.
+                    if (calls.Count > 0 && calls[^1].Method is "Run" or "RunAsync")
+                    {
+                        continue;
+                    }
+
+                    if (calls.Count > 0)
+                    {
+                        var resourceName = (calls[0].Args.Arguments.FirstOrDefault()?.Expression
+                            as LiteralExpressionSyntax)?.Token.ValueText;
+                        var varName = resourceName ?? "res" + (nId + 1);
+                        var nodeId = "n" + (++nId);
+                        varToNodeId[varName] = nodeId;
+                        nodes.Add(MakeNode(varName, calls[0], nodeId));
+                        ApplyChainModifiers(calls.Skip(1).ToList(), nodeId, nodes, edges, varToNodeId, ref eId);
+                        continue;
+                    }
+                }
+
                 if (calls.Count > 0 && chainRoot is IdentifierNameSyntax recv
                     && varToNodeId.TryGetValue(recv.Identifier.Text, out var srcNodeId))
                 {
@@ -88,6 +116,18 @@ public class ImportService
                 nodes[i] = nodes[i] with { X = xy[0], Y = xy[1] };
 
         return new StackModel(id, name, "net9.0", nodes, edges, raws, [], []);
+    }
+
+    // Builds a fresh node from the AddX root of a chain (root-to-outer's first entry), shared by
+    // the declaration branch (`var v = builder.AddX(...)`) and the standalone-statement branch
+    // (`builder.AddX(...);` with no local var).
+    private static NodeModel MakeNode(string varName, (string Method, ArgumentListSyntax Args) root, string nodeId)
+    {
+        var (addMethod, addArgList) = root;
+        var resourceName = (addArgList.Arguments.FirstOrDefault()?.Expression
+            as LiteralExpressionSyntax)?.Token.ValueText ?? varName;
+        var addArgs = addArgList.Arguments.Skip(1).Select(a => a.Expression.ToString()).ToList();
+        return new NodeModel(nodeId, varName, addMethod, resourceName, [], 0, 0, addArgs);
     }
 
     // Walks an invocation chain from the outermost call down to its root, e.g. for
