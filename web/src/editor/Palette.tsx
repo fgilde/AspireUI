@@ -21,7 +21,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     const node = {
       id: "n" + crypto.randomUUID().slice(0, 8),
       varName, addMethod: rt.addMethod, resourceName: varName,
-      withCalls: [], addArgs: rt.addParams.map(() => '""'),
+      withCalls: [], addArgs: (rt.addOverloads[0]?.params ?? []).map(() => '""'),
       x: 60 + stack.nodes.length * 24, y: 60 + stack.nodes.length * 24,
     };
     api.saveStack({ ...stack, nodes: [...stack.nodes, node] }).then(setStack);

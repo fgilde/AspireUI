@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, type Stack, type Node } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, type Stack, type Node, type CatalogOverload } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -45,5 +45,27 @@ describe("config transform", () => {
   });
   it("sets an add-arg by index", () => {
     expect(setAddArg(container, 0, '"alpine"').addArgs[0]).toBe('"alpine"');
+  });
+});
+
+describe("enum + overload transform", () => {
+  it("enum literal is EnumType.Member unquoted", () => {
+    expect(toLiteral("Persistent", "enum", "ContainerLifetime")).toBe("ContainerLifetime.Persistent");
+    expect(fromLiteral("ContainerLifetime.Persistent")).toBe("Persistent");
+  });
+  it("string still quoted, int bare", () => {
+    expect(toLiteral("nginx", "string")).toBe('"nginx"');
+    expect(toLiteral("80", "int")).toBe("80");
+  });
+  it("matches overload by argument count", () => {
+    const ovs: CatalogOverload[] = [
+      { params: [{ name: "image", type: "string", required: true, label: "Image" }] },
+      { params: [
+        { name: "image", type: "string", required: true, label: "Image" },
+        { name: "tag", type: "string", required: false, label: "Tag" }] },
+    ];
+    expect(matchOverloadByArity(ovs, 2)?.params.length).toBe(2);
+    expect(matchOverloadByArity(ovs, 1)?.params.length).toBe(1);
+    expect(matchOverloadByArity(ovs, 5)?.params.length).toBe(2); // clamp to richest
   });
 });

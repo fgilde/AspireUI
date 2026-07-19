@@ -3,9 +3,10 @@ export interface Node { id: string; varName: string; addMethod: string; resource
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[] }
 
-export interface CatalogParam { name: string; type: "string" | "int" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; label: string }
-export interface CatalogWith { method: string; label: string; params: CatalogParam[] }
-export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addParams: CatalogParam[]; withs: CatalogWith[] }
+export interface CatalogParam { name: string; type: "string" | "int" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
+export interface CatalogOverload { params: CatalogParam[] }
+export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
+export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[] }
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 
@@ -25,15 +26,24 @@ export function applyNodePosition(s: Stack, id: string, x: number, y: number): S
   return { ...s, nodes: s.nodes.map(n => n.id === id ? { ...n, x, y } : n) };
 }
 
-export function toLiteral(value: string, type: CatalogParam["type"]): string {
+export function toLiteral(value: string, type: CatalogParam["type"], enumTypeName?: string | null): string {
   if (type === "int") return value === "" ? "0" : String(parseInt(value, 10));
   if (type === "bool") return value === "true" ? "true" : "false";
+  if (type === "enum") return enumTypeName ? `${enumTypeName}.${value}` : value;
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 export function fromLiteral(literal: string): string {
   const s = literal.trim();
   if (s.startsWith('"') && s.endsWith('"')) return s.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  if (s.includes(".") && !/^[0-9.]+$/.test(s)) return s.slice(s.lastIndexOf(".") + 1); // Enum.Member -> Member
   return s;
+}
+export function matchOverloadByArity(overloads: CatalogOverload[], argCount: number): CatalogOverload | undefined {
+  if (overloads.length === 0) return undefined;
+  const sorted = [...overloads].sort((a, b) => a.params.length - b.params.length);
+  return sorted.find(o => o.params.length === argCount)
+      ?? sorted.filter(o => o.params.length <= argCount).pop()
+      ?? sorted[sorted.length - 1]; // clamp to richest
 }
 export function readWithRows(node: Node, method: string): string[][] {
   return node.withCalls.filter(w => w.method === method).map(w => w.args);
