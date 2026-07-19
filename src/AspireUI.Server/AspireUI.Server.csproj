@@ -12,6 +12,9 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
+    <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.14" />
+    <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.14" />
   </ItemGroup>
 
   <ItemGroup>

@@ -13,12 +13,14 @@ public class CodeGenService
     private const string AspireVersion = "13.4.6";
 
     // AddMethod -> extra NuGet package a generated stack needs beyond Aspire.Hosting.AppHost.
-    // CodeGen doesn't have the catalog, so this is a small standalone map.
-    private static readonly Dictionary<string, string> ResourcePackages = new()
+    // Single source of truth is the catalog overlay's "package"/"packageVersion" fields
+    // (see CatalogService.ResourcePackages) so this never drifts from what the catalog reports.
+    private readonly IReadOnlyDictionary<string, (string Id, string? Version)> _resourcePackages;
+
+    public CodeGenService(IReadOnlyDictionary<string, (string Id, string? Version)>? resourcePackages = null)
     {
-        ["AddRedis"] = "Aspire.Hosting.Redis",
-        ["AddPostgres"] = "Aspire.Hosting.PostgreSQL",
-    };
+        _resourcePackages = resourcePackages ?? CatalogService.ResourcePackages();
+    }
 
     public string GenerateProgram(StackModel s)
     {
@@ -55,11 +57,11 @@ public class CodeGenService
     {
         var packages = s.Nodes.Select(n => n.AddMethod)
             .Distinct()
-            .Where(ResourcePackages.ContainsKey)
-            .Select(m => ResourcePackages[m])
-            .Distinct();
+            .Where(_resourcePackages.ContainsKey)
+            .Select(m => _resourcePackages[m])
+            .DistinctBy(p => p.Id);
         var refs = string.Join("\n", packages.Select(p =>
-            $"""    <PackageReference Include="{p}" Version="{AspireVersion}" />"""));
+            $"""    <PackageReference Include="{p.Id}" Version="{p.Version ?? AspireVersion}" />"""));
         return $"""
         <Project Sdk="Microsoft.NET.Sdk">
           <Sdk Name="Aspire.AppHost.Sdk" Version="{AspireVersion}" />

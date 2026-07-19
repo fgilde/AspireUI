@@ -44,6 +44,18 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Csproj_UsesOverlayPackageVersion_ForNonAspirePackages()
+    {
+        // Package map is sourced from the catalog overlay (single source of truth, see
+        // CatalogService.ResourcePackages). Nextended packages ship their own version, not
+        // AspireVersion, and the overlay's "packageVersion" must win over the default.
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "wf", "AddN8n", "wf", [], 0, 0, []) ], []);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.Contains("""<PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />""", csproj);
+    }
+
+    [Fact]
     public void Materialize_WritesFilesAndSidecar()
     {
         var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());

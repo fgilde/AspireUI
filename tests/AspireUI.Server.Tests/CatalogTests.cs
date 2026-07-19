@@ -29,6 +29,16 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Catalog_IncludesNextendedResource()
+    {
+        // Nextended.Aspire.Hosting.{Supabase,N8n,LocalAI} all resolved for net10/Aspire13 on
+        // nuget.org (verified during Slice 3 Task 2); their AddX methods are force-loaded in
+        // CatalogService.LoadDefault() and picked up by reflection like any other integration.
+        var cat = new CatalogService().GetCatalog();
+        Assert.Contains(cat, r => r.AddMethod is "AddN8n" or "AddSupabase" or "AddLocalAI");
+    }
+
+    [Fact]
     public void Params_ClassifyEnumAndOptional()
     {
         var cat = new CatalogService().GetCatalog();

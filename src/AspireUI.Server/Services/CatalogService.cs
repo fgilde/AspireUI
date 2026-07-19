@@ -19,6 +19,24 @@ public class CatalogService
         _overlay = LoadOverlays();
     }
 
+    // Single source of truth for resource->NuGet-package mapping, read from the same overlay
+    // JSON used for labels/icons. CodeGenService (which has no reflection catalog) calls this
+    // instead of hardcoding its own map. Value is (package id, optional version override for
+    // packages that don't ship at AspireVersion, e.g. the Nextended integrations).
+    public static IReadOnlyDictionary<string, (string Id, string? Version)> ResourcePackages()
+    {
+        var map = new Dictionary<string, (string, string?)>();
+        foreach (var (name, entry) in LoadOverlays())
+        {
+            if (entry.TryGetProperty("package", out var pkg))
+            {
+                var version = entry.TryGetProperty("packageVersion", out var v) ? v.GetString() : null;
+                map[name] = (pkg.GetString()!, version);
+            }
+        }
+        return map;
+    }
+
     public IReadOnlyList<ResourceType> GetCatalog()
     {
         var methods = _assemblies.SelectMany(SafeTypes)
@@ -175,14 +193,25 @@ public class CatalogService
         _ = typeof(Aspire.Hosting.IDistributedApplicationBuilder).Assembly;
         _ = typeof(Aspire.Hosting.RedisBuilderExtensions).Assembly;
         _ = typeof(Aspire.Hosting.PostgresBuilderExtensions).Assembly;
-        // Nextended integrations force-loaded in Task 2 (add typeof(...) lines there).
+        // Nextended integrations (Slice 3 Task 2): force-load by name since we don't reference
+        // a stable public type at compile time here; each assembly's AddX/WithX extensions get
+        // picked up by the AppDomain scan below once loaded.
+        foreach (var name in new[]
+                 {
+                     "Nextended.Aspire.Hosting.Supabase",
+                     "Nextended.Aspire.Hosting.N8n",
+                     "Nextended.Aspire.Hosting.LocalAI",
+                 })
+        {
+            try { Assembly.Load(name); } catch { /* package not present/loadable; catalog just omits it */ }
+        }
         return AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => a.GetName().Name?.StartsWith("Aspire.Hosting") == true
                      || a.GetName().Name?.StartsWith("Nextended.Aspire") == true)
             .ToArray();
     }
 
-    private Dictionary<string, JsonElement> LoadOverlays()
+    private static Dictionary<string, JsonElement> LoadOverlays()
     {
         var dir = Path.Combine(AppContext.BaseDirectory, "catalog");
         var map = new Dictionary<string, JsonElement>();
