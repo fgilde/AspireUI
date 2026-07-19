@@ -1,4 +1,4 @@
-import type { Stack, Node, Edge } from "./model";
+import type { Stack, Node, Edge, AppSettings } from "./model";
 const base = "";
 
 export interface TemplateInfo { id: string; name: string; description: string }
@@ -40,3 +40,7 @@ export const importBundle = (name: string, files: BundleFile[], programPath?: st
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ name, files, programPath }),
   }).then(ok);
+
+export const getSettings = (): Promise<AppSettings> => fetch(`${base}/settings`).then(ok);
+export const saveSettings = (s: AppSettings): Promise<void> =>
+  fetch(`${base}/settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(() => undefined);

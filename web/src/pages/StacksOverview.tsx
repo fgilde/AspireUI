@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
-  IconUpload, IconFileZip, IconFolder,
+  IconUpload, IconFileZip, IconFolder, IconSettings,
 } from "@tabler/icons-react";
 import { pickAppHost, type Stack } from "../model";
 import * as api from "../api";
@@ -168,6 +168,10 @@ export function StacksOverview() {
               </Menu>
               <input ref={zipInputRef} type="file" accept=".zip" hidden onChange={onZipPicked} />
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
+
+              <ActionIcon variant="default" size="lg" onClick={() => nav("/settings")} aria-label="Settings">
+                <IconSettings size={18} />
+              </ActionIcon>
             </Group>
           </Group>
         </Container>

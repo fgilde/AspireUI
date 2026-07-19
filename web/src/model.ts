@@ -15,6 +15,13 @@ export interface ResourceType { addMethod: string; label: string; icon?: string 
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 
+export interface AppSettings {
+  aiBaseUrl?: string | null;
+  aiApiKey?: string | null;
+  aiModel?: string | null;
+  aiProviderLabel?: string | null;
+}
+
 export function toFlow(s: Stack) {
   return {
     nodes: s.nodes.map(n => ({
