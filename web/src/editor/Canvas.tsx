@@ -24,7 +24,9 @@ export function Canvas({ stack, setStack, onSelect }:
     id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
     data: { resourceName: n.resourceName, addMethod: n.addMethod },
   }));
-  const edges = stack.edges.map(e => ({ id: e.id, source: e.fromNodeId, target: e.toNodeId }));
+  const edges = stack.edges.map(e => e.kind === "waitFor"
+    ? { id: e.id, source: e.fromNodeId, target: e.toNodeId, label: "waits for", style: { strokeDasharray: "6 3" } }
+    : { id: e.id, source: e.fromNodeId, target: e.toNodeId });
 
   const onNodesChange = useCallback((changes: any[]) => {
     changes.filter(c => c.type === "position" && c.dragging === false).forEach(c => {

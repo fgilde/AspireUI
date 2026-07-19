@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text } from "@mantine/core";
+import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, Badge } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
@@ -63,23 +63,34 @@ export function PropertyGrid({ stack, node, rt, setStack }:
       {hasEnv && (
         <div>
           <Divider my="xs" label="Environment variables" labelPosition="left" />
-          {envRows.map((row, ri) => (
-            <Group key={ri} gap="xs" mb={4} align="end">
-              <TextInput style={{ flex: 1 }} placeholder="NAME" value={fromLiteral(row[0] ?? '""')}
-                onChange={e => {
-                  const nr = envRows.map(r => [...r]); nr[ri][0] = toLiteral(e.currentTarget.value, "string");
-                  commit(writeWithRows(draft, ENV_METHOD, nr));
-                }} />
-              <TextInput style={{ flex: 1 }} placeholder="value" value={fromLiteral(row[1] ?? '""')}
-                onChange={e => {
-                  const nr = envRows.map(r => [...r]); nr[ri][1] = toLiteral(e.currentTarget.value, "string");
-                  commit(writeWithRows(draft, ENV_METHOD, nr));
-                }} />
-              <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
-                <IconX size={14} />
-              </ActionIcon>
-            </Group>
-          ))}
+          {envRows.map((row, ri) => {
+            const rawValue = row[1] ?? '""';
+            const isExpression = !rawValue.trim().startsWith('"');
+            return (
+              <Group key={ri} gap="xs" mb={4} align="end">
+                <TextInput style={{ flex: 1 }} placeholder="NAME" value={fromLiteral(row[0] ?? '""')}
+                  onChange={e => {
+                    const nr = envRows.map(r => [...r]); nr[ri][0] = toLiteral(e.currentTarget.value, "string");
+                    commit(writeWithRows(draft, ENV_METHOD, nr));
+                  }} />
+                {isExpression ? (
+                  <Group style={{ flex: 1 }} gap={6} wrap="nowrap" title="Expression from a template/import — edit as raw C# only">
+                    <Badge size="sm" variant="light" color="grape">expression</Badge>
+                    <Text size="sm" ff="monospace" truncate>{rawValue}</Text>
+                  </Group>
+                ) : (
+                  <TextInput style={{ flex: 1 }} placeholder="value" value={fromLiteral(rawValue)}
+                    onChange={e => {
+                      const nr = envRows.map(r => [...r]); nr[ri][1] = toLiteral(e.currentTarget.value, "string");
+                      commit(writeWithRows(draft, ENV_METHOD, nr));
+                    }} />
+                )}
+                <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
+                  <IconX size={14} />
+                </ActionIcon>
+              </Group>
+            );
+          })}
           <Button size="xs" variant="light" leftSection={<IconPlus size={12} />}
             onClick={() => commit(writeWithRows(draft, ENV_METHOD, [...envRows, ['""', '""']]))}>Add variable</Button>
         </div>

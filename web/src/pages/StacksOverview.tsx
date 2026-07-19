@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon,
-  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon,
+  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu,
 } from "@mantine/core";
-import { IconPlus, IconTrash, IconStack2, IconLayoutGrid } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles } from "@tabler/icons-react";
 import type { Stack } from "../model";
 import * as api from "../api";
+import type { TemplateInfo } from "../api";
 import "./StacksOverview.css";
 
 export function StacksOverview() {
@@ -15,13 +16,20 @@ export function StacksOverview() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [templates, setTemplates] = useState<TemplateInfo[]>([]);
 
   const load = () => api.listStacks().then((s: Stack[]) => { setStacks(s); setLoading(false); });
   useEffect(() => { load(); }, []);
+  useEffect(() => { api.getTemplates().then(setTemplates); }, []);
 
   const create = async () => {
-    const s = await api.createStack({ name: name || "New Stack", targetFramework: "net10.0", nodes: [], edges: [] });
+    const s = await api.createStack({ name: name || "New Stack", targetFramework: "net10.0", nodes: [], edges: [], rawStatements: [] });
     setOpen(false); setName("");
+    nav(`/stacks/${s.id}`);
+  };
+
+  const createDemo = async (templateId: string) => {
+    const s = await api.createFromTemplate(templateId);
     nav(`/stacks/${s.id}`);
   };
 
@@ -36,9 +44,33 @@ export function StacksOverview() {
               </ThemeIcon>
               <Title order={3} fw={700}>AspireUI</Title>
             </Group>
-            <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
-              New Stack
-            </Button>
+            <Button.Group>
+              <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
+                New Stack
+              </Button>
+              <Menu position="bottom-end" withArrow>
+                <Menu.Target>
+                  <Button px="xs" aria-label="Create from demo">
+                    <IconChevronDown size={16} />
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {templates.length === 0 ? (
+                    <Menu.Item disabled>No demo templates</Menu.Item>
+                  ) : (
+                    <>
+                      <Menu.Label>From demo…</Menu.Label>
+                      {templates.map(t => (
+                        <Menu.Item key={t.id} leftSection={<IconSparkles size={14} />}
+                          onClick={() => createDemo(t.id)}>
+                          {t.name}
+                        </Menu.Item>
+                      ))}
+                    </>
+                  )}
+                </Menu.Dropdown>
+              </Menu>
+            </Button.Group>
           </Group>
         </Container>
       </AppShell.Header>

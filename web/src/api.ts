@@ -1,6 +1,8 @@
 import type { Stack, Node, Edge } from "./model";
 const base = "";
 
+export interface TemplateInfo { id: string; name: string; description: string }
+
 async function ok(r: Response) {
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
@@ -25,3 +27,7 @@ export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { me
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
 export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);
+
+export const getTemplates = (): Promise<TemplateInfo[]> => fetch(`${base}/templates`).then(ok);
+export const createFromTemplate = (id: string): Promise<Stack> =>
+  fetch(`${base}/stacks/from-template/${id}`, { method: "POST" }).then(ok);

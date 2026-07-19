@@ -5,6 +5,7 @@ const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
   nodes: [{ id: "n1", varName: "db", addMethod: "AddPostgres", resourceName: "db", withCalls: [], x: 1, y: 2, addArgs: [] }],
   edges: [{ id: "e1", fromNodeId: "n1", toNodeId: "n1", kind: "reference" }],
+  rawStatements: [],
 };
 
 describe("model", () => {

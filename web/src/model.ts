@@ -1,7 +1,7 @@
 export interface WithCall { method: string; args: string[] }
 export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[] }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
-export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[] }
+export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[]; rawStatements: string[] }
 
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
 export interface CatalogOverload { params: CatalogParam[] }
