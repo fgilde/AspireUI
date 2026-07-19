@@ -21,12 +21,19 @@ public class PublishService
         _commandFactory = commandFactory ?? DefaultCommand;
     }
 
-    private static ProcessStartInfo DefaultCommand(string csproj, string outDir) => new()
+    private static ProcessStartInfo DefaultCommand(string csproj, string outDir)
     {
-        FileName = "aspire",
-        Arguments = $"publish --project \"{csproj}\" -o \"{outDir}\" --non-interactive",
-        WorkingDirectory = Path.GetDirectoryName(csproj)!,
-    };
+        // ArgumentList (not a hand-quoted Arguments string) so paths carrying a `"` — which the
+        // stack-name-derived csproj filename can on Linux — are escaped per-arg and can't inject tokens.
+        var psi = new ProcessStartInfo { FileName = "aspire", WorkingDirectory = Path.GetDirectoryName(csproj)! };
+        psi.ArgumentList.Add("publish");
+        psi.ArgumentList.Add("--project");
+        psi.ArgumentList.Add(csproj);
+        psi.ArgumentList.Add("-o");
+        psi.ArgumentList.Add(outDir);
+        psi.ArgumentList.Add("--non-interactive");
+        return psi;
+    }
 
     public PublishResult Publish(StackModel s, string publishRoot)
     {

@@ -187,7 +187,9 @@ public static class StackEndpoints
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             var publishRoot = Path.Combine(wsRoot, id, "publish");
-            if (Directory.Exists(publishRoot)) Directory.Delete(publishRoot, true);
+            // Best-effort clean; the MSBuild/compiler server can hold handles on the prior build's
+            // DLLs for a while, so don't 500 if the delete fails — Materialize + aspire overwrite anyway.
+            try { if (Directory.Exists(publishRoot)) Directory.Delete(publishRoot, true); } catch { }
             return Results.Ok(publish.Publish(s, publishRoot));
         });
 

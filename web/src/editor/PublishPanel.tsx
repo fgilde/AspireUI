@@ -35,19 +35,19 @@ function download(name: string, blob: Blob) {
 export function PublishPanel() {
   const { stack } = useEditor();
   const [result, setResult] = useState<PublishResult | null>(null);
-  const [deployLog, setDeployLog] = useState<string | null>(null);
+  const [deploy, setDeploy] = useState<DeployResult | null>(null);
   const [busy, setBusy] = useState<null | "publish" | "up" | "down">(null);
 
   const run = async (kind: "publish" | "up" | "down", call: () => Promise<PublishResult | DeployResult>) => {
     setBusy(kind);
     try {
       const r = await call();
-      if (kind === "publish") { setResult(r as PublishResult); setDeployLog(null); }
-      else setDeployLog(r.log || (r.ok ? "done." : "failed."));
+      if (kind === "publish") { setResult(r as PublishResult); setDeploy(null); }
+      else setDeploy(r as DeployResult);
     } catch (err) {
       const m = extractMessage(err);
       if (kind === "publish") setResult({ ok: false, log: m, composeYaml: null, envFile: null, outputDir: "" });
-      else setDeployLog(m);
+      else setDeploy({ ok: false, log: m });
     } finally {
       setBusy(null);
     }
@@ -123,11 +123,17 @@ export function PublishPanel() {
           </>
         )}
 
-        {deployLog !== null && (
-          <>
-            <Text size="xs" fw={600} c="dimmed">docker compose output</Text>
-            <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>{deployLog || "(no output)"}</Code>
-          </>
+        {deploy && (
+          deploy.ok ? (
+            <>
+              <Text size="xs" fw={600} c="dimmed">docker compose output</Text>
+              <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>{deploy.log || "(no output)"}</Code>
+            </>
+          ) : (
+            <Alert color="red" title="Deploy failed" icon={<IconInfoCircle size={16} />}>
+              <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11 }}>{deploy.log || "unknown error"}</Code>
+            </Alert>
+          )
         )}
       </MStack>
     </ScrollArea>
