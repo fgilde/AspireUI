@@ -52,6 +52,19 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Ollama_HasAddModelCapability()
+    {
+        // Fluent Add* methods on the resource builder (e.g. ollama.AddModel("llama3.2")) must be
+        // selectable as capabilities, not just With* ones. Verified against the real installed
+        // CommunityToolkit.Aspire.Hosting.Ollama assembly: OllamaResourceBuilderExtensions.AddModel(
+        // this IResourceBuilder<OllamaResource>, string modelName) et al.
+        var r = new CatalogService().GetCatalog().First(x => x.AddMethod == "AddOllama");
+        var addModel = Assert.Single(r.Withs, w => w.Method == "AddModel");
+        Assert.Equal("Model", addModel.Label);
+        Assert.Contains(addModel.Overloads, o => o.Params.Any(p => p.Type == "string"));
+    }
+
+    [Fact]
     public void Params_ClassifyEnumAndOptional()
     {
         var cat = new CatalogService().GetCatalog();

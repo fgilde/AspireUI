@@ -58,9 +58,12 @@ public class CatalogService
             .Where(m => m.IsDefined(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false))
             .ToList();
 
-        // WithX methods (receiver IResourceBuilder<W>, returns IResourceBuilder<>)
+        // WithX/AddX methods on the resource builder itself (receiver IResourceBuilder<W>,
+        // returns IResourceBuilder<>) - e.g. WithEnvironment, but also fluent capabilities like
+        // ollama.AddModel("llama3.2") or pg.AddDatabase("db"). Distinct from the top-level AddX
+        // resource discovery below, whose receiver is IDistributedApplicationBuilder.
         var withMethods = methods
-            .Where(m => m.Name.StartsWith("With"))
+            .Where(m => m.Name.StartsWith("With") || m.Name.StartsWith("Add"))
             .Where(m => m.GetParameters().Length >= 1 && IsResourceBuilder(m.GetParameters()[0].ParameterType))
             .Where(m => ReturnsResourceBuilder(m.ReturnType))
             .ToList();
@@ -116,7 +119,10 @@ public class CatalogService
             }
             overloads = DedupOverloads(overloads);
             if (overloads.Count > 0)
-                byName.Add(new CatalogMethod(grp.Key, grp.Key[4..], overloads)); // strip "With"
+            {
+                var prefixLen = grp.Key.StartsWith("With") ? 4 : grp.Key.StartsWith("Add") ? 3 : 0;
+                byName.Add(new CatalogMethod(grp.Key, grp.Key[prefixLen..], overloads)); // strip "With"/"Add"
+            }
         }
         return byName.OrderBy(m => m.Method).ToList();
     }
