@@ -2,7 +2,13 @@
 
 Slices in order. Each gets its own spec → plan → implementation cycle.
 
-## Slice 4 (current): Demo templates + model power
+## DONE — Slice 4: Demo templates + model power ✅
+## DONE — Slice 5: Import (.cs/.csproj/.zip + custom code) ✅
+## DONE — Slice 6: Settings + built-in AI assistant ✅
+
+<details><summary>Slice 4 detail (done)</summary>
+
+### Slice 4: Demo templates + model power
 - Raw statements in the model (verbatim lines in the marker block; import preserves unknown statements instead of dropping)
 - `WaitFor` as edge kind (dashed edge on canvas)
 - Packages: `CommunityToolkit.Aspire.Hosting.Ollama`, `Nextended.Aspire` (AddGithubRepository) discovered + overlay package map
@@ -15,12 +21,9 @@ Slices in order. Each gets its own spec → plan → implementation cycle.
 - Single-file import: ask for folder permission via the JS File System Access API to find extensions/references; ZIP: search inside the archive
 - Custom user code / custom extension methods survive (raw statements) and are usable
 - Import parser learns chained declarations (`builder.AddX("a").WithY()` → node + withCalls)
+</details>
 
-## Slice 6: Settings + built-in AI
-- Global app settings (stored app-level, e.g. env/db — NOT per stack): AI provider + API key etc.
-- Built-in AI assistant: "add Coolify", "build a stack from this git repo", edits the model via the catalog
-
-## Later (unordered, carried from earlier slices)
+## Next up (not yet built — needs prioritization)
 - Auth + user management (first-run wizard creates admin)
 - Wizard dependency check (.NET, Docker, …) + guided setup
 - Deploy: aspire deploy / docker compose / run-on-host, share/expose
