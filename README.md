@@ -22,6 +22,7 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
 - Reference wiring between resources
 - Live C# preview of the generated `Program.cs`, kept in sync with the canvas
 - Run / stop a stack, with a link straight into the Aspire dashboard
+- Publish a stack to **Docker Compose** (via `aspire publish`): view the generated `docker-compose.yaml`, download the bundle, or deploy it locally
 - NuGet packages panel for the AppHost project
 - Run logs for the running stack
 - Import an existing AppHost from `.cs`, `.csproj`, or a `.zip`
@@ -75,8 +76,8 @@ environment variables needed for that.
 - **Running a stack** shells out to `dotnet run` on a generated AppHost project, and Aspire resources
   frequently start containers — this needs the .NET SDK and Docker available wherever AspireUI runs
   (the Docker image above includes both).
-- Single-user, local-first tool — there is no authentication yet. Don't expose it directly to the
-  internet.
+- Login-gated (a first-run wizard creates the admin user), but still a small-team, local-first tool —
+  don't expose its port directly to the internet without a reverse proxy and TLS in front.
 - The built-in AI assistant needs a configured OpenAI-compatible endpoint (see Settings) to do anything.
 
 More detail: **https://fgilde.github.io/AspireUI/**

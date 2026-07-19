@@ -16,6 +16,23 @@ Aspire dashboard link — deep per-resource status on the canvas itself is on th
 Running a stack needs both the **.NET SDK** and **Docker** available wherever AspireUI runs, since
 Aspire resources (Postgres, Redis, Ollama, …) commonly start their own containers.
 
+## Publishing to Docker Compose & deploying
+
+The editor's **Publish / Deploy** panel turns a stack into real deployment artifacts using Aspire's
+own compose publisher — not a hand-rolled guess. Hitting **Publish (Docker Compose)** materializes a
+copy of the stack augmented with a Docker Compose environment, runs `aspire publish` on it, and shows
+the generated **`docker-compose.yaml`** (syntax-highlighted) plus the **`.env`** of parameters. You
+can **Copy** the YAML or **Download bundle** (a zip of `docker-compose.yaml` + `.env`).
+
+The `.env` lists parameters (e.g. generated passwords) with empty values — **fill those in before
+deploying**. Then either run `docker compose up -d` yourself in the shown output directory, or hit
+**Deploy now (docker compose up -d)** to have AspireUI run it locally (**Stop (compose down)** tears
+it back down). Deploying needs Docker running on the host; publishing needs the **`aspire` CLI**
+installed (bundled with the Aspire tooling).
+
+Kubernetes/Azure and other Aspire publishers, remote deploy targets, and reverse-proxy exposure are
+not wired into the UI yet — but the generated compose bundle is standard and portable.
+
 ## Running AspireUI in development
 
 ```bash
@@ -50,8 +67,9 @@ socket** (`/var/run/docker.sock`) so that stacks launched from inside the contai
 own containers on the host.
 
 > **Security note:** mounting the Docker socket gives the container root-equivalent control over
-> the host. Only run this on a trusted host, and don't expose AspireUI's port to the internet —
-> there is no authentication yet; this is a single-user, local-first tool.
+> the host. AspireUI requires a login (a first-run wizard creates the admin user), but it's still a
+> small-team, local-first tool — only run it on a trusted host and don't expose its port directly to
+> the internet without a reverse proxy and TLS in front.
 
 ### Configuration
 
