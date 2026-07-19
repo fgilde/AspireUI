@@ -21,8 +21,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const refresh = useCallback(() => api.authStatus().then(setStatus), []);
   useEffect(() => { refresh(); }, [refresh]);
   useEffect(() => {
-    api.setOnUnauthorized(() => { setStatus(null); nav("/login", { replace: true }); });
-  }, [nav]);
+    // Re-fetch status (authStatus uses okAuth → can't re-trigger this hook) so the gate
+    // re-renders into /login instead of getting stuck on the loading spinner forever.
+    api.setOnUnauthorized(() => { refresh(); nav("/login", { replace: true }); });
+  }, [nav, refresh]);
 
   if (!status) {
     return <Center h="100vh"><Loader color="indigo" /></Center>;
