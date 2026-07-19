@@ -37,6 +37,20 @@ public class CatalogService
         return map;
     }
 
+    // Single source of truth for resource->extra-`using` mapping, mirroring ResourcePackages above:
+    // same overlay JSON, this time the "usings" array (namespaces beyond Aspire.Hosting/
+    // Aspire.Hosting.ApplicationModel that the resource's Add/With methods and enum args live in).
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ResourceUsings()
+    {
+        var map = new Dictionary<string, IReadOnlyList<string>>();
+        foreach (var (name, entry) in LoadOverlays())
+        {
+            if (entry.TryGetProperty("usings", out var usings))
+                map[name] = usings.EnumerateArray().Select(u => u.GetString()!).ToList();
+        }
+        return map;
+    }
+
     public IReadOnlyList<ResourceType> GetCatalog()
     {
         var methods = _assemblies.SelectMany(SafeTypes)

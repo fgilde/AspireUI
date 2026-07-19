@@ -19,15 +19,32 @@ public class CodeGenService
     // (see CatalogService.ResourcePackages) so this never drifts from what the catalog reports.
     private readonly IReadOnlyDictionary<string, (string Id, string? Version)> _resourcePackages;
 
-    public CodeGenService(IReadOnlyDictionary<string, (string Id, string? Version)>? resourcePackages = null)
+    // AddMethod -> extra `using` namespaces beyond the base set. Same overlay-driven source
+    // (see CatalogService.ResourceUsings) so generated Program.cs actually compiles against
+    // the real Add/With extension methods and enum args (e.g. LocalAI's Known* enums).
+    private readonly IReadOnlyDictionary<string, IReadOnlyList<string>> _resourceUsings;
+
+    private static readonly string[] BaseUsings = { "Aspire.Hosting", "Aspire.Hosting.ApplicationModel" };
+
+    public CodeGenService(
+        IReadOnlyDictionary<string, (string Id, string? Version)>? resourcePackages = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? resourceUsings = null)
     {
         _resourcePackages = resourcePackages ?? CatalogService.ResourcePackages();
+        _resourceUsings = resourceUsings ?? CatalogService.ResourceUsings();
     }
 
     public string GenerateProgram(StackModel s)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("using Aspire.Hosting;");
+        var usings = BaseUsings
+            .Concat(s.Nodes.Select(n => n.AddMethod).Distinct()
+                .Where(_resourceUsings.ContainsKey)
+                .SelectMany(m => _resourceUsings[m]))
+            .Distinct()
+            .OrderBy(u => u, StringComparer.Ordinal);
+        foreach (var u in usings)
+            sb.AppendLine($"using {u};");
         sb.AppendLine();
         sb.AppendLine("var builder = DistributedApplication.CreateBuilder(args);");
         sb.AppendLine();

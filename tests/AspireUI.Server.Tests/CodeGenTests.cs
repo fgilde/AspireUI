@@ -24,6 +24,22 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Generate_EmitsResourceUsings_ForLocalAiStack()
+    {
+        // Real bug (Slice 4 e2e): generated Program.cs only emitted `using Aspire.Hosting;`,
+        // so a stack using AddLocalAI's Known* enums (KnownTextModel etc.) failed CS1061/CS0103.
+        // Overlay-driven usings (CatalogService.ResourceUsings) must add the resource's namespace.
+        var m = new StackModel("s", "Demo", "net10.0",
+            [ new NodeModel("n1", "localai", "AddLocalAI", "localai", [], 0, 0, []) ], [], []);
+        var code = new CodeGenService().GenerateProgram(m);
+        Assert.Contains("using Aspire.Hosting;", code);
+        Assert.Contains("using Aspire.Hosting.ApplicationModel;", code);
+        Assert.Contains("using Nextended.Aspire.Hosting.LocalAI;", code);
+        // Usings sit outside/before the marker block (round-trip only parses inside it).
+        Assert.True(code.IndexOf("using Nextended.Aspire.Hosting.LocalAI;") < code.IndexOf(CodeGenService.Begin));
+    }
+
+    [Fact]
     public void Generate_EmitsMarkerBlockInCanonicalOrder()
     {
         var code = new CodeGenService().GenerateProgram(Fixture());
