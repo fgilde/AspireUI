@@ -163,8 +163,10 @@ public class CatalogService
         t = Nullable.GetUnderlyingType(t) ?? t;
         if (t == typeof(string)) return ("string", null, null);
         if (t == typeof(bool)) return ("bool", null, null);
-        if (t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(double) || t == typeof(float))
+        if (t == typeof(int) || t == typeof(long) || t == typeof(short))
             return ("int", null, null);
+        if (t == typeof(double) || t == typeof(float) || t == typeof(decimal))
+            return ("number", null, null);
         if (t.IsEnum) return ("enum", Enum.GetNames(t).ToList(), t.Name);
         return null;
     }

@@ -34,6 +34,10 @@ describe("config transform", () => {
     expect(fromLiteral('"nginx"')).toBe("nginx");
     expect(fromLiteral("8080")).toBe("8080");
   });
+  it("number type keeps decimal precision (no parseInt truncation)", () => {
+    expect(toLiteral("1.5", "number")).toBe("1.5");
+    expect(toLiteral("8080", "int")).toBe("8080");
+  });
   it("reads with-rows by method", () => {
     expect(readWithRows(container, "WithHttpEndpoint")).toEqual([["8080", "80"]]);
     expect(readWithRows(container, "WithEnvironment")).toEqual([['"KEY"', '"val"']]);

@@ -42,9 +42,17 @@ export function Canvas({ stack, setStack, onSelect }:
     api.addEdge(stack.id, { fromNodeId: c.source, toNodeId: c.target, kind: "reference" }).then(setStack),
     [stack, setStack]);
 
+  const onEdgesChange = useCallback((changes: any[]) => {
+    const removed = changes.filter(c => c.type === "remove");
+    if (removed.length === 0) return;
+    Promise.all(removed.map(c => api.deleteEdge(stack.id, c.id))).then(() => {
+      setStack({ ...stack, edges: stack.edges.filter(e => !removed.some(c => c.id === e.id)) });
+    });
+  }, [stack, setStack]);
+
   return (
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange} onConnect={onConnect}
+      onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => onSelect(n.id)} fitView>
       <Background /><Controls />

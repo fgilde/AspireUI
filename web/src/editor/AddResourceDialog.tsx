@@ -28,8 +28,8 @@ export function AddResourceDialog({ rt, existingCount, totalCount, onCreate, onC
 
   const field = (p: CatalogParam) => {
     const value = values[p.name] ?? p.default ?? "";
-    if (p.type === "int") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
-      value={value === "" ? "" : Number(value)} onChange={v => setValue(p.name, String(v ?? ""))} />;
+    if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
+      allowDecimal={p.type === "number"} value={value === "" ? "" : Number(value)} onChange={v => setValue(p.name, String(v ?? ""))} />;
     if (p.type === "bool") return <Switch key={p.name} label={p.label}
       checked={value === "true"} onChange={e => setValue(p.name, e.currentTarget.checked ? "true" : "false")} />;
     if (p.type === "enum") return <Select key={p.name} label={p.label} withAsterisk={p.required}

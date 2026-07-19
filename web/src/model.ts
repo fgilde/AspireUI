@@ -3,7 +3,7 @@ export interface Node { id: string; varName: string; addMethod: string; resource
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[] }
 
-export interface CatalogParam { name: string; type: "string" | "int" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
+export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[] }
@@ -28,6 +28,7 @@ export function applyNodePosition(s: Stack, id: string, x: number, y: number): S
 
 export function toLiteral(value: string, type: CatalogParam["type"], enumTypeName?: string | null): string {
   if (type === "int") return value === "" ? "0" : String(parseInt(value, 10));
+  if (type === "number") return value === "" ? "0" : value;
   if (type === "bool") return value === "true" ? "true" : "false";
   if (type === "enum") return enumTypeName ? `${enumTypeName}.${value}` : value;
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
