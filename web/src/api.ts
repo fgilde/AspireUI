@@ -1,13 +1,35 @@
-import type { Stack, Node, Edge, AppSettings } from "./model";
+import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth } from "./model";
 const base = "";
 
 export interface TemplateInfo { id: string; name: string; description: string }
 export interface PackageInfo { id: string; version: string; resources: string[] }
 
+// Called whenever an app call comes back 401 (expired/missing session) so the
+// app can bounce to /login. Wired once by AuthGate; a no-op until then.
+let onUnauthorized: () => void = () => {};
+export const setOnUnauthorized = (fn: () => void) => { onUnauthorized = fn; };
+
 async function ok(r: Response) {
+  if (r.status === 401) onUnauthorized();
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
+
+// /auth/* calls report their own 401s (e.g. bad login) as regular errors —
+// they must NOT trigger the onUnauthorized redirect, or a failed login would
+// immediately bounce back to /login masking the error message.
+async function okAuth(r: Response) {
+  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+export const authStatus = (): Promise<AuthStatus> => fetch(`${base}/auth/status`).then(okAuth);
+export const setup = (username: string, password: string): Promise<UserDto> =>
+  fetch(`${base}/auth/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }) }).then(okAuth);
+export const login = (username: string, password: string): Promise<UserDto> =>
+  fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }) }).then(okAuth);
+export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
+export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
 export const getCatalog = () => fetch(`${base}/catalog`).then(ok);
 export const listStacks = () => fetch(`${base}/stacks`).then(ok);

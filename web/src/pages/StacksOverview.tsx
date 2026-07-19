@@ -14,6 +14,7 @@ import { pickAppHost, type Stack } from "../model";
 import * as api from "../api";
 import type { TemplateInfo, BundleFile } from "../api";
 import { HelpButton } from "../HelpButton";
+import { UserMenu } from "../auth/UserMenu";
 import "./StacksOverview.css";
 
 const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
@@ -182,6 +183,7 @@ export function StacksOverview() {
                 </ActionIcon>
               </Tooltip>
               <HelpButton />
+              <UserMenu />
             </Group>
           </Group>
         </Container>

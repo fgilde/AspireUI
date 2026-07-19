@@ -22,6 +22,21 @@ export interface AppSettings {
   aiProviderLabel?: string | null;
 }
 
+export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string }
+export interface AuthStatus { needsSetup: boolean; authenticated: boolean; user: UserDto | null }
+export interface EnvHealth {
+  dotnet: { ok: boolean; version: string };
+  docker: { ok: boolean; detail: string };
+}
+
+// Pure mapper the AuthGate renders from: which route (if any) an unauthenticated
+// or fresh-install status must be bounced to. null = the app itself is allowed.
+export function routeForStatus(s: AuthStatus): "/setup" | "/login" | null {
+  if (s.needsSetup) return "/setup";
+  if (!s.authenticated) return "/login";
+  return null;
+}
+
 export function toFlow(s: Stack) {
   return {
     nodes: s.nodes.map(n => ({

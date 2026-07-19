@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, type Stack, type Node, type CatalogOverload } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type AuthStatus } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -93,6 +93,26 @@ describe("runStateColor", () => {
     expect(runStateColor("Starting")).toBe("yellow");
     expect(runStateColor("Running")).toBe("green");
     expect(runStateColor("Failed")).toBe("red");
+  });
+});
+
+describe("routeForStatus", () => {
+  const admin = { id: "1", username: "admin", isAdmin: true, createdAt: "2026-01-01" };
+  it("sends a fresh install to /setup", () => {
+    const s: AuthStatus = { needsSetup: true, authenticated: false, user: null };
+    expect(routeForStatus(s)).toBe("/setup");
+  });
+  it("sends an unauthenticated session to /login", () => {
+    const s: AuthStatus = { needsSetup: false, authenticated: false, user: null };
+    expect(routeForStatus(s)).toBe("/login");
+  });
+  it("allows an authenticated session into the app", () => {
+    const s: AuthStatus = { needsSetup: false, authenticated: true, user: admin };
+    expect(routeForStatus(s)).toBeNull();
+  });
+  it("needsSetup wins even if authenticated is somehow true", () => {
+    const s: AuthStatus = { needsSetup: true, authenticated: true, user: admin };
+    expect(routeForStatus(s)).toBe("/setup");
   });
 });
 
