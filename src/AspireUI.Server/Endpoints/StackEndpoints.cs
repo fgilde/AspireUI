@@ -7,13 +7,19 @@ public static class StackEndpoints
 {
     public static void MapStackEndpoints(this WebApplication app)
     {
-        var store = new StackStore(Environment.GetEnvironmentVariable("DB_PATH") ?? "aspireui.db");
+        // Data lives outside the project tree by default so generated stack .cs files are never
+        // swept into the server's own compilation and survive rebuilds.
+        var dataDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
+        Directory.CreateDirectory(dataDir);
+
+        var store = new StackStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var gen = new CodeGenService();
         var import = new ImportService();
         var export = new ExportService();
         var catalog = new CatalogService();
         var run = new RunService();
-        var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? "workspace";
+        var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
 
         string Dir(string id) => Path.Combine(wsRoot, id);
 

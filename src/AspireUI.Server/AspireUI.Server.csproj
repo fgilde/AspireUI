@@ -20,6 +20,15 @@
     <Content Update="catalog\**\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Defensive: never compile generated stack projects if a workspace ever lands under the project dir.
+         The default WORKSPACE_DIR is outside the project (LocalApplicationData), but WORKSPACE_DIR can be
+         overridden; without this the SDK.Web **/*.cs glob would pull generated Program.cs into our build. -->
+    <Compile Remove="workspace/**/*.cs" />
+    <Content Remove="workspace/**" />
+    <None Remove="workspace/**" />
+  </ItemGroup>
+
   <!-- Only build the SPA for Release (the real deployable). Debug/test builds stay fast and node-free. -->
   <Target Name="BuildSpa" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <Exec Command="npm install" WorkingDirectory="../../web" />

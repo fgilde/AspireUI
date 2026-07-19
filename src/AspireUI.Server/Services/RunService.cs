@@ -29,12 +29,19 @@ public class RunService : IDisposable
     public RunService(Func<string, ProcessStartInfo>? commandFactory = null)
         => _commandFactory = commandFactory ?? DefaultCommand;
 
-    private static ProcessStartInfo DefaultCommand(string workdir) => new()
+    private static ProcessStartInfo DefaultCommand(string workdir)
     {
-        FileName = "dotnet",
-        Arguments = $"run --project \"{workdir}\"",
-        WorkingDirectory = workdir,
-    };
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"run --project \"{workdir}\"",
+            WorkingDirectory = workdir,
+        };
+        // Aspire refuses to start on a plain-http dashboard unless this is set; the
+        // generated project has no launch profile, so allow unsecured transport for local runs.
+        psi.Environment["ASPIRE_ALLOW_UNSECURED_TRANSPORT"] = "true";
+        return psi;
+    }
 
     public static string? ParseDashboardUrl(string line)
     {
