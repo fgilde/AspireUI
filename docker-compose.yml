@@ -1,0 +1,21 @@
+services:
+  aspireui:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - aspireui-data:/data
+      # Lets stacks launched from AspireUI start containers on the HOST Docker
+      # daemon (the "Run a stack" feature shells `dotnet run`, which in turn
+      # starts containers for Aspire resources like Postgres/Redis/Ollama).
+      #
+      # SECURITY NOTE: mounting the Docker socket gives this container root-
+      # equivalent control over the host (anything that can talk to the
+      # socket can run arbitrary containers with host mounts). Only run this
+      # on a trusted host, and don't expose AspireUI's port to the internet
+      # (there is no auth yet).
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  aspireui-data:
