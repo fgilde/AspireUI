@@ -33,3 +33,10 @@ export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
 export const getTemplates = (): Promise<TemplateInfo[]> => fetch(`${base}/templates`).then(ok);
 export const createFromTemplate = (id: string): Promise<Stack> =>
   fetch(`${base}/stacks/from-template/${id}`, { method: "POST" }).then(ok);
+
+export interface BundleFile { path: string; content: string }
+export const importBundle = (name: string, files: BundleFile[], programPath?: string): Promise<Stack> =>
+  fetch(`${base}/stacks/import-bundle`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, files, programPath }),
+  }).then(ok);

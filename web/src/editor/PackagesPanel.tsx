@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ScrollArea, Group, Text, Badge } from "@mantine/core";
+import { ScrollArea, Group, Text, Badge, Divider } from "@mantine/core";
 import type { Stack } from "../model";
 import type { PackageInfo } from "../api";
 import * as api from "../api";
@@ -24,6 +24,14 @@ export function PackagesPanel({ stack }: { stack: Stack }) {
           </Group>
         </Group>
       ))}
+      {stack.extraFiles.length > 0 && (
+        <>
+          <Divider label="Custom files" labelPosition="left" mt="sm" mb={4} />
+          {stack.extraFiles.map(f => (
+            <Text key={f.name} ff="monospace" size="sm" py={4} c="dimmed">{f.name}</Text>
+          ))}
+        </>
+      )}
     </ScrollArea>
   );
 }

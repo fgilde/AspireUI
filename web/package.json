@@ -16,6 +16,7 @@
     "@tabler/icons-react": "^3.45.0",
     "@xyflow/react": "^12.11.2",
     "dockview-react": "^7.0.2",
+    "jszip": "^3.10.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",

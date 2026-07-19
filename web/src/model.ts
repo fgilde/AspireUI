@@ -1,7 +1,12 @@
 export interface WithCall { method: string; args: string[] }
 export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[] }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
-export interface Stack { id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[]; rawStatements: string[] }
+export interface ExtraFile { name: string; content: string }
+export interface PackageRef { id: string; version: string }
+export interface Stack {
+  id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[]; rawStatements: string[];
+  extraFiles: ExtraFile[]; extraPackages: PackageRef[];
+}
 
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
 export interface CatalogOverload { params: CatalogParam[] }
@@ -67,6 +72,11 @@ export function sanitizeIdentifier(name: string): string {
 }
 export function isErrorLine(line: string): boolean {
   return /error|exception|fail/i.test(line);
+}
+// Mirrors the backend AppHost-selection heuristic (BundleImporter.Import):
+// the file whose content contains the CreateBuilder call is the entrypoint.
+export function pickAppHost(files: { path: string; content: string }[]): string | undefined {
+  return files.find(f => f.content.includes("DistributedApplication.CreateBuilder"))?.path;
 }
 export function removeNode(s: Stack, id: string): Stack {
   return {

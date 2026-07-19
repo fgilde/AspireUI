@@ -1,14 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import JSZip from "jszip";
 import {
   AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon,
   Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu,
 } from "@mantine/core";
-import { IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles } from "@tabler/icons-react";
-import type { Stack } from "../model";
+import {
+  IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
+  IconUpload, IconFileZip, IconFolder,
+} from "@tabler/icons-react";
+import { pickAppHost, type Stack } from "../model";
 import * as api from "../api";
-import type { TemplateInfo } from "../api";
+import type { TemplateInfo, BundleFile } from "../api";
 import "./StacksOverview.css";
+
+const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
+
+// The File System Access API (window.showDirectoryPicker) isn't in TS's DOM
+// lib yet; treat the directory handle as `any` rather than hand-rolling types
+// for an API surface this narrow.
+async function walkDirectory(dir: any, prefix = ""): Promise<BundleFile[]> {
+  const files: BundleFile[] = [];
+  for await (const entry of dir.values()) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.kind === "directory") files.push(...await walkDirectory(entry, path));
+    else if (isImportable(entry.name)) files.push({ path, content: await (await entry.getFile()).text() });
+  }
+  return files;
+}
 
 export function StacksOverview() {
   const nav = useNavigate();
@@ -17,13 +37,21 @@ export function StacksOverview() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const load = () => api.listStacks().then((s: Stack[]) => { setStacks(s); setLoading(false); });
   useEffect(() => { load(); }, []);
   useEffect(() => { api.getTemplates().then(setTemplates); }, []);
+  // webkitdirectory isn't a typed React DOM prop; set it imperatively so the
+  // fallback <input> picks a whole folder in browsers that support it.
+  useEffect(() => { folderInputRef.current?.setAttribute("webkitdirectory", ""); }, []);
 
   const create = async () => {
-    const s = await api.createStack({ name: name || "New Stack", targetFramework: "net10.0", nodes: [], edges: [], rawStatements: [] });
+    const s = await api.createStack({
+      name: name || "New Stack", targetFramework: "net10.0",
+      nodes: [], edges: [], rawStatements: [], extraFiles: [], extraPackages: [],
+    });
     setOpen(false); setName("");
     nav(`/stacks/${s.id}`);
   };
@@ -31,6 +59,56 @@ export function StacksOverview() {
   const createDemo = async (templateId: string) => {
     const s = await api.createFromTemplate(templateId);
     nav(`/stacks/${s.id}`);
+  };
+
+  const finishImport = async (bundleName: string, files: BundleFile[]) => {
+    if (files.length === 0) { window.alert("No .cs/.csproj files found to import."); return; }
+    try {
+      const s = await api.importBundle(bundleName, files, pickAppHost(files));
+      nav(`/stacks/${s.id}`);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const onZipPicked = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const zip = await JSZip.loadAsync(file);
+    const files: BundleFile[] = [];
+    for (const entry of Object.values(zip.files)) {
+      if (entry.dir || !isImportable(entry.name)) continue;
+      files.push({ path: entry.name, content: await entry.async("string") });
+    }
+    await finishImport(file.name.replace(/\.zip$/i, ""), files);
+  };
+
+  const onFolderFallbackPicked = async (e: ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files;
+    e.target.value = "";
+    if (!picked || picked.length === 0) return;
+    const files: BundleFile[] = [];
+    for (const file of Array.from(picked)) {
+      if (!isImportable(file.name)) continue;
+      files.push({ path: file.webkitRelativePath || file.name, content: await file.text() });
+    }
+    window.alert("Folder picking isn't supported in this browser — some referenced files may be missing.");
+    const folderName = files.find(f => f.path.includes("/"))?.path.split("/")[0] ?? "Imported";
+    await finishImport(folderName, files);
+  };
+
+  const pickFolder = async () => {
+    const showDirectoryPicker = (window as unknown as { showDirectoryPicker?: () => Promise<any> }).showDirectoryPicker;
+    if (!showDirectoryPicker) { folderInputRef.current?.click(); return; }
+    try {
+      const dirHandle = await showDirectoryPicker();
+      const files = await walkDirectory(dirHandle);
+      await finishImport(dirHandle.name, files);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return; // user cancelled the picker
+      window.alert(e instanceof Error ? e.message : String(e));
+    }
   };
 
   return (
@@ -44,33 +122,53 @@ export function StacksOverview() {
               </ThemeIcon>
               <Title order={3} fw={700}>AspireUI</Title>
             </Group>
-            <Button.Group>
-              <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
-                New Stack
-              </Button>
+            <Group gap="sm">
+              <Button.Group>
+                <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
+                  New Stack
+                </Button>
+                <Menu position="bottom-end" withArrow>
+                  <Menu.Target>
+                    <Button px="xs" aria-label="Create from demo">
+                      <IconChevronDown size={16} />
+                    </Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    {templates.length === 0 ? (
+                      <Menu.Item disabled>No demo templates</Menu.Item>
+                    ) : (
+                      <>
+                        <Menu.Label>From demo…</Menu.Label>
+                        {templates.map(t => (
+                          <Menu.Item key={t.id} leftSection={<IconSparkles size={14} />}
+                            onClick={() => createDemo(t.id)}>
+                            {t.name}
+                          </Menu.Item>
+                        ))}
+                      </>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
+              </Button.Group>
+
               <Menu position="bottom-end" withArrow>
                 <Menu.Target>
-                  <Button px="xs" aria-label="Create from demo">
-                    <IconChevronDown size={16} />
+                  <Button variant="default" leftSection={<IconUpload size={16} />} rightSection={<IconChevronDown size={16} />}>
+                    Import
                   </Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  {templates.length === 0 ? (
-                    <Menu.Item disabled>No demo templates</Menu.Item>
-                  ) : (
-                    <>
-                      <Menu.Label>From demo…</Menu.Label>
-                      {templates.map(t => (
-                        <Menu.Item key={t.id} leftSection={<IconSparkles size={14} />}
-                          onClick={() => createDemo(t.id)}>
-                          {t.name}
-                        </Menu.Item>
-                      ))}
-                    </>
-                  )}
+                  <Menu.Item leftSection={<IconFileZip size={14} />} onClick={() => zipInputRef.current?.click()}>
+                    ZIP archive
+                  </Menu.Item>
+                  <Menu.Item leftSection={<IconFolder size={14} />} onClick={pickFolder}>
+                    Folder (.cs/.csproj)
+                  </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-            </Button.Group>
+              <input ref={zipInputRef} type="file" accept=".zip" hidden onChange={onZipPicked} />
+              <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
+            </Group>
           </Group>
         </Container>
       </AppShell.Header>

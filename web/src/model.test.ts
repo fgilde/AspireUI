@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, type Stack, type Node, type CatalogOverload } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, type Stack, type Node, type CatalogOverload } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
   nodes: [{ id: "n1", varName: "db", addMethod: "AddPostgres", resourceName: "db", withCalls: [], x: 1, y: 2, addArgs: [] }],
   edges: [{ id: "e1", fromNodeId: "n1", toNodeId: "n1", kind: "reference" }],
   rawStatements: [],
+  extraFiles: [], extraPackages: [],
 };
 
 describe("model", () => {
@@ -83,5 +84,18 @@ describe("log classifier", () => {
   });
   it("leaves normal log lines unflagged", () => {
     expect(isErrorLine("info: Now listening on http://localhost:5000")).toBe(false);
+  });
+});
+
+describe("pickAppHost", () => {
+  it("finds the file containing the CreateBuilder call", () => {
+    const files = [
+      { path: "Helpers.cs", content: "public class Helpers {}" },
+      { path: "Program.cs", content: "var builder = DistributedApplication.CreateBuilder(args);" },
+    ];
+    expect(pickAppHost(files)).toBe("Program.cs");
+  });
+  it("returns undefined when no file matches", () => {
+    expect(pickAppHost([{ path: "Helpers.cs", content: "public class Helpers {}" }])).toBeUndefined();
   });
 });
