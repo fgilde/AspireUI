@@ -5,7 +5,6 @@ import type { Stack, ResourceType } from "../model";
 import { removeNode } from "../model";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
-import { CodePreview } from "./CodePreview";
 
 export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
   { stack: Stack; nodeId: string | null; setStack: (s: Stack) => void; onDeleted: () => void }) {
@@ -74,7 +73,6 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
           </Tabs.Panel>
         </ScrollArea>
       </Tabs>
-      <CodePreview stackId={stack.id} version={JSON.stringify(stack)} />
     </div>
   );
 }

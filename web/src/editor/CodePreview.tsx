@@ -6,7 +6,7 @@ export function CodePreview({ stackId, version }: { stackId: string; version: st
   const [code, setCode] = useState("");
   useEffect(() => { api.previewStack(stackId).then(setCode); }, [stackId, version]);
   return (
-    <div style={{ borderTop: "1px solid var(--mantine-color-dark-4)", height: 260, display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" px="sm" py={4}>
         <Text size="xs" fw={600} c="dimmed">Program.cs</Text>
         <CopyButton value={code}>
