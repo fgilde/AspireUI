@@ -65,6 +65,9 @@ export function sanitizeIdentifier(name: string): string {
   const s = /^[0-9]/.test(cleaned) ? "_" + cleaned : cleaned;
   return s || "resource";
 }
+export function isErrorLine(line: string): boolean {
+  return /error|exception|fail/i.test(line);
+}
 export function removeNode(s: Stack, id: string): Stack {
   return {
     ...s,

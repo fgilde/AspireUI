@@ -3,24 +3,30 @@ import type { FunctionComponent } from "react";
 import { DockviewReact } from "dockview-react";
 import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
-import type { Stack } from "../model";
+import type { Stack, RunStatus } from "../model";
 import { Palette } from "./Palette";
 import { Canvas } from "./Canvas";
 import { PropertyPanel } from "./PropertyPanel";
 import { CodePreview } from "./CodePreview";
+import { PackagesPanel } from "./PackagesPanel";
+import { LogsPanel } from "./LogsPanel";
 
-const LAYOUT_KEY = "aspireui.layout";
+// Bumped from "aspireui.layout" so existing saved layouts (pre-Packages/Logs
+// panels) are discarded rather than restored without the new tabs.
+const LAYOUT_KEY = "aspireui.layout.v2";
 
-interface EditorState {
+export interface EditorState {
   stack: Stack;
   setStack: (s: Stack) => void;
   selected: string | null;
   setSelected: (id: string | null) => void;
+  runStatus: RunStatus;
+  setRunStatus: (s: RunStatus) => void;
 }
 
-const EditorContext = createContext<EditorState | null>(null);
+export const EditorContext = createContext<EditorState | null>(null);
 
-function useEditor(): EditorState {
+export function useEditor(): EditorState {
   const ctx = useContext(EditorContext);
   if (!ctx) throw new Error("Dock panel rendered outside DockLayout's EditorContext");
   return ctx;
@@ -44,12 +50,22 @@ function PreviewPanel() {
   const { stack } = useEditor();
   return <CodePreview stackId={stack.id} version={JSON.stringify(stack)} />;
 }
+function PackagesPanelTab() {
+  const { stack } = useEditor();
+  return <PackagesPanel stack={stack} />;
+}
+function LogsPanelTab() {
+  const { runStatus } = useEditor();
+  return <LogsPanel runStatus={runStatus} />;
+}
 
 const components: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   palette: PalettePanel,
   canvas: CanvasPanel,
   properties: PropertiesPanel,
   preview: PreviewPanel,
+  packages: PackagesPanelTab,
+  logs: LogsPanelTab,
 };
 
 function buildDefaultLayout(api: DockviewApi) {
@@ -67,23 +83,23 @@ function buildDefaultLayout(api: DockviewApi) {
     id: "preview", component: "preview", title: "Code Preview", initialHeight: 260,
     position: { direction: "below", referencePanel: "canvas" },
   });
+  api.addPanel({
+    id: "packages", component: "packages", title: "Packages",
+    position: { direction: "within", referencePanel: "preview" },
+  });
+  api.addPanel({
+    id: "logs", component: "logs", title: "Logs",
+    position: { direction: "within", referencePanel: "preview" },
+  });
 }
 
 export interface DockLayoutHandle {
   resetLayout: () => void;
 }
 
-interface DockLayoutProps {
-  stack: Stack;
-  setStack: (s: Stack) => void;
-  selected: string | null;
-  setSelected: (id: string | null) => void;
-}
-
-export const DockLayout = forwardRef<DockLayoutHandle, DockLayoutProps>(function DockLayout(
-  { stack, setStack, selected, setSelected },
-  ref,
-) {
+// No props: the dock's stack/selection/run-status are supplied by the
+// EditorContext.Provider that Editor.tsx wraps around this component.
+export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_props, ref) {
   const apiRef = useRef<DockviewApi | null>(null);
 
   const resetLayout = useCallback(() => {
@@ -112,10 +128,8 @@ export const DockLayout = forwardRef<DockLayoutHandle, DockLayoutProps>(function
   }, []);
 
   return (
-    <EditorContext.Provider value={{ stack, setStack, selected, setSelected }}>
-      <div className="dockview-theme-dark" style={{ height: "100%", width: "100%" }}>
-        <DockviewReact components={components} onReady={onReady} />
-      </div>
-    </EditorContext.Provider>
+    <div className="dockview-theme-dark" style={{ height: "100%", width: "100%" }}>
+      <DockviewReact components={components} onReady={onReady} />
+    </div>
   );
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, type Stack, type Node, type CatalogOverload } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, type Stack, type Node, type CatalogOverload } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -72,5 +72,16 @@ describe("enum + overload transform", () => {
     expect(matchOverloadByArity(ovs, 2)?.params.length).toBe(2);
     expect(matchOverloadByArity(ovs, 1)?.params.length).toBe(1);
     expect(matchOverloadByArity(ovs, 5)?.params.length).toBe(2); // clamp to richest
+  });
+});
+
+describe("log classifier", () => {
+  it("flags error/exception/fail case-insensitively", () => {
+    expect(isErrorLine("Unhandled Exception: NullReferenceException")).toBe(true);
+    expect(isErrorLine("ERROR: build failed")).toBe(true);
+    expect(isErrorLine("fatal: something failed to start")).toBe(true);
+  });
+  it("leaves normal log lines unflagged", () => {
+    expect(isErrorLine("info: Now listening on http://localhost:5000")).toBe(false);
   });
 });

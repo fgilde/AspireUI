@@ -2,6 +2,7 @@ import type { Stack, Node, Edge } from "./model";
 const base = "";
 
 export interface TemplateInfo { id: string; name: string; description: string }
+export interface PackageInfo { id: string; version: string; resources: string[] }
 
 async function ok(r: Response) {
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
@@ -25,6 +26,7 @@ export const deleteStack = (id: string): Promise<void> => fetch(`${base}/stacks/
 export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { method: "POST" }).then(ok);
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
+export const getPackages = (id: string): Promise<PackageInfo[]> => fetch(`${base}/stacks/${id}/packages`).then(ok);
 export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);
 
