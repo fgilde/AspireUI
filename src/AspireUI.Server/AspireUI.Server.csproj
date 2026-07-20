@@ -34,6 +34,15 @@
     <PackageReference Include="Aspire.Hosting.Qdrant" Version="*" />
     <PackageReference Include="Aspire.Hosting.Milvus" Version="*" />
     <PackageReference Include="Aspire.Hosting.Azure.CosmosDB" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Yarp" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Oracle" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Python" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.KeyVault" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Maui" Version="13.4.6-preview.1.26319.6" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Java" Version="13.4.1-beta.686" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" Version="13.4.1-beta.686" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.1-beta.686" />

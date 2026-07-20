@@ -1,9 +1,9 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
   siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
-  siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo,
+  siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo, siPython,
 } from "simple-icons";
 
 type Brand = { path: string };
@@ -54,6 +54,18 @@ const MAP: Record<string, Visual> = {
   AddJavaContainerApp: { si: siOpenjdk, color: TEXT },
   AddSpringApp:        { si: siSpring, color: "#6DB33F" },
   AddGolangApp:        { si: siGo, color: "#00ADD8" },
+  AddPythonApp:        { si: siPython, color: "#3776AB" },
+  AddPythonModule:     { si: siPython, color: "#3776AB" },
+  AddPythonExecutable: { si: siPython, color: "#3776AB" },
+  AddUvicornApp:       { si: siPython, color: "#3776AB" },
+  AddMauiProject:      { si: siDotnet, color: "#512BD4" },
+  AddOracle:           { tabler: IconDatabase, color: "#F80000" },
+  AddYarp:             { tabler: IconRouter, color: "#68217A" },
+  AddAzureStorage:     { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureServiceBus:  { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureKeyVault:    { tabler: IconLock, color: "#3999D6" },
+  AddAzureApplicationInsights: { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureOpenAI:      { tabler: IconBrandOpenai, color: "#10A37F" },
 };
 const FALLBACK: Visual = { tabler: IconCube, color: "#7C8593" };
 
