@@ -5,6 +5,8 @@ import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockv
 import "dockview-react/dist/styles/dockview.css";
 import "./dockview-mantine.css";
 import type { Stack, RunStatus } from "../model";
+import type { CodeDiagnostic } from "../api";
+import { ValidationPanel } from "./ValidationPanel";
 import { Palette } from "./Palette";
 import { Canvas } from "./Canvas";
 import { PropertyPanel } from "./PropertyPanel";
@@ -14,11 +16,12 @@ import { LogsPanel } from "./LogsPanel";
 import { AssistPanel } from "./AssistPanel";
 import { PublishPanel } from "./PublishPanel";
 import { CodeEditorPanel } from "./CodeEditorPanel";
+import { DashboardPanel } from "./DashboardPanel";
 import { useAppTheme } from "../ThemeProvider";
 
 // Bumped to v5 so saved layouts (pre-Code editor tab) are discarded rather than
 // restored without the new tab.
-const LAYOUT_KEY = "aspireui.layout.v5";
+const LAYOUT_KEY = "aspireui.layout.v6";
 
 export interface EditorState {
   stack: Stack;
@@ -27,6 +30,9 @@ export interface EditorState {
   setSelected: (id: string | null) => void;
   runStatus: RunStatus;
   setRunStatus: (s: RunStatus) => void;
+  diagnostics: CodeDiagnostic[];
+  flashValidation: number;          // bumped when the badge is clicked, to flash the panel
+  showValidation: () => void;       // focus the Validation panel + flash it
 }
 
 export const EditorContext = createContext<EditorState | null>(null);
@@ -74,6 +80,8 @@ const components: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   assist: AssistPanel,
   publish: PublishPanel,
   code: CodeEditorPanel,
+  dashboard: DashboardPanel,
+  validation: ValidationPanel,
 };
 
 function buildDefaultLayout(api: DockviewApi) {
@@ -111,6 +119,14 @@ function buildDefaultLayout(api: DockviewApi) {
     id: "code", component: "code", title: "Code",
     position: { direction: "within", referencePanel: "preview" },
   });
+  api.addPanel({
+    id: "dashboard", component: "dashboard", title: "Dashboard",
+    position: { direction: "within", referencePanel: "preview" },
+  });
+  api.addPanel({
+    id: "validation", component: "validation", title: "Validation",
+    position: { direction: "within", referencePanel: "preview" },
+  });
 }
 
 export interface DockLayoutHandle {
@@ -119,6 +135,7 @@ export interface DockLayoutHandle {
   loadNamed: (name: string) => void;
   deleteNamed: (name: string) => void;
   listNamed: () => string[];
+  focusPanel: (id: string) => void;
 }
 
 // Named, reusable dock layouts (separate from the auto-persisted current layout).
@@ -150,6 +167,7 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
     },
     deleteNamed: (name: string) => { const m = readLayouts(); delete m[name]; writeLayouts(m); },
     listNamed: () => Object.keys(readLayouts()),
+    focusPanel: (id: string) => { const p = apiRef.current?.getPanel(id); p?.api.setActive(); },
   }), [resetLayout]);
 
   const onReady = useCallback((event: DockviewReadyEvent) => {

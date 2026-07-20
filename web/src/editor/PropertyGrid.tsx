@@ -56,12 +56,42 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
   const envRows = readWithRows(draft, ENV_METHOD);
 
+  // Simplified controls for the most common Aspire endpoint settings — only for resources that
+  // actually expose them. The detailed capability grid below still allows the full form.
+  const canExternal = rt?.withs.some(w => w.method === "WithExternalHttpEndpoints") ?? false;
+  const canHttp = rt?.withs.some(w => w.method === "WithHttpEndpoint") ?? false;
+  const isExternal = draft.withCalls.some(w => w.method === "WithExternalHttpEndpoints");
+  const httpRows = readWithRows(draft, "WithHttpEndpoint");
+  const portArg = httpRows[0]?.find(a => a.trim().startsWith("port:"));
+  const port = portArg ? portArg.split(":")[1].trim() : "";
+  const setPort = (v: string) =>
+    commit(writeWithRows(draft, "WithHttpEndpoint", v.trim() ? [[`port: ${parseInt(v, 10) || 0}`]] : []));
+  const setExternal = (on: boolean) =>
+    commit(writeWithRows(draft, "WithExternalHttpEndpoints", on ? [[]] : []));
+
   return (
     <MStack gap="sm">
       <TextInput label="Name" value={draft.resourceName}
         onChange={e => commit({ ...draft, resourceName: e.currentTarget.value })} />
       {matchOverloadByArity(rt?.addOverloads ?? [], draft.addArgs.length)?.params.map((p, i) => field(p, fromLiteral(draft.addArgs[i] ?? '""'),
         v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName)))))}
+
+      {(canExternal || canHttp) && (
+        <div>
+          <Divider my="xs" label="Quick settings" labelPosition="left" />
+          {canExternal && (
+            <Switch mb="xs" label="Publicly accessible" checked={isExternal}
+              description="Exposes an external HTTP endpoint (WithExternalHttpEndpoints). Off = internal only."
+              onChange={e => setExternal(e.currentTarget.checked)} />
+          )}
+          {canHttp && (
+            <NumberInput label="HTTP port" placeholder="auto" value={port === "" ? "" : Number(port)}
+              description="Fixed host port for the HTTP endpoint. Leave empty for an auto-assigned port."
+              min={0} max={65535} onChange={v => setPort(String(v ?? ""))} />
+          )}
+          {isExternal && <Text size="xs" c="dimmed" mt={4}>A public URL is assigned at deploy time; custom domains are configured per deploy target.</Text>}
+        </div>
+      )}
 
       {hasEnv && (
         <div>

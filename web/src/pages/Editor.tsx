@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
 import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
+import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
 import type { DockLayoutHandle } from "../editor/DockLayout";
@@ -74,6 +75,22 @@ export function Editor() {
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);
 
+  // Central validation: Roslyn diagnostics over the generated code, debounced on stack change.
+  // Shared via context so the header badge and the Validation panel read the same result.
+  const [diagnostics, setDiagnostics] = useState<CodeDiagnostic[]>([]);
+  const [flashValidation, setFlashValidation] = useState(0);
+  const stackSig = stack ? JSON.stringify(stack.nodes) + JSON.stringify(stack.edges) + JSON.stringify(stack.rawStatements) : "";
+  useEffect(() => {
+    if (!stack) return;
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      api.validateStack(stack.id).then(d => { if (!cancelled) setDiagnostics(d); }).catch(() => { if (!cancelled) setDiagnostics([]); });
+    }, 500);
+    return () => { cancelled = true; window.clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackSig]);
+  const showValidation = () => { dockRef.current?.focusPanel("validation"); setFlashValidation(f => f + 1); };
+
   // Single shared poller for run status: 2s while a run is starting/active,
   // 5s otherwise. RunToolbar, LogsPanel and any other consumer read the
   // result from EditorContext instead of polling on their own.
@@ -97,8 +114,9 @@ export function Editor() {
   // Memoize the context value so the 2s status poller doesn't re-render every
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
-    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus }),
-    [stack, sel, runStatus]);
+    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus, diagnostics, flashValidation, showValidation }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stack, sel, runStatus, diagnostics, flashValidation]);
 
   if (!stack) return null;
 
