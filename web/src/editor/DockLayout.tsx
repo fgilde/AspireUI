@@ -1,6 +1,5 @@
 import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef } from "react";
 import type { FunctionComponent } from "react";
-import { useMantineColorScheme } from "@mantine/core";
 import { DockviewReact } from "dockview-react";
 import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
@@ -14,6 +13,7 @@ import { LogsPanel } from "./LogsPanel";
 import { AssistPanel } from "./AssistPanel";
 import { PublishPanel } from "./PublishPanel";
 import { CodeEditorPanel } from "./CodeEditorPanel";
+import { useAppTheme } from "../ThemeProvider";
 
 // Bumped to v5 so saved layouts (pre-Code editor tab) are discarded rather than
 // restored without the new tab.
@@ -146,10 +146,9 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
     });
   }, []);
 
-  const { colorScheme } = useMantineColorScheme();
-  const dockTheme = colorScheme === "light" ? "dockview-theme-light" : "dockview-theme-dark";
+  const { current } = useAppTheme();
   return (
-    <div className={dockTheme} style={{ height: "100%", width: "100%" }}>
+    <div className={current.dockview} style={{ height: "100%", width: "100%" }}>
       <DockviewReact components={components} onReady={onReady} />
     </div>
   );

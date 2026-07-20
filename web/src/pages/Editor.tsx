@@ -9,7 +9,7 @@ import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
-import { ThemeToggle } from "../ThemeToggle";
+import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
 
 const HEADER_HEIGHT = 56;
@@ -70,7 +70,7 @@ export function Editor() {
               </Tooltip>
               <HelpButton />
               <GitHubLink />
-              <ThemeToggle />
+              <ThemeMenu />
               <UserMenu />
             </Group>
           </Group>

@@ -15,7 +15,7 @@ import * as api from "../api";
 import type { TemplateInfo, BundleFile } from "../api";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
-import { ThemeToggle } from "../ThemeToggle";
+import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
 import "./StacksOverview.css";
 
@@ -186,7 +186,7 @@ export function StacksOverview() {
               </Tooltip>
               <HelpButton />
               <GitHubLink />
-              <ThemeToggle />
+              <ThemeMenu />
               <UserMenu />
             </Group>
           </Group>

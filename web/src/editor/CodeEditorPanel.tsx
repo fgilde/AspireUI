@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Group, Text, Alert, useMantineColorScheme } from "@mantine/core";
+import { Button, Group, Text, Alert } from "@mantine/core";
 import { IconDeviceFloppy, IconAlertCircle } from "@tabler/icons-react";
 // Lean import: the editor API + just the C# basic-language (tokenizer) contribution — avoids bundling
 // monaco's TS/CSS/HTML/JSON language workers (~8 MB) we don't use. IntelliSense is our Roslyn backend.
@@ -7,6 +7,7 @@ import * as monaco from "monaco-editor/editor/editor.api";
 import "monaco-editor/basic-languages/monaco.contribution";
 import editorWorker from "monaco-editor/editor/editor.worker.js?worker";
 import { useEditor } from "./DockLayout";
+import { useAppTheme } from "../ThemeProvider";
 import * as api from "../api";
 
 // C# has no built-in monaco worker (it's syntax-highlight only); IntelliSense comes from our Roslyn
@@ -14,6 +15,13 @@ import * as api from "../api";
 (self as unknown as { MonacoEnvironment: monaco.Environment }).MonacoEnvironment = {
   getWorker: () => new editorWorker(),
 };
+
+// Custom green-on-black theme for the "Terminal" app theme.
+monaco.editor.defineTheme("aspireui-terminal", {
+  base: "vs-dark", inherit: true,
+  rules: [{ token: "", foreground: "33ff88" }, { token: "comment", foreground: "2a8f55" }],
+  colors: { "editor.background": "#050f09", "editor.foreground": "#33ff88" },
+});
 
 function kindOf(tag: string): monaco.languages.CompletionItemKind {
   const K = monaco.languages.CompletionItemKind;
@@ -41,7 +49,8 @@ function extractMessage(err: unknown): string {
 
 export function CodeEditorPanel() {
   const { stack, setStack } = useEditor();
-  const { colorScheme } = useMantineColorScheme();
+  const { current } = useAppTheme();
+  const monacoTheme = current.monaco;
   const hostRef = useRef<HTMLDivElement>(null);
   const edRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const dirtyRef = useRef(false);     // user has unsaved edits
@@ -67,7 +76,7 @@ export function CodeEditorPanel() {
     const ed = monaco.editor.create(hostRef.current, {
       value: "// loading…",
       language: "csharp",
-      theme: colorScheme === "light" ? "vs" : "vs-dark",
+      theme: monacoTheme,
       automaticLayout: true,
       minimap: { enabled: false },
       fontSize: 13,
@@ -151,8 +160,8 @@ export function CodeEditorPanel() {
   }, [id]);
 
   useEffect(() => {
-    monaco.editor.setTheme(colorScheme === "light" ? "vs" : "vs-dark");
-  }, [colorScheme]);
+    monaco.editor.setTheme(monacoTheme);
+  }, [monacoTheme]);
 
   // The generated code must mirror the graph: when the stack changes (a node edited on the canvas, an
   // assistant edit, or our own save) and the user has no unsaved edits, refresh the editor to the
