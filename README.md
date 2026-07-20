@@ -21,6 +21,7 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
 - Property grid for editing resource arguments and capabilities
 - Reference wiring between resources
 - Live C# preview of the generated `Program.cs`, kept in sync with the canvas
+- **Code editor** (Monaco) with real C# IntelliSense (Roslyn-backed); edits re-parse into the graph
 - Run / stop a stack, with a link straight into the Aspire dashboard
 - Publish a stack to **Docker Compose** (via `aspire publish`): view the generated `docker-compose.yaml`, download the bundle, or deploy it locally
 - NuGet packages panel for the AppHost project

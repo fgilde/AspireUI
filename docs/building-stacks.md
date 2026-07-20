@@ -56,6 +56,17 @@ save. It's read-only — think of it as a live receipt, not an editing surface. 
 it: every change on the canvas or in the property grid is round-tripped through the same model that
 generates this code.
 
+## Code editor (Monaco + C# IntelliSense)
+
+The **Code** panel is a full editor for `Program.cs` with C# **IntelliSense** — completion, signature
+help, hover, and live error squiggles — backed by Roslyn on the server. Use it for things the visual
+model can't express directly (a `configure` lambda like `o => o.GitRef = "master"`, an expression, a
+bit of custom wiring). **Save** (button or Ctrl+S) re-parses your code back into the node graph, so the
+canvas stays in sync — anything the graph can't represent is kept as a raw statement. Note: because the
+code is regenerated canonically from the model, **your formatting and comments are not preserved** on
+save. Compile/parse errors are shown inline and your edits are kept so you can fix them. (The editor
+only analyzes — it never runs your code.)
+
 ## Packages panel
 
 The **Packages** panel lists every NuGet package the generated AppHost project needs, and which
