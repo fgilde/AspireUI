@@ -16,22 +16,40 @@ Aspire dashboard link — deep per-resource status on the canvas itself is on th
 Running a stack needs both the **.NET SDK** and **Docker** available wherever AspireUI runs, since
 Aspire resources (Postgres, Redis, Ollama, …) commonly start their own containers.
 
-## Publishing to Docker Compose & deploying
+You can also drive run/stop and the dashboard from the **stack cards** on the overview: each card has
+a live traffic-light (grey/yellow/green/red, with the error detail in the tooltip on failure) and
+▶ / ⏹ / ↗ buttons.
+
+## The Dashboard panel
+
+The editor's **Dashboard** tab gives in-tool access to the Aspire dashboard. When the stack is
+running it shows an **Open dashboard** button (opens the real dashboard in a new tab — the reliable
+path, since the Blazor dashboard blocks embedding) and an optional **Embed (experimental)** toggle
+that renders it in a sandboxed iframe via a built-in reverse proxy. When it isn't running, a Start
+button.
+
+## Publishing & deploying
 
 The editor's **Publish / Deploy** panel turns a stack into real deployment artifacts using Aspire's
-own compose publisher — not a hand-rolled guess. Hitting **Publish (Docker Compose)** materializes a
-copy of the stack augmented with a Docker Compose environment, runs `aspire publish` on it, and shows
-the generated **`docker-compose.yaml`** (syntax-highlighted) plus the **`.env`** of parameters. You
-can **Copy** the YAML or **Download bundle** (a zip of `docker-compose.yaml` + `.env`).
+own publishers — not hand-rolled guesses. The split **Publish** button lets you pick a target:
 
-The `.env` lists parameters (e.g. generated passwords) with empty values — **fill those in before
-deploying**. Then either run `docker compose up -d` yourself in the shown output directory, or hit
-**Deploy now (docker compose up -d)** to have AspireUI run it locally (**Stop (compose down)** tears
-it back down). Deploying needs Docker running on the host; publishing needs the **`aspire` CLI**
-installed (bundled with the Aspire tooling).
+- **Docker Compose** → `docker-compose.yaml` + `.env` (a Docker Compose environment + `aspire publish`).
+- **Kubernetes (Helm)** → a Helm chart (`Chart.yaml`, `values.yaml`, `templates/*`). Uses the preview
+  Kubernetes publisher.
+- **Azure Bicep** → `main.bicep` + per-resource modules for Azure Container Apps (`azd` / `az deployment`).
+- **Aspire Manifest** → `aspire-manifest.json`, a portable deployment descriptor other tools consume.
 
-Kubernetes/Azure and other Aspire publishers, remote deploy targets, and reverse-proxy exposure are
-not wired into the UI yet — but the generated compose bundle is standard and portable.
+The primary artifact is shown syntax-highlighted; **Copy** it or **Download bundle** (a zip of every
+generated file). For **Compose**, the `.env` lists parameters (e.g. generated passwords) with empty
+values — **fill those in before deploying** — and you can **Deploy now (docker compose up -d)** /
+**Stop (compose down)** locally, or drop the bundle into Portainer/Coolify. Publishing needs the
+**`aspire` CLI** installed (bundled with the Aspire tooling); local Compose deploy needs Docker on the host.
+
+## Open in an IDE
+
+The editor's **Open in…** menu launches the materialized project in **VS Code**, **Rider**, or
+**Visual Studio** on the machine AspireUI runs on (it shells the IDE) — handy when the tool runs
+locally. If the IDE isn't found on `PATH`, you get a friendly toast rather than an error.
 
 ## Running AspireUI in development
 

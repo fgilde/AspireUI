@@ -4,3 +4,4 @@
 - [Importing](importing.md)
 - [AI Assistant](ai-assistant.md)
 - [Running & Deploying](running-and-deploying.md)
+- [UI, Themes & Shortcuts](ui-and-shortcuts.md)

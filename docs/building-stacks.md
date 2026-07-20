@@ -4,50 +4,73 @@ A stack is a canvas of resource nodes and references between them, backed 1:1 by
 `Program.cs`. Everything you do in the editor keeps that C# in sync — the **Code preview** panel is
 a live, read-only view of exactly what will be generated.
 
+![The editor](screenshots/editor.png)
+
+## The canvas
+
+Nodes are resources (with a brand icon per type); edges are connections. The canvas has a **minimap**,
+**auto-arrange** (dagre layout) and a **resource search** box (top-left), **snap-to-grid**, and a
+**right-click context menu** per node (edit properties / duplicate / delete). Dragging is live, and a
+per-node status dot reflects the run state while the stack is running.
+
 ## The palette
 
-The palette lists every resource type AspireUI knows about, grouped (containers, databases, AI,
-messaging, …). This list isn't hardcoded: it's built by reflecting over the Aspire hosting
-assemblies (plus a few extra integrations like Ollama, n8n, LocalAI, Supabase, and GitHub
-repositories) referenced by the server project, so new Aspire integrations show up automatically
-once their package is referenced. A curated overlay adds friendlier labels/icons/grouping on top of
-the reflected data — resources without an overlay still work generically.
+The palette lists every resource type AspireUI knows about, grouped (Database, Cache, Messaging,
+Search, Vector, Identity, AI, Compute, Integration, Observability, …). This list isn't hardcoded:
+it's built by **reflecting** over the referenced Aspire hosting assemblies — the official
+`Aspire.Hosting.*` packages plus `CommunityToolkit.Aspire.*` and Nextended integrations — so new
+Aspire integrations show up automatically once their package is referenced. A curated overlay adds
+friendly labels, brand logos, grouping and descriptions on top; resources without an overlay still
+work generically. The generated project only references the packages for resources you actually use.
 
-Click a palette entry to add it to the canvas.
+Click a palette entry to open its add dialog.
 
 ## The add-resource dialog
 
-Adding a resource opens a small form instead of dropping a bare node:
+Adding a resource opens a form (not a bare node) that also teaches you the Aspire API:
 
-- **Name** is always required — it becomes the resource's variable name in the generated code.
-- If the resource's `AddX` method has more than one usable overload (e.g. with vs. without a tag),
-  an **overload** selector picks which signature to use.
-- The chosen overload's parameters render as typed controls: `string` → text input, `int`/numeric →
-  number input, `bool` → switch, `enum` → dropdown. Required fields must be filled before you can
-  confirm; optional ones can stay blank.
+![Add-resource dialog](screenshots/add-dialog.png)
+
+- A one-line **description** of what the resource is.
+- **Name** — required; becomes the resource's variable name in the generated code.
+- If the `AddX` method has more than one usable **overload**, a selector picks the signature.
+- The overload's parameters as typed controls: `string` → text, numeric → number, `bool` → switch,
+  `enum` → dropdown, and **configure-lambdas** (`Action<TOptions>`) expand into their settable fields
+  (e.g. a GitHub repo's `GitRef` branch).
+- **References** — a multiselect of existing resources this one should reference; picking them adds
+  the matching `.WithReference(...)` edges on create.
+- A **live code preview** shows the exact C# the dialog will generate as you type — great for
+  learning what each option produces.
 
 ## The property grid
 
-Selecting a node shows its editable fields:
+Selecting a node shows its editable fields. Small **ℹ️ icons** on the sections explain the underlying
+Aspire concept as you go.
 
-- The **Add** parameters from step above, re-derived from the overload you picked.
-- A **capabilities** section: every `With*` method available on that resource (env vars, ports,
-  volumes, bind mounts, options, …) **and** every `Add*`-prefixed method exposed on the resource's
-  own builder (e.g. `ollama.AddModel("llama3.2")`, `pg.AddDatabase("db")`) — these behave exactly
-  like `With*` calls in the grid and the generated code. Each capability lists its existing calls as
-  rows you can edit or remove, with an add-row form for a new one.
-- **Env vars** get a tidy two-column (name / value) list. A value that's an expression rather than a
-  literal (e.g. wired from a raw `ReferenceExpression` variable) shows as a read-only chip instead
-  of an editable field, since editing it would re-quote and corrupt the expression.
-- Anything not covered by the catalog (an unknown resource, an uncommon method) is still reachable
-  through a generic raw-call escape hatch — editing never gets blocked by an unrecognized method.
+- **Quick settings** (for resources with endpoints): a **Publicly accessible** toggle
+  (`WithExternalHttpEndpoints()`) and an **HTTP port** field (`WithHttpEndpoint(port:)`) — the common
+  cases, with full control still available below.
+- The **Add** parameters, re-derived from the overload.
+- A **capabilities** section: every `With*` method on the resource **and** every `Add*` method on its
+  own builder (e.g. `ollama.AddModel(...)`, `pg.AddDatabase(...)`). Each lists its calls as editable
+  rows with an add-row form.
+- **Environment variables** as a name/value list. Each value has a **Text ⇄ Expr** toggle — Text is a
+  quoted string literal; **Expr** is raw C# (e.g. another resource's endpoint). In Expr mode a 🔗 menu
+  lets you **insert a reference** to another resource (its HTTP endpoint or connection string). Free
+  typing always works.
+- A generic **raw-call** escape hatch for anything the catalog doesn't cover — editing is never blocked.
 
-## References
+## References & dependencies
 
-Wire one resource to another either by dragging an edge on the canvas, or via the node picker
-("which resource, from where") in the properties panel — useful when the canvas is crowded.
-References become `.WithReference(...)`; dependency ordering (`.WaitFor(...)`) is drawn as a dashed
-edge.
+Wire resources by dragging an edge on the canvas, via the References picker in the properties panel,
+or straight from the add dialog. Click an edge's chip to open its menu: toggle **References**
+(`WithReference`) and **Waits for** (`WaitFor`) independently (both can apply), **reverse** the
+direction, or **remove** the connection. `WaitFor`-only edges render dashed.
+
+## Validation
+
+The **Validation** panel (and the health badge in the header) run Roslyn diagnostics over the
+generated code and list any errors/warnings. Clicking the badge focuses the panel and flashes it.
 
 ## Code preview
 
