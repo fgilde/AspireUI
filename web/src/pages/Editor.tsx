@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Menu, ActionIcon } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore } from "@tabler/icons-react";
+import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
+import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
@@ -19,10 +19,48 @@ const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
 export function Editor() {
   const { id = "" } = useParams();
   const nav = useNavigate();
-  const [stack, setStack] = useState<Stack | null>(null);
+  const [stack, setStackState] = useState<Stack | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus>(NOT_RUNNING);
   const dockRef = useRef<DockLayoutHandle>(null);
+
+  // Undo/redo: snapshot the stack before each edit. undo/redo restore + persist a snapshot.
+  const undoRef = useRef<Stack[]>([]);
+  const redoRef = useRef<Stack[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const sync = useCallback(() => { setCanUndo(undoRef.current.length > 0); setCanRedo(redoRef.current.length > 0); }, []);
+  const setStack = useCallback((next: Stack) => {
+    setStackState(prev => {
+      if (prev) { undoRef.current.push(prev); if (undoRef.current.length > 50) undoRef.current.shift(); redoRef.current = []; }
+      return next;
+    });
+    sync();
+  }, [sync]);
+  const undo = useCallback(() => {
+    const prev = undoRef.current.pop();
+    if (!prev) return;
+    setStackState(cur => { if (cur) redoRef.current.push(cur); return prev; });
+    api.saveStack(prev).catch(() => {}); sync();
+  }, [sync]);
+  const redo = useCallback(() => {
+    const next = redoRef.current.pop();
+    if (!next) return;
+    setStackState(cur => { if (cur) undoRef.current.push(cur); return next; });
+    api.saveStack(next).catch(() => {}); sync();
+  }, [sync]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.(".monaco-editor, input, textarea, [contenteditable=true]")) return; // let text fields undo their own
+      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if (e.key === "y" || (e.key === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [undo, redo]);
   const [savedLayouts, setSavedLayouts] = useState<string[]>([]);
   const refreshLayouts = () => setSavedLayouts(dockRef.current?.listNamed() ?? []);
   const saveLayout = () => {
@@ -72,6 +110,12 @@ export function Editor() {
             </Group>
             <Group>
               <RunToolbar />
+              <Tooltip label="Undo (Ctrl+Z)" withArrow>
+                <ActionIcon variant="default" size="lg" disabled={!canUndo} onClick={undo}><IconArrowBackUp size={16} /></ActionIcon>
+              </Tooltip>
+              <Tooltip label="Redo (Ctrl+Shift+Z)" withArrow>
+                <ActionIcon variant="default" size="lg" disabled={!canRedo} onClick={redo}><IconArrowForwardUp size={16} /></ActionIcon>
+              </Tooltip>
               <Menu position="bottom-end" withArrow onOpen={refreshLayouts} width={220}>
                 <Menu.Target>
                   <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}>Layout</Button>
