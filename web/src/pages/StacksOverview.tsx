@@ -9,8 +9,9 @@ import {
 import {
   IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink,
 } from "@tabler/icons-react";
-import { pickAppHost, APP_VERSION, type Stack } from "../model";
+import { pickAppHost, APP_VERSION, runStateColor, type Stack, type RunStatus } from "../model";
 import * as api from "../api";
 import type { TemplateInfo, BundleFile } from "../api";
 import { HelpButton } from "../HelpButton";
@@ -43,6 +44,22 @@ export function StacksOverview() {
   const [name, setName] = useState("");
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [query, setQuery] = useState("");
+  const [statuses, setStatuses] = useState<Record<string, RunStatus>>({});
+
+  // Poll run status for every stack so the cards show a live traffic light + controls.
+  useEffect(() => {
+    if (stacks.length === 0) return;
+    let cancelled = false;
+    const poll = async () => {
+      const entries = await Promise.all(stacks.map(async s =>
+        [s.id, await api.statusStack(s.id).catch(() => ({ state: "NotRunning", log: [] } as RunStatus))] as const));
+      if (!cancelled) setStatuses(Object.fromEntries(entries));
+    };
+    poll();
+    const t = window.setInterval(poll, 4000);
+    return () => { cancelled = true; window.clearInterval(t); };
+  }, [stacks]);
+  const setStatus = (id: string, rs: RunStatus) => setStatuses(m => ({ ...m, [id]: rs }));
   const zipInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -235,7 +252,13 @@ export function StacksOverview() {
             </Center>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {stacks.filter(s => s.name.toLowerCase().includes(query.trim().toLowerCase())).map(s => (
+              {stacks.filter(s => s.name.toLowerCase().includes(query.trim().toLowerCase())).map(s => {
+                const st = statuses[s.id];
+                const state = st?.state ?? "NotRunning";
+                const dot = runStateColor(state) ?? "gray";
+                const failDetail = state === "Failed" ? (st!.log.slice(-6).join("\n") || "Run failed") : null;
+                const active = state === "Running" || state === "Starting";
+                return (
                 <Card
                   key={s.id}
                   withBorder
@@ -246,7 +269,14 @@ export function StacksOverview() {
                   onClick={() => nav(`/stacks/${s.id}`)}
                 >
                   <Group justify="space-between" wrap="nowrap" align="flex-start">
-                    <Text fw={600} lineClamp={1}>{s.name}</Text>
+                    <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
+                      <Tooltip label={failDetail ?? state} withArrow multiline maw={360}
+                        styles={failDetail ? { tooltip: { whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 11, textAlign: "left" } } : undefined}>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0,
+                          boxShadow: active ? `0 0 6px ${dot}` : undefined }} />
+                      </Tooltip>
+                      <Text fw={600} lineClamp={1}>{s.name}</Text>
+                    </Group>
                     <Menu position="bottom-end" withArrow>
                       <Menu.Target>
                         <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
@@ -266,12 +296,28 @@ export function StacksOverview() {
                       </Menu.Dropdown>
                     </Menu>
                   </Group>
-                  <Group mt="sm" gap="xs">
-                    <Badge variant="light" color="indigo">{s.nodes.length} resource{s.nodes.length === 1 ? "" : "s"}</Badge>
-                    <Badge variant="outline" color="gray">{s.targetFramework}</Badge>
+                  <Group mt="sm" gap="xs" justify="space-between">
+                    <Group gap="xs">
+                      <Badge variant="light" color="indigo">{s.nodes.length} resource{s.nodes.length === 1 ? "" : "s"}</Badge>
+                      <Badge variant="outline" color="gray">{s.targetFramework}</Badge>
+                    </Group>
+                    <Group gap={4} onClick={e => e.stopPropagation()}>
+                      {active ? (
+                        <Tooltip label="Stop" withArrow><ActionIcon size="sm" variant="subtle" color="red"
+                          onClick={() => api.stopStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e))}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                      ) : (
+                        <Tooltip label="Start" withArrow><ActionIcon size="sm" variant="subtle" color="green"
+                          onClick={() => api.runStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e, "Could not start"))}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>
+                      )}
+                      {state === "Running" && st?.dashboardUrl && (
+                        <Tooltip label="Open dashboard" withArrow><ActionIcon size="sm" variant="subtle" component="a"
+                          href={st.dashboardUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
+                      )}
+                    </Group>
                   </Group>
                 </Card>
-              ))}
+                );
+              })}
             </SimpleGrid>
           )}
         </Container>
