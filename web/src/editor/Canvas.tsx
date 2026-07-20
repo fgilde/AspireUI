@@ -6,6 +6,7 @@ import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil } from 
 import type { Stack, RunState } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier } from "../model";
 import { resourceVisual } from "../resourceIcons";
+import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 
 // Small dot showing the current stack-level run state for this node. This is
@@ -98,8 +99,11 @@ export function Canvas({ stack, setStack, onSelect, runState }:
 
   const deleteNodeById = useCallback((nodeId: string) => {
     const n = stack.nodes.find(x => x.id === nodeId);
-    if (!n || !window.confirm(`Delete "${n.resourceName}"? This also removes its connections and any code that references it.`)) return;
-    api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); });
+    if (!n) return;
+    confirmDelete(`"${n.resourceName}"`, "This also removes its connections and any code that references it.").then(ok => {
+      if (!ok) return;
+      api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); toastOk("Resource deleted"); }).catch(toastErr);
+    });
   }, [stack, setStack, onSelect]);
 
   // All edge mutations rewrite the pair's edges and persist the whole stack (edges live in the model,

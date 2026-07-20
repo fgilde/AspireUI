@@ -13,6 +13,9 @@
   "dependencies": {
     "@mantine/core": "^9.4.1",
     "@mantine/hooks": "^9.4.1",
+    "@mantine/modals": "^9.4.1",
+    "@mantine/notifications": "^9.4.1",
+    "@mantine/spotlight": "^9.4.1",
     "@tabler/icons-react": "^3.45.0",
     "@xyflow/react": "^12.11.2",
     "dockview-react": "^7.0.2",

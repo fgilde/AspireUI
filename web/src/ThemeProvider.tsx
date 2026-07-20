@@ -1,6 +1,10 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
+import { ModalsProvider } from "@mantine/modals";
+import { Notifications } from "@mantine/notifications";
+import "@mantine/notifications/styles.css";
+import "@mantine/spotlight/styles.css";
 import { THEMES, DEFAULT_THEME, THEME_KEY, getTheme, type AppTheme } from "./themes";
 
 interface ThemeCtx {
@@ -21,7 +25,8 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{ themeId, setThemeId, current, themes: THEMES }}>
       <MantineProvider theme={current.theme} forceColorScheme={current.scheme}>
-        {children}
+        <Notifications position="top-right" />
+        <ModalsProvider>{children}</ModalsProvider>
       </MantineProvider>
     </Ctx.Provider>
   );

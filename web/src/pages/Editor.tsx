@@ -11,6 +11,7 @@ import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
+import { promptText, toastOk } from "../ui";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -25,8 +26,9 @@ export function Editor() {
   const [savedLayouts, setSavedLayouts] = useState<string[]>([]);
   const refreshLayouts = () => setSavedLayouts(dockRef.current?.listNamed() ?? []);
   const saveLayout = () => {
-    const name = window.prompt("Save current layout as:")?.trim();
-    if (name) { dockRef.current?.saveNamed(name); refreshLayouts(); }
+    promptText("Save layout", "Layout name").then(name => {
+      if (name) { dockRef.current?.saveNamed(name); refreshLayouts(); toastOk(`Layout "${name}" saved`); }
+    });
   };
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);

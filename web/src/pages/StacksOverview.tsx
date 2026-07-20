@@ -17,6 +17,7 @@ import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
+import { confirmDelete, toastOk, toastErr } from "../ui";
 import "./StacksOverview.css";
 
 const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
@@ -66,12 +67,12 @@ export function StacksOverview() {
   };
 
   const finishImport = async (bundleName: string, files: BundleFile[]) => {
-    if (files.length === 0) { window.alert("No .cs/.csproj files found to import."); return; }
+    if (files.length === 0) { toastErr("No .cs/.csproj files found to import.", "Nothing to import"); return; }
     try {
       const s = await api.importBundle(bundleName, files, pickAppHost(files));
       nav(`/stacks/${s.id}`);
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : String(e));
+      toastErr(e, "Import failed");
     }
   };
 
@@ -97,7 +98,7 @@ export function StacksOverview() {
       if (!isImportable(file.name)) continue;
       files.push({ path: file.webkitRelativePath || file.name, content: await file.text() });
     }
-    window.alert("Folder picking isn't supported in this browser — some referenced files may be missing.");
+    toastErr("Folder picking isn't supported in this browser — some referenced files may be missing.", "Heads up");
     const folderName = files.find(f => f.path.includes("/"))?.path.split("/")[0] ?? "Imported";
     await finishImport(folderName, files);
   };
@@ -111,7 +112,7 @@ export function StacksOverview() {
       await finishImport(dirHandle.name, files);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return; // user cancelled the picker
-      window.alert(e instanceof Error ? e.message : String(e));
+      toastErr(e);
     }
   };
 
@@ -240,8 +241,8 @@ export function StacksOverview() {
                       color="red"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (!window.confirm(`Delete stack "${s.name}"? This can't be undone.`)) return;
-                        await api.deleteStack(s.id); load();
+                        if (!(await confirmDelete(`stack "${s.name}"`))) return;
+                        await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
                       }}
                       aria-label={`Delete ${s.name}`}
                     >

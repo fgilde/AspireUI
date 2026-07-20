@@ -4,6 +4,7 @@ import { IconTrash } from "@tabler/icons-react";
 import type { Stack, ResourceType } from "../model";
 import { removeNode } from "../model";
 import { resourceVisual } from "../resourceIcons";
+import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 
@@ -17,8 +18,10 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
 
   const onDelete = () => {
     if (!nodeId || !node) return;
-    if (!window.confirm(`Delete "${node.resourceName}"? This also removes its connections and any code that references it.`)) return;
-    api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); });
+    confirmDelete(`"${node.resourceName}"`, "This also removes its connections and any code that references it.").then(ok => {
+      if (!ok) return;
+      api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); toastOk("Resource deleted"); }).catch(toastErr);
+    });
   };
 
   const others = useMemo(() => stack.nodes.filter(n => n.id !== nodeId), [stack.nodes, nodeId]);

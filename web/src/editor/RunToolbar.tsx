@@ -2,6 +2,7 @@ import { Button, Group, Badge, Anchor, Tooltip } from "@mantine/core";
 import { IconPlayerPlay, IconPlayerStop, IconExternalLink, IconDownload } from "@tabler/icons-react";
 import * as api from "../api";
 import { useEditor } from "./DockLayout";
+import { confirmAction, toastErr } from "../ui";
 
 export function RunToolbar() {
   const { stack, runStatus: st, setRunStatus } = useEditor();
@@ -13,10 +14,11 @@ export function RunToolbar() {
     if (stack.nodes.some(n => n.addMethod === "AddGithubRepository")) {
       const health = await api.envHealth().catch(() => null);
       if (health && !health.git.ok &&
-          !window.confirm("This stack has a GitHub-repository resource, but git was not found on the host. Aspire will fail to clone it at run time. Run anyway?"))
+          !(await confirmAction("git not found",
+            "This stack has a GitHub-repository resource, but git was not found on the host. Aspire will fail to clone it at run time. Run anyway?", "Run anyway")))
         return;
     }
-    setRunStatus(await api.runStack(stack.id));
+    try { setRunStatus(await api.runStack(stack.id)); } catch (e) { toastErr(e, "Could not start"); }
   };
 
   return (
