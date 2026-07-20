@@ -44,9 +44,21 @@ export function CodeEditorPanel() {
   const { colorScheme } = useMantineColorScheme();
   const hostRef = useRef<HTMLDivElement>(null);
   const edRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const dirtyRef = useRef(false);     // user has unsaved edits
+  const applyingRef = useRef(false);  // a programmatic setValue is in flight (don't mark dirty)
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string | null>(null);
   const id = stack.id;
+
+  // Pull the canonical generated code from the server and put it in the editor without marking dirty.
+  const applyRemote = (ed: monaco.editor.IStandaloneCodeEditor) =>
+    api.previewStack(id).then(code => {
+      if (code === ed.getValue()) return;
+      applyingRef.current = true;
+      ed.setValue(code);
+      applyingRef.current = false;
+      dirtyRef.current = false;
+    });
 
   // Mount the editor once + register Roslyn-backed providers for this stack. Providers read the live
   // model text, so they stay correct as the user types.
@@ -60,9 +72,16 @@ export function CodeEditorPanel() {
       minimap: { enabled: false },
       fontSize: 13,
       scrollBeyondLastLine: false,
+      // Render suggest/hover widgets at document body level, not inside the dockview panel — the panel
+      // clips overflow, which otherwise hides the completion popup AND lets the (invisible, open) widget
+      // swallow keys like space.
+      fixedOverflowWidgets: true,
+      quickSuggestions: true,
+      acceptSuggestionOnCommitCharacter: false,
     });
     edRef.current = ed;
-    api.previewStack(id).then(code => ed.setValue(code));
+    ed.onDidChangeModelContent(() => { if (!applyingRef.current) dirtyRef.current = true; });
+    applyRemote(ed);
 
     let diagTimer: number | undefined;
     const runDiagnostics = () => {
@@ -132,12 +151,24 @@ export function CodeEditorPanel() {
     monaco.editor.setTheme(colorScheme === "light" ? "vs" : "vs-dark");
   }, [colorScheme]);
 
+  // The generated code must mirror the graph: when the stack changes (a node edited on the canvas, an
+  // assistant edit, or our own save) and the user has no unsaved edits, refresh the editor to the
+  // canonical Program.cs — same content as the read-only Code preview.
+  const stackKey = JSON.stringify(stack);
+  useEffect(() => {
+    const ed = edRef.current;
+    if (ed && !dirtyRef.current) void applyRemote(ed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stackKey]);
+
   const save = async () => {
     const code = edRef.current?.getValue();
     if (code == null) return;
     setBusy(true); setErrors(null);
     try {
-      setStack(await api.codeSave(id, stack.name, code));
+      const updated = await api.codeSave(id, stack.name, code);
+      dirtyRef.current = false;       // saved — let the resync show the canonical regenerated code
+      setStack(updated);
     } catch (err) {
       setErrors(extractMessage(err));
     } finally {
