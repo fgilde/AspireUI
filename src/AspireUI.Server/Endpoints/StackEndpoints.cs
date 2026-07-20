@@ -77,6 +77,11 @@ public static class StackEndpoints
             return Persist(s);
         });
 
+        app2.MapPost("/stacks/{id}/duplicate", (string id) =>
+            store.Get(id) is { } s
+                ? Persist(s with { Id = Guid.NewGuid().ToString("n"), Name = s.Name + " copy" })
+                : Results.NotFound());
+
         app2.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
             templates.Create(templateId) is { } s ? Persist(s) : Results.NotFound());
 

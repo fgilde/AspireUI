@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
-  IconUpload, IconFileZip, IconFolder, IconSettings,
+  IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, type Stack } from "../model";
 import * as api from "../api";
@@ -17,7 +17,7 @@ import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
-import { confirmDelete, toastOk, toastErr } from "../ui";
+import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
 const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
@@ -42,6 +42,7 @@ export function StacksOverview() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
+  const [query, setQuery] = useState("");
   const zipInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +66,11 @@ export function StacksOverview() {
     const s = await api.createFromTemplate(templateId);
     nav(`/stacks/${s.id}`);
   };
+
+  const rename = (s: Stack) => promptText("Rename stack", "Name", s.name).then(name => {
+    if (name) api.saveStack({ ...s, name }).then(() => { load(); toastOk("Stack renamed"); }).catch(toastErr);
+  });
+  const duplicate = (s: Stack) => api.duplicateStack(s.id).then(() => { load(); toastOk("Stack duplicated"); }).catch(toastErr);
 
   const finishImport = async (bundleName: string, files: BundleFile[]) => {
     if (files.length === 0) { toastErr("No .cs/.csproj files found to import.", "Nothing to import"); return; }
@@ -201,6 +207,10 @@ export function StacksOverview() {
               <Title order={2} fw={600}>Stacks</Title>
               <Text c="dimmed" size="sm">Your Aspire hosting projects, ready to open or run.</Text>
             </div>
+            {stacks.length > 0 && (
+              <TextInput w={240} placeholder="Search stacks…" value={query}
+                onChange={e => setQuery(e.currentTarget.value)} leftSection={<IconSearch size={14} />} />
+            )}
           </Group>
 
           {loading ? (
@@ -224,7 +234,7 @@ export function StacksOverview() {
             </Center>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {stacks.map(s => (
+              {stacks.filter(s => s.name.toLowerCase().includes(query.trim().toLowerCase())).map(s => (
                 <Card
                   key={s.id}
                   withBorder
@@ -236,18 +246,24 @@ export function StacksOverview() {
                 >
                   <Group justify="space-between" wrap="nowrap" align="flex-start">
                     <Text fw={600} lineClamp={1}>{s.name}</Text>
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!(await confirmDelete(`stack "${s.name}"`))) return;
-                        await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
-                      }}
-                      aria-label={`Delete ${s.name}`}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
+                    <Menu position="bottom-end" withArrow>
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
+                          onClick={e => e.stopPropagation()}>
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown onClick={e => e.stopPropagation()}>
+                        <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
+                        <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item color="red" leftSection={<IconTrash size={14} />}
+                          onClick={async () => {
+                            if (!(await confirmDelete(`stack "${s.name}"`))) return;
+                            await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
+                          }}>Delete</Menu.Item>
+                      </Menu.Dropdown>
+                    </Menu>
                   </Group>
                   <Group mt="sm" gap="xs">
                     <Badge variant="light" color="indigo">{s.nodes.length} resource{s.nodes.length === 1 ? "" : "s"}</Badge>

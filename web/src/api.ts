@@ -56,6 +56,7 @@ export const addEdge = (id: string, edge: Partial<Edge>): Promise<Stack> =>
 
 export const previewStack = (id: string): Promise<string> => fetch(`${base}/stacks/${id}/preview`).then(r => r.text());
 export const deleteStack = (id: string): Promise<void> => fetch(`${base}/stacks/${id}`, { method: "DELETE" }).then(() => undefined);
+export const duplicateStack = (id: string): Promise<Stack> => fetch(`${base}/stacks/${id}/duplicate`, { method: "POST" }).then(ok);
 export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { method: "POST" }).then(ok);
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
