@@ -230,6 +230,7 @@ export function StacksOverview() {
                 <Button mt="sm" leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
                   New Stack
                 </Button>
+                <Text c="dimmed" size="xs" mt="md">Tip: press <b>Ctrl/⌘ + K</b> anywhere for the command palette, or <b>?</b> for shortcuts.</Text>
               </MStack>
             </Center>
           ) : (

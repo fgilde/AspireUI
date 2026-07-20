@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper } from "@mantine/core";
+import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper, Chip } from "@mantine/core";
 import { IconSend } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
 import * as api from "../api";
@@ -72,6 +72,11 @@ export function AssistPanel() {
           ))}
         </MStack>
       </ScrollArea>
+      <Group px="xs" pt="xs" gap={6}>
+        {["Add a Redis cache", "Add a Postgres database", "Explain this stack", "What could be improved?"].map(s => (
+          <Chip key={s} size="xs" checked={false} variant="light" onClick={() => setPrompt(s)}>{s}</Chip>
+        ))}
+      </Group>
       <Group p="xs" align="flex-end" wrap="nowrap" gap="xs">
         <Textarea
           style={{ flex: 1 }}
