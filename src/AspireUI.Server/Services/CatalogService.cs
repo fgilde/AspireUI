@@ -8,7 +8,7 @@ namespace AspireUI.Server.Services;
 public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string? EnumTypeName, string Label, List<CatalogParam>? Fields = null);
 public record CatalogOverload(List<CatalogParam> Params);
 public record CatalogMethod(string Method, string Label, List<CatalogOverload> Overloads);
-public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs);
+public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, string? Description, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs);
 
 public class CatalogService
 {
@@ -105,6 +105,7 @@ public class CatalogService
                 over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : grp.Key[3..],
                 over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
+                over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
                 addOverloads, withs));
         }
         return result.OrderBy(r => r.Group).ThenBy(r => r.AddMethod).ToList();

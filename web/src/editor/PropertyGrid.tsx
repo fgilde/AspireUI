@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu } from "@mantine/core";
-import { IconPlus, IconX, IconLink } from "@tabler/icons-react";
+import { IconPlus, IconX, IconLink, IconInfoCircle } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
 import * as api from "../api";
 
 const ENV_METHOD = "WithEnvironment";
+
+// Small explain-icon — hover for an Aspire concept hint, so the grid teaches while you build.
+function InfoDot({ text }: { text: string }) {
+  return (
+    <Tooltip label={text} withArrow multiline w={280} position="top">
+      <IconInfoCircle size={13} style={{ opacity: 0.55, cursor: "help", verticalAlign: "middle" }} />
+    </Tooltip>
+  );
+}
+function labelWith(text: string, info: string) {
+  return <Group gap={5} wrap="nowrap" component="span">{text}<InfoDot text={info} /></Group>;
+}
 
 function field(p: CatalogParam, value: string, onChange: (v: string) => void) {
   if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
@@ -79,7 +91,8 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
       {(canExternal || canHttp) && (
         <div>
-          <Divider my="xs" label="Quick settings" labelPosition="left" />
+          <Divider my="xs" labelPosition="left" label={labelWith("Quick settings",
+            "The most common endpoint settings. 'Publicly accessible' emits WithExternalHttpEndpoints(); 'HTTP port' emits WithHttpEndpoint(port:). Full detail is in the capabilities below.")} />
           {canExternal && (
             <Switch mb="xs" label="Publicly accessible" checked={isExternal}
               description="Exposes an external HTTP endpoint (WithExternalHttpEndpoints). Off = internal only."
@@ -96,7 +109,8 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
       {hasEnv && (
         <div>
-          <Divider my="xs" label="Environment variables" labelPosition="left" />
+          <Divider my="xs" labelPosition="left" label={labelWith("Environment variables",
+            "Emitted as WithEnvironment(\"KEY\", value). 'Text' = a literal string; 'Expr' = raw C# (e.g. another resource's endpoint) — use the link icon to reference a resource.")} />
           {envRows.map((row, ri) => {
             const rawValue = row[1] ?? '""';
             const isExpression = !rawValue.trim().startsWith('"');
@@ -211,7 +225,8 @@ export function PropertyGrid({ stack, node, rt, setStack }:
         </Tooltip>
       )}
 
-      <Divider my="xs" label="Raw call (advanced)" labelPosition="left" />
+      <Divider my="xs" labelPosition="left" label={labelWith("Raw call (advanced)",
+        "Append any fluent call verbatim, e.g. WithReplicas / WithLifetime. Args are raw C# literals, emitted as {resource}.{Method}(args) in Program.cs.")} />
       <Text size="xs" c="dimmed">For anything not covered above. Args are raw C# literals.</Text>
       <Group gap="xs" align="end">
         <TextInput style={{ flex: 1 }} label="Method" placeholder="WithSomething" value={rawMethod} onChange={e => setRawMethod(e.currentTarget.value)} />

@@ -18,8 +18,11 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     return by;
   }, [cat, q]);
 
-  const onCreate = (node: Node) => {
-    api.saveStack({ ...stack, nodes: [...stack.nodes, node] }).then(setStack);
+  const onCreate = (node: Node, refIds: string[]) => {
+    const edges = refIds.map(toNodeId => ({
+      id: "e" + crypto.randomUUID().slice(0, 8), fromNodeId: node.id, toNodeId, kind: "reference",
+    }));
+    api.saveStack({ ...stack, nodes: [...stack.nodes, node], edges: [...stack.edges, ...edges] }).then(setStack);
     setSelectedRt(null);
   };
 
@@ -46,6 +49,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           rt={selectedRt}
           existingCount={stack.nodes.filter(n => n.addMethod === selectedRt.addMethod).length}
           totalCount={stack.nodes.length}
+          nodes={stack.nodes}
           onCreate={onCreate}
           onClose={() => setSelectedRt(null)}
         />
