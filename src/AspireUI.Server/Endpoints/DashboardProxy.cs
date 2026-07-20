@@ -30,7 +30,7 @@ public static class DashboardProxy
             var baseUrl = run.DashboardBase(id);
             if (baseUrl is null) { ctx.Response.StatusCode = StatusCodes.Status404NotFound; return; }
             var rest = ctx.Request.RouteValues["rest"] as string ?? "";
-            var transformer = new DashTransformer(id, rest);
+            var transformer = new DashTransformer(id, rest, baseUrl);
 
             // WebSocket upgrades (Blazor _blazor hub) can't be buffered — forward directly.
             if (ctx.WebSockets.IsWebSocketRequest)
@@ -63,7 +63,7 @@ public static class DashboardProxy
         }).RequireAuthorization();
     }
 
-    private sealed class DashTransformer(string id, string rest) : HttpTransformer
+    private sealed class DashTransformer(string id, string rest, string baseUrl) : HttpTransformer
     {
         public override async ValueTask TransformRequestAsync(HttpContext ctx, HttpRequestMessage req, string destinationPrefix, CancellationToken ct)
         {
@@ -71,16 +71,25 @@ public static class DashboardProxy
             var query = ctx.Request.QueryString.Value ?? "";
             req.RequestUri = new Uri($"{destinationPrefix.TrimEnd('/')}/{rest}{query}");
             req.Headers.Host = null; // derive Host from the destination URI
-            _ = id;
         }
 
-        public override ValueTask<bool> TransformResponseAsync(HttpContext ctx, HttpResponseMessage? resp, CancellationToken ct)
+        public override async ValueTask<bool> TransformResponseAsync(HttpContext ctx, HttpResponseMessage? resp, CancellationToken ct)
         {
-            var result = base.TransformResponseAsync(ctx, resp, ct);
+            var result = await base.TransformResponseAsync(ctx, resp, ct);
             // Strip the framing guards so the iframe can render it.
             ctx.Response.Headers.Remove("X-Frame-Options");
             ctx.Response.Headers.Remove("Content-Security-Policy");
             ctx.Response.Headers.Remove("Content-Security-Policy-Report-Only");
+            // Keep redirects inside the proxy subpath, else a `Location: /` bounces the iframe to our SPA.
+            var loc = ctx.Response.Headers.Location.ToString();
+            if (!string.IsNullOrEmpty(loc))
+            {
+                string? rewritten =
+                    loc.StartsWith(baseUrl, StringComparison.OrdinalIgnoreCase) ? $"/dash/{id}{loc[baseUrl.Length..]}"
+                    : loc.StartsWith('/') && !loc.StartsWith("/dash/", StringComparison.Ordinal) ? $"/dash/{id}{loc}"
+                    : null;
+                if (rewritten is not null) ctx.Response.Headers.Location = rewritten;
+            }
             return result;
         }
     }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip } from "@mantine/core";
-import { IconPlus, IconX } from "@tabler/icons-react";
+import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu } from "@mantine/core";
+import { IconPlus, IconX, IconLink } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
 import * as api from "../api";
@@ -55,6 +55,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   };
 
   const envRows = readWithRows(draft, ENV_METHOD);
+  const otherNodes = stack.nodes.filter(n => n.id !== node.id);
 
   // Simplified controls for the most common Aspire endpoint settings — only for resources that
   // actually expose them. The detailed capability grid below still allows the full form.
@@ -120,6 +121,20 @@ export function PropertyGrid({ stack, node, rt, setStack }:
                   value={isExpression ? rawValue : fromLiteral(rawValue)}
                   styles={isExpression ? { input: { fontFamily: "monospace", color: "var(--mantine-color-grape-text)" } } : undefined}
                   onChange={e => setVal(isExpression ? e.currentTarget.value : toLiteral(e.currentTarget.value, "string"))} />
+                {isExpression && otherNodes.length > 0 && (
+                  <Menu position="bottom-end" withArrow width={260}>
+                    <Menu.Target>
+                      <Tooltip label="Reference another resource" withArrow><ActionIcon variant="subtle"><IconLink size={14} /></ActionIcon></Tooltip>
+                    </Menu.Target>
+                    <Menu.Dropdown mah={300} style={{ overflowY: "auto" }}>
+                      <Menu.Label>Insert a reference</Menu.Label>
+                      {otherNodes.map(n => [
+                        <Menu.Item key={n.id + "h"} onClick={() => setVal(`${n.varName}.GetEndpoint("http")`)}>{n.resourceName} — HTTP endpoint</Menu.Item>,
+                        <Menu.Item key={n.id + "c"} onClick={() => setVal(`${n.varName}.Resource.ConnectionStringExpression`)}>{n.resourceName} — connection string</Menu.Item>,
+                      ])}
+                    </Menu.Dropdown>
+                  </Menu>
+                )}
                 <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
                   <IconX size={14} />
                 </ActionIcon>
