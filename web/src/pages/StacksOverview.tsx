@@ -238,7 +238,11 @@ export function StacksOverview() {
                     <ActionIcon
                       variant="subtle"
                       color="red"
-                      onClick={async (e) => { e.stopPropagation(); await api.deleteStack(s.id); load(); }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!window.confirm(`Delete stack "${s.name}"? This can't be undone.`)) return;
+                        await api.deleteStack(s.id); load();
+                      }}
                       aria-label={`Delete ${s.name}`}
                     >
                       <IconTrash size={16} />

@@ -1,10 +1,10 @@
 import { ReactFlow, Background, Controls, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash } from "@tabler/icons-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton } from "@mantine/core";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil } from "@tabler/icons-react";
 import type { Stack, RunState } from "../model";
-import { removeNode, runStateColor } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier } from "../model";
 import { resourceVisual } from "../resourceIcons";
 import * as api from "../api";
 
@@ -83,6 +83,24 @@ const edgeTypes = { editable: EditableEdge };
 export function Canvas({ stack, setStack, onSelect, runState }:
   { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
   const { colorScheme } = useMantineColorScheme();
+  const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+
+  const duplicateNode = useCallback((nodeId: string) => {
+    const n = stack.nodes.find(x => x.id === nodeId);
+    if (!n) return;
+    const taken = new Set(stack.nodes.map(x => x.resourceName));
+    let name = `${n.resourceName}-copy`, i = 2;
+    while (taken.has(name)) name = `${n.resourceName}-copy${i++}`;
+    const copy = { ...n, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+      resourceName: name, x: n.x + 40, y: n.y + 40 };
+    api.saveStack({ ...stack, nodes: [...stack.nodes, copy] }).then(setStack);
+  }, [stack, setStack]);
+
+  const deleteNodeById = useCallback((nodeId: string) => {
+    const n = stack.nodes.find(x => x.id === nodeId);
+    if (!n || !window.confirm(`Delete "${n.resourceName}"? This also removes its connections and any code that references it.`)) return;
+    api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); });
+  }, [stack, setStack, onSelect]);
 
   // All edge mutations rewrite the pair's edges and persist the whole stack (edges live in the model,
   // so one saveStack is enough — no per-edge endpoints needed).
@@ -164,8 +182,27 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       colorMode={colorScheme === "light" ? "light" : "dark"}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
-      onNodeClick={(_, n) => onSelect(n.id)} fitView>
+      onNodeClick={(_, n) => onSelect(n.id)}
+      onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
+      onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
       <Background /><Controls />
+      {menu && (
+        <Paper shadow="md" withBorder p={4} radius="sm"
+          style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}
+          onMouseLeave={() => setMenu(null)}>
+          {[
+            { icon: IconPencil, label: "Edit properties", run: () => onSelect(menu.nodeId), color: undefined },
+            { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
+            { icon: IconTrash, label: "Delete", run: () => deleteNodeById(menu.nodeId), color: "var(--mantine-color-red-text)" },
+          ].map(item => (
+            <UnstyledButton key={item.label} onClick={() => { item.run(); setMenu(null); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "6px 8px", borderRadius: 4, fontSize: 13, color: item.color }}
+              className="ctx-item">
+              <item.icon size={15} /> {item.label}
+            </UnstyledButton>
+          ))}
+        </Paper>
+      )}
     </ReactFlow>
   );
 }
