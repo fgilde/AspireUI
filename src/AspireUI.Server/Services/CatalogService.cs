@@ -246,6 +246,14 @@ public class CatalogService
                      "Nextended.Aspire.Hosting.LocalAI",
                      "Nextended.Aspire",
                      "CommunityToolkit.Aspire.Hosting.Ollama",
+                     // Catalog breadth (referenced in the .csproj; force-load so their AddX reflect in):
+                     "Aspire.Hosting.SqlServer", "Aspire.Hosting.MySql", "Aspire.Hosting.MongoDB",
+                     "Aspire.Hosting.Kafka", "Aspire.Hosting.RabbitMQ", "Aspire.Hosting.Nats",
+                     "Aspire.Hosting.Elasticsearch", "Aspire.Hosting.Keycloak", "Aspire.Hosting.Seq",
+                     "Aspire.Hosting.Valkey", "Aspire.Hosting.Garnet", "Aspire.Hosting.Qdrant",
+                     "Aspire.Hosting.Milvus", "Aspire.Hosting.Azure.CosmosDB",
+                     "CommunityToolkit.Aspire.Hosting.Java", "CommunityToolkit.Aspire.Hosting.ActiveMQ",
+                     "CommunityToolkit.Aspire.Hosting.Golang", "CommunityToolkit.Aspire.Hosting.Dapr",
                  })
         {
             try { Assembly.Load(name); } catch { /* package not present/loadable; catalog just omits it */ }

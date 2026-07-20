@@ -18,6 +18,26 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
+    <!-- Catalog breadth: the server references these purely so reflection can surface their AddX
+         resources; a generated stack only references the packages for resources it actually uses. -->
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="*" />
+    <PackageReference Include="Aspire.Hosting.MySql" Version="*" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Kafka" Version="*" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Nats" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Elasticsearch" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6" />
+    <PackageReference Include="Aspire.Hosting.Seq" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Valkey" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Garnet" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Qdrant" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Milvus" Version="*" />
+    <PackageReference Include="Aspire.Hosting.Azure.CosmosDB" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Java" Version="13.4.1-beta.686" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" Version="13.4.1-beta.686" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.1-beta.686" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.4.1-beta.686" />
     <PackageReference Include="Nextended.Aspire" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />

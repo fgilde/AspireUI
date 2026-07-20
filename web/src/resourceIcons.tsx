@@ -1,6 +1,10 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
-import { siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio } from "simple-icons";
+import {
+  siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
+  siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
+  siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo,
+} from "simple-icons";
 
 type Brand = { path: string };
 interface Visual { si?: Brand; tabler?: Icon; color: string }
@@ -26,6 +30,30 @@ const MAP: Record<string, Visual> = {
   AddParameter:        { tabler: IconSettings, color: "#64748B" },
   AddConnectionString: { tabler: IconPlugConnected, color: "#64748B" },
   AddMinioS3OnNfs:     { si: siMinio, color: "#C72E49" },
+
+  AddSqlServer:        { tabler: IconDatabase, color: "#CC2927" },
+  AddMySql:            { si: siMysql, color: "#4479A1" },
+  AddMongoDB:          { si: siMongodb, color: "#47A248" },
+  AddAzureCosmosDB:    { tabler: IconDatabase, color: "#3999D6" },
+  AddValkey:           { tabler: IconDatabase, color: "#AA6CF5" },
+  AddGarnet:           { tabler: IconDatabase, color: "#B23A48" },
+  AddKafka:            { si: siApachekafka, color: TEXT },
+  AddRabbitMQ:         { si: siRabbitmq, color: "#FF6600" },
+  AddNats:             { si: siNatsdotio, color: "#27AAE1" },
+  AddActiveMQ:         { tabler: IconMessages, color: "#78A22F" },
+  AddActiveMQArtemis:  { tabler: IconMessages, color: "#78A22F" },
+  AddElasticsearch:    { si: siElasticsearch, color: "#00BFB3" },
+  AddKeycloak:         { si: siKeycloak, color: TEXT },
+  AddSeq:              { tabler: IconReportAnalytics, color: "#00A9E0" },
+  AddQdrant:           { si: siQdrant, color: "#DC244C" },
+  AddMilvus:           { si: siMilvus, color: "#00A1EA" },
+  AddDaprComponent:    { si: siDapr, color: "#4756C7" },
+  AddDaprPubSub:       { si: siDapr, color: "#4756C7" },
+  AddDaprStateStore:   { si: siDapr, color: "#4756C7" },
+  AddJavaApp:          { si: siOpenjdk, color: TEXT },
+  AddJavaContainerApp: { si: siOpenjdk, color: TEXT },
+  AddSpringApp:        { si: siSpring, color: "#6DB33F" },
+  AddGolangApp:        { si: siGo, color: "#00ADD8" },
 };
 const FALLBACK: Visual = { tabler: IconCube, color: "#7C8593" };
 
