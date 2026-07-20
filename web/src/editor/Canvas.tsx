@@ -1,8 +1,9 @@
-import { ReactFlow, Background, Controls, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
+import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil } from "@tabler/icons-react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput } from "@mantine/core";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid } from "@tabler/icons-react";
+import dagre from "dagre";
 import type { Stack, RunState } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier } from "../model";
 import { resourceVisual } from "../resourceIcons";
@@ -85,6 +86,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
   const { colorScheme } = useMantineColorScheme();
   const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [query, setQuery] = useState("");
 
   const duplicateNode = useCallback((nodeId: string) => {
     const n = stack.nodes.find(x => x.id === nodeId);
@@ -95,6 +97,19 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     const copy = { ...n, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
       resourceName: name, x: n.x + 40, y: n.y + 40 };
     api.saveStack({ ...stack, nodes: [...stack.nodes, copy] }).then(setStack);
+  }, [stack, setStack]);
+
+  // Auto-arrange the graph left-to-right with dagre, then persist the new positions.
+  const autoLayout = useCallback(() => {
+    if (stack.nodes.length === 0) return;
+    const g = new dagre.graphlib.Graph();
+    g.setGraph({ rankdir: "LR", nodesep: 50, ranksep: 90 });
+    g.setDefaultEdgeLabel(() => ({}));
+    stack.nodes.forEach(n => g.setNode(n.id, { width: 170, height: 74 }));
+    stack.edges.forEach(e => { if (e.fromNodeId !== e.toNodeId) g.setEdge(e.fromNodeId, e.toNodeId); });
+    dagre.layout(g);
+    const nodes = stack.nodes.map(n => { const p = g.node(n.id); return { ...n, x: Math.round(p.x - 85), y: Math.round(p.y - 37) }; });
+    api.saveStack({ ...stack, nodes }).then(s => { setStack(s); toastOk("Layout arranged"); }).catch(toastErr);
   }, [stack, setStack]);
 
   const deleteNodeById = useCallback((nodeId: string) => {
@@ -181,15 +196,40 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     api.saveStack({ ...stack, edges: keep }).then(setStack);
   }, [stack, setStack]);
 
+  // Dim nodes that don't match the search (highlight without hiding).
+  const q = query.trim().toLowerCase();
+  const displayNodes = q
+    ? rfNodes.map(n => {
+        const hit = `${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q);
+        return { ...n, style: { ...n.style, opacity: hit ? 1 : 0.25 } };
+      })
+    : rfNodes;
+
   return (
-    <ReactFlow nodes={rfNodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+    <ReactFlow nodes={displayNodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
       colorMode={colorScheme === "light" ? "light" : "dark"}
+      snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => onSelect(n.id)}
       onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
       <Background /><Controls />
+      <MiniMap pannable zoomable nodeColor={n => resourceVisual((n.data as any).addMethod).color} />
+      <Panel position="top-left">
+        <Group gap={6}>
+          <TextInput size="xs" w={180} placeholder="Find resource…" value={query}
+            onChange={e => setQuery(e.currentTarget.value)}
+            leftSection={<IconSearch size={13} />} />
+          <Tooltip label="Auto-arrange layout" withArrow>
+            <UnstyledButton onClick={autoLayout}
+              style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
+                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
+              <IconLayoutGrid size={15} />
+            </UnstyledButton>
+          </Tooltip>
+        </Group>
+      </Panel>
       {menu && (
         <Paper shadow="md" withBorder p={4} radius="sm"
           style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}
