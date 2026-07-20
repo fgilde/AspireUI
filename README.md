@@ -1,4 +1,6 @@
-<img width="2547" height="1261" alt="image" src="https://github.com/user-attachments/assets/54d51236-c6c0-4cf7-a4a3-ae5b814a879a" />
+<img width="1797" height="1153" alt="image" src="https://github.com/user-attachments/assets/6f1d8138-2b63-45bf-b19e-736a79ea91c4" />
+
+
 
 # AspireUI
 
@@ -83,7 +85,7 @@ environment variables needed for that.
 
 ## Screenshots
 
-<img width="2371" height="1254" alt="image" src="https://github.com/user-attachments/assets/dd24855c-3205-4a8f-bb89-13ef950a5e32" />
+<img width="1797" height="1153" alt="image" src="https://github.com/user-attachments/assets/7255f244-773c-4558-858c-93d485993363" />
 
 
 <img width="2374" height="1259" alt="image" src="https://github.com/user-attachments/assets/b968d27a-0b2a-4a39-bbaf-d00d006a33fb" />
