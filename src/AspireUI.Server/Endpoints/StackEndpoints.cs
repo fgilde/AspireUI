@@ -22,7 +22,7 @@ public static class StackEndpoints
         var export = new ExportService();
         var catalog = new CatalogService();
         var templates = new TemplateService();
-        var run = new RunService();
+        var run = app.Services.GetRequiredService<RunService>();
         var publish = new PublishService(gen);
         var deploy = new DeployService();
         var lsp = new RoslynLspService();

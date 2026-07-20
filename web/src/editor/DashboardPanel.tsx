@@ -12,6 +12,12 @@ export function DashboardPanel() {
   const [nonce, setNonce] = useState(0); // force iframe reload
   const url = runStatus.dashboardUrl;
   const running = runStatus.state === "Running" && !!url;
+  // The dashboard blocks cross-origin framing (X-Frame-Options), so the iframe loads it through our
+  // same-origin reverse proxy (/dash/{id}/…, headers stripped). New-tab links use the direct URL.
+  const proxied = (() => {
+    if (!url) return "";
+    try { const u = new URL(url); return `/dash/${stack.id}${u.pathname}${u.search}`; } catch { return url; }
+  })();
 
   const start = () => api.runStack(stack.id).then(setRunStatus).catch(e => toastErr(e, "Could not start"));
 
@@ -25,7 +31,7 @@ export function DashboardPanel() {
             <Tooltip label="Open in new tab" withArrow><ActionIcon size="sm" variant="subtle" component="a" href={url!} target="_blank"><IconExternalLink size={14} /></ActionIcon></Tooltip>
           </Group>
         </Group>
-        <iframe key={nonce} src={url!} title="Aspire Dashboard" style={{ flex: 1, width: "100%", border: 0 }} />
+        <iframe key={nonce} src={proxied} title="Aspire Dashboard" style={{ flex: 1, width: "100%", border: 0 }} />
       </div>
     );
   }
