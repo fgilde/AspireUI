@@ -15,7 +15,12 @@ export function ThemeMenu() {
         <Menu.Label>Theme</Menu.Label>
         {themes.map(t => (
           <Menu.Item key={t.id} onClick={() => setThemeId(t.id)}
-            leftSection={t.id === themeId ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}>
+            leftSection={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, width: 30 }}>
+                {t.id === themeId ? <IconCheck size={13} /> : <span style={{ width: 13 }} />}
+                <span style={{ width: 11, height: 11, borderRadius: "50%", background: t.swatch, border: "1px solid rgba(128,128,128,.4)" }} />
+              </span>
+            }>
             {t.label}
           </Menu.Item>
         ))}
