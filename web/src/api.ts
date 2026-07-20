@@ -60,6 +60,17 @@ export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { meth
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
 export const getPackages = (id: string): Promise<PackageInfo[]> => fetch(`${base}/stacks/${id}/packages`).then(ok);
+export interface CompletionItemDto { label: string; kind: string; insertText: string; detail?: string | null }
+export interface CodeDiagnostic { message: string; severity: string; start: number; end: number }
+export interface SignatureInfo { label: string; parameters: string[] }
+const codePost = (id: string, path: string, body: unknown) =>
+  fetch(`${base}/stacks/${id}/code/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(ok);
+export const codeComplete = (id: string, code: string, offset: number): Promise<CompletionItemDto[]> => codePost(id, "complete", { code, offset });
+export const codeHover = (id: string, code: string, offset: number): Promise<{ contents: string | null }> => codePost(id, "hover", { code, offset });
+export const codeSignature = (id: string, code: string, offset: number): Promise<SignatureInfo | null> => codePost(id, "signature", { code, offset });
+export const codeDiagnostics = (id: string, code: string): Promise<CodeDiagnostic[]> => codePost(id, "diagnostics", { code, offset: 0 });
+export const codeSave = (id: string, name: string, code: string): Promise<Stack> => codePost(id, "save", { name, code });
+
 export const publishStack = (id: string): Promise<PublishResult> => fetch(`${base}/stacks/${id}/publish`, { method: "POST" }).then(ok);
 export const deployStack = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy`, { method: "POST" }).then(ok);
 export const deployDown = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy/down`, { method: "POST" }).then(ok);

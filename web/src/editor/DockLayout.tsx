@@ -13,10 +13,11 @@ import { PackagesPanel } from "./PackagesPanel";
 import { LogsPanel } from "./LogsPanel";
 import { AssistPanel } from "./AssistPanel";
 import { PublishPanel } from "./PublishPanel";
+import { CodeEditorPanel } from "./CodeEditorPanel";
 
-// Bumped to v4 so saved layouts (pre-Publish panel) are discarded rather than
+// Bumped to v5 so saved layouts (pre-Code editor tab) are discarded rather than
 // restored without the new tab.
-const LAYOUT_KEY = "aspireui.layout.v4";
+const LAYOUT_KEY = "aspireui.layout.v5";
 
 export interface EditorState {
   stack: Stack;
@@ -71,6 +72,7 @@ const components: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   logs: LogsPanelTab,
   assist: AssistPanel,
   publish: PublishPanel,
+  code: CodeEditorPanel,
 };
 
 function buildDefaultLayout(api: DockviewApi) {
@@ -102,6 +104,10 @@ function buildDefaultLayout(api: DockviewApi) {
   });
   api.addPanel({
     id: "publish", component: "publish", title: "Publish / Deploy",
+    position: { direction: "within", referencePanel: "preview" },
+  });
+  api.addPanel({
+    id: "code", component: "code", title: "Code",
     position: { direction: "within", referencePanel: "preview" },
   });
 }
