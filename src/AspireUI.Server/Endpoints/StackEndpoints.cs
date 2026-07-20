@@ -180,17 +180,23 @@ public static class StackEndpoints
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
 
-        string PublishOut(string id) => Path.Combine(wsRoot, id, "publish", "out");
+        // Publish output lives OUTSIDE the run project dir (wsRoot/{id}); otherwise the run
+        // project's SDK `**/*.cs` glob sweeps publish/src/Program.cs in and the build fails with
+        // CS8802 (two top-level-statement files) + CS0579 (duplicate AssemblyInfo).
+        string PublishRoot(string id) => Path.Combine(wsRoot, "_publish", id);
+        string PublishOut(string id) => Path.Combine(PublishRoot(id), "out");
+        string LegacyPublishDir(string id) => Path.Combine(wsRoot, id, "publish");
 
         // Generate Docker Compose artifacts via `aspire publish` (blocking; ~seconds once restore is warm).
         app2.MapPost("/stacks/{id}/publish", (string id) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
-            var publishRoot = Path.Combine(wsRoot, id, "publish");
             // Best-effort clean; the MSBuild/compiler server can hold handles on the prior build's
             // DLLs for a while, so don't 500 if the delete fails — Materialize + aspire overwrite anyway.
-            try { if (Directory.Exists(publishRoot)) Directory.Delete(publishRoot, true); } catch { }
-            return Results.Ok(publish.Publish(s, publishRoot));
+            // Also purge the old nested publish dir so stacks published before the relocation can run again.
+            foreach (var d in new[] { PublishRoot(id), LegacyPublishDir(id) })
+                try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { }
+            return Results.Ok(publish.Publish(s, PublishRoot(id)));
         });
 
         // Deploy locally: `docker compose up -d` in the last publish output. 409 if never published.
