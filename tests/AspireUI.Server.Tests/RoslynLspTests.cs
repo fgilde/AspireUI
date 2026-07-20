@@ -55,6 +55,19 @@ public class CodeEndpointTests : IClassFixture<TestWebAppFactory>
     }
 
     [Fact]
+    public async Task Save_PreservesExtraPackages()
+    {
+        var create = await _c.PostAsJsonAsync("/stacks", new StackModel("", "KeepExtras", "net10.0",
+            [], [], [], [], [new PackageRef("Some.Extra.Pkg", "1.2.3")]));
+        var id = (await create.Content.ReadFromJsonAsync<StackModel>())!.Id;
+        var code = "using Aspire.Hosting;\nvar builder = DistributedApplication.CreateBuilder(args);\nvar cache = builder.AddRedis(\"cache\");\nbuilder.Build().Run();";
+        var r = await _c.PostAsJsonAsync($"/stacks/{id}/code/save", new { name = "KeepExtras", code });
+        r.EnsureSuccessStatusCode();
+        var stack = await r.Content.ReadFromJsonAsync<StackModel>();
+        Assert.Contains(stack!.ExtraPackages, p => p.Id == "Some.Extra.Pkg");
+    }
+
+    [Fact]
     public async Task Save_UnknownStack_404()
     {
         var r = await _c.PostAsJsonAsync("/stacks/nope/code/save", new { name = "x", code = "var a=1;" });

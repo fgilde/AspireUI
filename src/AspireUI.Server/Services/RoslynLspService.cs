@@ -31,11 +31,13 @@ public class RoslynLspService
             .Where(r => r is not null).Select(r => r!)
             .ToImmutableArray());
 
+    // MEF composition is expensive; build the host services once and share across per-request workspaces.
+    private static readonly Lazy<MefHostServices> Host = new(() => MefHostServices.Create(MefHostServices.DefaultAssemblies));
+
     // Top-level-statement program (OutputKind.ConsoleApplication) so the generated Program.cs shape compiles.
     private static Document BuildDocument(string code)
     {
-        var host = MefHostServices.Create(MefHostServices.DefaultAssemblies);
-        var ws = new AdhocWorkspace(host);
+        var ws = new AdhocWorkspace(Host.Value);
         var proj = ws.AddProject(ProjectInfo.Create(
             ProjectId.CreateNewId(), VersionStamp.Default, "AppHost", "AppHost", LanguageNames.CSharp,
             compilationOptions: new CSharpCompilationOptions(OutputKind.ConsoleApplication,
@@ -102,6 +104,7 @@ public class RoslynLspService
     {
         try
         {
+            if (code.Length == 0) return null;
             var doc = BuildDocument(code);
             var model = await doc.GetSemanticModelAsync();
             var root = await doc.GetSyntaxRootAsync();

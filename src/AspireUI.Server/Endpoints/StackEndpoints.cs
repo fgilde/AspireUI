@@ -218,7 +218,11 @@ public static class StackEndpoints
         app2.MapPost("/stacks/{id}/code/diagnostics", (string id, CodeRequest r) =>
             Results.Ok(lsp.Diagnostics(r.Code)));
         app2.MapPost("/stacks/{id}/code/save", (string id, CodeSaveRequest r) =>
-            store.Get(id) is null ? Results.NotFound() : Persist(import.Import(id, r.Name, r.Code, "")));
+            store.Get(id) is not { } cur ? Results.NotFound()
+                // Import only reconstructs nodes/edges/raws from the code; carry over the parts the code
+                // model can't represent (bundle-imported extra files + package refs) so a save doesn't wipe them.
+                : Persist(import.Import(id, r.Name, r.Code, "")
+                    with { ExtraFiles = cur.ExtraFiles, ExtraPackages = cur.ExtraPackages }));
 
         app2.MapPost("/stacks/{id}/deploy/down", (string id) =>
             Directory.Exists(PublishOut(id))
