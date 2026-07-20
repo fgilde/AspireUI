@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
@@ -12,7 +12,7 @@ import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeMenu } from "../ThemeMenu";
 import { GitHubLink } from "../GitHubLink";
-import { promptText, toastOk } from "../ui";
+import { promptText, toastOk, toastErr } from "../ui";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -69,6 +69,8 @@ export function Editor() {
       if (name) { dockRef.current?.saveNamed(name); refreshLayouts(); toastOk(`Layout "${name}" saved`); }
     });
   };
+  const openIde = (ide: "vscode" | "rider" | "vs") =>
+    api.openInIde(id, ide).then(r => r.ok ? toastOk("Opening in your IDE…") : toastErr(r.error, "Couldn't open")).catch(toastErr);
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);
 
@@ -135,6 +137,17 @@ export function Editor() {
                         </ActionIcon>
                       }>{name}</Menu.Item>
                   ))}
+                </Menu.Dropdown>
+              </Menu>
+              <Menu position="bottom-end" withArrow>
+                <Menu.Target>
+                  <Button variant="default" size="xs" leftSection={<IconExternalLink size={14} />}>Open in…</Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Open project in</Menu.Label>
+                  <Menu.Item onClick={() => openIde("vscode")}>VS Code</Menu.Item>
+                  <Menu.Item onClick={() => openIde("rider")}>Rider</Menu.Item>
+                  <Menu.Item onClick={() => openIde("vs")}>Visual Studio</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
               <HelpButton />

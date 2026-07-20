@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AspireUI.Server.Models;
 using AspireUI.Server.Services;
 
@@ -181,6 +182,34 @@ public static class StackEndpoints
             return Persist(stack);
         });
 
+        // Open the materialized stack in a locally-installed IDE. Only meaningful when the server runs
+        // on the user's own machine (the local-first default). Best-effort: tries known executables,
+        // returns ok:false (not a 500) if none launch.
+        app2.MapPost("/stacks/{id}/open", (string id, OpenIdeRequest r) =>
+        {
+            if (!Directory.Exists(Dir(id))) return Results.NotFound();
+            var dir = Path.GetFullPath(Dir(id));
+            var csproj = Directory.GetFiles(dir, "*.csproj").FirstOrDefault() ?? dir;
+            var (target, candidates) = r.Ide switch
+            {
+                "vscode" => (dir, new[] { "code.cmd", "code", Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\Microsoft VS Code\Code.exe") }),
+                "rider"  => (csproj, new[] { "rider64.exe", "rider.cmd", "rider" }),
+                "vs"     => (csproj, new[] { "devenv.exe", "devenv" }),
+                _        => ("", Array.Empty<string>()),
+            };
+            if (candidates.Length == 0) return Results.BadRequest(new { message = "unknown ide" });
+            foreach (var exe in candidates)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo { FileName = exe, Arguments = $"\"{target}\"", UseShellExecute = true });
+                    return Results.Ok(new { ok = true });
+                }
+                catch { /* try next candidate */ }
+            }
+            return Results.Ok(new { ok = false, error = $"Could not launch {r.Ide}. Make sure it's installed and on PATH, and that AspireUI runs on your machine." });
+        });
+
         app2.MapPost("/stacks/{id}/run", (string id) =>
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
@@ -240,6 +269,7 @@ public static class StackEndpoints
                 : Results.Conflict(new { message = "nothing deployed" }));
     }
 
+    public record OpenIdeRequest(string Ide);
     public record CodeRequest(string Code, int Offset);
     public record CodeSaveRequest(string Name, string Code);
     public record AssistRequest(string Prompt);
