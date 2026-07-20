@@ -24,6 +24,7 @@ public static class StackEndpoints
         var run = new RunService();
         var publish = new PublishService(gen);
         var deploy = new DeployService();
+        var lsp = new RoslynLspService();
         // Real client by default (shared HttpClient); tests register a fake IChatClient in the
         // DI container before Build(), which this picks up instead.
         var chatClient = app.Services.GetService<IChatClient>() ?? new HttpChatClient(new HttpClient());
@@ -205,12 +206,28 @@ public static class StackEndpoints
                 ? Results.Ok(deploy.Up(PublishOut(id)))
                 : Results.Conflict(new { message = "publish first" }));
 
+        // Monaco code editor: Roslyn-backed IntelliSense over the posted code (compile-only, no
+        // execution). The LSP endpoints analyze the body's `code` and don't need the stack to exist;
+        // /code/save persists via the existing markerless import parser.
+        app2.MapPost("/stacks/{id}/code/complete", async (string id, CodeRequest r) =>
+            Results.Ok(await lsp.CompleteAsync(r.Code, r.Offset)));
+        app2.MapPost("/stacks/{id}/code/hover", async (string id, CodeRequest r) =>
+            Results.Ok(new { contents = await lsp.HoverAsync(r.Code, r.Offset) }));
+        app2.MapPost("/stacks/{id}/code/signature", async (string id, CodeRequest r) =>
+            Results.Ok(await lsp.SignatureAsync(r.Code, r.Offset)));
+        app2.MapPost("/stacks/{id}/code/diagnostics", (string id, CodeRequest r) =>
+            Results.Ok(lsp.Diagnostics(r.Code)));
+        app2.MapPost("/stacks/{id}/code/save", (string id, CodeSaveRequest r) =>
+            store.Get(id) is null ? Results.NotFound() : Persist(import.Import(id, r.Name, r.Code, "")));
+
         app2.MapPost("/stacks/{id}/deploy/down", (string id) =>
             Directory.Exists(PublishOut(id))
                 ? Results.Ok(deploy.Down(PublishOut(id)))
                 : Results.Conflict(new { message = "nothing deployed" }));
     }
 
+    public record CodeRequest(string Code, int Offset);
+    public record CodeSaveRequest(string Name, string Code);
     public record AssistRequest(string Prompt);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
