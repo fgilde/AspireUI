@@ -1,7 +1,8 @@
 import { ReactFlow, Background, Controls, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon } from "@mantine/core";
+import { useCallback, useEffect, useMemo } from "react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu } from "@mantine/core";
+import { IconCheck, IconArrowsLeftRight, IconTrash } from "@tabler/icons-react";
 import type { Stack, RunState } from "../model";
 import { removeNode, runStateColor } from "../model";
 import { resourceVisual } from "../resourceIcons";
@@ -37,32 +38,41 @@ function ResourceNode({ data }: any) {
 }
 const nodeTypes = { resource: ResourceNode };
 
-// Editable edge: shows what the connection MEANS (references / waits for), lets you
-// flip the kind by clicking the chip, and delete it with the ×. Fixes the "wrong
-// waitFor I couldn't remove/change" trap — plain reactflow edges have no visible affordance.
+// Editable edge for a directed pair (from → to). A connection can be a reference and/or a wait-for
+// independently (both are valid in Aspire); direction = who references / waits on whom. Clicking the
+// chip opens a menu to toggle each kind, reverse the direction, or remove the whole connection.
 function EditableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }: any) {
   const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
-  const isWait = data.kind === "waitFor";
+  const { hasRef, hasWait, from, to, ops } = data;
+  const label = hasRef && hasWait ? "ref + waits" : hasWait ? "waits for" : "references";
+  const dashed = hasWait && !hasRef;
   return (
     <>
-      <BaseEdge id={id} path={path} style={isWait ? { strokeDasharray: "6 3" } : undefined} />
+      <BaseEdge id={id} path={path} style={dashed ? { strokeDasharray: "6 3" } : undefined} />
       <EdgeLabelRenderer>
         <div style={{
           position: "absolute", transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`,
-          pointerEvents: "all", display: "flex", alignItems: "center", gap: 4,
-          fontSize: 10, background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)",
-          borderRadius: 6, padding: "1px 4px",
+          pointerEvents: "all", fontSize: 10,
         }} className="nodrag nopan">
-          <Tooltip label="Click to switch reference ⇄ waits-for" withArrow openDelay={300}>
-            <span style={{ cursor: "pointer", color: isWait ? "var(--mantine-color-orange-text)" : "var(--mantine-color-indigo-text)" }}
-              onClick={() => data.onToggle(id)}>
-              {isWait ? "waits for" : "references"}
-            </span>
-          </Tooltip>
-          <Tooltip label="Remove this connection" withArrow openDelay={300}>
-            <span style={{ cursor: "pointer", color: "var(--mantine-color-red-text)", fontWeight: 700 }}
-              onClick={() => data.onDelete(id)}>×</span>
-          </Tooltip>
+          <Menu shadow="md" width={190} position="top" withArrow>
+            <Menu.Target>
+              <span style={{
+                cursor: "pointer", padding: "1px 6px", borderRadius: 6,
+                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)",
+                color: hasWait ? "var(--mantine-color-orange-text)" : "var(--mantine-color-indigo-text)",
+              }}>{label} ▾</span>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>Connection: {from === to ? "self" : "→"}</Menu.Label>
+              <Menu.Item leftSection={hasRef ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
+                onClick={() => ops.setPair(from, to, !hasRef, hasWait)}>References</Menu.Item>
+              <Menu.Item leftSection={hasWait ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
+                onClick={() => ops.setPair(from, to, hasRef, !hasWait)}>Waits for</Menu.Item>
+              <Menu.Divider />
+              <Menu.Item leftSection={<IconArrowsLeftRight size={14} />} onClick={() => ops.reverse(from, to)}>Reverse direction</Menu.Item>
+              <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => ops.remove(from, to)}>Remove connection</Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </div>
       </EdgeLabelRenderer>
     </>
@@ -74,17 +84,26 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
   const { colorScheme } = useMantineColorScheme();
 
-  const deleteEdge = useCallback((edgeId: string) => {
-    api.deleteEdge(stack.id, edgeId).then(() =>
-      setStack({ ...stack, edges: stack.edges.filter(e => e.id !== edgeId) }));
-  }, [stack, setStack]);
-
-  // Flip an edge's kind (reference ⇄ waitFor). Edges are part of the stack model, so a whole-stack
-  // save persists it — no dedicated endpoint needed.
-  const toggleEdge = useCallback((edgeId: string) => {
-    const edges = stack.edges.map(e =>
-      e.id === edgeId ? { ...e, kind: e.kind === "waitFor" ? "reference" : "waitFor" } : e);
-    api.saveStack({ ...stack, edges }).then(setStack);
+  // All edge mutations rewrite the pair's edges and persist the whole stack (edges live in the model,
+  // so one saveStack is enough — no per-edge endpoints needed).
+  const ops = useMemo(() => {
+    const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+    const save = (edges: typeof stack.edges) => api.saveStack({ ...stack, edges }).then(setStack);
+    return {
+      setPair(from: string, to: string, ref: boolean, wait: boolean) {
+        const rest = stack.edges.filter(e => !(e.fromNodeId === from && e.toNodeId === to));
+        if (ref) rest.push({ id: eid(), fromNodeId: from, toNodeId: to, kind: "reference" });
+        if (wait) rest.push({ id: eid(), fromNodeId: from, toNodeId: to, kind: "waitFor" });
+        return save(rest);
+      },
+      reverse(from: string, to: string) {
+        return save(stack.edges.map(e =>
+          e.fromNodeId === from && e.toNodeId === to ? { ...e, fromNodeId: to, toNodeId: from } : e));
+      },
+      remove(from: string, to: string) {
+        return save(stack.edges.filter(e => !(e.fromNodeId === from && e.toNodeId === to)));
+      },
+    };
   }, [stack, setStack]);
 
   // Local ReactFlow node state so dragging renders live (a fully-controlled `nodes` prop only moved the
@@ -100,10 +119,20 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeSig]);
 
-  const edges = stack.edges.map(e => ({
-    id: e.id, source: e.fromNodeId, target: e.toNodeId, type: "editable",
-    data: { kind: e.kind, onToggle: toggleEdge, onDelete: deleteEdge },
-  }));
+  // One visual edge per directed pair, combining the reference/waitFor edges that connect them.
+  const edges = useMemo(() => {
+    const pairs = new Map<string, { from: string; to: string; hasRef: boolean; hasWait: boolean }>();
+    for (const e of stack.edges) {
+      const key = `${e.fromNodeId}->${e.toNodeId}`;
+      const g = pairs.get(key) ?? { from: e.fromNodeId, to: e.toNodeId, hasRef: false, hasWait: false };
+      if (e.kind === "waitFor") g.hasWait = true; else g.hasRef = true;
+      pairs.set(key, g);
+    }
+    return [...pairs.values()].map(g => ({
+      id: `${g.from}->${g.to}`, source: g.from, target: g.to, type: "editable",
+      data: { hasRef: g.hasRef, hasWait: g.hasWait, from: g.from, to: g.to, ops },
+    }));
+  }, [stack.edges, ops]);
 
   const onNodesChange = useCallback((changes: any[]) => {
     onNodesChangeInternal(changes); // apply live (drag, select) to the local RF state
@@ -123,11 +152,11 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     [stack, setStack]);
 
   const onEdgesChange = useCallback((changes: any[]) => {
-    const removed = changes.filter(c => c.type === "remove");
-    if (removed.length === 0) return;
-    Promise.all(removed.map(c => api.deleteEdge(stack.id, c.id))).then(() => {
-      setStack({ ...stack, edges: stack.edges.filter(e => !removed.some(c => c.id === e.id)) });
-    });
+    // Visual edge ids are "from->to" (a directed pair); Delete-key removal drops every underlying edge.
+    const removedPairs = changes.filter(c => c.type === "remove").map(c => String(c.id).split("->"));
+    if (removedPairs.length === 0) return;
+    const keep = stack.edges.filter(e => !removedPairs.some(([f, t]) => e.fromNodeId === f && e.toNodeId === t));
+    api.saveStack({ ...stack, edges: keep }).then(setStack);
   }, [stack, setStack]);
 
   return (
