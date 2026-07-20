@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, Badge, Tooltip } from "@mantine/core";
+import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
@@ -27,7 +27,10 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const [draft, setDraft] = useState<Node>(node);
   const [rawMethod, setRawMethod] = useState("");
   const [rawArgs, setRawArgs] = useState("");
-  useEffect(() => { setDraft(node); setRawMethod(""); setRawArgs(""); }, [node.id]);
+  // Sync the draft to the authoritative node whenever its content changes (covers undo/redo and
+  // assistant/code edits, not just switching nodes) so the grid never shows stale values.
+  useEffect(() => { setDraft(node); }, [node]);
+  useEffect(() => { setRawMethod(""); setRawArgs(""); }, [node.id]);
 
   const commit = (n: Node) => { setDraft(n); api.patchNode(stack.id, n).then(setStack); };
 
@@ -66,25 +69,27 @@ export function PropertyGrid({ stack, node, rt, setStack }:
           {envRows.map((row, ri) => {
             const rawValue = row[1] ?? '""';
             const isExpression = !rawValue.trim().startsWith('"');
+            const setVal = (literal: string) => {
+              const nr = envRows.map(r => [...r]); nr[ri][1] = literal;
+              commit(writeWithRows(draft, ENV_METHOD, nr));
+            };
             return (
-              <Group key={ri} gap="xs" mb={4} align="end">
+              <Group key={ri} gap="xs" mb={4} align="end" wrap="nowrap">
                 <TextInput style={{ flex: 1 }} placeholder="NAME" value={fromLiteral(row[0] ?? '""')}
                   onChange={e => {
                     const nr = envRows.map(r => [...r]); nr[ri][0] = toLiteral(e.currentTarget.value, "string");
                     commit(writeWithRows(draft, ENV_METHOD, nr));
                   }} />
-                {isExpression ? (
-                  <Group style={{ flex: 1 }} gap={6} wrap="nowrap" title="Expression from a template/import — edit as raw C# only">
-                    <Badge size="sm" variant="light" color="grape">expression</Badge>
-                    <Text size="sm" ff="monospace" truncate>{rawValue}</Text>
-                  </Group>
-                ) : (
-                  <TextInput style={{ flex: 1 }} placeholder="value" value={fromLiteral(rawValue)}
-                    onChange={e => {
-                      const nr = envRows.map(r => [...r]); nr[ri][1] = toLiteral(e.currentTarget.value, "string");
-                      commit(writeWithRows(draft, ENV_METHOD, nr));
-                    }} />
-                )}
+                {/* Text = quoted literal; Expr = raw C# (e.g. another resource's endpoint). Toggle converts. */}
+                <SegmentedControl size="xs" value={isExpression ? "expr" : "text"}
+                  onChange={m => setVal(m === "expr"
+                    ? (isExpression ? rawValue : fromLiteral(rawValue))                 // "v" -> v
+                    : toLiteral(isExpression ? rawValue : fromLiteral(rawValue), "string"))} // v -> "v"
+                  data={[{ label: "Text", value: "text" }, { label: "Expr", value: "expr" }]} />
+                <TextInput style={{ flex: 1.4 }} placeholder={isExpression ? "resource.GetEndpoint(\"http\")" : "value"}
+                  value={isExpression ? rawValue : fromLiteral(rawValue)}
+                  styles={isExpression ? { input: { fontFamily: "monospace", color: "var(--mantine-color-grape-text)" } } : undefined}
+                  onChange={e => setVal(isExpression ? e.currentTarget.value : toLiteral(e.currentTarget.value, "string"))} />
                 <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
                   <IconX size={14} />
                 </ActionIcon>

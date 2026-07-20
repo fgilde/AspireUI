@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Group, Text, Alert } from "@mantine/core";
-import { IconDeviceFloppy, IconAlertCircle } from "@tabler/icons-react";
+import { IconDeviceFloppy, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
 // Lean import: the editor API + just the C# basic-language (tokenizer) contribution — avoids bundling
 // monaco's TS/CSS/HTML/JSON language workers (~8 MB) we don't use. IntelliSense is our Roslyn backend.
 import * as monaco from "monaco-editor/editor/editor.api";
@@ -204,7 +204,13 @@ export function CodeEditorPanel() {
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" px="sm" py={4} wrap="nowrap">
         <Text size="xs" c="dimmed">Edit Program.cs — IntelliSense via Roslyn. Save re-parses into the graph (formatting/comments not kept).</Text>
-        <Button size="compact-sm" leftSection={<IconDeviceFloppy size={14} />} loading={busy} onClick={() => void save()}>Save</Button>
+        <Group gap={6} wrap="nowrap">
+          <Button size="compact-sm" variant="default" leftSection={<IconRefresh size={14} />}
+            onClick={() => { const ed = edRef.current; if (ed) { dirtyRef.current = false; void applyRemote(ed); } }}>
+            Reload
+          </Button>
+          <Button size="compact-sm" leftSection={<IconDeviceFloppy size={14} />} loading={busy} onClick={() => void save()}>Save</Button>
+        </Group>
       </Group>
       {errors && (
         <Alert color="red" icon={<IconAlertCircle size={16} />} m="xs" title="Could not save" withCloseButton onClose={() => setErrors(null)}>
