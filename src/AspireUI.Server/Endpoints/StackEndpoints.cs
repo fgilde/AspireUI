@@ -223,15 +223,16 @@ public static class StackEndpoints
         string LegacyPublishDir(string id) => Path.Combine(wsRoot, id, "publish");
 
         // Generate Docker Compose artifacts via `aspire publish` (blocking; ~seconds once restore is warm).
-        app2.MapPost("/stacks/{id}/publish", (string id) =>
+        app2.MapPost("/stacks/{id}/publish", (string id, string? target) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
+            var t = target is "manifest" ? "manifest" : "compose";
             // Best-effort clean; the MSBuild/compiler server can hold handles on the prior build's
             // DLLs for a while, so don't 500 if the delete fails — Materialize + aspire overwrite anyway.
             // Also purge the old nested publish dir so stacks published before the relocation can run again.
             foreach (var d in new[] { PublishRoot(id), LegacyPublishDir(id) })
                 try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { }
-            return Results.Ok(publish.Publish(s, PublishRoot(id)));
+            return Results.Ok(publish.Publish(s, PublishRoot(id), t));
         });
 
         // Deploy locally: `docker compose up -d` in the last publish output. 409 if never published.

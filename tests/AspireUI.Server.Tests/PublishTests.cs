@@ -21,7 +21,7 @@ public class PublishServiceTests
     public void Publish_Success_ReadsArtifacts_AndAugmentsSource()
     {
         var root = Path.Combine(Path.GetTempPath(), "aspireui-pub-" + Guid.NewGuid().ToString("n"));
-        var svc = new PublishService(commandFactory: (csproj, outDir) =>
+        var svc = new PublishService(commandFactory: (_, _, outDir) =>
         {
             // Emulate aspire publish: emit the compose artifacts into the output dir.
             File.WriteAllText(Path.Combine(outDir, "docker-compose.yaml"), "services:\n  cache: {}\n");
@@ -32,7 +32,8 @@ public class PublishServiceTests
         var r = svc.Publish(Redis(), root);
 
         Assert.True(r.Ok);
-        Assert.Contains("services:", r.ComposeYaml);
+        Assert.Equal("docker-compose.yaml", r.ArtifactName);
+        Assert.Contains("services:", r.Artifact);
         Assert.Contains("CACHE_PASSWORD", r.EnvFile);
         // The augmented copy carries the compose env + docker package (stored stack untouched).
         Assert.Contains("AddDockerComposeEnvironment", File.ReadAllText(Path.Combine(root, "src", "Program.cs")));
@@ -47,10 +48,10 @@ public class PublishServiceTests
     {
         var root = Path.Combine(Path.GetTempPath(), "aspireui-pub-" + Guid.NewGuid().ToString("n"));
         // Exit 0 but produce nothing -> not a real deployment.
-        var svc = new PublishService(commandFactory: (_, _) => NoOp());
+        var svc = new PublishService(commandFactory: (_, _, _) => NoOp());
         var r = svc.Publish(Redis(), root);
         Assert.False(r.Ok);
-        Assert.Null(r.ComposeYaml);
+        Assert.Null(r.Artifact);
         Directory.Delete(root, true);
     }
 
@@ -58,7 +59,7 @@ public class PublishServiceTests
     public void Publish_NonZeroExit_IsFailure()
     {
         var root = Path.Combine(Path.GetTempPath(), "aspireui-pub-" + Guid.NewGuid().ToString("n"));
-        var svc = new PublishService(commandFactory: (_, _) => Fail());
+        var svc = new PublishService(commandFactory: (_, _, _) => Fail());
         var r = svc.Publish(Redis(), root);
         Assert.False(r.Ok);
         Directory.Delete(root, true);

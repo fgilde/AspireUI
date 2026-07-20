@@ -16,7 +16,7 @@ export interface CatalogMethod { method: string; label: string; overloads: Catal
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[] }
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
-export interface PublishResult { ok: boolean; log: string; composeYaml: string | null; envFile: string | null; outputDir: string }
+export interface PublishResult { ok: boolean; log: string; artifactName: string | null; artifact: string | null; envFile: string | null; outputDir: string }
 export interface DeployResult { ok: boolean; log: string }
 
 export interface AppSettings {

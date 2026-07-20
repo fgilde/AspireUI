@@ -3,48 +3,55 @@ using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
 
-public record PublishResult(bool Ok, string Log, string? ComposeYaml, string? EnvFile, string OutputDir);
+public record PublishResult(bool Ok, string Log, string? ArtifactName, string? Artifact, string? EnvFile, string OutputDir);
 
-// Generates Docker Compose deployment artifacts from a stack using Aspire's own compose publisher.
-// Works on a materialized+augmented COPY of the stack (compose-env injected) so the stored model is
-// never touched. The process launch goes through an injectable factory so tests never shell `aspire`.
+// Generates deployment artifacts from a stack via Aspire's own publishers, on a materialized COPY of
+// the stack so the stored model is never touched. Targets:
+//   compose  -> inject a Docker Compose environment + `aspire publish` -> docker-compose.yaml (+ .env)
+//   manifest -> `dotnet run -- --publisher manifest` -> aspire-manifest.json (portable descriptor)
+// The process launch goes through an injectable factory so tests never shell real tools.
 public class PublishService
 {
     private const string ComposeEnvName = "aspireui";
     private readonly CodeGenService _gen;
-    private readonly Func<string, string, ProcessStartInfo> _commandFactory;
+    private readonly Func<string, string, string, ProcessStartInfo> _commandFactory;
 
-    // factory: (projectCsprojPath, outputDir) -> how to launch the publish. Default = aspire CLI.
-    public PublishService(CodeGenService? gen = null, Func<string, string, ProcessStartInfo>? commandFactory = null)
+    // factory: (target, projectCsprojPath, outputDir) -> how to launch the publish.
+    public PublishService(CodeGenService? gen = null, Func<string, string, string, ProcessStartInfo>? commandFactory = null)
     {
         _gen = gen ?? new CodeGenService();
         _commandFactory = commandFactory ?? DefaultCommand;
     }
 
-    private static ProcessStartInfo DefaultCommand(string csproj, string outDir)
+    private static string ArtifactNameFor(string target) => target == "manifest" ? "aspire-manifest.json" : "docker-compose.yaml";
+
+    private static ProcessStartInfo DefaultCommand(string target, string csproj, string outDir)
     {
-        // ArgumentList (not a hand-quoted Arguments string) so paths carrying a `"` — which the
-        // stack-name-derived csproj filename can on Linux — are escaped per-arg and can't inject tokens.
-        var psi = new ProcessStartInfo { FileName = "aspire", WorkingDirectory = Path.GetDirectoryName(csproj)! };
-        psi.ArgumentList.Add("publish");
-        psi.ArgumentList.Add("--project");
-        psi.ArgumentList.Add(csproj);
-        psi.ArgumentList.Add("-o");
-        psi.ArgumentList.Add(outDir);
-        psi.ArgumentList.Add("--non-interactive");
+        // ArgumentList (not a hand-quoted string) so paths with a `"` can't inject tokens.
+        var dir = Path.GetDirectoryName(csproj)!;
+        if (target == "manifest")
+        {
+            var m = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = dir };
+            foreach (var a in new[] { "run", "--project", csproj, "--", "--publisher", "manifest", "--output-path", outDir })
+                m.ArgumentList.Add(a);
+            return m;
+        }
+        var psi = new ProcessStartInfo { FileName = "aspire", WorkingDirectory = dir };
+        foreach (var a in new[] { "publish", "--project", csproj, "-o", outDir, "--non-interactive" })
+            psi.ArgumentList.Add(a);
         return psi;
     }
 
-    public PublishResult Publish(StackModel s, string publishRoot)
+    public PublishResult Publish(StackModel s, string publishRoot, string target = "compose")
     {
         var srcDir = Path.Combine(publishRoot, "src");
         var outDir = Path.Combine(publishRoot, "out");
         Directory.CreateDirectory(outDir);
-        _gen.Materialize(s, srcDir, ComposeEnvName);
+        _gen.Materialize(s, srcDir, target == "compose" ? ComposeEnvName : null);
         var csproj = Directory.GetFiles(srcDir, "*.csproj").FirstOrDefault()
             ?? throw new InvalidOperationException("no csproj materialized");
 
-        var psi = _commandFactory(Path.GetFullPath(csproj), Path.GetFullPath(outDir));
+        var psi = _commandFactory(target, Path.GetFullPath(csproj), Path.GetFullPath(outDir));
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
         psi.UseShellExecute = false;
@@ -81,15 +88,16 @@ public class PublishService
             ok = false;
         }
 
-        var composePath = Path.Combine(outDir, "docker-compose.yaml");
+        var artifactName = ArtifactNameFor(target);
+        var artifactPath = Path.Combine(outDir, artifactName);
         var envPath = Path.Combine(outDir, ".env");
-        var compose = ok && File.Exists(composePath) ? File.ReadAllText(composePath) : null;
-        var env = File.Exists(envPath) ? File.ReadAllText(envPath) : null;
-        // Compose artifact is the contract: no yaml means publish didn't actually produce a deployment.
-        if (compose is null) ok = false;
+        var artifact = ok && File.Exists(artifactPath) ? File.ReadAllText(artifactPath) : null;
+        var env = target == "compose" && File.Exists(envPath) ? File.ReadAllText(envPath) : null;
+        // The artifact file is the contract: its absence means the publish didn't actually produce output.
+        if (artifact is null) ok = false;
 
         string logText;
         lock (log) logText = string.Join("\n", log);
-        return new PublishResult(ok, logText, compose, string.IsNullOrWhiteSpace(env) ? null : env, Path.GetFullPath(outDir));
+        return new PublishResult(ok, logText, artifactName, artifact, string.IsNullOrWhiteSpace(env) ? null : env, Path.GetFullPath(outDir));
     }
 }

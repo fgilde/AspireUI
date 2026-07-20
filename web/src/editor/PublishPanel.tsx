@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Tooltip, Alert, useMantineColorScheme } from "@mantine/core";
+import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Tooltip, Alert, SegmentedControl, useMantineColorScheme } from "@mantine/core";
 import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
+import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import JSZip from "jszip";
 import { useEditor } from "./DockLayout";
@@ -10,6 +11,7 @@ import type { PublishResult, DeployResult } from "../model";
 import * as api from "../api";
 
 SyntaxHighlighter.registerLanguage("yaml", yaml);
+SyntaxHighlighter.registerLanguage("json", json);
 
 function extractMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
@@ -38,6 +40,7 @@ export function PublishPanel() {
   const [result, setResult] = useState<PublishResult | null>(null);
   const [deploy, setDeploy] = useState<DeployResult | null>(null);
   const [busy, setBusy] = useState<null | "publish" | "up" | "down">(null);
+  const [target, setTarget] = useState<"compose" | "manifest">("compose");
 
   const run = async (kind: "publish" | "up" | "down", call: () => Promise<PublishResult | DeployResult>) => {
     setBusy(kind);
@@ -47,32 +50,39 @@ export function PublishPanel() {
       else setDeploy(r as DeployResult);
     } catch (err) {
       const m = extractMessage(err);
-      if (kind === "publish") setResult({ ok: false, log: m, composeYaml: null, envFile: null, outputDir: "" });
+      if (kind === "publish") setResult({ ok: false, log: m, artifactName: null, artifact: null, envFile: null, outputDir: "" });
       else setDeploy({ ok: false, log: m });
     } finally {
       setBusy(null);
     }
   };
 
+  const isCompose = result?.artifactName === "docker-compose.yaml";
+  const lang = result?.artifactName?.endsWith(".json") ? "json" : "yaml";
+
   const downloadBundle = async () => {
-    if (!result?.composeYaml) return;
+    if (!result?.artifact || !result.artifactName) return;
     const zip = new JSZip();
-    zip.file("docker-compose.yaml", result.composeYaml);
+    zip.file(result.artifactName, result.artifact);
     if (result.envFile) zip.file(".env", result.envFile);
-    download(`${stack.name || "stack"}-compose.zip`, await zip.generateAsync({ type: "blob" }));
+    download(`${stack.name || "stack"}-${target}.zip`, await zip.generateAsync({ type: "blob" }));
   };
 
   return (
     <ScrollArea style={{ height: "100%" }} px="sm" py="xs">
       <MStack gap="sm">
+        <SegmentedControl size="xs" fullWidth value={target} onChange={v => setTarget(v as "compose" | "manifest")}
+          data={[{ label: "Docker Compose", value: "compose" }, { label: "Aspire Manifest", value: "manifest" }]} />
         <Group gap="xs">
           <Button size="xs" leftSection={<IconPackageExport size={14} />}
             loading={busy === "publish"} disabled={busy !== null}
-            onClick={() => void run("publish", () => api.publishStack(stack.id))}>
-            Publish (Docker Compose)
+            onClick={() => void run("publish", () => api.publishStack(stack.id, target))}>
+            {target === "compose" ? "Publish (Docker Compose)" : "Publish (Aspire Manifest)"}
           </Button>
-          <Tooltip withArrow multiline w={260}
-            label="Runs `aspire publish` to generate docker-compose.yaml. Deploying it locally needs Docker running on this host.">
+          <Tooltip withArrow multiline w={280}
+            label={target === "compose"
+              ? "Runs `aspire publish` → docker-compose.yaml. Deploy locally (needs Docker) or drop the bundle into Portainer/Coolify."
+              : "Runs the Aspire manifest publisher → aspire-manifest.json, a portable deployment descriptor other tools consume."}>
             <IconInfoCircle size={16} style={{ opacity: 0.6 }} />
           </Tooltip>
         </Group>
@@ -83,21 +93,21 @@ export function PublishPanel() {
           </Alert>
         )}
 
-        {result?.ok && result.composeYaml && (
+        {result?.ok && result.artifact && (
           <>
             <Group justify="space-between">
-              <Text size="xs" fw={600} c="dimmed">docker-compose.yaml</Text>
+              <Text size="xs" fw={600} c="dimmed">{result.artifactName}</Text>
               <Group gap={4}>
-                <CopyButton value={result.composeYaml}>
+                <CopyButton value={result.artifact}>
                   {({ copied, copy }) => <Button size="compact-xs" variant="subtle" onClick={copy}>{copied ? "Copied" : "Copy"}</Button>}
                 </CopyButton>
                 <Button size="compact-xs" variant="subtle" leftSection={<IconDownload size={12} />}
                   onClick={() => void downloadBundle()}>Download bundle</Button>
               </Group>
             </Group>
-            <SyntaxHighlighter language="yaml" style={colorScheme === "light" ? oneLight : oneDark}
+            <SyntaxHighlighter language={lang} style={colorScheme === "light" ? oneLight : oneDark}
               customStyle={{ margin: 0, background: "transparent", fontSize: 12 }} wrapLongLines>
-              {result.composeYaml}
+              {result.artifact}
             </SyntaxHighlighter>
 
             {result.envFile && (
@@ -107,20 +117,23 @@ export function PublishPanel() {
               </>
             )}
 
-            <Text size="xs" c="dimmed">Deploy manually: <Code>cd {result.outputDir} && docker compose up -d</Code></Text>
-
-            <Group gap="xs">
-              <Button size="xs" color="green" leftSection={<IconRocket size={14} />}
-                loading={busy === "up"} disabled={busy !== null}
-                onClick={() => void run("up", () => api.deployStack(stack.id))}>
-                Deploy now (docker compose up -d)
-              </Button>
-              <Button size="xs" color="red" variant="light" leftSection={<IconPlayerStop size={14} />}
-                loading={busy === "down"} disabled={busy !== null}
-                onClick={() => void run("down", () => api.deployDown(stack.id))}>
-                Stop (compose down)
-              </Button>
-            </Group>
+            {isCompose && (
+              <>
+                <Text size="xs" c="dimmed">Deploy manually: <Code>cd {result.outputDir} && docker compose up -d</Code></Text>
+                <Group gap="xs">
+                  <Button size="xs" color="green" leftSection={<IconRocket size={14} />}
+                    loading={busy === "up"} disabled={busy !== null}
+                    onClick={() => void run("up", () => api.deployStack(stack.id))}>
+                    Deploy now (docker compose up -d)
+                  </Button>
+                  <Button size="xs" color="red" variant="light" leftSection={<IconPlayerStop size={14} />}
+                    loading={busy === "down"} disabled={busy !== null}
+                    onClick={() => void run("down", () => api.deployDown(stack.id))}>
+                    Stop (compose down)
+                  </Button>
+                </Group>
+              </>
+            )}
           </>
         )}
 
