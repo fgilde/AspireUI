@@ -217,6 +217,11 @@ public static class StackEndpoints
             Results.Ok(await lsp.SignatureAsync(r.Code, r.Offset)));
         app2.MapPost("/stacks/{id}/code/diagnostics", (string id, CodeRequest r) =>
             Results.Ok(lsp.Diagnostics(r.Code)));
+        // Whole-stack semantic validation: Roslyn diagnostics over the generated Program.cs (real
+        // compile errors/warnings, not just syntax), for a canvas-level health badge.
+        app2.MapGet("/stacks/{id}/validate", (string id) =>
+            store.Get(id) is { } s ? Results.Ok(lsp.Diagnostics(gen.GenerateProgram(s))) : Results.NotFound());
+
         app2.MapPost("/stacks/{id}/code/save", (string id, CodeSaveRequest r) =>
             store.Get(id) is not { } cur ? Results.NotFound()
                 // Import only reconstructs nodes/edges/raws from the code; carry over the parts the code

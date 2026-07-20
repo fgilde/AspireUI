@@ -70,6 +70,7 @@ export const codeHover = (id: string, code: string, offset: number): Promise<{ c
 export const codeSignature = (id: string, code: string, offset: number): Promise<SignatureInfo | null> => codePost(id, "signature", { code, offset });
 export const codeDiagnostics = (id: string, code: string): Promise<CodeDiagnostic[]> => codePost(id, "diagnostics", { code, offset: 0 });
 export const codeSave = (id: string, name: string, code: string): Promise<Stack> => codePost(id, "save", { name, code });
+export const validateStack = (id: string): Promise<CodeDiagnostic[]> => fetch(`${base}/stacks/${id}/validate`).then(ok);
 
 export const publishStack = (id: string): Promise<PublishResult> => fetch(`${base}/stacks/${id}/publish`, { method: "POST" }).then(ok);
 export const deployStack = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy`, { method: "POST" }).then(ok);

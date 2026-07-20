@@ -7,6 +7,7 @@ import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
 import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
+import { ValidateBadge } from "../editor/ValidateBadge";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeMenu } from "../ThemeMenu";
@@ -109,6 +110,7 @@ export function Editor() {
               <Title order={4}>{stack.name}</Title>
             </Group>
             <Group>
+              <ValidateBadge />
               <RunToolbar />
               <Tooltip label="Undo (Ctrl+Z)" withArrow>
                 <ActionIcon variant="default" size="lg" disabled={!canUndo} onClick={undo}><IconArrowBackUp size={16} /></ActionIcon>
