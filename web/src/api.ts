@@ -75,7 +75,8 @@ export const codeDiagnostics = (id: string, code: string): Promise<CodeDiagnosti
 export const codeSave = (id: string, name: string, code: string): Promise<Stack> => codePost(id, "save", { name, code });
 export const validateStack = (id: string): Promise<CodeDiagnostic[]> => fetch(`${base}/stacks/${id}/validate`).then(ok);
 
-export const publishStack = (id: string, target: "compose" | "manifest" = "compose"): Promise<PublishResult> =>
+export type PublishTarget = "compose" | "manifest" | "kubernetes" | "bicep";
+export const publishStack = (id: string, target: PublishTarget = "compose"): Promise<PublishResult> =>
   fetch(`${base}/stacks/${id}/publish?target=${target}`, { method: "POST" }).then(ok);
 export const deployStack = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy`, { method: "POST" }).then(ok);
 export const deployDown = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy/down`, { method: "POST" }).then(ok);

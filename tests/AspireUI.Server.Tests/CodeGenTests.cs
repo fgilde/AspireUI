@@ -65,35 +65,38 @@ public class CodeGenTests
         Assert.True(withIdx < edgeIdx);
     }
 
+    private static readonly CodeGenService.PublishEnv ComposeEnv =
+        new("builder.AddDockerComposeEnvironment(\"aspireui\");", "Aspire.Hosting.Docker", "13.4.6");
+
     [Fact]
-    public void Generate_ComposeEnv_InjectsAfterBuilder_OutsideMarkerBlock()
+    public void Generate_Env_InjectsAfterBuilder_OutsideMarkerBlock()
     {
-        var code = new CodeGenService().GenerateProgram(Fixture(), "aspireui");
+        var code = new CodeGenService().GenerateProgram(Fixture(), ComposeEnv);
         Assert.Contains("builder.AddDockerComposeEnvironment(\"aspireui\");", code);
         var builderIdx = code.IndexOf("var builder = DistributedApplication.CreateBuilder(args);");
-        var composeIdx = code.IndexOf("builder.AddDockerComposeEnvironment(\"aspireui\");");
-        Assert.True(builderIdx < composeIdx);
-        Assert.True(composeIdx < code.IndexOf(CodeGenService.Begin));
+        var envIdx = code.IndexOf("builder.AddDockerComposeEnvironment(\"aspireui\");");
+        Assert.True(builderIdx < envIdx);
+        Assert.True(envIdx < code.IndexOf(CodeGenService.Begin));
     }
 
     [Fact]
-    public void Generate_NoComposeEnv_ByDefault()
+    public void Generate_NoEnv_ByDefault()
     {
         var code = new CodeGenService().GenerateProgram(Fixture());
         Assert.DoesNotContain("AddDockerComposeEnvironment", code);
     }
 
     [Fact]
-    public void Csproj_ComposeEnv_AddsDockerPackage()
+    public void Csproj_Env_AddsEnvPackage()
     {
         var m = new StackModel("s", "Demo", "net10.0",
             [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [], [], []);
-        var csproj = new CodeGenService().GenerateCsproj(m, "aspireui");
+        var csproj = new CodeGenService().GenerateCsproj(m, ComposeEnv);
         Assert.Contains("""<PackageReference Include="Aspire.Hosting.Docker" Version="13.4.6" />""", csproj);
     }
 
     [Fact]
-    public void Csproj_NoDockerPackage_ByDefault()
+    public void Csproj_NoEnvPackage_ByDefault()
     {
         var m = new StackModel("s", "Demo", "net10.0",
             [ new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []) ], [], [], [], []);

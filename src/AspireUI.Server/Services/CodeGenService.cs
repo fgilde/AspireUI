@@ -36,9 +36,12 @@ public class CodeGenService
         _resourceUsings = resourceUsings ?? CatalogService.ResourceUsings();
     }
 
-    // composeEnv: when set (publish only), inject a Docker Compose environment resource so
-    // `aspire publish` emits docker-compose.yaml. Null for run/preview/export (output unchanged).
-    public string GenerateProgram(StackModel s, string? composeEnv = null)
+    // env: when set (publish only), inject a deployment-environment resource (Docker Compose /
+    // Kubernetes / Azure ACA) + its package so `aspire publish` emits that target's artifacts.
+    // Null for run/preview/export (output unchanged).
+    public record PublishEnv(string Statement, string PackageId, string PackageVersion);
+
+    public string GenerateProgram(StackModel s, PublishEnv? env = null)
     {
         var sb = new StringBuilder();
         var usings = BaseUsings
@@ -53,8 +56,8 @@ public class CodeGenService
         sb.AppendLine("var builder = DistributedApplication.CreateBuilder(args);");
         // Sits outside the aspireui marker block so round-trip import (which parses only inside it)
         // is unaffected.
-        if (composeEnv is not null)
-            sb.AppendLine($"builder.AddDockerComposeEnvironment(\"{Escape(composeEnv)}\");");
+        if (env is not null)
+            sb.AppendLine(env.Statement);
         sb.AppendLine();
         sb.AppendLine(Begin);
         foreach (var n in s.Nodes)
@@ -85,13 +88,13 @@ public class CodeGenService
     private static string Escape(string name) =>
         name.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-    public string GenerateCsproj(StackModel s, string? composeEnv = null)
+    public string GenerateCsproj(StackModel s, PublishEnv? env = null)
     {
         var resourcePackageIds = new HashSet<string>(StringComparer.Ordinal) { "Aspire.Hosting.AppHost" };
-        var composePkg = composeEnv is not null && resourcePackageIds.Add("Aspire.Hosting.Docker")
-            ? new[] { (Id: "Aspire.Hosting.Docker", Version: AspireVersion) }
+        var envPkg = env is not null && resourcePackageIds.Add(env.PackageId)
+            ? new[] { (Id: env.PackageId, Version: env.PackageVersion) }
             : Array.Empty<(string Id, string Version)>();
-        var packages = composePkg.Concat(s.Nodes.Select(n => n.AddMethod)
+        var packages = envPkg.Concat(s.Nodes.Select(n => n.AddMethod)
             .Distinct()
             .Where(_resourcePackages.ContainsKey)
             .Select(m => _resourcePackages[m])
@@ -132,12 +135,12 @@ public class CodeGenService
         return result;
     }
 
-    public void Materialize(StackModel s, string dir, string? composeEnv = null)
+    public void Materialize(StackModel s, string dir, PublishEnv? env = null)
     {
         Directory.CreateDirectory(dir);
-        File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, composeEnv));
+        File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, env));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-        File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, composeEnv));
+        File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, env));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
 

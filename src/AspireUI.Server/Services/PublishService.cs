@@ -3,27 +3,39 @@ using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
 
-public record PublishResult(bool Ok, string Log, string? ArtifactName, string? Artifact, string? EnvFile, string OutputDir);
+public record PublishFile(string Name, string Content);
+public record PublishResult(bool Ok, string Log, string? ArtifactName, string? Artifact, string OutputDir, List<PublishFile> Files);
 
 // Generates deployment artifacts from a stack via Aspire's own publishers, on a materialized COPY of
 // the stack so the stored model is never touched. Targets:
-//   compose  -> inject a Docker Compose environment + `aspire publish` -> docker-compose.yaml (+ .env)
-//   manifest -> `dotnet run -- --publisher manifest` -> aspire-manifest.json (portable descriptor)
+//   compose    -> Docker Compose environment  -> docker-compose.yaml (+ .env)
+//   manifest   -> `dotnet run -- --publisher manifest` -> aspire-manifest.json (portable descriptor)
+//   kubernetes -> Kubernetes environment      -> a Helm chart (Chart.yaml, values.yaml, templates/*)
+//   bicep      -> Azure Container Apps env     -> main.bicep + per-resource .bicep
 // The process launch goes through an injectable factory so tests never shell real tools.
 public class PublishService
 {
-    private const string ComposeEnvName = "aspireui";
     private readonly CodeGenService _gen;
     private readonly Func<string, string, string, ProcessStartInfo> _commandFactory;
 
-    // factory: (target, projectCsprojPath, outputDir) -> how to launch the publish.
+    private record Target(CodeGenService.PublishEnv? Env, string Primary, bool UsesAspireCli);
+
+    // AspireVersion-pinned env packages. Kubernetes is preview-only at 13.4.x; ACA/Docker are stable.
+    private static readonly Dictionary<string, Target> Targets = new()
+    {
+        ["compose"]    = new(new("builder.AddDockerComposeEnvironment(\"aspireui\");", "Aspire.Hosting.Docker", "13.4.6"), "docker-compose.yaml", true),
+        ["manifest"]   = new(null, "aspire-manifest.json", false),
+        ["kubernetes"] = new(new("builder.AddKubernetesEnvironment(\"k8s\");", "Aspire.Hosting.Kubernetes", "13.4.6-preview.1.26319.6"), "values.yaml", true),
+        ["bicep"]      = new(new("builder.AddAzureContainerAppEnvironment(\"aca\");", "Aspire.Hosting.Azure.AppContainers", "13.4.6"), "main.bicep", true),
+    };
+
+    public static bool IsTarget(string t) => Targets.ContainsKey(t);
+
     public PublishService(CodeGenService? gen = null, Func<string, string, string, ProcessStartInfo>? commandFactory = null)
     {
         _gen = gen ?? new CodeGenService();
         _commandFactory = commandFactory ?? DefaultCommand;
     }
-
-    private static string ArtifactNameFor(string target) => target == "manifest" ? "aspire-manifest.json" : "docker-compose.yaml";
 
     private static ProcessStartInfo DefaultCommand(string target, string csproj, string outDir)
     {
@@ -44,10 +56,11 @@ public class PublishService
 
     public PublishResult Publish(StackModel s, string publishRoot, string target = "compose")
     {
+        var t = Targets.TryGetValue(target, out var td) ? td : Targets["compose"];
         var srcDir = Path.Combine(publishRoot, "src");
         var outDir = Path.Combine(publishRoot, "out");
         Directory.CreateDirectory(outDir);
-        _gen.Materialize(s, srcDir, target == "compose" ? ComposeEnvName : null);
+        _gen.Materialize(s, srcDir, t.Env);
         var csproj = Directory.GetFiles(srcDir, "*.csproj").FirstOrDefault()
             ?? throw new InvalidOperationException("no csproj materialized");
 
@@ -76,11 +89,7 @@ public class PublishService
                 OnLine("Publish timed out after 5 minutes.");
                 ok = false;
             }
-            else
-            {
-                proc.WaitForExit(); // flush async readers
-                ok = proc.ExitCode == 0;
-            }
+            else { proc.WaitForExit(); ok = proc.ExitCode == 0; }
         }
         catch (Exception ex)
         {
@@ -88,16 +97,27 @@ public class PublishService
             ok = false;
         }
 
-        var artifactName = ArtifactNameFor(target);
-        var artifactPath = Path.Combine(outDir, artifactName);
-        var envPath = Path.Combine(outDir, ".env");
-        var artifact = ok && File.Exists(artifactPath) ? File.ReadAllText(artifactPath) : null;
-        var env = target == "compose" && File.Exists(envPath) ? File.ReadAllText(envPath) : null;
-        // The artifact file is the contract: its absence means the publish didn't actually produce output.
-        if (artifact is null) ok = false;
+        // Collect every generated file (relative path) for the download bundle; pick the primary to display.
+        var files = new List<PublishFile>();
+        if (Directory.Exists(outDir))
+        {
+            foreach (var f in Directory.EnumerateFiles(outDir, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(outDir, f).Replace('\\', '/');
+                try
+                {
+                    var fi = new FileInfo(f);
+                    if (fi.Length > 512 * 1024) { files.Add(new PublishFile(rel, $"[skipped: {fi.Length / 1024} KB]")); continue; }
+                    files.Add(new PublishFile(rel, File.ReadAllText(f)));
+                }
+                catch { /* unreadable/binary — skip */ }
+            }
+        }
+        var primary = files.FirstOrDefault(f => f.Name == t.Primary || f.Name.EndsWith("/" + t.Primary));
+        if (primary is null) ok = false;
 
         string logText;
         lock (log) logText = string.Join("\n", log);
-        return new PublishResult(ok, logText, artifactName, artifact, string.IsNullOrWhiteSpace(env) ? null : env, Path.GetFullPath(outDir));
+        return new PublishResult(ok, logText, primary?.Name, primary?.Content, Path.GetFullPath(outDir), files);
     }
 }

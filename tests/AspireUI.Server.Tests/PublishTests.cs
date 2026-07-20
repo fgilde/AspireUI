@@ -34,7 +34,7 @@ public class PublishServiceTests
         Assert.True(r.Ok);
         Assert.Equal("docker-compose.yaml", r.ArtifactName);
         Assert.Contains("services:", r.Artifact);
-        Assert.Contains("CACHE_PASSWORD", r.EnvFile);
+        Assert.Contains(r.Files, f => f.Name == ".env" && f.Content.Contains("CACHE_PASSWORD"));
         // The augmented copy carries the compose env + docker package (stored stack untouched).
         Assert.Contains("AddDockerComposeEnvironment", File.ReadAllText(Path.Combine(root, "src", "Program.cs")));
         Assert.Contains("Aspire.Hosting.Docker",
