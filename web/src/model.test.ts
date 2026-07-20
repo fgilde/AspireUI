@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type AuthStatus } from "./model";
+import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -51,6 +51,15 @@ describe("config transform", () => {
   });
   it("sets an add-arg by index", () => {
     expect(setAddArg(container, 0, '"alpine"').addArgs[0]).toBe('"alpine"');
+  });
+  it("configureLiteral builds a lambda from set fields only", () => {
+    const fields: CatalogParam[] = [
+      { name: "GitRef", type: "string", required: false, label: "Git Ref" },
+      { name: "ContextSubPath", type: "string", required: false, label: "Context Sub Path" },
+    ];
+    const vals: Record<string, string> = { GitRef: "master" };
+    expect(configureLiteral(fields, n => vals[n] ?? "")).toBe('o => { o.GitRef = "master"; }');
+    expect(configureLiteral(fields, () => "")).toBe(""); // nothing set -> arg dropped
   });
 });
 

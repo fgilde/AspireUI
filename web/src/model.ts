@@ -8,7 +8,7 @@ export interface Stack {
   extraFiles: ExtraFile[]; extraPackages: PackageRef[];
 }
 
-export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string }
+export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[] }
@@ -62,6 +62,14 @@ export function toLiteral(value: string, type: CatalogParam["type"], enumTypeNam
   if (type === "bool") return value === "true" ? "true" : "false";
   if (type === "enum") return enumTypeName ? `${enumTypeName}.${value}` : value;
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+// Build a `o => { o.Field = literal; … }` lambda from the set sub-fields of a configure param.
+// Returns "" when nothing is set, so the (optional, trailing) configure arg gets trimmed off.
+export function configureLiteral(fields: CatalogParam[], get: (name: string) => string): string {
+  const assigns = fields
+    .filter(f => (get(f.name) ?? "") !== "")
+    .map(f => `o.${f.name} = ${toLiteral(get(f.name), f.type, f.enumTypeName)};`);
+  return assigns.length === 0 ? "" : `o => { ${assigns.join(" ")} }`;
 }
 export function fromLiteral(literal: string): string {
   const s = literal.trim();

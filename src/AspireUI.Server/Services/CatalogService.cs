@@ -3,7 +3,9 @@ using System.Text.Json;
 
 namespace AspireUI.Server.Services;
 
-public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string? EnumTypeName, string Label);
+// Fields: only set for Type=="configure" (an Action<TOptions> param) — the options object's
+// settable scalar properties, rendered as an expandable group and emitted as a `o => { o.X = …; }` lambda.
+public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string? EnumTypeName, string Label, List<CatalogParam>? Fields = null);
 public record CatalogOverload(List<CatalogParam> Params);
 public record CatalogMethod(string Method, string Label, List<CatalogOverload> Overloads);
 public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs);
@@ -164,6 +166,22 @@ public class CatalogService
         var list = new List<CatalogParam>();
         foreach (var p in ps)
         {
+            // Action<TOptions> configure param (e.g. AddGithubRepository's o => o.GitRef = …): render
+            // the options object's settable scalar props as a group instead of dropping the param.
+            if (p.ParameterType.IsGenericType && p.ParameterType.GetGenericTypeDefinition() == typeof(Action<>))
+            {
+                var optType = p.ParameterType.GetGenericArguments()[0];
+                var fields = optType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(pr => pr.CanWrite)
+                    .Select(pr => (pr, cc: Classify(pr.PropertyType)))
+                    .Where(x => x.cc is not null)
+                    .Select(x => new CatalogParam(x.pr.Name, x.cc!.Value.type, false, null,
+                        x.cc.Value.options, x.cc.Value.enumType, Humanize(x.pr.Name)))
+                    .ToList();
+                if (fields.Count > 0)
+                    list.Add(new CatalogParam(p.Name ?? "configure", "configure", false, null, null, null, "Options", fields));
+                continue;
+            }
             var c = Classify(p.ParameterType);
             if (c is null)
             {

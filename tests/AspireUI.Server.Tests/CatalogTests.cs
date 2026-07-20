@@ -79,6 +79,19 @@ public class CatalogTests
     }
 
     [Fact]
+    public void GithubRepository_ExposesConfigureOptions_WithGitRef()
+    {
+        // AddGithubRepository(name, repository, Action<GithubRepositoryOptions> configure). The configure
+        // lambda is where the branch (GitRef) lives; render it as a "configure" param with sub-fields
+        // so the branch is settable in the UI (default gitRef "main" breaks repos whose default is master).
+        var gh = new CatalogService().GetCatalog().First(r => r.AddMethod == "AddGithubRepository");
+        var cfg = gh.AddOverloads.SelectMany(o => o.Params).FirstOrDefault(p => p.Type == "configure");
+        Assert.NotNull(cfg);
+        Assert.NotNull(cfg!.Fields);
+        Assert.Contains(cfg.Fields!, f => f.Name == "GitRef");
+    }
+
+    [Fact]
     public void Params_ClassifyEnumAndOptional()
     {
         var cat = new CatalogService().GetCatalog();
