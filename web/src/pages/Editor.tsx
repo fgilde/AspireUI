@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Tooltip } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid } from "@tabler/icons-react";
+import { AppShell, Group, Title, Button, Menu, ActionIcon } from "@mantine/core";
+import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import * as api from "../api";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
@@ -22,6 +22,12 @@ export function Editor() {
   const [sel, setSel] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus>(NOT_RUNNING);
   const dockRef = useRef<DockLayoutHandle>(null);
+  const [savedLayouts, setSavedLayouts] = useState<string[]>([]);
+  const refreshLayouts = () => setSavedLayouts(dockRef.current?.listNamed() ?? []);
+  const saveLayout = () => {
+    const name = window.prompt("Save current layout as:")?.trim();
+    if (name) { dockRef.current?.saveNamed(name); refreshLayouts(); }
+  };
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);
 
@@ -64,10 +70,25 @@ export function Editor() {
             </Group>
             <Group>
               <RunToolbar />
-              <Tooltip label="Restore the default panel layout" withArrow>
-                <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}
-                  onClick={() => dockRef.current?.resetLayout()}>Reset Layout</Button>
-              </Tooltip>
+              <Menu position="bottom-end" withArrow onOpen={refreshLayouts} width={220}>
+                <Menu.Target>
+                  <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}>Layout</Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconDeviceFloppy size={14} />} onClick={saveLayout}>Save current layout…</Menu.Item>
+                  <Menu.Item leftSection={<IconRestore size={14} />} onClick={() => dockRef.current?.resetLayout()}>Reset to default</Menu.Item>
+                  {savedLayouts.length > 0 && <Menu.Label>Saved layouts</Menu.Label>}
+                  {savedLayouts.map(name => (
+                    <Menu.Item key={name} onClick={() => dockRef.current?.loadNamed(name)}
+                      rightSection={
+                        <ActionIcon component="div" size="sm" variant="subtle" color="red"
+                          onClick={(e) => { e.stopPropagation(); dockRef.current?.deleteNamed(name); refreshLayouts(); }}>
+                          <IconTrash size={13} />
+                        </ActionIcon>
+                      }>{name}</Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
               <HelpButton />
               <GitHubLink />
               <ThemeMenu />

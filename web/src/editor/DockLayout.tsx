@@ -114,7 +114,18 @@ function buildDefaultLayout(api: DockviewApi) {
 
 export interface DockLayoutHandle {
   resetLayout: () => void;
+  saveNamed: (name: string) => void;
+  loadNamed: (name: string) => void;
+  deleteNamed: (name: string) => void;
+  listNamed: () => string[];
 }
+
+// Named, reusable dock layouts (separate from the auto-persisted current layout).
+const LAYOUTS_KEY = "aspireui.layouts.v1";
+const readLayouts = (): Record<string, unknown> => {
+  try { return JSON.parse(localStorage.getItem(LAYOUTS_KEY) || "{}"); } catch { return {}; }
+};
+const writeLayouts = (m: Record<string, unknown>) => localStorage.setItem(LAYOUTS_KEY, JSON.stringify(m));
 
 // No props: the dock's stack/selection/run-status are supplied by the
 // EditorContext.Provider that Editor.tsx wraps around this component.
@@ -126,7 +137,19 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
     if (apiRef.current) buildDefaultLayout(apiRef.current);
   }, []);
 
-  useImperativeHandle(ref, () => ({ resetLayout }), [resetLayout]);
+  useImperativeHandle(ref, () => ({
+    resetLayout,
+    saveNamed: (name: string) => {
+      if (!apiRef.current) return;
+      const m = readLayouts(); m[name] = apiRef.current.toJSON(); writeLayouts(m);
+    },
+    loadNamed: (name: string) => {
+      const m = readLayouts();
+      if (apiRef.current && m[name]) { try { apiRef.current.fromJSON(m[name] as any); } catch { /* stale */ } }
+    },
+    deleteNamed: (name: string) => { const m = readLayouts(); delete m[name]; writeLayouts(m); },
+    listNamed: () => Object.keys(readLayouts()),
+  }), [resetLayout]);
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     apiRef.current = event.api;
