@@ -1,8 +1,9 @@
 import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef } from "react";
-import type { FunctionComponent } from "react";
+import type { FunctionComponent, CSSProperties } from "react";
 import { DockviewReact } from "dockview-react";
 import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
+import "./dockview-mantine.css";
 import type { Stack, RunStatus } from "../model";
 import { Palette } from "./Palette";
 import { Canvas } from "./Canvas";
@@ -170,8 +171,25 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
   }, []);
 
   const { current } = useAppTheme();
+  // Bind dockview's surface colors to Mantine theme tokens (inline custom props override the theme
+  // class), so panels/tabs follow the active scheme — fixes light themes rendering dark panels.
+  const dvVars: Record<string, string> = {
+    "--dv-group-view-background-color": "var(--mantine-color-body)",
+    "--dv-tabs-and-actions-container-background-color": "var(--mantine-color-default)",
+    "--dv-activegroup-visiblepanel-tab-background-color": "var(--mantine-color-body)",
+    "--dv-activegroup-hiddenpanel-tab-background-color": "var(--mantine-color-default)",
+    "--dv-inactivegroup-visiblepanel-tab-background-color": "var(--mantine-color-body)",
+    "--dv-inactivegroup-hiddenpanel-tab-background-color": "var(--mantine-color-default)",
+    "--dv-activegroup-visiblepanel-tab-color": "var(--mantine-color-text)",
+    "--dv-activegroup-hiddenpanel-tab-color": "var(--mantine-color-dimmed)",
+    "--dv-inactivegroup-visiblepanel-tab-color": "var(--mantine-color-text)",
+    "--dv-inactivegroup-hiddenpanel-tab-color": "var(--mantine-color-dimmed)",
+    "--dv-separator-border": "var(--mantine-color-default-border)",
+    "--dv-tab-divider-color": "var(--mantine-color-default-border)",
+    "--dv-icon-hover-background-color": "var(--mantine-color-default-hover)",
+  };
   return (
-    <div className={current.dockview} style={{ height: "100%", width: "100%" }}>
+    <div className={current.dockview} style={{ height: "100%", width: "100%", ...dvVars } as CSSProperties}>
       <DockviewReact components={components} onReady={onReady} />
     </div>
   );

@@ -1,0 +1,18 @@
+/* Bind dockview surfaces to Mantine theme tokens so panels follow the active color scheme
+   (dockview's own theme classes paint .dv-groupview directly, which broke light themes). */
+.dv-groupview,
+.dv-void-container,
+.dv-content-container {
+  background-color: var(--mantine-color-body) !important;
+}
+.dv-tabs-and-actions-container {
+  background-color: var(--mantine-color-default) !important;
+}
+.dv-tab.dv-active-tab {
+  background-color: var(--mantine-color-body) !important;
+  color: var(--mantine-color-text) !important;
+}
+.dv-tab.dv-inactive-tab {
+  background-color: var(--mantine-color-default) !important;
+  color: var(--mantine-color-dimmed) !important;
+}
