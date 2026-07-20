@@ -78,6 +78,9 @@ export function CodeEditorPanel() {
       fixedOverflowWidgets: true,
       quickSuggestions: true,
       acceptSuggestionOnCommitCharacter: false,
+      // Monaco 0.56 defaults to the new EditContext input API, which drops keyboard input (space etc.)
+      // and breaks the suggest widget in this embedded/dockview setup. Force the classic textarea input.
+      editContext: false,
     });
     edRef.current = ed;
     ed.onDidChangeModelContent(() => { if (!applyingRef.current) dirtyRef.current = true; });
