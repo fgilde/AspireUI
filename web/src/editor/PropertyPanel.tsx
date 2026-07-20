@@ -3,7 +3,7 @@ import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon } fro
 import { IconTrash } from "@tabler/icons-react";
 import type { Stack, ResourceType } from "../model";
 import { removeNode } from "../model";
-import { resourceVisual } from "../resourceIcons";
+import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
@@ -46,12 +46,12 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {node && (() => {
-        const { Icon, color } = resourceVisual(node.addMethod);
+        const { color } = resourceVisual(node.addMethod);
         return (
           <Group justify="space-between" px="sm" pt="xs" wrap="nowrap">
             <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-              <ThemeIcon variant="light" size={24} radius="sm" style={{ color, background: `${color}22` }}>
-                <Icon size={16} />
+              <ThemeIcon variant="light" size={24} radius="sm" style={{ background: `${color}22` }}>
+                <ResourceGlyph addMethod={node.addMethod} size={16} />
               </ThemeIcon>
               <Text fw={600} size="sm" truncate>{node.resourceName}</Text>
             </Group>

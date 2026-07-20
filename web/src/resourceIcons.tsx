@@ -1,33 +1,48 @@
-import {
-  IconDatabase, IconBrandDocker, IconBrandGithub, IconRobot, IconBrandOpenai,
-  IconBolt, IconBox, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube,
-} from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
+import { siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio } from "simple-icons";
 
-// AddMethod -> a distinctive icon + brand-ish color, for nodes / palette / property header.
-// Redis has no tabler brand icon, so it reuses the DB icon with the Redis red.
-const MAP: Record<string, { Icon: Icon; color: string }> = {
-  AddRedis:            { Icon: IconDatabase, color: "#D82C20" },
-  AddPostgres:         { Icon: IconDatabase, color: "#336791" },
-  AddContainer:        { Icon: IconBrandDocker, color: "#2496ED" },
-  AddDockerfile:       { Icon: IconBrandDocker, color: "#2496ED" },
-  AddGithubRepository: { Icon: IconBrandGithub, color: "#6e5494" },
-  AddOllama:           { Icon: IconRobot, color: "#0EA5E9" },
-  AddLocalAI:          { Icon: IconBrandOpenai, color: "#10A37F" },
-  AddN8n:              { Icon: IconPlugConnected, color: "#EA4B71" },
-  AddSupabase:         { Icon: IconBolt, color: "#3ECF8E" },
-  AddProject:          { Icon: IconBox, color: "#512BD4" },
-  AddCSharpApp:        { Icon: IconBox, color: "#512BD4" },
-  AddDotnetTool:       { Icon: IconTerminal2, color: "#512BD4" },
-  AddExecutable:       { Icon: IconTerminal2, color: "#64748B" },
-  AddExternalService:  { Icon: IconCloud, color: "#0891B2" },
-  AddParameter:        { Icon: IconSettings, color: "#64748B" },
-  AddConnectionString: { Icon: IconPlugConnected, color: "#64748B" },
-  AddMinioS3OnNfs:     { Icon: IconDatabase, color: "#C72E49" },
+type Brand = { path: string };
+interface Visual { si?: Brand; tabler?: Icon; color: string }
+
+// "currentColor"-style adaptive tone for brands whose logo is near-black (invisible on dark themes).
+const TEXT = "var(--mantine-color-text)";
+
+const MAP: Record<string, Visual> = {
+  AddRedis:            { si: siRedis, color: "#FF4438" },
+  AddPostgres:         { si: siPostgresql, color: "#4169E1" },
+  AddContainer:        { si: siDocker, color: "#2496ED" },
+  AddDockerfile:       { si: siDocker, color: "#2496ED" },
+  AddGithubRepository: { si: siGithub, color: TEXT },
+  AddOllama:           { si: siOllama, color: TEXT },
+  AddLocalAI:          { tabler: IconBrandOpenai, color: "#10A37F" },
+  AddN8n:              { si: siN8n, color: "#EA4B71" },
+  AddSupabase:         { si: siSupabase, color: "#3FCF8E" },
+  AddProject:          { si: siDotnet, color: "#512BD4" },
+  AddCSharpApp:        { si: siDotnet, color: "#512BD4" },
+  AddDotnetTool:       { si: siDotnet, color: "#512BD4" },
+  AddExecutable:       { tabler: IconTerminal2, color: "#64748B" },
+  AddExternalService:  { tabler: IconCloud, color: "#0891B2" },
+  AddParameter:        { tabler: IconSettings, color: "#64748B" },
+  AddConnectionString: { tabler: IconPlugConnected, color: "#64748B" },
+  AddMinioS3OnNfs:     { si: siMinio, color: "#C72E49" },
 };
-
-const FALLBACK = { Icon: IconCube, color: "#7C8593" };
+const FALLBACK: Visual = { tabler: IconCube, color: "#7C8593" };
 
 export function resourceVisual(addMethod: string) {
-  return MAP[addMethod] ?? FALLBACK;
+  const v = MAP[addMethod] ?? FALLBACK;
+  return { color: v.color === TEXT ? "#8b98a5" : v.color };  // minimap etc. need a concrete color
+}
+
+export function ResourceGlyph({ addMethod, size = 16 }: { addMethod: string; size?: number }) {
+  const v = MAP[addMethod] ?? FALLBACK;
+  if (v.si) {
+    return (
+      <svg role="img" viewBox="0 0 24 24" width={size} height={size} fill={v.color} style={{ display: "block" }}>
+        <path d={v.si.path} />
+      </svg>
+    );
+  }
+  const T = v.tabler ?? IconCube;
+  return <T size={size} style={{ color: v.color }} />;
 }

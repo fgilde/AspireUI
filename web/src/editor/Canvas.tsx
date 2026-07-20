@@ -6,7 +6,7 @@ import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSe
 import dagre from "dagre";
 import type { Stack, RunState } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier } from "../model";
-import { resourceVisual } from "../resourceIcons";
+import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 
@@ -16,14 +16,14 @@ import * as api from "../api";
 // every node shows the same shared runStatus for now.
 function ResourceNode({ data }: any) {
   const color = runStateColor(data.runState as RunState);
-  const { Icon, color: iconColor } = resourceVisual(data.addMethod);
+  const { color: iconColor } = resourceVisual(data.addMethod);
   return (
     <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 150 }}>
       <Handle type="target" position={Position.Left} />
       <Group justify="space-between" wrap="nowrap" gap={6}>
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-          <ThemeIcon variant="light" size={22} radius="sm" style={{ color: iconColor, background: `${iconColor}22`, flexShrink: 0 }}>
-            <Icon size={15} />
+          <ThemeIcon variant="light" size={22} radius="sm" style={{ background: `${iconColor}22`, flexShrink: 0 }}>
+            <ResourceGlyph addMethod={data.addMethod} size={15} />
           </ThemeIcon>
           <Text fw={600} size="sm" truncate>{data.resourceName}</Text>
         </Group>
