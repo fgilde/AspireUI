@@ -10,6 +10,7 @@ import { RunToolbar } from "../editor/RunToolbar";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeToggle } from "../ThemeToggle";
+import { GitHubLink } from "../GitHubLink";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -68,6 +69,7 @@ export function Editor() {
                   onClick={() => dockRef.current?.resetLayout()}>Reset Layout</Button>
               </Tooltip>
               <HelpButton />
+              <GitHubLink />
               <ThemeToggle />
               <UserMenu />
             </Group>

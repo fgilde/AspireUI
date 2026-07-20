@@ -1,3 +1,5 @@
+export const APP_VERSION = "0.1.0";
+
 export interface WithCall { method: string; args: string[] }
 export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[] }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }

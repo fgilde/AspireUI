@@ -3,19 +3,20 @@ import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
-  AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon,
+  AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon, Anchor,
   Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip,
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconSettings,
 } from "@tabler/icons-react";
-import { pickAppHost, type Stack } from "../model";
+import { pickAppHost, APP_VERSION, type Stack } from "../model";
 import * as api from "../api";
 import type { TemplateInfo, BundleFile } from "../api";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
 import { ThemeToggle } from "../ThemeToggle";
+import { GitHubLink } from "../GitHubLink";
 import "./StacksOverview.css";
 
 const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
@@ -115,7 +116,7 @@ export function StacksOverview() {
   };
 
   return (
-    <AppShell header={{ height: 64 }} padding="lg">
+    <AppShell header={{ height: 64 }} footer={{ height: 36 }} padding="lg">
       <AppShell.Header withBorder>
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between">
@@ -184,6 +185,7 @@ export function StacksOverview() {
                 </ActionIcon>
               </Tooltip>
               <HelpButton />
+              <GitHubLink />
               <ThemeToggle />
               <UserMenu />
             </Group>
@@ -252,6 +254,16 @@ export function StacksOverview() {
           )}
         </Container>
       </AppShell.Main>
+
+      <AppShell.Footer>
+        <Container size="xl" h="100%">
+          <Group h="100%" justify="center" gap={6}>
+            <Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text>
+            <Text size="xs" c="dimmed">·</Text>
+            <Anchor size="xs" c="dimmed" href="https://www.gilde.org" target="_blank" rel="noreferrer">by gilde.org</Anchor>
+          </Group>
+        </Container>
+      </AppShell.Footer>
 
       <Modal opened={open} onClose={() => setOpen(false)} title="New Stack" centered>
         <TextInput
