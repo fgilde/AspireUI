@@ -1,9 +1,10 @@
-import { ReactFlow, Background, Controls, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath } from "@xyflow/react";
+import { ReactFlow, Background, Controls, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { useCallback, useEffect } from "react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon } from "@mantine/core";
 import type { Stack, RunState } from "../model";
 import { removeNode, runStateColor } from "../model";
+import { resourceVisual } from "../resourceIcons";
 import * as api from "../api";
 
 // Small dot showing the current stack-level run state for this node. This is
@@ -12,11 +13,17 @@ import * as api from "../api";
 // every node shows the same shared runStatus for now.
 function ResourceNode({ data }: any) {
   const color = runStateColor(data.runState as RunState);
+  const { Icon, color: iconColor } = resourceVisual(data.addMethod);
   return (
-    <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 140 }}>
+    <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 150 }}>
       <Handle type="target" position={Position.Left} />
-      <Group justify="space-between" wrap="nowrap" gap={4}>
-        <Text fw={600} size="sm">{data.resourceName}</Text>
+      <Group justify="space-between" wrap="nowrap" gap={6}>
+        <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+          <ThemeIcon variant="light" size={22} radius="sm" style={{ color: iconColor, background: `${iconColor}22`, flexShrink: 0 }}>
+            <Icon size={15} />
+          </ThemeIcon>
+          <Text fw={600} size="sm" truncate>{data.resourceName}</Text>
+        </Group>
         {color && (
           <Tooltip label={data.runState} withArrow>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
@@ -80,16 +87,26 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     api.saveStack({ ...stack, edges }).then(setStack);
   }, [stack, setStack]);
 
-  const nodes = stack.nodes.map(n => ({
-    id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
-    data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
-  }));
+  // Local ReactFlow node state so dragging renders live (a fully-controlled `nodes` prop only moved the
+  // node on mouse-up). Re-synced from the stack whenever the node set / positions / run-state change;
+  // position changes are persisted to the backend on drag-stop, removals cascade through removeNode.
+  const [rfNodes, setRfNodes, onNodesChangeInternal] = useNodesState<any>([]);
+  const nodeSig = JSON.stringify(stack.nodes.map(n => [n.id, n.resourceName, n.addMethod, n.x, n.y])) + runState;
+  useEffect(() => {
+    setRfNodes(stack.nodes.map(n => ({
+      id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
+      data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeSig]);
+
   const edges = stack.edges.map(e => ({
     id: e.id, source: e.fromNodeId, target: e.toNodeId, type: "editable",
     data: { kind: e.kind, onToggle: toggleEdge, onDelete: deleteEdge },
   }));
 
   const onNodesChange = useCallback((changes: any[]) => {
+    onNodesChangeInternal(changes); // apply live (drag, select) to the local RF state
     changes.filter(c => c.type === "position" && c.dragging === false).forEach(c => {
       const node = stack.nodes.find(n => n.id === c.id);
       if (node && c.position) api.patchNode(stack.id, { ...node, x: c.position.x, y: c.position.y }).then(setStack);
@@ -100,7 +117,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack(next).then(setStack);
       onSelect(null);
     }
-  }, [stack, setStack, onSelect]);
+  }, [stack, setStack, onSelect, onNodesChangeInternal]);
   const onConnect = useCallback((c: any) =>
     api.addEdge(stack.id, { fromNodeId: c.source, toNodeId: c.target, kind: "reference" }).then(setStack),
     [stack, setStack]);
@@ -114,7 +131,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   }, [stack, setStack]);
 
   return (
-    <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+    <ReactFlow nodes={rfNodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
       colorMode={colorScheme === "light" ? "light" : "dark"}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}

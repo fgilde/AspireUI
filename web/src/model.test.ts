@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -19,6 +19,29 @@ describe("model", () => {
     const next = applyNodePosition(stack, "n1", 9, 9);
     expect(next.nodes[0].x).toBe(9);
     expect(stack.nodes[0].x).toBe(1);
+  });
+  it("removeNode cascades: drops dangling raws + withcalls referencing the removed var", () => {
+    const s: Stack = {
+      id: "s", name: "ai", targetFramework: "net10.0",
+      nodes: [
+        { id: "la", varName: "localai", addMethod: "AddLocalAI", resourceName: "localai", withCalls: [], x: 0, y: 0, addArgs: [] },
+        { id: "n8", varName: "n8n", addMethod: "AddN8n", resourceName: "n8n", x: 0, y: 0, addArgs: [],
+          withCalls: [
+            { method: "WithEnvironment", args: ['"OPENAI_API_BASE_URL"', "localAiOpenAiBase"] },
+            { method: "WithEnvironment", args: ['"OTHER"', '"keep"'] },
+          ] },
+      ],
+      edges: [{ id: "e", fromNodeId: "n8", toNodeId: "la", kind: "waitFor" }],
+      rawStatements: ['var localAiOpenAiBase = ReferenceExpression.Create($"{localai.Resource.HttpEndpoint}/v1");'],
+      extraFiles: [], extraPackages: [],
+    };
+    const next = removeNode(s, "la");
+    expect(next.nodes.map(n => n.id)).toEqual(["n8"]);          // localai gone
+    expect(next.edges).toHaveLength(0);                          // edge to it gone
+    expect(next.rawStatements).toHaveLength(0);                  // raw referencing localai gone
+    const n8n = next.nodes[0];
+    expect(n8n.withCalls).toHaveLength(1);                       // env using localAiOpenAiBase dropped...
+    expect(n8n.withCalls[0].args).toEqual(['"OTHER"', '"keep"']); // ...unrelated one kept
   });
 });
 

@@ -113,11 +113,40 @@ export function isErrorLine(line: string): boolean {
 export function pickAppHost(files: { path: string; content: string }[]): string | undefined {
   return files.find(f => f.content.includes("DistributedApplication.CreateBuilder"))?.path;
 }
+// Removing a node must also purge everything that referenced it, or the generated code keeps dangling
+// identifiers (e.g. deleting `localai` from the AI demo left `var localAiOpenAiBase = ...localai...`
+// and the n8n WithEnvironment(..., localAiOpenAiBase) calls → uncompilable). Cascade: drop raw
+// statements referencing a removed var; if such a raw declared `var X`, X is now removed too, so
+// re-scan (fixpoint); finally drop remaining nodes' WithCall args that reference any removed var.
 export function removeNode(s: Stack, id: string): Stack {
+  const node = s.nodes.find(n => n.id === id);
+  const removed = new Set<string>();
+  if (node) removed.add(node.varName);
+  const esc = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const refs = (text: string) => [...removed].some(v => new RegExp(`\\b${esc(v)}\\b`).test(text));
+
+  let raws = [...s.rawStatements];
+  for (let changed = true; changed;) {
+    changed = false;
+    const kept: string[] = [];
+    for (const r of raws) {
+      if (refs(r)) {
+        const m = r.match(/\bvar\s+([A-Za-z_]\w*)\s*=/);
+        if (m && !removed.has(m[1])) { removed.add(m[1]); changed = true; }
+      } else kept.push(r);
+    }
+    raws = kept;
+  }
+
+  const nodes = s.nodes.filter(n => n.id !== id).map(n => ({
+    ...n,
+    withCalls: n.withCalls.filter(w => !w.args.some(a => refs(a))),
+  }));
   return {
     ...s,
-    nodes: s.nodes.filter(n => n.id !== id),
+    nodes,
     edges: s.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
+    rawStatements: raws,
   };
 }
 // Stack-level run state shown per node (Running/Starting/Failed dot on the

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon } from "@mantine/core";
+import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon } from "@mantine/core";
 import { IconTrash } from "@tabler/icons-react";
 import type { Stack, ResourceType } from "../model";
 import { removeNode } from "../model";
+import { resourceVisual } from "../resourceIcons";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 
@@ -15,7 +16,8 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
 
   const onDelete = () => {
-    if (!nodeId) return;
+    if (!nodeId || !node) return;
+    if (!window.confirm(`Delete "${node.resourceName}"? This also removes its connections and any code that references it.`)) return;
     api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); });
   };
 
@@ -40,14 +42,22 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {node && (
-        <Group justify="space-between" px="sm" pt="xs">
-          <Text fw={600} size="sm">{node.resourceName}</Text>
-          <ActionIcon color="red" variant="subtle" title="Delete node" onClick={onDelete}>
-            <IconTrash size={16} />
-          </ActionIcon>
-        </Group>
-      )}
+      {node && (() => {
+        const { Icon, color } = resourceVisual(node.addMethod);
+        return (
+          <Group justify="space-between" px="sm" pt="xs" wrap="nowrap">
+            <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+              <ThemeIcon variant="light" size={24} radius="sm" style={{ color, background: `${color}22` }}>
+                <Icon size={16} />
+              </ThemeIcon>
+              <Text fw={600} size="sm" truncate>{node.resourceName}</Text>
+            </Group>
+            <ActionIcon color="red" variant="subtle" title="Delete node" onClick={onDelete}>
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Group>
+        );
+      })()}
       <Tabs defaultValue="props" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Tabs.List>
           <Tabs.Tab value="props">Properties</Tabs.Tab>

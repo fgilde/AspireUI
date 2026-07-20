@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Button, ScrollArea, Divider, Tooltip } from "@mantine/core";
+import { Stack as MStack, TextInput, Text, Button, ScrollArea, Divider, Tooltip, ThemeIcon } from "@mantine/core";
 import type { Stack, ResourceType, Node } from "../model";
+import { resourceVisual } from "../resourceIcons";
 import * as api from "../api";
 import { AddResourceDialog } from "./AddResourceDialog";
 
@@ -29,13 +30,17 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
         {Object.entries(groups).map(([g, items]) => (
           <div key={g}>
             <Divider my="xs" label={g} labelPosition="left" />
-            {items.map(rt => (
-              <Tooltip key={rt.addMethod} label="Click to add to the canvas" position="right" withArrow openDelay={400}>
-                <Button variant="light" fullWidth justify="start" mb={4} onClick={() => setSelectedRt(rt)}>
-                  <Text size="sm">{rt.label}</Text>
-                </Button>
-              </Tooltip>
-            ))}
+            {items.map(rt => {
+              const { Icon, color } = resourceVisual(rt.addMethod);
+              return (
+                <Tooltip key={rt.addMethod} label="Click to add to the canvas" position="right" withArrow openDelay={400}>
+                  <Button variant="light" fullWidth justify="start" mb={4} onClick={() => setSelectedRt(rt)}
+                    leftSection={<ThemeIcon variant="transparent" size={20} style={{ color }}><Icon size={16} /></ThemeIcon>}>
+                    <Text size="sm">{rt.label}</Text>
+                  </Button>
+                </Tooltip>
+              );
+            })}
           </div>
         ))}
       </ScrollArea>
