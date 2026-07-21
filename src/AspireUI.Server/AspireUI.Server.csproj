@@ -64,10 +64,11 @@
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Bun" Version="*" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Deno" Version="*" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Rust" Version="*" />
-    <PackageReference Include="Nextended.Aspire" Version="10.1.14" />
-    <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.14" />
-    <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />
-    <PackageReference Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.14" />
+    <PackageReference Include="Nextended.Aspire" Version="10.1.15" />
+    <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.15" />
+    <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.15" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.15" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Grafana" Version="10.1.15" />
   </ItemGroup>
 
   <ItemGroup>

@@ -4,7 +4,7 @@ import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
   siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
   siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo, siPython,
-  siBun, siDeno, siRust, siNgrok, siMeilisearch,
+  siBun, siDeno, siRust, siNgrok, siMeilisearch, siGrafana,
 } from "simple-icons";
 
 type Brand = { path: string };
@@ -46,6 +46,7 @@ const MAP: Record<string, Visual> = {
   AddElasticsearch:    { si: siElasticsearch, color: "#00BFB3" },
   AddKeycloak:         { si: siKeycloak, color: TEXT },
   AddSeq:              { tabler: IconReportAnalytics, color: "#00A9E0" },
+  AddGrafana:          { si: siGrafana, color: "#F46800" },
   AddQdrant:           { si: siQdrant, color: "#DC244C" },
   AddMilvus:           { si: siMilvus, color: "#00A1EA" },
   AddDaprComponent:    { si: siDapr, color: "#4756C7" },

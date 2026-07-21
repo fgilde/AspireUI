@@ -30,19 +30,30 @@
     "icon": "supabase",
     "group": "Backend",
     "package": "Nextended.Aspire.Hosting.Supabase",
-    "packageVersion": "10.1.14",
+    "packageVersion": "10.1.15",
     "usings": [
       "Nextended.Aspire.Hosting.Supabase.Builders",
       "Nextended.Aspire.Hosting.Observability"
     ],
     "description": "Supabase backend (Postgres + auth + storage + APIs)."
   },
+  "AddGrafana": {
+    "label": "Grafana",
+    "icon": "grafana",
+    "group": "Observability",
+    "package": "Nextended.Aspire.Hosting.Grafana",
+    "packageVersion": "10.1.15",
+    "usings": [
+      "Nextended.Aspire.Hosting.Grafana"
+    ],
+    "description": "Grafana dashboards as an Aspire resource (Nextended integration). Optional configRootPath points at provisioning/config; wire it to your Prometheus/Loki/etc."
+  },
   "AddN8n": {
     "label": "n8n",
     "icon": "n8n",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.N8n",
-    "packageVersion": "10.1.14",
+    "packageVersion": "10.1.15",
     "usings": [
       "Nextended.Aspire.Hosting.N8n.Builders"
     ],
@@ -53,7 +64,7 @@
     "icon": "localai",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.LocalAI",
-    "packageVersion": "10.1.14",
+    "packageVersion": "10.1.15",
     "usings": [
       "Nextended.Aspire.Hosting.LocalAI"
     ],
@@ -72,7 +83,7 @@
     "icon": "github",
     "group": "Source",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.14",
+    "packageVersion": "10.1.15",
     "usings": [
       "Nextended.Aspire"
     ],
@@ -82,7 +93,7 @@
     "label": "MinIO (S3 on NFS)",
     "group": "Storage",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.14",
+    "packageVersion": "10.1.15",
     "usings": [
       "Nextended.Aspire"
     ]
