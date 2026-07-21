@@ -239,7 +239,13 @@ public static class StackEndpoints
         });
 
         app2.MapPost("/stacks/{id}/run", (string id) =>
-            Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
+        {
+            // Re-materialize fresh so the run reflects the current model and a clean single-csproj dir
+            // (stale csproj from an earlier stack name would otherwise make `dotnet run` ambiguous).
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            gen.Materialize(s, Dir(id));
+            return Results.Ok(run.Start(id, Path.GetFullPath(Dir(id))));
+        });
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
         // Read-only host filesystem browse — powers the path picker for project/script/config-path

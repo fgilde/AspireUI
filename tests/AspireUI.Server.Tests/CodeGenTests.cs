@@ -155,6 +155,22 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Materialize_PurgesStaleCsproj_OnRename()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-rename-" + Guid.NewGuid());
+        try
+        {
+            var gen = new CodeGenService();
+            gen.Materialize(new StackModel("s", "Old Name", "net10.0", [], [], [], [], []), dir);
+            gen.Materialize(new StackModel("s", "New Name", "net10.0", [], [], [], [], []), dir);
+            var csprojs = Directory.GetFiles(dir, "*.csproj");
+            Assert.Single(csprojs);
+            Assert.EndsWith("New Name.csproj", csprojs[0]);
+        }
+        finally { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void Materialize_WritesFilesAndSidecar()
     {
         var dir = Path.Combine(Path.GetTempPath(), "aspireui-test-" + Guid.NewGuid());

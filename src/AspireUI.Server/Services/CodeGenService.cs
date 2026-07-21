@@ -189,6 +189,11 @@ public class CodeGenService
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, env));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        // Renaming a stack changes the csproj filename; the workspace dir is reused per stack id, so an
+        // old-name .csproj would linger and make `dotnet run` ambiguous ("multiple project files").
+        // Drop any stale top-level csproj before writing the current one.
+        foreach (var old in Directory.GetFiles(dir, "*.csproj"))
+            try { File.Delete(old); } catch { /* in use / gone — overwritten below anyway */ }
         File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, env));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));
