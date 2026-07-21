@@ -1,9 +1,10 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
   siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
   siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo, siPython,
+  siBun, siDeno, siRust, siNgrok, siMeilisearch,
 } from "simple-icons";
 
 type Brand = { path: string };
@@ -66,6 +67,16 @@ const MAP: Record<string, Visual> = {
   AddAzureKeyVault:    { tabler: IconLock, color: "#3999D6" },
   AddAzureApplicationInsights: { tabler: IconBrandAzure, color: "#3999D6" },
   AddAzureOpenAI:      { tabler: IconBrandOpenai, color: "#10A37F" },
+  AddMinioContainer:   { si: siMinio, color: "#C72E49" },
+  AddMeilisearch:      { si: siMeilisearch, color: "#FF5CAA" },
+  AddRavenDB:          { tabler: IconDatabase, color: "#CE2E28" },
+  AddMailPit:          { tabler: IconMail, color: "#2AA198" },
+  AddAdminer:          { tabler: IconTable, color: "#5A7FB5" },
+  AddNgrok:            { si: siNgrok, color: TEXT },
+  AddBunApp:           { si: siBun, color: TEXT },
+  AddDenoApp:          { si: siDeno, color: TEXT },
+  AddDenoTask:         { si: siDeno, color: TEXT },
+  AddRustApp:          { si: siRust, color: TEXT },
 };
 const FALLBACK: Visual = { tabler: IconCube, color: "#7C8593" };
 

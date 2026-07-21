@@ -417,5 +417,88 @@
   },
   "AddOllamaLocal": {
     "exclude": true
+  },
+  "AddMinioContainer": {
+    "label": "MinIO",
+    "icon": "minio",
+    "group": "Storage",
+    "package": "CommunityToolkit.Aspire.Hosting.MinIO",
+    "packageVersion": "13.4.0",
+    "description": "MinIO S3-compatible object storage."
+  },
+  "AddMeilisearch": {
+    "label": "Meilisearch",
+    "icon": "meilisearch",
+    "group": "Search",
+    "package": "CommunityToolkit.Aspire.Hosting.Meilisearch",
+    "packageVersion": "13.4.0",
+    "description": "Meilisearch \u2014 fast, typo-tolerant full-text search."
+  },
+  "AddRavenDB": {
+    "label": "RavenDB",
+    "icon": "ravendb",
+    "group": "Database",
+    "package": "CommunityToolkit.Aspire.Hosting.RavenDB",
+    "packageVersion": "13.4.0",
+    "description": "RavenDB document database."
+  },
+  "AddMailPit": {
+    "label": "MailPit",
+    "icon": "mail",
+    "group": "Tools",
+    "package": "CommunityToolkit.Aspire.Hosting.MailPit",
+    "packageVersion": "13.4.0",
+    "description": "MailPit \u2014 a dev SMTP server with a web UI to catch outgoing mail."
+  },
+  "AddAdminer": {
+    "label": "Adminer",
+    "icon": "adminer",
+    "group": "Tools",
+    "package": "CommunityToolkit.Aspire.Hosting.Adminer",
+    "packageVersion": "13.4.0",
+    "description": "Adminer \u2014 a lightweight web UI for your databases."
+  },
+  "AddNgrok": {
+    "label": "ngrok",
+    "icon": "ngrok",
+    "group": "Networking",
+    "package": "CommunityToolkit.Aspire.Hosting.Ngrok",
+    "packageVersion": "13.4.0",
+    "description": "Expose a local endpoint publicly via an ngrok tunnel."
+  },
+  "AddBunApp": {
+    "label": "Bun App",
+    "icon": "bun",
+    "group": "Compute",
+    "package": "CommunityToolkit.Aspire.Hosting.Bun",
+    "packageVersion": "13.4.0",
+    "description": "Run a Bun (JavaScript/TypeScript) application."
+  },
+  "AddDenoApp": {
+    "label": "Deno App",
+    "icon": "deno",
+    "group": "Compute",
+    "package": "CommunityToolkit.Aspire.Hosting.Deno",
+    "packageVersion": "13.4.0",
+    "description": "Run a Deno application."
+  },
+  "AddDenoTask": {
+    "label": "Deno Task",
+    "icon": "deno",
+    "group": "Compute",
+    "package": "CommunityToolkit.Aspire.Hosting.Deno",
+    "packageVersion": "13.4.0",
+    "description": "Run a Deno task from deno.json."
+  },
+  "AddRustApp": {
+    "label": "Rust App",
+    "icon": "rust",
+    "group": "Compute",
+    "package": "CommunityToolkit.Aspire.Hosting.Rust",
+    "packageVersion": "13.4.0",
+    "description": "Run a Rust application."
+  },
+  "AddBaconApp": {
+    "exclude": true
   }
 }

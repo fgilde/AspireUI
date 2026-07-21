@@ -258,6 +258,10 @@ public class CatalogService
                      "Aspire.Hosting.Yarp", "Aspire.Hosting.Oracle", "Aspire.Hosting.Python",
                      "Aspire.Hosting.Azure.Storage", "Aspire.Hosting.Azure.ServiceBus", "Aspire.Hosting.Azure.KeyVault",
                      "Aspire.Hosting.Azure.ApplicationInsights", "Aspire.Hosting.Azure.CognitiveServices", "Aspire.Hosting.Maui",
+                     "CommunityToolkit.Aspire.Hosting.MinIO", "CommunityToolkit.Aspire.Hosting.Meilisearch",
+                     "CommunityToolkit.Aspire.Hosting.RavenDB", "CommunityToolkit.Aspire.Hosting.MailPit",
+                     "CommunityToolkit.Aspire.Hosting.Adminer", "CommunityToolkit.Aspire.Hosting.Ngrok",
+                     "CommunityToolkit.Aspire.Hosting.Bun", "CommunityToolkit.Aspire.Hosting.Deno", "CommunityToolkit.Aspire.Hosting.Rust",
                  })
         {
             try { Assembly.Load(name); } catch { /* package not present/loadable; catalog just omits it */ }

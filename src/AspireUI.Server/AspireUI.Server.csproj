@@ -48,6 +48,15 @@
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" Version="13.4.1-beta.686" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.1-beta.686" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.4.1-beta.686" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MinIO" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Meilisearch" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.RavenDB" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Adminer" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ngrok" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Bun" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Deno" Version="*" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Rust" Version="*" />
     <PackageReference Include="Nextended.Aspire" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />

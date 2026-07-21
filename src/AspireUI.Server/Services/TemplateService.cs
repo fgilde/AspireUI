@@ -17,6 +17,7 @@ public class TemplateService
         new("kafka-ui", "Kafka + UI", "Kafka broker with the provectus Kafka-UI dashboard."),
         new("keycloak-auth", "Keycloak + Postgres", "Keycloak identity server backed by a Postgres database."),
         new("observability", "Observability (Seq)", "A Seq server for structured logs — point your apps at it."),
+        new("grafana-stack", "Grafana + Prometheus + OTEL", "Grafana dashboards + Prometheus metrics + an OpenTelemetry collector (containers)."),
     ];
 
     public StackModel? Create(string templateId) => templateId switch
@@ -27,6 +28,7 @@ public class TemplateService
         "kafka-ui" => KafkaUi(),
         "keycloak-auth" => KeycloakAuth(),
         "observability" => Observability(),
+        "grafana-stack" => GrafanaStack(),
         _ => null,
     };
 
@@ -87,6 +89,22 @@ public class TemplateService
     {
         var seq = Node("seq", "AddSeq", 120, 120);
         return Stack("Observability (Seq)", [seq]);
+    }
+
+    private static StackModel GrafanaStack()
+    {
+        var prom = Node("prometheus", "AddContainer", 100, 100,
+            [new WithCall("WithHttpEndpoint", ["port: 9090", "targetPort: 9090"])], ["\"prom/prometheus:latest\""]);
+        var otel = Node("otel", "AddContainer", 100, 300,
+            [new WithCall("WithHttpEndpoint", ["port: 4318", "targetPort: 4318"])], ["\"otel/opentelemetry-collector-contrib:latest\""]);
+        var grafana = Node("grafana", "AddContainer", 500, 180,
+            [
+                new WithCall("WithHttpEndpoint", ["port: 3000", "targetPort: 3000"]),
+                new WithCall("WithEnvironment", ["\"GF_SECURITY_ADMIN_PASSWORD\"", "\"admin\""]),
+                new WithCall("WithEnvironment", ["\"PROMETHEUS_URL\"", "prometheus.GetEndpoint(\"http\")"]),
+            ], ["\"grafana/grafana:latest\""]);
+        return Stack("Grafana + Prometheus + OTEL", [prom, otel, grafana],
+            [new EdgeModel(Eid(), grafana.Id, prom.Id, "waitFor")]);
     }
 
     private static StackModel LocalAiDemo()
