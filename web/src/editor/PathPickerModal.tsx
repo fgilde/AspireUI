@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Modal, Stack as MStack, Group, Button, Text, ScrollArea, UnstyledButton, TextInput, Loader } from "@mantine/core";
 import { IconFolder, IconFile, IconArrowUp, IconCornerDownLeft, IconSearch } from "@tabler/icons-react";
 import * as api from "../api";
 import type { FsListing } from "../api";
 
 // Server-side path picker: browses the host filesystem via GET /fs (paths must resolve on the machine
-// the stacks run on, not the browser). Keeps an internal navigation history so the mouse "back" button
-// steps up through visited folders; a filter box narrows the current listing.
+// the stacks run on, not the browser). Internal navigation history + keyboard-first: filter box stays
+// focused, arrows move the selection, Enter opens a folder or picks a file. A pushState/popstate guard
+// makes the browser/mouse Back button step UP a folder instead of navigating the whole app away.
 export function PathPickerModal({ opened, initial, onPick, onClose }:
   { opened: boolean; initial?: string; onPick: (path: string) => void; onClose: () => void }) {
   const [history, setHistory] = useState<(string | null)[]>([null]);
@@ -14,41 +15,63 @@ export function PathPickerModal({ opened, initial, onPick, onClose }:
   const [loading, setLoading] = useState(false);
   const [manual, setManual] = useState("");
   const [filter, setFilter] = useState("");
+  const [active, setActive] = useState(0);
   const current = history[history.length - 1] ?? null;
+  const filterRef = useRef<HTMLInputElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
   const navigate = (path: string | null) => setHistory(h => [...h, path]);
   const back = () => setHistory(h => (h.length > 1 ? h.slice(0, -1) : h));
-
-  // Reset the history when (re)opened for a new field.
-  useEffect(() => { if (opened) { setHistory([initial || null]); setFilter(""); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [opened]);
-
-  // Load whenever the current path changes; a bad/empty path falls back to the roots (drives / "/").
-  useEffect(() => {
-    if (!opened) return;
-    setLoading(true);
-    setFilter("");
-    api.browseFs(current ?? undefined)
-      .then(l => { setListing(l); setManual(l.path ?? ""); setLoading(false); })
-      .catch(() => {
-        if (current) { setHistory(h => (h.length > 1 ? h.slice(0, -1) : [null])); return; } // pop bad path
-        setListing({ path: null, parent: null, entries: [] });
-        setLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [history, opened]);
-
-  // Mouse "back" button (button 3) steps up the history instead of navigating the whole app away.
-  useEffect(() => {
-    if (!opened) return;
-    const onDown = (e: MouseEvent) => { if (e.button === 3) { e.preventDefault(); back(); } };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [opened]);
 
   const entries = useMemo(() => {
     const f = filter.trim().toLowerCase();
     return (listing?.entries ?? []).filter(e => !f || e.name.toLowerCase().includes(f));
   }, [listing, filter]);
+
+  // Reset history + filter when (re)opened for a new field.
+  useEffect(() => { if (opened) { setHistory([initial || null]); setFilter(""); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [opened]);
+
+  // Load whenever the current path changes; a bad/empty path falls back to roots (drives / "/").
+  useEffect(() => {
+    if (!opened) return;
+    setLoading(true); setFilter(""); setActive(0);
+    api.browseFs(current ?? undefined)
+      .then(l => { setListing(l); setManual(l.path ?? ""); setLoading(false); setTimeout(() => filterRef.current?.focus(), 0); })
+      .catch(() => {
+        if (current) { setHistory(h => (h.length > 1 ? h.slice(0, -1) : [null])); return; }
+        setListing({ path: null, parent: null, entries: [] }); setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [history, opened]);
+
+  useEffect(() => { setActive(0); }, [filter]);
+  useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [active]);
+
+  // Back-button guard: keep a dummy history entry while open. A back press (mouse or browser) fires
+  // popstate → we step up one folder and re-push, so the app is never navigated away.
+  useEffect(() => {
+    if (!opened) return;
+    window.history.pushState({ pathPicker: true }, "");
+    const onPop = () => { back(); window.history.pushState({ pathPicker: true }, ""); };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if ((window.history.state as { pathPicker?: boolean } | null)?.pathPicker) window.history.back();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+
+  const choose = (i: number) => {
+    const e = entries[i];
+    if (!e) return;
+    if (e.isDir) navigate(e.path); else onPick(e.path);
+  };
+  const onFilterKey = (e: ReactKeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setActive(a => Math.min(a + 1, entries.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActive(a => Math.max(a - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); choose(active); }
+    else if (e.key === "Backspace" && filter === "") { e.preventDefault(); back(); } // empty filter + backspace = up
+  };
 
   return (
     <Modal opened={opened} onClose={onClose} title="Pick a path" size="lg">
@@ -68,14 +91,15 @@ export function PathPickerModal({ opened, initial, onPick, onClose }:
           {loading && <Loader size="xs" />}
         </Group>
 
-        <TextInput size="xs" placeholder="Filter this folder…" value={filter}
-          onChange={e => setFilter(e.currentTarget.value)} leftSection={<IconSearch size={13} />} />
+        <TextInput ref={filterRef} size="xs" placeholder="Filter — ↑/↓ to select, Enter to open/pick" value={filter}
+          onChange={e => setFilter(e.currentTarget.value)} onKeyDown={onFilterKey} leftSection={<IconSearch size={13} />} />
 
         <ScrollArea h={320} style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 6 }}>
           <MStack gap={0} p={4}>
-            {entries.map(e => (
-              <UnstyledButton key={e.path} px={8} py={5} style={{ borderRadius: 4, fontSize: 13 }} className="ctx-item"
-                onClick={() => e.isDir ? navigate(e.path) : onPick(e.path)}>
+            {entries.map((e, i) => (
+              <UnstyledButton key={e.path} ref={i === active ? activeRef : undefined}
+                px={8} py={5} style={{ borderRadius: 4, fontSize: 13, background: i === active ? "var(--mantine-color-default-hover)" : undefined }}
+                onMouseEnter={() => setActive(i)} onClick={() => choose(i)}>
                 <Group gap={7} wrap="nowrap">
                   {e.isDir ? <IconFolder size={15} color="var(--mantine-color-yellow-text)" /> : <IconFile size={15} color="var(--mantine-color-dimmed)" />}
                   <Text size="sm" truncate>{e.name}</Text>
@@ -87,7 +111,7 @@ export function PathPickerModal({ opened, initial, onPick, onClose }:
         </ScrollArea>
 
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">Folder to open, file to pick. Mouse back = up.</Text>
+          <Text size="xs" c="dimmed">Folder = open, file = pick. Back button / Backspace = up.</Text>
           <Group gap="xs">
             <Button variant="subtle" onClick={onClose}>Cancel</Button>
             <Button disabled={!listing?.path} onClick={() => listing?.path && onPick(listing.path)}>Use this folder</Button>
