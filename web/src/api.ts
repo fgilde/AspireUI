@@ -62,6 +62,8 @@ export const openInIde = (id: string, ide: "vscode" | "rider" | "vs"): Promise<{
 export const runStack = (id: string) => fetch(`${base}/stacks/${id}/run`, { method: "POST" }).then(ok);
 export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { method: "POST" }).then(ok);
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
+export const stackResources = (id: string): Promise<import("./model").LiveResource[]> =>
+  fetch(`${base}/stacks/${id}/resources`).then(ok);
 export const getPackages = (id: string): Promise<PackageInfo[]> => fetch(`${base}/stacks/${id}/packages`).then(ok);
 export interface CompletionItemDto { label: string; kind: string; insertText: string; detail?: string | null }
 export interface CodeDiagnostic { message: string; severity: string; start: number; end: number }

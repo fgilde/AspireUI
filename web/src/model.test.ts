@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -158,5 +158,57 @@ describe("pickAppHost", () => {
   });
   it("returns undefined when no file matches", () => {
     expect(pickAppHost([{ path: "Helpers.cs", content: "public class Helpers {}" }])).toBeUndefined();
+  });
+});
+
+describe("live overlay", () => {
+  const lr = (p: Partial<LiveResource>): LiveResource =>
+    ({ name: "", displayName: "", type: "Container", state: "Running", stateStyle: null, parent: null, urls: [], hidden: false, ...p });
+  const nodes = [{ id: "n1", resourceName: "supabase" }, { id: "n2", resourceName: "web" }];
+
+  it("annotates a builder node with its matching top-level resource", () => {
+    const o = buildLiveOverlay(nodes, [lr({ name: "supabase", displayName: "supabase", state: "Waiting" })]);
+    expect(o.statusByNodeId.n1?.state).toBe("Waiting");
+    expect(o.children).toHaveLength(0);
+  });
+
+  it("renders spawned children under their owner node with an edge to the parent", () => {
+    const o = buildLiveOverlay(nodes, [
+      lr({ name: "supabase", displayName: "supabase" }),
+      lr({ name: "supabase-db-xyz", displayName: "supabase-db", parent: "supabase" }),
+    ]);
+    expect(o.children).toHaveLength(1);
+    expect(o.children[0].ownerNodeId).toBe("n1");
+    expect(o.children[0].parentElemId).toBe("n1"); // edge from the supabase builder node
+  });
+
+  it("chains grandchildren to the top-level owner, edge points at the live parent", () => {
+    const o = buildLiveOverlay(nodes, [
+      lr({ name: "supabase", displayName: "supabase" }),
+      lr({ name: "supabase-db", displayName: "supabase-db", parent: "supabase" }),
+      lr({ name: "supabase-db-init", displayName: "supabase-db-init", parent: "supabase-db" }),
+    ]);
+    const grandchild = o.children.find(c => c.live.name === "supabase-db-init")!;
+    expect(grandchild.ownerNodeId).toBe("n1");             // resolves to top-level node
+    expect(grandchild.parentElemId).toBe("live:supabase-db"); // but edge attaches to its live parent
+  });
+
+  it("treats a resource with no matching node/parent as an orphan (no owner, no edge)", () => {
+    const o = buildLiveOverlay(nodes, [lr({ name: "monitoring-grafana", displayName: "monitoring-grafana" })]);
+    expect(o.children[0].ownerNodeId).toBeNull();
+    expect(o.children[0].parentElemId).toBeNull();
+  });
+
+  it("drops hidden resources (e.g. the dashboard itself)", () => {
+    const o = buildLiveOverlay(nodes, [lr({ name: "aspire-dashboard", displayName: "aspire-dashboard", hidden: true })]);
+    expect(o.children).toHaveLength(0);
+    expect(Object.keys(o.statusByNodeId)).toHaveLength(0);
+  });
+
+  it("maps states to traffic-light colors", () => {
+    expect(liveStateColor("Running")).toBe("green");
+    expect(liveStateColor("FailedToStart")).toBe("red");
+    expect(liveStateColor("Waiting")).toBe("yellow");
+    expect(liveStateColor(null)).toBe("gray");
   });
 });

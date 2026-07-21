@@ -16,6 +16,57 @@ export interface CatalogMethod { method: string; label: string; overloads: Catal
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null }
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
+
+// Live per-resource data from the running AppHost's Aspire resource service (see ResourceGraphService).
+export interface LiveUrl { name?: string | null; url: string; isInternal: boolean; isInactive: boolean }
+export interface LiveResource { name: string; displayName: string; type: string; state?: string | null; stateStyle?: string | null; parent?: string | null; urls: LiveUrl[]; hidden: boolean }
+
+export function liveStateColor(state?: string | null): string {
+  if (!state) return "gray";
+  const s = state.toLowerCase();
+  if (s.includes("running") || s.includes("healthy")) return "green";
+  if (s.includes("fail") || s.includes("error") || s.includes("exited") || s.includes("unhealthy")) return "red";
+  if (s.includes("wait") || s.includes("start") || s.includes("pending")) return "yellow";
+  return "gray";
+}
+
+// Overlay a live-resource snapshot onto the stack graph: which live resource annotates each builder
+// node (top-level, matched by displayName == node.resourceName), and which are extra child/orphan
+// resources to render (a builder like Supabase spawns supabase-db/-auth/… as children).
+export interface LiveChild { live: LiveResource; ownerNodeId: string | null; parentElemId: string | null }
+export interface LiveOverlay { statusByNodeId: Record<string, LiveResource>; children: LiveChild[] }
+export function buildLiveOverlay(nodes: { id: string; resourceName: string }[], live: LiveResource[]): LiveOverlay {
+  const visible = live.filter(r => !r.hidden);
+  const byName = new Map(visible.map(r => [r.name, r]));
+  const nodeByResName = new Map(nodes.map(n => [n.resourceName, n]));
+  const topLevelNodeIdOf = (r: LiveResource): string | null => nodeByResName.get(r.displayName)?.id ?? null;
+
+  // Walk the parent chain to the top-level ancestor that maps to a builder node (its "owner").
+  const rootNodeId = (r: LiveResource): string | null => {
+    let cur: LiveResource | undefined = r; const seen = new Set<string>();
+    while (cur && !seen.has(cur.name)) {
+      seen.add(cur.name);
+      const nid = topLevelNodeIdOf(cur);
+      if (nid) return nid;
+      cur = cur.parent ? byName.get(cur.parent) : undefined;
+    }
+    return null;
+  };
+
+  const statusByNodeId: Record<string, LiveResource> = {};
+  const children: LiveChild[] = [];
+  for (const r of visible) {
+    const nid = topLevelNodeIdOf(r);
+    if (nid) { statusByNodeId[nid] = r; continue; } // annotates an existing node, not an extra node
+    let parentElemId: string | null = null;
+    if (r.parent) {
+      const p = byName.get(r.parent);
+      if (p) parentElemId = topLevelNodeIdOf(p) ?? "live:" + p.name;
+    }
+    children.push({ live: r, ownerNodeId: rootNodeId(r), parentElemId });
+  }
+  return { statusByNodeId, children };
+}
 export interface PublishFile { name: string; content: string }
 export interface PublishResult { ok: boolean; log: string; artifactName: string | null; artifact: string | null; outputDir: string; files: PublishFile[] }
 export interface DeployResult { ok: boolean; log: string }

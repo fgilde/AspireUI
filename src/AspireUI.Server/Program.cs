@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 var builder = WebApplication.CreateBuilder(args);
 
 // Shared so the dashboard reverse proxy and the stack endpoints see the same run state.
-builder.Services.AddSingleton<RunService>();
+builder.Services.AddSingleton<ResourceGraphService>();
+builder.Services.AddSingleton<RunService>(sp => new RunService(graph: sp.GetRequiredService<ResourceGraphService>()));
 builder.Services.AddHttpForwarder();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

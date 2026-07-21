@@ -1,11 +1,11 @@
 import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid } from "@tabler/icons-react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor } from "@mantine/core";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink } from "@tabler/icons-react";
 import dagre from "dagre";
-import type { Stack, RunState } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier } from "../model";
+import type { Stack, RunState, LiveResource } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
@@ -14,9 +14,22 @@ import * as api from "../api";
 // NOT per-resource Aspire health (needs the Aspire resource gRPC service —
 // see docs/superpowers/specs/2026-07-19-aspireui-polish.md §4 non-goals);
 // every node shows the same shared runStatus for now.
+// A theme color name (green/red/yellow/gray) -> a concrete CSS color for the status dot.
+function dotColor(c: string | undefined): string | undefined {
+  return c ? `var(--mantine-color-${c}-filled)` : undefined;
+}
+// First user-facing URL of a live resource (skip internal/inactive ones).
+function primaryUrl(live: LiveResource | undefined): string | undefined {
+  return live?.urls.find(u => !u.isInternal && !u.isInactive)?.url;
+}
+
 function ResourceNode({ data }: any) {
-  const color = runStateColor(data.runState as RunState);
+  const live = data.live as LiveResource | undefined;
+  // When the stack runs, prefer the real per-resource state from Aspire; otherwise the shared run state.
+  const color = live ? liveStateColor(live.state) : (runStateColor(data.runState as RunState) ?? undefined);
+  const stateLabel = live ? (live.state ?? "…") : data.runState;
   const { color: iconColor } = resourceVisual(data.addMethod);
+  const url = primaryUrl(live);
   return (
     <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 150 }}>
       <Handle type="target" position={Position.Left} />
@@ -28,17 +41,51 @@ function ResourceNode({ data }: any) {
           <Text fw={600} size="sm" truncate>{data.resourceName}</Text>
         </Group>
         {color && (
-          <Tooltip label={data.runState} withArrow>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+          <Tooltip label={stateLabel} withArrow>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor(color), flexShrink: 0 }} />
           </Tooltip>
         )}
       </Group>
-      <Badge size="xs" variant="light" mt={4}>{data.addMethod}</Badge>
+      <Group justify="space-between" wrap="nowrap" gap={4} mt={4}>
+        <Badge size="xs" variant="light">{data.addMethod}</Badge>
+        {url && (
+          <Anchor href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title={url}>
+            <IconExternalLink size={13} />
+          </Anchor>
+        )}
+      </Group>
       <Handle type="source" position={Position.Right} />
     </Card>
   );
 }
-const nodeTypes = { resource: ResourceNode };
+
+// Ephemeral, translucent node for an actual Aspire resource spawned by a builder (e.g. supabase-db
+// under supabase). Not part of the saved stack — only shown while running.
+function LiveNode({ data }: any) {
+  const live = data.live as LiveResource;
+  const url = primaryUrl(live);
+  return (
+    <Card withBorder padding={6} radius="md"
+      style={{ minWidth: 130, opacity: 0.82, borderStyle: "dashed", background: "var(--mantine-color-body)" }}>
+      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+      <Group justify="space-between" wrap="nowrap" gap={6}>
+        <Group gap={5} wrap="nowrap" style={{ minWidth: 0 }}>
+          <Tooltip label={live.state ?? "…"} withArrow>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor(liveStateColor(live.state)), flexShrink: 0 }} />
+          </Tooltip>
+          <Text size="xs" truncate title={live.name}>{live.displayName}</Text>
+        </Group>
+        {url && (
+          <Anchor href={url} target="_blank" rel="noreferrer" title={url}>
+            <IconExternalLink size={12} />
+          </Anchor>
+        )}
+      </Group>
+      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+    </Card>
+  );
+}
+const nodeTypes = { resource: ResourceNode, live: LiveNode };
 
 // Editable edge for a directed pair (from → to). A connection can be a reference and/or a wait-for
 // independently (both are valid in Aspire); direction = who references / waits on whom. Clicking the
@@ -87,6 +134,44 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const { colorScheme } = useMantineColorScheme();
   const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [query, setQuery] = useState("");
+  const [live, setLive] = useState<LiveResource[]>([]);
+
+  // While the stack runs, poll the Aspire resource service for live per-resource state/urls/children.
+  useEffect(() => {
+    if (runState !== "Running" && runState !== "Starting") { setLive([]); return; }
+    let alive = true;
+    const tick = () => api.stackResources(stack.id).then(r => { if (alive) setLive(r); }).catch(() => {});
+    tick();
+    const iv = setInterval(tick, 2500);
+    return () => { alive = false; clearInterval(iv); };
+  }, [runState, stack.id]);
+
+  const overlay = useMemo(() => buildLiveOverlay(stack.nodes, live), [stack.nodes, live]);
+  // Position the ephemeral child/orphan resources: children hang in a column to the right of their
+  // owning builder node; orphans (from macro extensions with no node) cluster far right.
+  const liveFlow = useMemo(() => {
+    const nodesById = new Map(stack.nodes.map(n => [n.id, n]));
+    const maxX = Math.max(0, ...stack.nodes.map(n => n.x));
+    const perOwner: Record<string, number> = {};
+    const rfLive: any[] = [];
+    const rfLiveEdges: any[] = [];
+    for (const c of overlay.children) {
+      const key = c.ownerNodeId ?? "__orphan";
+      const idx = (perOwner[key] = (perOwner[key] ?? 0) + 1) - 1;
+      const owner = c.ownerNodeId ? nodesById.get(c.ownerNodeId) : undefined;
+      const x = owner ? owner.x + 250 : maxX + 340;
+      const y = (owner ? owner.y : 40) + idx * 58;
+      const id = "live:" + c.live.name;
+      rfLive.push({ id, type: "live", position: { x, y }, draggable: false, selectable: false, deletable: false, data: { live: c.live } });
+      if (c.parentElemId)
+        rfLiveEdges.push({
+          id: "le:" + id, source: c.parentElemId, target: id, selectable: false,
+          animated: (c.live.state ?? "").toLowerCase().includes("start"),
+          style: { strokeDasharray: "4 3", opacity: 0.55 },
+        });
+    }
+    return { rfLive, rfLiveEdges };
+  }, [overlay, stack.nodes]);
 
   const duplicateNode = useCallback((nodeId: string) => {
     const n = stack.nodes.find(x => x.id === nodeId);
@@ -196,26 +281,30 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     api.saveStack({ ...stack, edges: keep }).then(setStack);
   }, [stack, setStack]);
 
-  // Dim nodes that don't match the search (highlight without hiding).
+  // Inject live per-resource status onto each builder node, dim search misses, and append the
+  // ephemeral live child/orphan nodes + their edges.
   const q = query.trim().toLowerCase();
-  const displayNodes = q
-    ? rfNodes.map(n => {
-        const hit = `${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q);
-        return { ...n, style: { ...n.style, opacity: hit ? 1 : 0.25 } };
-      })
-    : rfNodes;
+  const displayNodes = useMemo(() => {
+    const base = rfNodes.map(n => {
+      const data = { ...n.data, live: overlay.statusByNodeId[n.id] };
+      const opacity = q && !`${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q) ? 0.25 : 1;
+      return { ...n, data, style: { ...n.style, opacity } };
+    });
+    return [...base, ...liveFlow.rfLive];
+  }, [rfNodes, overlay, liveFlow, q]);
+  const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
 
   return (
-    <ReactFlow nodes={displayNodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+    <ReactFlow nodes={displayNodes} edges={allEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
       colorMode={colorScheme === "light" ? "light" : "dark"}
       snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
-      onNodeClick={(_, n) => onSelect(n.id)}
-      onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
+      onNodeClick={(_, n) => { if (!n.id.startsWith("live:")) onSelect(n.id); }}
+      onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
       <Background /><Controls />
-      <MiniMap pannable zoomable nodeColor={n => resourceVisual((n.data as any).addMethod).color} />
+      <MiniMap pannable zoomable nodeColor={n => (n.data as any).addMethod ? resourceVisual((n.data as any).addMethod).color : "#888"} />
       <Panel position="top-left">
         <Group gap={6}>
           <TextInput size="xs" w={180} placeholder="Find resource…" value={query}

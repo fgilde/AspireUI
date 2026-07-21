@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
@@ -25,9 +27,22 @@ public class RunService : IDisposable
 
     private readonly ConcurrentDictionary<string, Handle> _runs = new();
     private readonly Func<string, ProcessStartInfo> _commandFactory;
+    private readonly ResourceGraphService? _graph;
 
-    public RunService(Func<string, ProcessStartInfo>? commandFactory = null)
-        => _commandFactory = commandFactory ?? DefaultCommand;
+    public RunService(Func<string, ProcessStartInfo>? commandFactory = null, ResourceGraphService? graph = null)
+    {
+        _commandFactory = commandFactory ?? DefaultCommand;
+        _graph = graph;
+    }
+
+    private static int FreeTcpPort()
+    {
+        var l = new TcpListener(IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((IPEndPoint)l.LocalEndpoint).Port;
+        l.Stop();
+        return port;
+    }
 
     private static ProcessStartInfo DefaultCommand(string workdir)
     {
@@ -64,6 +79,19 @@ public class RunService : IDisposable
         psi.UseShellExecute = false;
         psi.CreateNoWindow = true;
 
+        // Make the AppHost's resource-service endpoint + api key deterministic so we can attach our
+        // own gRPC client (live per-resource status/urls/logs on the canvas). Only when a graph
+        // service is present (i.e. real runs; unit tests pass a custom command factory + no graph).
+        string? resEndpoint = null, resApiKey = null;
+        if (_graph is not null)
+        {
+            resEndpoint = $"http://127.0.0.1:{FreeTcpPort()}";
+            resApiKey = Guid.NewGuid().ToString("n");
+            psi.Environment["DOTNET_RESOURCE_SERVICE_ENDPOINT_URL"] = resEndpoint;
+            psi.Environment["DOTNET_DASHBOARD_RESOURCESERVICE_APIKEY"] = resApiKey;
+            psi.Environment["AppHost__ResourceService__AuthMode"] = "ApiKey";
+        }
+
         var h = new Handle();
         var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
         h.Process = proc;
@@ -90,11 +118,14 @@ public class RunService : IDisposable
         proc.Start();
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
+        if (_graph is not null && resEndpoint is not null && resApiKey is not null)
+            _graph.Start(id, resEndpoint, resApiKey);
         return Snapshot(h);
     }
 
     public RunStatus Stop(string id)
     {
+        _graph?.Stop(id);
         if (_runs.TryRemove(id, out var h))
         {
             try { if (!h.Process.HasExited) h.Process.Kill(entireProcessTree: true); } catch { }

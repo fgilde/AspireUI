@@ -24,6 +24,7 @@ public static class StackEndpoints
         var catalog = new CatalogService();
         var templates = new TemplateService();
         var run = app.Services.GetRequiredService<RunService>();
+        var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
         var deploy = new DeployService();
         var lsp = new RoslynLspService();
@@ -239,6 +240,8 @@ public static class StackEndpoints
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
+        // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
+        app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
 
         // Publish output lives OUTSIDE the run project dir (wsRoot/{id}); otherwise the run
         // project's SDK `**/*.cs` glob sweeps publish/src/Program.cs in and the build fails with

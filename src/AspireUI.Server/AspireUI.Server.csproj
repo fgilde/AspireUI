@@ -16,6 +16,12 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <!-- gRPC client for the Aspire "resource service" (aspire.v1.DashboardService) — live per-resource
+         status/urls/relationships + console logs of a running stack. Proto is compiled here (Aspire
+         ships it only inside Aspire.Hosting.dll as internal types, so we generate our own client). -->
+    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.80.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.2" />
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
@@ -62,6 +68,10 @@
     <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.14" />
     <PackageReference Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos/dashboard_service.proto" GrpcServices="Client" />
   </ItemGroup>
 
   <ItemGroup>
