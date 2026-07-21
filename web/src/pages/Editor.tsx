@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
@@ -65,6 +65,8 @@ export function Editor() {
   }, [undo, redo]);
   const [savedLayouts, setSavedLayouts] = useState<string[]>([]);
   const refreshLayouts = () => setSavedLayouts(dockRef.current?.listNamed() ?? []);
+  const [panels, setPanels] = useState<{ id: string; title: string; open: boolean }[]>([]);
+  const refreshPanels = () => setPanels(dockRef.current?.listPanels() ?? []);
   const saveLayout = () => {
     promptText("Save layout", "Layout name").then(name => {
       if (name) { dockRef.current?.saveNamed(name); refreshLayouts(); toastOk(`Layout "${name}" saved`); }
@@ -138,6 +140,22 @@ export function Editor() {
               <Tooltip label="Redo (Ctrl+Shift+Z)" withArrow>
                 <ActionIcon variant="default" size="lg" disabled={!canRedo} onClick={redo}><IconArrowForwardUp size={16} /></ActionIcon>
               </Tooltip>
+              <Menu position="bottom-end" withArrow onOpen={refreshPanels} width={220}>
+                <Menu.Target>
+                  <Button variant="default" size="xs" leftSection={<IconLayoutSidebar size={14} />}>Panels</Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Show / hide panels</Menu.Label>
+                  {panels.map(p => (
+                    <Menu.Item key={p.id}
+                      leftSection={p.open ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
+                      closeMenuOnClick={false}
+                      onClick={() => { dockRef.current?.togglePanel(p.id); refreshPanels(); }}>
+                      {p.title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
               <Menu position="bottom-end" withArrow onOpen={refreshLayouts} width={220}>
                 <Menu.Target>
                   <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}>Layout</Button>

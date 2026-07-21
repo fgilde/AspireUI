@@ -12,7 +12,10 @@ public record ResourceType(string AddMethod, string Label, string? Icon, string?
     // Composite/macro extension: AddX(this IDistributedApplicationBuilder,…) that returns the
     // builder (not a resource). Emitted as a statement-node; Usings/Package/PackageVersion are the
     // namespace + NuGet package the generated stack must pull in for it to compile.
-    bool Composite = false, List<string>? Usings = null, string? Package = null, string? PackageVersion = null);
+    bool Composite = false, List<string>? Usings = null, string? Package = null, string? PackageVersion = null,
+    // CLR name of the resource this AddX produces (e.g. "PostgresResource") — lets the UI offer
+    // type-matching resources when filling an IResourceBuilder<T> parameter.
+    string? ResourceTypeName = null);
 
 public class CatalogService
 {
@@ -110,7 +113,7 @@ public class CatalogService
                 over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
                 over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
-                addOverloads, withs));
+                addOverloads, withs, ResourceTypeName: tResource?.Name));
         }
 
         // Composite/macro extensions: AddX(this IDistributedApplicationBuilder, …) that RETURN the

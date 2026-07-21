@@ -43,6 +43,11 @@ export const createUser = (username: string, password: string, isAdmin: boolean)
 export const deleteUser = (id: string): Promise<void> => fetch(`${base}/users/${id}`, { method: "DELETE" }).then(okVoid);
 
 export const getCatalog = () => fetch(`${base}/catalog`).then(ok);
+
+export interface FsEntry { name: string; path: string; isDir: boolean }
+export interface FsListing { path: string | null; parent: string | null; entries: FsEntry[] }
+export const browseFs = (path?: string): Promise<FsListing> =>
+  fetch(`${base}/fs${path ? `?path=${encodeURIComponent(path)}` : ""}`).then(ok);
 export const listStacks = () => fetch(`${base}/stacks`).then(ok);
 export const getStack = (id: string): Promise<Stack> => fetch(`${base}/stacks/${id}`).then(ok);
 export const createStack = (s: Partial<Stack>): Promise<Stack> =>

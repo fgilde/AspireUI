@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu } from "@mantine/core";
-import { IconPlus, IconX, IconLink, IconInfoCircle } from "@tabler/icons-react";
+import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
+import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
+import { ResourceGlyph } from "../resourceIcons";
+import { PathPickerModal } from "./PathPickerModal";
+import { AddResourceDialog } from "./AddResourceDialog";
 import * as api from "../api";
 
 const ENV_METHOD = "WithEnvironment";
+
+// A string param that names a filesystem location → offer the server-side path picker.
+const isPathParam = (p: CatalogParam) => p.type === "string" && /path|dir|directory|root|file|entrypoint|script/i.test(p.name);
+
+interface FieldOpts {
+  nodes?: Node[];
+  onBrowsePath?: (cur: string, set: (v: string) => void) => void;
+  onAddResource?: (p: CatalogParam, set: (v: string) => void) => void;
+}
 
 // Small explain-icon — hover for an Aspire concept hint, so the grid teaches while you build.
 function InfoDot({ text }: { text: string }) {
@@ -19,7 +31,8 @@ function labelWith(text: string, info: string) {
   return <Group gap={5} wrap="nowrap" component="span">{text}<InfoDot text={info} /></Group>;
 }
 
-function field(p: CatalogParam, value: string, onChange: (v: string) => void, nodes: Node[] = []) {
+function field(p: CatalogParam, value: string, onChange: (v: string) => void, opts: FieldOpts = {}) {
+  const nodes = opts.nodes ?? [];
   if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
     allowDecimal={p.type === "number"} value={value === "" ? "" : Number(value)} onChange={v => onChange(String(v ?? ""))} />;
   if (p.type === "bool") return <Switch key={p.name} label={p.label}
@@ -27,11 +40,28 @@ function field(p: CatalogParam, value: string, onChange: (v: string) => void, no
   if (p.type === "enum") return <Select key={p.name} label={p.label} withAsterisk={p.required}
     data={p.options ?? []} value={value || null} onChange={v => onChange(v ?? "")} />;
   // A resource-reference param (e.g. WithPostgresDatasource(postgres)): pick another resource in
-  // the stack; the bare varName is passed verbatim (not a string literal).
-  if (p.type === "resourceRef") return <Select key={p.name} label={p.label} withAsterisk={p.required}
-    placeholder="Pick a resource" searchable
-    data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
-    value={value || null} onChange={v => onChange(v ?? "")} />;
+  // the stack; the bare varName is passed verbatim (not a string literal). "+ New" adds one inline.
+  if (p.type === "resourceRef") return (
+    <Group key={p.name} gap={6} align="end" wrap="nowrap">
+      <Select style={{ flex: 1 }} label={p.label} withAsterisk={p.required} placeholder="Pick a resource" searchable
+        data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
+        value={value || null} onChange={v => onChange(v ?? "")} />
+      {opts.onAddResource && (
+        <Tooltip label="Add a new resource" withArrow>
+          <ActionIcon variant="light" size="input-sm" onClick={() => opts.onAddResource!(p, onChange)}><IconPlus size={16} /></ActionIcon>
+        </Tooltip>
+      )}
+    </Group>
+  );
+  if (isPathParam(p) && opts.onBrowsePath) return (
+    <TextInput key={p.name} label={p.label} withAsterisk={p.required} value={value}
+      onChange={e => onChange(e.currentTarget.value)}
+      rightSection={
+        <Tooltip label="Browse…" withArrow>
+          <ActionIcon variant="subtle" onClick={() => opts.onBrowsePath!(value, onChange)}><IconFolder size={15} /></ActionIcon>
+        </Tooltip>
+      } />
+  );
   return <TextInput key={p.name} label={p.label} withAsterisk={p.required} value={value}
     onChange={e => onChange(e.currentTarget.value)} />;
 }
@@ -75,6 +105,25 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const envRows = readWithRows(draft, ENV_METHOD);
   const otherNodes = stack.nodes.filter(n => n.id !== node.id);
 
+  // Path picker + inline "add a resource" flow for resource-reference params.
+  const [catalog, setCatalog] = useState<ResourceType[]>([]);
+  useEffect(() => { api.getCatalog().then(setCatalog); }, []);
+  const [pathPick, setPathPick] = useState<{ value: string; onPick: (v: string) => void } | null>(null);
+  const [addTarget, setAddTarget] = useState<{ enumTypeName?: string | null; onPick: (v: string) => void } | null>(null);
+  const [addRt, setAddRt] = useState<ResourceType | null>(null);
+  const fieldOpts = {
+    nodes: otherNodes,
+    onBrowsePath: (cur: string, set: (v: string) => void) => setPathPick({ value: cur, onPick: v => { set(v); setPathPick(null); } }),
+    onAddResource: (p: CatalogParam, set: (v: string) => void) => setAddTarget({ enumTypeName: p.enumTypeName, onPick: v => { set(v); setAddTarget(null); setAddRt(null); } }),
+  };
+  // Resource types offered for an inline "+ New": prefer those producing the required CLR type;
+  // fall back to all real (non-composite) resources if nothing matches.
+  const addChoices = useMemo(() => {
+    const real = catalog.filter(r => !r.composite);
+    const matched = addTarget?.enumTypeName ? real.filter(r => r.resourceTypeName === addTarget.enumTypeName) : real;
+    return matched.length > 0 ? matched : real;
+  }, [catalog, addTarget]);
+
   // Simplified controls for the most common Aspire endpoint settings — only for resources that
   // actually expose them. The detailed capability grid below still allows the full form.
   const canExternal = rt?.withs.some(w => w.method === "WithExternalHttpEndpoints") ?? false;
@@ -93,7 +142,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
       <TextInput label="Name" value={draft.resourceName}
         onChange={e => commit({ ...draft, resourceName: e.currentTarget.value })} />
       {matchOverloadByArity(rt?.addOverloads ?? [], draft.addArgs.length)?.params.map((p, i) => field(p, fromLiteral(draft.addArgs[i] ?? '""'),
-        v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName))), otherNodes))}
+        v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName))), fieldOpts))}
 
       {(canExternal || canHttp) && (
         <div>
@@ -206,7 +255,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
                   {rowParams.map((p, pi) => field(p, fromLiteral(row[pi] ?? '""'), v => {
                     const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push('""');
                     nr[ri][pi] = toLiteral(v, p.type, p.enumTypeName); commit(writeWithRows(draft, method, nr));
-                  }, otherNodes))}
+                  }, fieldOpts))}
                   <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, method, rows.filter((_, x) => x !== ri)))}><IconX size={14} /></ActionIcon>
                 </Group>
               );
@@ -239,6 +288,43 @@ export function PropertyGrid({ stack, node, rt, setStack }:
         <TextInput style={{ flex: 2 }} label="Args" placeholder='"a", 1, true' value={rawArgs} onChange={e => setRawArgs(e.currentTarget.value)} />
         <Button size="sm" variant="light" leftSection={<IconPlus size={12} />} onClick={addRaw}>Add</Button>
       </Group>
+
+      {pathPick && (
+        <PathPickerModal opened initial={pathPick.value} onClose={() => setPathPick(null)} onPick={pathPick.onPick} />
+      )}
+
+      {/* Inline "+ New resource" for a resource-reference param: pick a (type-matching) resource type… */}
+      <Modal opened={!!addTarget && !addRt} onClose={() => setAddTarget(null)} title="Add a resource" size="md">
+        <MStack gap={4}>
+          {addTarget?.enumTypeName && <Text size="xs" c="dimmed">Resources matching {addTarget.enumTypeName} first.</Text>}
+          {addChoices.map(rtc => (
+            <Button key={rtc.addMethod} variant="subtle" justify="start" leftSection={<ResourceGlyph addMethod={rtc.addMethod} size={16} />}
+              onClick={() => setAddRt(rtc)}>{rtc.label}</Button>
+          ))}
+        </MStack>
+      </Modal>
+
+      {/* …then configure it; on create it's saved to the stack and set back into the picker. */}
+      {addRt && (
+        <AddResourceDialog rt={addRt}
+          existingCount={stack.nodes.filter(n => n.addMethod === addRt.addMethod).length}
+          totalCount={stack.nodes.length}
+          nodes={stack.nodes}
+          onCreate={(newNode, refIds, usedByIds) => {
+            const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+            const edges = [
+              ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: newNode.id, toNodeId, kind: "reference" })),
+              ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: newNode.id, kind: "reference" })),
+            ];
+            const extraPackages = [...stack.extraPackages];
+            if (newNode.composite && addRt.package && !extraPackages.some(p => p.id === addRt.package))
+              extraPackages.push({ id: addRt.package, version: addRt.packageVersion || "" });
+            const target = addTarget;
+            api.saveStack({ ...stack, nodes: [...stack.nodes, newNode], edges: [...stack.edges, ...edges], extraPackages })
+              .then(s => { setStack(s); target?.onPick(newNode.varName); });
+          }}
+          onClose={() => setAddRt(null)} />
+      )}
     </MStack>
   );
 }

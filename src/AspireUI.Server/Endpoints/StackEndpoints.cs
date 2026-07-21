@@ -241,6 +241,33 @@ public static class StackEndpoints
             Directory.Exists(Dir(id)) ? Results.Ok(run.Start(id, Path.GetFullPath(Dir(id)))) : Results.NotFound());
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
+        // Read-only host filesystem browse — powers the path picker for project/script/config-path
+        // params (e.g. a Deno/C# app's working directory). Authenticated (app2) only; local-first tool
+        // that already shells dotnet/IDEs, so listing folders is in scope. No path → drive roots.
+        app2.MapGet("/fs", (string? path) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    var roots = System.IO.DriveInfo.GetDrives().Where(d => d.IsReady)
+                        .Select(d => new { name = d.RootDirectory.FullName, path = d.RootDirectory.FullName, isDir = true });
+                    return Results.Ok(new { path = (string?)null, parent = (string?)null, entries = roots.ToList() });
+                }
+                var full = Path.GetFullPath(path);
+                if (!Directory.Exists(full)) return Results.NotFound();
+                var dirs = Directory.EnumerateDirectories(full).Select(d => new { name = Path.GetFileName(d), path = d, isDir = true });
+                var files = Directory.EnumerateFiles(full).Select(f => new { name = Path.GetFileName(f), path = f, isDir = false });
+                return Results.Ok(new
+                {
+                    path = full,
+                    parent = Directory.GetParent(full)?.FullName,
+                    entries = dirs.Concat(files).ToList(),
+                });
+            }
+            catch (Exception ex) { return Results.Problem(ex.Message); }
+        });
+
         // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
         app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
         // Live console-log stream for one resource (SSE). {name} is the full resource name (with suffix).
