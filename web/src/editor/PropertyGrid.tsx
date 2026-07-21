@@ -19,13 +19,19 @@ function labelWith(text: string, info: string) {
   return <Group gap={5} wrap="nowrap" component="span">{text}<InfoDot text={info} /></Group>;
 }
 
-function field(p: CatalogParam, value: string, onChange: (v: string) => void) {
+function field(p: CatalogParam, value: string, onChange: (v: string) => void, nodes: Node[] = []) {
   if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
     allowDecimal={p.type === "number"} value={value === "" ? "" : Number(value)} onChange={v => onChange(String(v ?? ""))} />;
   if (p.type === "bool") return <Switch key={p.name} label={p.label}
     checked={value === "true"} onChange={e => onChange(e.currentTarget.checked ? "true" : "false")} />;
   if (p.type === "enum") return <Select key={p.name} label={p.label} withAsterisk={p.required}
     data={p.options ?? []} value={value || null} onChange={v => onChange(v ?? "")} />;
+  // A resource-reference param (e.g. WithPostgresDatasource(postgres)): pick another resource in
+  // the stack; the bare varName is passed verbatim (not a string literal).
+  if (p.type === "resourceRef") return <Select key={p.name} label={p.label} withAsterisk={p.required}
+    placeholder="Pick a resource" searchable
+    data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
+    value={value || null} onChange={v => onChange(v ?? "")} />;
   return <TextInput key={p.name} label={p.label} withAsterisk={p.required} value={value}
     onChange={e => onChange(e.currentTarget.value)} />;
 }
@@ -87,7 +93,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
       <TextInput label="Name" value={draft.resourceName}
         onChange={e => commit({ ...draft, resourceName: e.currentTarget.value })} />
       {matchOverloadByArity(rt?.addOverloads ?? [], draft.addArgs.length)?.params.map((p, i) => field(p, fromLiteral(draft.addArgs[i] ?? '""'),
-        v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName)))))}
+        v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName))), otherNodes))}
 
       {(canExternal || canHttp) && (
         <div>
@@ -200,7 +206,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
                   {rowParams.map((p, pi) => field(p, fromLiteral(row[pi] ?? '""'), v => {
                     const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push('""');
                     nr[ri][pi] = toLiteral(v, p.type, p.enumTypeName); commit(writeWithRows(draft, method, nr));
-                  }))}
+                  }, otherNodes))}
                   <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, method, rows.filter((_, x) => x !== ri)))}><IconX size={14} /></ActionIcon>
                 </Group>
               );
