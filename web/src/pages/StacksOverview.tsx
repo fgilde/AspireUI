@@ -157,7 +157,7 @@ export function StacksOverview() {
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between">
             <Group gap="sm">
-              <img src={logo} alt="AspireUI" height={30} style={{ display: "block" }} />
+              <img src={logo} alt="AspireUI" height={60} style={{ display: "block" }} />
             </Group>
             <Group gap="sm">
               <Button.Group>
