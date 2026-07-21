@@ -31,6 +31,10 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Env-driven first-run seeding (admin user + optional starter stack) — lets a container come up
+// pre-configured without the manual setup wizard. No-op unless the ASPIREUI_* vars are set.
+Seeder.Run();
+
 app.UseDefaultFiles();
 app.UseStaticFiles();       // serves built SPA from wwwroot (Task 10 copies it here)
 app.UseAuthentication();

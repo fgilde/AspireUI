@@ -93,9 +93,18 @@ containers on the host — see the security note in `docker-compose.yml`.
 | `ASPNETCORE_URLS`  | `http://0.0.0.0:8080`     | Address(es) the server listens on (published build) |
 | `DB_PATH`          | `/data/aspireui.db`       | SQLite database file for stacks/settings            |
 | `WORKSPACE_DIR`    | `/data/workspace`         | Where generated AppHost projects are written to run  |
+| `ASPIREUI_ADMIN_USERNAME` | *(unset)*          | First-run only: create this admin (skipped once any user exists) |
+| `ASPIREUI_ADMIN_PASSWORD` | *(unset)*          | Password for the seeded admin (stored hashed) |
+| `ASPIREUI_SEED_STACK_NAME` | *(unset)*         | Seed a starter stack of this name on first start |
+| `ASPIREUI_SEED_STACK_PROJECTS` | *(unset)*     | `;`/`,`-separated project paths → one `AddProject` node each in the seeded stack |
 
 The AI provider (OpenAI-compatible endpoint, model, key) is configured in-app under **Settings** — no
-environment variables needed for that.
+environment variables needed for that. The `ASPIREUI_*` vars let a container come up pre-configured
+(admin + a starter stack) without the manual setup wizard — handy when running AspireUI itself as a
+resource inside another stack.
+
+A prebuilt image is published to **`ghcr.io/fgilde/aspireui:latest`** on every push, so you can
+`docker run` it directly instead of building.
 
 ## Notes / limitations
 
