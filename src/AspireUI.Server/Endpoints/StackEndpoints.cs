@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using AspireUI.Server.Models;
 using AspireUI.Server.Services;
 
@@ -242,6 +243,23 @@ public static class StackEndpoints
         app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
         // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
         app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
+        // Live console-log stream for one resource (SSE). {name} is the full resource name (with suffix).
+        app2.MapGet("/stacks/{id}/resources/{name}/logs", async (string id, string name, HttpContext ctx) =>
+        {
+            ctx.Response.Headers.ContentType = "text/event-stream";
+            ctx.Response.Headers.CacheControl = "no-cache";
+            ctx.Response.Headers.Append("X-Accel-Buffering", "no");
+            try
+            {
+                await foreach (var line in graph.StreamLogsAsync(id, name, ctx.RequestAborted))
+                {
+                    var payload = JsonSerializer.Serialize(new { text = line.Text, stderr = line.IsStdErr, n = line.LineNumber });
+                    await ctx.Response.WriteAsync($"data: {payload}\n\n", ctx.RequestAborted);
+                    await ctx.Response.Body.FlushAsync(ctx.RequestAborted);
+                }
+            }
+            catch (OperationCanceledException) { /* client closed the EventSource */ }
+        });
 
         // Publish output lives OUTSIDE the run project dir (wsRoot/{id}); otherwise the run
         // project's SDK `**/*.cs` glob sweeps publish/src/Program.cs in and the build fails with

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Aspire.DashboardService.Proto.V1;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -32,6 +33,8 @@ public class ResourceGraphService : IDisposable
         public readonly ConcurrentDictionary<string, LiveResource> Resources = new();
         public CancellationTokenSource Cts = new();
         public GrpcChannel? Channel;
+        public string Endpoint = "";
+        public string ApiKey = "";
     }
 
     private readonly ConcurrentDictionary<string, Watch> _watches = new();
@@ -39,9 +42,26 @@ public class ResourceGraphService : IDisposable
     public void Start(string id, string endpointUrl, string apiKey)
     {
         Stop(id); // replace any prior watch for this stack
-        var w = new Watch();
+        var w = new Watch { Endpoint = endpointUrl, ApiKey = apiKey };
         _watches[id] = w;
         _ = Task.Run(() => WatchLoop(w, endpointUrl, apiKey, w.Cts.Token));
+    }
+
+    // Live console-log stream for one resource (by its full resource name, e.g. "supabase-db-xyz").
+    // Yields nothing if the stack isn't running. Own channel so cancelling the SSE request doesn't
+    // affect the shared resource watch.
+    public async IAsyncEnumerable<ConsoleLogLine> StreamLogsAsync(
+        string id, string resourceName, [EnumeratorCancellation] CancellationToken ct)
+    {
+        if (!_watches.TryGetValue(id, out var w)) yield break;
+        using var channel = GrpcChannel.ForAddress(w.Endpoint);
+        var client = new DashboardService.DashboardServiceClient(channel);
+        var headers = new Metadata { { ApiKeyHeader, w.ApiKey } };
+        using var call = client.WatchResourceConsoleLogs(
+            new WatchResourceConsoleLogsRequest { ResourceName = resourceName }, headers, cancellationToken: ct);
+        await foreach (var update in call.ResponseStream.ReadAllAsync(ct))
+            foreach (var line in update.LogLines)
+                yield return line;
     }
 
     public void Stop(string id)

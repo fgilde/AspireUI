@@ -2,12 +2,13 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, Base
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink } from "@tabler/icons-react";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2 } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
+import { ResourceLogDrawer } from "./ResourceLogDrawer";
 import * as api from "../api";
 
 // Small dot showing the current stack-level run state for this node. This is
@@ -48,11 +49,21 @@ function ResourceNode({ data }: any) {
       </Group>
       <Group justify="space-between" wrap="nowrap" gap={4} mt={4}>
         <Badge size="xs" variant="light">{data.addMethod}</Badge>
-        {url && (
-          <Anchor href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title={url}>
-            <IconExternalLink size={13} />
-          </Anchor>
-        )}
+        <Group gap={6} wrap="nowrap">
+          {live && (
+            <Tooltip label="Stream logs" withArrow>
+              <span style={{ cursor: "pointer", display: "flex", color: "var(--mantine-color-dimmed)" }}
+                onClick={e => { e.stopPropagation(); data.onLogs?.(live.name, data.resourceName); }}>
+                <IconTerminal2 size={13} />
+              </span>
+            </Tooltip>
+          )}
+          {url && (
+            <Anchor href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title={url}>
+              <IconExternalLink size={13} />
+            </Anchor>
+          )}
+        </Group>
       </Group>
       <Handle type="source" position={Position.Right} />
     </Card>
@@ -75,11 +86,19 @@ function LiveNode({ data }: any) {
           </Tooltip>
           <Text size="xs" truncate title={live.name}>{live.displayName}</Text>
         </Group>
-        {url && (
-          <Anchor href={url} target="_blank" rel="noreferrer" title={url}>
-            <IconExternalLink size={12} />
-          </Anchor>
-        )}
+        <Group gap={5} wrap="nowrap">
+          <Tooltip label="Stream logs" withArrow>
+            <span style={{ cursor: "pointer", display: "flex", color: "var(--mantine-color-dimmed)" }}
+              onClick={e => { e.stopPropagation(); data.onLogs?.(live.name, live.displayName); }}>
+              <IconTerminal2 size={12} />
+            </span>
+          </Tooltip>
+          {url && (
+            <Anchor href={url} target="_blank" rel="noreferrer" title={url}>
+              <IconExternalLink size={12} />
+            </Anchor>
+          )}
+        </Group>
       </Group>
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
     </Card>
@@ -135,6 +154,8 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const [query, setQuery] = useState("");
   const [live, setLive] = useState<LiveResource[]>([]);
+  const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
+  const onLogs = useCallback((name: string, display: string) => setLogTarget({ name, display }), []);
 
   // While the stack runs, poll the Aspire resource service for live per-resource state/urls/children.
   useEffect(() => {
@@ -162,7 +183,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       const x = owner ? owner.x + 250 : maxX + 340;
       const y = (owner ? owner.y : 40) + idx * 58;
       const id = "live:" + c.live.name;
-      rfLive.push({ id, type: "live", position: { x, y }, draggable: false, selectable: false, deletable: false, data: { live: c.live } });
+      rfLive.push({ id, type: "live", position: { x, y }, draggable: false, selectable: false, deletable: false, data: { live: c.live, onLogs } });
       if (c.parentElemId)
         rfLiveEdges.push({
           id: "le:" + id, source: c.parentElemId, target: id, selectable: false,
@@ -171,7 +192,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
         });
     }
     return { rfLive, rfLiveEdges };
-  }, [overlay, stack.nodes]);
+  }, [overlay, stack.nodes, onLogs]);
 
   const duplicateNode = useCallback((nodeId: string) => {
     const n = stack.nodes.find(x => x.id === nodeId);
@@ -286,15 +307,16 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const q = query.trim().toLowerCase();
   const displayNodes = useMemo(() => {
     const base = rfNodes.map(n => {
-      const data = { ...n.data, live: overlay.statusByNodeId[n.id] };
+      const data = { ...n.data, live: overlay.statusByNodeId[n.id], onLogs };
       const opacity = q && !`${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q) ? 0.25 : 1;
       return { ...n, data, style: { ...n.style, opacity } };
     });
     return [...base, ...liveFlow.rfLive];
-  }, [rfNodes, overlay, liveFlow, q]);
+  }, [rfNodes, overlay, liveFlow, q, onLogs]);
   const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
 
   return (
+    <>
     <ReactFlow nodes={displayNodes} edges={allEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
       colorMode={colorScheme === "light" ? "light" : "dark"}
       snapToGrid snapGrid={[16, 16]}
@@ -337,5 +359,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
         </Paper>
       )}
     </ReactFlow>
+    <ResourceLogDrawer stackId={stack.id} target={logTarget} onClose={() => setLogTarget(null)} />
+    </>
   );
 }
