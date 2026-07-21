@@ -19,6 +19,7 @@ public static class StackEndpoints
         var gen = new CodeGenService();
         var import = new ImportService();
         var bundle = new BundleImporter();
+        var compose = new ComposeImporter();
         var export = new ExportService();
         var catalog = new CatalogService();
         var templates = new TemplateService();
@@ -162,6 +163,13 @@ public static class StackEndpoints
             return Results.Ok(new { reply = result.Reply, stack = forced });
         });
 
+        // Docker Compose import: services -> AddContainer nodes, ports/env/depends_on mapped.
+        app2.MapPost("/stacks/import-compose", (ComposeRequest body) =>
+        {
+            var (stack, error) = compose.Import(Guid.NewGuid().ToString("n"), body.Name, body.Yaml);
+            return stack is null ? Results.UnprocessableEntity(error) : Persist(stack);
+        });
+
         app2.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
@@ -271,6 +279,7 @@ public static class StackEndpoints
     }
 
     public record OpenIdeRequest(string Ide);
+    public record ComposeRequest(string Name, string Yaml);
     public record CodeRequest(string Code, int Offset);
     public record CodeSaveRequest(string Name, string Code);
     public record AssistRequest(string Prompt);

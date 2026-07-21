@@ -62,6 +62,7 @@ export function StacksOverview() {
   const setStatus = (id: string, rs: RunStatus) => setStatuses(m => ({ ...m, [id]: rs }));
   const zipInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const composeInputRef = useRef<HTMLInputElement>(null);
 
   const load = () => api.listStacks().then((s: Stack[]) => { setStacks(s); setLoading(false); });
   useEffect(() => { load(); }, []);
@@ -97,6 +98,16 @@ export function StacksOverview() {
     } catch (e) {
       toastErr(e, "Import failed");
     }
+  };
+
+  const onComposePicked = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const s = await api.importCompose(file.name.replace(/\.(ya?ml)$/i, "") || "compose", await file.text());
+      nav(`/stacks/${s.id}`);
+    } catch (err) { toastErr(err, "Compose import failed"); }
   };
 
   const onZipPicked = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -198,10 +209,14 @@ export function StacksOverview() {
                   <Menu.Item leftSection={<IconFolder size={14} />} onClick={pickFolder}>
                     Folder (.cs/.csproj)
                   </Menu.Item>
+                  <Menu.Item leftSection={<IconFileZip size={14} />} onClick={() => composeInputRef.current?.click()}>
+                    docker-compose.yml
+                  </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
               <input ref={zipInputRef} type="file" accept=".zip" hidden onChange={onZipPicked} />
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
+              <input ref={composeInputRef} type="file" accept=".yml,.yaml" hidden onChange={onComposePicked} />
 
               <Tooltip label="Settings" withArrow>
                 <ActionIcon variant="default" size="lg" onClick={() => nav("/settings")} aria-label="Settings">

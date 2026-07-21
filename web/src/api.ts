@@ -83,6 +83,8 @@ export const deployDown = (id: string): Promise<DeployResult> => fetch(`${base}/
 export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);
 
+export const importCompose = (name: string, yaml: string): Promise<Stack> =>
+  fetch(`${base}/stacks/import-compose`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, yaml }) }).then(ok);
 export const getTemplates = (): Promise<TemplateInfo[]> => fetch(`${base}/templates`).then(ok);
 export const createFromTemplate = (id: string): Promise<Stack> =>
   fetch(`${base}/stacks/from-template/${id}`, { method: "POST" }).then(ok);
