@@ -26,6 +26,22 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Generate_DeclaresReferencedResourceBeforeItsUse()
+    {
+        // "grafana" is added first but takes "postgres" (added later) as an Add-arg. The postgres
+        // var must still be declared before the grafana line that references it.
+        var stack = new StackModel("s", "Demo", "net10.0",
+        [
+            new NodeModel("n1", "grafana", "AddGrafana", "grafana", [], 0, 0, ["postgres"]),
+            new NodeModel("n2", "postgres", "AddPostgres", "postgres", [], 0, 0, []),
+        ], [], [], [], []);
+        var code = new CodeGenService().GenerateProgram(stack);
+        Assert.True(code.IndexOf("var postgres =", StringComparison.Ordinal)
+            < code.IndexOf("builder.AddGrafana(\"grafana\", postgres)", StringComparison.Ordinal),
+            "postgres must be declared before it's used in the grafana line:\n" + code);
+    }
+
+    [Fact]
     public void Generate_EmitsResourceUsings_ForLocalAiStack()
     {
         // Real bug (Slice 4 e2e): generated Program.cs only emitted `using Aspire.Hosting;`,

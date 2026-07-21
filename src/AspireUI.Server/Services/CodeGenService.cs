@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using AspireUI.Server.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -61,7 +62,10 @@ public class CodeGenService
             sb.AppendLine(env.Statement);
         sb.AppendLine();
         sb.AppendLine(Begin);
-        foreach (var n in s.Nodes.Where(n => !n.Composite))
+        // Declare each resource var AFTER the resources it references in its Add args (e.g. a node
+        // created to fill another node's IResourceBuilder<T> arg must appear first), regardless of
+        // the order nodes were added to the canvas.
+        foreach (var n in OrderByDependencies(s.Nodes.Where(n => !n.Composite).ToList()))
         {
             var args = new List<string> { $"\"{Escape(n.ResourceName)}\"" };
             args.AddRange(n.AddArgs);
@@ -84,6 +88,34 @@ public class CodeGenService
         sb.AppendLine();
         sb.AppendLine("builder.Build().Run();");
         return sb.ToString();
+    }
+
+    // Topologically order node var-declarations by their Add-arg references: a node whose AddArgs
+    // mention another node's varName is emitted after it. Stable (keeps canvas order for independents)
+    // and cycle-safe (a reference cycle just falls back to insertion order for the nodes involved).
+    private static List<NodeModel> OrderByDependencies(IReadOnlyList<NodeModel> nodes)
+    {
+        var byVar = nodes.Where(n => !string.IsNullOrEmpty(n.VarName))
+            .GroupBy(n => n.VarName).ToDictionary(g => g.Key, g => g.First());
+        var result = new List<NodeModel>();
+        var done = new HashSet<string>();     // node Ids emitted
+        var onStack = new HashSet<string>();  // cycle guard
+
+        IEnumerable<NodeModel> Deps(NodeModel n) => n.AddArgs
+            .SelectMany(a => byVar.Values.Where(o => o.VarName != n.VarName
+                && Regex.IsMatch(a, $@"\b{Regex.Escape(o.VarName)}\b")))
+            .Distinct();
+
+        void Visit(NodeModel n)
+        {
+            if (done.Contains(n.Id) || !onStack.Add(n.Id)) return;
+            foreach (var dep in Deps(n)) Visit(dep);
+            onStack.Remove(n.Id);
+            if (done.Add(n.Id)) result.Add(n);
+        }
+
+        foreach (var n in nodes) Visit(n);
+        return result;
     }
 
     private static string Var(StackModel s, string nodeId) =>
