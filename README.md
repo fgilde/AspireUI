@@ -1,8 +1,10 @@
+
+
+<p align="center"><img src="docs/aspireui.png" alt="AspireUI" width="740" /></p>
+
+<hr>
+
 <img width="1797" height="1153" alt="image" src="https://github.com/user-attachments/assets/6f1d8138-2b63-45bf-b19e-736a79ea91c4" />
-
-
-
-<p align="center"><img src="docs/aspireui.png" alt="AspireUI" width="140" /></p>
 
 # AspireUI
 
