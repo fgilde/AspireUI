@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
 import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
-import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity } from "../model";
+import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import { PathPickerModal } from "./PathPickerModal";
 import { AddResourceDialog } from "./AddResourceDialog";
@@ -10,11 +10,9 @@ import * as api from "../api";
 
 const ENV_METHOD = "WithEnvironment";
 
-// A string param that names a filesystem location → offer the server-side path picker.
-const isPathParam = (p: CatalogParam) => p.type === "string" && /path|dir|directory|root|file|entrypoint|script/i.test(p.name);
-
 interface FieldOpts {
   nodes?: Node[];
+  resourceTypeName?: (addMethod: string) => string | null | undefined;
   onBrowsePath?: (cur: string, set: (v: string) => void) => void;
   onAddResource?: (p: CatalogParam, set: (v: string) => void) => void;
 }
@@ -41,10 +39,17 @@ function field(p: CatalogParam, value: string, onChange: (v: string) => void, op
     data={p.options ?? []} value={value || null} onChange={v => onChange(v ?? "")} />;
   // A resource-reference param (e.g. WithPostgresDatasource(postgres)): pick another resource in
   // the stack; the bare varName is passed verbatim (not a string literal). "+ New" adds one inline.
-  if (p.type === "resourceRef") return (
+  if (p.type === "resourceRef") {
+    // Only offer resources whose produced CLR type matches the required param type (fall back to all
+    // when nothing matches, e.g. the param wants a base interface we can't name-match).
+    const cands = nodes.filter(n => !n.composite && n.varName);
+    const typed = p.enumTypeName && opts.resourceTypeName
+      ? cands.filter(n => opts.resourceTypeName!(n.addMethod) === p.enumTypeName) : cands;
+    const pickable = typed.length > 0 ? typed : cands;
+    return (
     <Group key={p.name} gap={6} align="end" wrap="nowrap">
       <Select style={{ flex: 1 }} label={p.label} withAsterisk={p.required} placeholder="Pick a resource" searchable
-        data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
+        data={pickable.map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
         value={value || null} onChange={v => onChange(v ?? "")} />
       {opts.onAddResource && (
         <Tooltip label="Add a new resource" withArrow>
@@ -53,6 +58,7 @@ function field(p: CatalogParam, value: string, onChange: (v: string) => void, op
       )}
     </Group>
   );
+  }
   if (isPathParam(p) && opts.onBrowsePath) return (
     <TextInput key={p.name} label={p.label} withAsterisk={p.required} value={value}
       onChange={e => onChange(e.currentTarget.value)}
@@ -113,6 +119,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const [addRt, setAddRt] = useState<ResourceType | null>(null);
   const fieldOpts = {
     nodes: otherNodes,
+    resourceTypeName: (addMethod: string) => catalog.find(r => r.addMethod === addMethod)?.resourceTypeName,
     onBrowsePath: (cur: string, set: (v: string) => void) => setPathPick({ value: cur, onPick: v => { set(v); setPathPick(null); } }),
     onAddResource: (p: CatalogParam, set: (v: string) => void) => setAddTarget({ enumTypeName: p.enumTypeName, onPick: v => { set(v); setAddTarget(null); setAddRt(null); } }),
   };

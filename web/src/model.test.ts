@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -210,5 +210,14 @@ describe("live overlay", () => {
     expect(liveStateColor("FailedToStart")).toBe("red");
     expect(liveStateColor("Waiting")).toBe("yellow");
     expect(liveStateColor(null)).toBe("gray");
+  });
+
+  it("detects path-like string params", () => {
+    const p = (name: string, type: CatalogParam["type"] = "string"): CatalogParam => ({ name, type, required: false, label: name });
+    expect(isPathParam(p("configRootPath"))).toBe(true);
+    expect(isPathParam(p("workingDirectory"))).toBe(true);
+    expect(isPathParam(p("scriptPath"))).toBe(true);
+    expect(isPathParam(p("name"))).toBe(false);
+    expect(isPathParam(p("path", "int"))).toBe(false); // only string params
   });
 });

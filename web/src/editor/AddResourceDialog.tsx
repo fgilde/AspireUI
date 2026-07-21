@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
-import { Modal, TextInput, NumberInput, Switch, Select, MultiSelect, Stack as MStack, Button, Group, Fieldset, Text, Divider } from "@mantine/core";
+import { Modal, TextInput, NumberInput, Switch, Select, MultiSelect, Stack as MStack, Button, Group, Fieldset, Text, Divider, ActionIcon, Tooltip } from "@mantine/core";
+import { IconFolder } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useMantineColorScheme } from "@mantine/core";
 import type { CatalogOverload, CatalogParam, Node, ResourceType } from "../model";
-import { sanitizeIdentifier, toLiteral, configureLiteral } from "../model";
+import { sanitizeIdentifier, toLiteral, configureLiteral, isPathParam } from "../model";
+import { PathPickerModal } from "./PathPickerModal";
 
 SyntaxHighlighter.registerLanguage("csharp", csharp);
 
@@ -28,6 +30,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
   const [values, setValues] = useState<Record<string, string>>({});
   const [refs, setRefs] = useState<string[]>([]);
   const [usedBy, setUsedBy] = useState<string[]>([]);
+  const [pathPick, setPathPick] = useState<{ value: string; set: (v: string) => void } | null>(null);
   const overload = rt.addOverloads[overloadIdx] ?? rt.addOverloads[0];
   const setValue = (p: string, v: string) => setValues(vs => ({ ...vs, [p]: v }));
 
@@ -55,6 +58,13 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       placeholder="Pick a resource" searchable
       data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
       value={value || null} onChange={v => set(v ?? "")} />;
+    if (isPathParam(p)) return <TextInput key={key} label={p.label} withAsterisk={p.required} value={value}
+      onChange={e => set(e.currentTarget.value)}
+      rightSection={
+        <Tooltip label="Browse…" withArrow>
+          <ActionIcon variant="subtle" onClick={() => setPathPick({ value, set })}><IconFolder size={15} /></ActionIcon>
+        </Tooltip>
+      } />;
     return <TextInput key={key} label={p.label} withAsterisk={p.required} value={value}
       onChange={e => set(e.currentTarget.value)} />;
   };
@@ -153,6 +163,10 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
           <Button disabled={!canCreate} onClick={create}>Create</Button>
         </Group>
       </MStack>
+      {pathPick && (
+        <PathPickerModal opened initial={pathPick.value} onClose={() => setPathPick(null)}
+          onPick={p => { pathPick.set(p); setPathPick(null); }} />
+      )}
     </Modal>
   );
 }

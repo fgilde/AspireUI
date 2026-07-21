@@ -153,6 +153,10 @@ export function setAddArg(node: Node, index: number, literal: string): Node {
   addArgs[index] = literal;
   return { ...node, addArgs };
 }
+// A string param that names a filesystem location → offer the server-side path picker.
+export function isPathParam(p: CatalogParam): boolean {
+  return p.type === "string" && /path|dir|directory|root|file|entrypoint|script/i.test(p.name);
+}
 export function sanitizeIdentifier(name: string): string {
   const cleaned = name.replace(/[^A-Za-z0-9_]/g, "");
   const s = /^[0-9]/.test(cleaned) ? "_" + cleaned : cleaned;

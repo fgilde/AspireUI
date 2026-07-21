@@ -15,7 +15,15 @@ export function PathPickerModal({ opened, initial, onPick, onClose }:
 
   const go = (path?: string) => {
     setLoading(true);
-    api.browseFs(path).then(l => { setListing(l); setManual(l.path ?? ""); }).catch(() => setListing(null)).finally(() => setLoading(false));
+    api.browseFs(path)
+      .then(l => { setListing(l); setManual(l.path ?? ""); setLoading(false); })
+      .catch(() => {
+        // A bad/nonexistent starting path (e.g. a param default) shouldn't leave the dialog blank —
+        // fall back to the roots (drives on Windows, "/" on Linux).
+        if (path) { go(undefined); return; }
+        setListing({ path: null, parent: null, entries: [] });
+        setLoading(false);
+      });
   };
   useEffect(() => { if (opened) go(initial || undefined); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [opened]);
 
