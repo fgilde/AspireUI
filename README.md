@@ -2,9 +2,22 @@
 
 
 
+<p align="center"><img src="docs/aspireui.png" alt="AspireUI" width="140" /></p>
+
 # AspireUI
 
 Visually build, import, and run .NET Aspire AppHost projects.
+
+## Install (one line)
+
+Run on any Docker host — clones the repo (if needed) and starts AspireUI in a container:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/fgilde/AspireUI/master/install.sh)"
+```
+
+Then open **http://localhost:8080**. Re-run the same command any time to update. Needs Docker + the
+Compose v2 plugin. (See [Self-hosting](#run-on-a-server-docker) for details and the security note.)
 
 ## What is AspireUI
 

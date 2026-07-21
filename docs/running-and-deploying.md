@@ -67,6 +67,15 @@ Opens at **http://localhost:5158**. Requires the .NET SDK (10.0+).
 The repo ships a `Dockerfile`, `docker-compose.yml`, and `install.sh` for running AspireUI itself
 as a container — useful for a home server, a Proxmox VM, or any Docker host.
 
+**One-liner (no checkout needed)** — clones/updates the repo and starts the container:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/fgilde/AspireUI/master/install.sh)"
+```
+
+It clones into `$HOME/aspireui` (override with `ASPIREUI_DIR=...`). Re-run to update. Inside a
+checkout, just:
+
 ```bash
 ./install.sh
 ```
