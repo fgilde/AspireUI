@@ -24,8 +24,9 @@ shows the exact C# it will generate, and the property grid has inline explanatio
   vector (Elasticsearch, Qdrant, Milvus), identity (Keycloak), AI (Ollama, LocalAI, Azure OpenAI),
   compute (Project, Java/Spring, Go, Python, Container), Dapr, YARP, Seq, Azure services and more.
 - **Typed property grid** — smart inputs per parameter (enums → dropdowns, configure-lambdas →
-  expandable fields), environment variables with a Text/Expression toggle and a resource-reference
-  picker, plus quick settings (public endpoint toggle, HTTP port).
+  expandable fields, type-filtered resource-reference pickers with inline ＋-create, a server-side
+  path picker for folder/project params), environment variables with a Text/Expression toggle and a
+  resource-reference picker, plus quick settings (public endpoint toggle, HTTP port).
 - **Setup / macro extensions** — composite helpers like `AddObservabilityStack` or `AddDapr` (which
   wire up several resources at once) are discovered automatically and grouped under **Setup**.
 - **Live C# preview** and a full **Monaco code editor** with Roslyn IntelliSense; edits parse back into the graph.

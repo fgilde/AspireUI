@@ -6,6 +6,13 @@ The editor is a dockable workspace (powered by dockview). Every panel — Canvas
 Code Preview, Packages, Logs, Assistant, Publish / Deploy, Code, Dashboard, Validation — can be
 dragged, split, stacked into tabs, floated, or closed. The panel backgrounds follow the active theme.
 
+### Panels menu
+
+Closed a panel by mistake? The **Panels** menu (editor header, next to Layout) lists every panel —
+Canvas, Palette, Properties, Code Preview, Packages, Logs, Assistant, Publish / Deploy, Code,
+Dashboard, Validation — with a check for the ones currently open. Click to show or hide; a reopened
+side panel re-docks next to the canvas, the rest rejoin the bottom tab group.
+
 ### Saved layouts
 
 The **Layout** menu (editor header) lets you:
@@ -49,6 +56,10 @@ Press **?** (outside a text field) for the in-app cheat-sheet. The essentials:
 | `Delete` / `Backspace` | Delete the selected node/edge |
 | Right-click a node | Node context menu (edit / duplicate / delete) |
 | `?` | This shortcuts help |
+
+In the **path picker** (folder/project params): the filter box keeps focus — `↑`/`↓` move the
+selection, `Enter` opens a folder or picks a file, `Backspace` on an empty filter (or the mouse Back
+button) steps up a folder.
 
 ## Undo / redo
 

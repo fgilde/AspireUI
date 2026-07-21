@@ -74,7 +74,17 @@ Aspire concept as you go.
   quoted string literal; **Expr** is raw C# (e.g. another resource's endpoint). In Expr mode a 🔗 menu
   lets you **insert a reference** to another resource (its HTTP endpoint or connection string). Free
   typing always works.
+- **Resource-reference parameters** (an `IResourceBuilder<T>` arg, e.g. a Grafana datasource's
+  `postgres`): a picker of the stack's existing resources, filtered to the matching type. A **＋** next
+  to it lets you **create the needed resource inline** — it opens a type-matching add dialog, and the
+  resource you create is saved and selected back into the field in one go.
+- **Path parameters** (a project/working-directory/config path, e.g. a Deno or C# app): a **📁 Browse**
+  button opens a server-side path picker that browses the *host* filesystem (folders navigable,
+  keyboard-driven, mouse Back steps up) — because the path has to resolve on the machine that runs the stack.
 - A generic **raw-call** escape hatch for anything the catalog doesn't cover — editing is never blocked.
+
+The same resource-reference picker (with inline **＋** create) and path Browse button also appear in
+the **add-resource dialog**, so you can wire and create dependencies while adding a resource.
 
 ## References & dependencies
 

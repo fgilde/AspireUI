@@ -23,8 +23,11 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
   with a live C# preview and reference wiring in both directions
 - **Setup / macro extensions** — composite helpers like `AddObservabilityStack` / `AddDapr` (which set
   up several resources at once) are auto-discovered and grouped under "Setup"
-- Property grid for editing resource arguments and capabilities
+- Property grid for editing resource arguments and capabilities, with type-filtered
+  resource-reference pickers (and inline "create the dependency" ＋), and a server-side path picker
+  for project/folder params
 - Reference wiring between resources
+- Reopen closed dock panels from a **Panels** menu
 - Live C# preview of the generated `Program.cs`, kept in sync with the canvas
 - **Code editor** (Monaco) with real C# IntelliSense (Roslyn-backed); edits re-parse into the graph
 - Run / stop a stack, with a link straight into the Aspire dashboard
