@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -47,6 +47,18 @@ const MAP: Record<string, Visual> = {
   AddKeycloak:         { si: siKeycloak, color: TEXT },
   AddSeq:              { tabler: IconReportAnalytics, color: "#00A9E0" },
   AddGrafana:          { si: siGrafana, color: "#F46800" },
+
+  // Container-preset ("app") icons — keyed by the preset's `icon` field.
+  localrecall:         { tabler: IconBrain, color: "#16A34A" },
+  openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
+  comfyui:             { tabler: IconPhoto, color: "#7C3AED" },
+  sdnext:              { tabler: IconPhoto, color: "#EC4899" },
+  acestep:             { tabler: IconMusic, color: "#F59E0B" },
+  langflow:            { tabler: IconSitemap, color: "#DC2626" },
+  flowise:             { tabler: IconSitemap, color: "#14B8A6" },
+  whisper:             { tabler: IconMicrophone, color: "#6366F1" },
+  vscode:              { tabler: IconBrandVscode, color: "#007ACC" },
+  uptimekuma:          { tabler: IconActivityHeartbeat, color: "#22C55E" },
   AddQdrant:           { si: siQdrant, color: "#DC244C" },
   AddMilvus:           { si: siMilvus, color: "#00A1EA" },
   AddDaprComponent:    { si: siDapr, color: "#4756C7" },

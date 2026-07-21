@@ -1,0 +1,92 @@
+[
+  {
+    "id": "localrecall",
+    "label": "LocalRecall",
+    "group": "AI Apps",
+    "image": "ghcr.io/mudler/localrecall:latest",
+    "port": 8080,
+    "icon": "localrecall",
+    "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI). Verify the image tag for your setup."
+  },
+  {
+    "id": "openwebui",
+    "label": "Open WebUI",
+    "group": "AI Apps",
+    "image": "ghcr.io/open-webui/open-webui:main",
+    "port": 8080,
+    "icon": "openwebui",
+    "description": "Open WebUI — chat UI for Ollama / OpenAI-compatible backends. Point OLLAMA_BASE_URL / OPENAI_API_BASE_URL at your model resource."
+  },
+  {
+    "id": "comfyui",
+    "label": "ComfyUI",
+    "group": "AI Apps",
+    "image": "ghcr.io/ai-dock/comfyui:latest-cuda",
+    "port": 8188,
+    "icon": "comfyui",
+    "description": "ComfyUI — node-based Stable Diffusion image/video pipeline (ai-dock build). GPU recommended."
+  },
+  {
+    "id": "sdnext",
+    "label": "SD.Next",
+    "group": "AI Apps",
+    "image": "vladmandic/sdnext-cuda:latest",
+    "port": 7860,
+    "icon": "sdnext",
+    "description": "SD.Next — all-in-one WebUI for generative image/video (vladmandic). CUDA image shown; ROCm/IPEX/OpenVINO variants exist. GPU recommended."
+  },
+  {
+    "id": "acestep",
+    "label": "ACE-Step (music)",
+    "group": "AI Apps",
+    "image": "ghcr.io/dotnetautor/ace-step-1.5-docker:latest",
+    "port": 7860,
+    "icon": "acestep",
+    "description": "ACE-Step 1.5 — open music generation (Gradio UI, models baked in ~15GB). GPU recommended."
+  },
+  {
+    "id": "langflow",
+    "label": "Langflow",
+    "group": "AI Apps",
+    "image": "langflowai/langflow:latest",
+    "port": 7860,
+    "icon": "langflow",
+    "description": "Langflow — visual builder for LangChain-style LLM flows and agents."
+  },
+  {
+    "id": "flowise",
+    "label": "Flowise",
+    "group": "AI Apps",
+    "image": "flowiseai/flowise:latest",
+    "port": 3000,
+    "icon": "flowise",
+    "description": "Flowise — drag-and-drop LLM app / agent builder."
+  },
+  {
+    "id": "whisper-asr",
+    "label": "Whisper ASR",
+    "group": "AI Apps",
+    "image": "onerahmet/openai-whisper-asr-webservice:latest",
+    "port": 9000,
+    "icon": "whisper",
+    "description": "Whisper ASR web service — speech-to-text HTTP API (openai-whisper / faster-whisper)."
+  },
+  {
+    "id": "code-server",
+    "label": "code-server",
+    "group": "Tools",
+    "image": "codercom/code-server:latest",
+    "port": 8080,
+    "icon": "vscode",
+    "description": "code-server — VS Code in the browser."
+  },
+  {
+    "id": "uptime-kuma",
+    "label": "Uptime Kuma",
+    "group": "Tools",
+    "image": "louislam/uptime-kuma:1",
+    "port": 3001,
+    "icon": "uptimekuma",
+    "description": "Uptime Kuma — self-hosted uptime/status monitoring."
+  }
+]

@@ -43,6 +43,7 @@ export const createUser = (username: string, password: string, isAdmin: boolean)
 export const deleteUser = (id: string): Promise<void> => fetch(`${base}/users/${id}`, { method: "DELETE" }).then(okVoid);
 
 export const getCatalog = () => fetch(`${base}/catalog`).then(ok);
+export const getPresets = (): Promise<import("./model").ContainerPreset[]> => fetch(`${base}/catalog/presets`).then(ok);
 
 export interface FsEntry { name: string; path: string; isDir: boolean }
 export interface FsListing { path: string | null; parent: string | null; entries: FsEntry[] }

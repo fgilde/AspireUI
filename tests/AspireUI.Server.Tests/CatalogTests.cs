@@ -48,6 +48,15 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Presets_LoadedFromJson()
+    {
+        var presets = new CatalogService().GetPresets();
+        Assert.NotEmpty(presets);
+        Assert.Contains(presets, p => p.Id == "sdnext" && p.Image.Contains("sdnext") && p.Port == 7860);
+        Assert.All(presets, p => Assert.False(string.IsNullOrWhiteSpace(p.Image)));
+    }
+
+    [Fact]
     public void Catalog_IncludesOllamaAndGithubRepository()
     {
         // CommunityToolkit.Aspire.Hosting.Ollama (13.4.0) and Nextended.Aspire (10.1.15) are

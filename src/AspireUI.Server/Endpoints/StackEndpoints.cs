@@ -70,6 +70,7 @@ public static class StackEndpoints
         });
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
+        app2.MapGet("/catalog/presets", () => catalog.GetPresets());
         app2.MapGet("/templates", () => templates.List());
         app2.MapGet("/stacks", () => store.List());
         app2.MapGet("/stacks/{id}", (string id) =>

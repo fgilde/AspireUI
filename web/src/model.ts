@@ -14,6 +14,8 @@ export interface CatalogParam { name: string; type: "string" | "int" | "number" 
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
+// A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null }
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 

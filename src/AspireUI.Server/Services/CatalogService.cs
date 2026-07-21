@@ -17,10 +17,28 @@ public record ResourceType(string AddMethod, string Label, string? Icon, string?
     // type-matching resources when filling an IResourceBuilder<T> parameter.
     string? ResourceTypeName = null);
 
+// A curated "app" preset: one click drops a preconfigured AddContainer node (image + HTTP endpoint
+// + optional env). Lets us offer cool self-hostable apps (LocalRecall, ComfyUI, SD.Next, …) as
+// palette nodes without an Aspire package for each. Read from catalog/presets/container-presets.json.
+public record ContainerPreset(string Id, string Label, string Group, string Image, int Port,
+    string? Icon, string? Description, List<List<string>>? Env);
+
 public class CatalogService
 {
     private readonly Assembly[] _assemblies;
     private readonly Dictionary<string, JsonElement> _overlay;
+
+    public IReadOnlyList<ContainerPreset> GetPresets()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "catalog", "presets", "container-presets.json");
+        if (!File.Exists(path)) return [];
+        try
+        {
+            return JsonSerializer.Deserialize<List<ContainerPreset>>(
+                File.ReadAllText(path), new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+        }
+        catch { return []; }
+    }
 
     public CatalogService(params Assembly[] assemblies)
     {
