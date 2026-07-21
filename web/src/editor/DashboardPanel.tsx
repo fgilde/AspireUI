@@ -1,81 +1,126 @@
-import { useState } from "react";
-import { Button, Center, Stack as MStack, Text, Loader, Group, ActionIcon, Tooltip, Switch, Alert } from "@mantine/core";
-import { IconPlayerPlay, IconExternalLink, IconRefresh, IconInfoCircle } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Center, Stack as MStack, Text, Loader, Group, ActionIcon, Tooltip, Badge, ScrollArea, Anchor } from "@mantine/core";
+import { IconPlayerPlay, IconPlayerStop, IconExternalLink, IconRefresh, IconTerminal2 } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
-import { toastErr } from "../ui";
+import { liveStateColor, type LiveResource } from "../model";
+import { ResourceLogDrawer } from "./ResourceLogDrawer";
+import { toastErr, toastOk } from "../ui";
 import * as api from "../api";
 
-// Live dashboard access. The Aspire dashboard is a Blazor app that blocks cross-origin framing and is
-// fragile when reverse-proxied under a subpath, so the reliable default is "open in a new tab".
-// An experimental embedded view (sandboxed so it can't navigate the app away) is available behind a toggle.
+const dot = (state?: string | null) => `var(--mantine-color-${liveStateColor(state)}-filled)`;
+const primaryUrl = (r: LiveResource) => r.urls.find(u => !u.isInternal && !u.isInactive)?.url;
+
+// A built-in mini dashboard: instead of embedding the fragile Blazor dashboard in an iframe, we render
+// our own from the Aspire resource-service feed we already consume — live per-resource state, endpoint
+// links and console-log streaming. The full Aspire dashboard (traces/metrics) stays one click away.
 export function DashboardPanel() {
   const { stack, runStatus, setRunStatus } = useEditor();
-  const [nonce, setNonce] = useState(0);
-  const [embed, setEmbed] = useState(false);
+  const [live, setLive] = useState<LiveResource[]>([]);
+  const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const url = runStatus.dashboardUrl;
-  const running = runStatus.state === "Running" && !!url;
-  const proxied = (() => {
-    if (!url) return "";
-    try { const u = new URL(url); return `/dash/${stack.id}${u.pathname}${u.search}`; } catch { return url; }
-  })();
+  const state = runStatus.state;
+  const active = state === "Running" || state === "Starting";
 
+  useEffect(() => {
+    if (!active) { setLive([]); return; }
+    let alive = true;
+    const tick = () => api.stackResources(stack.id).then(r => { if (alive) setLive(r); }).catch(() => {});
+    tick();
+    const iv = setInterval(tick, 2500);
+    return () => { alive = false; clearInterval(iv); };
+  }, [active, stack.id]);
+
+  // Order parents before their children (nesting from Aspire relationships), children indented.
+  const rows = useMemo(() => {
+    const visible = live.filter(r => !r.hidden);
+    const byName = new Map(visible.map(r => [r.name, r]));
+    const kids = new Map<string, LiveResource[]>();
+    const roots: LiveResource[] = [];
+    for (const r of visible) {
+      if (r.parent && byName.has(r.parent)) {
+        const arr = kids.get(r.parent) ?? [];
+        arr.push(r); kids.set(r.parent, arr);
+      } else roots.push(r);
+    }
+    const out: { r: LiveResource; depth: number }[] = [];
+    const walk = (r: LiveResource, depth: number) => {
+      out.push({ r, depth });
+      for (const c of kids.get(r.name) ?? []) walk(c, depth + 1);
+    };
+    roots.forEach(r => walk(r, 0));
+    return out;
+  }, [live]);
+
+  const runningCount = live.filter(r => (r.state ?? "").toLowerCase().includes("running")).length;
   const start = () => api.runStack(stack.id).then(setRunStatus).catch(e => toastErr(e, "Could not start"));
+  const stop = () => api.stopStack(stack.id).then(r => { setRunStatus(r); toastOk("Stopped"); }).catch(e => toastErr(e, "Could not stop"));
+  const refresh = () => api.stackResources(stack.id).then(setLive).catch(() => {});
 
-  if (running) {
+  if (!active) {
     return (
-      <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-        <Group justify="space-between" px="sm" py={6} wrap="nowrap">
-          <Group gap="xs" wrap="nowrap">
-            <Button size="xs" leftSection={<IconExternalLink size={14} />} component="a" href={url!} target="_blank">
-              Open dashboard
-            </Button>
-            <Switch size="xs" label="Embed (experimental)" checked={embed} onChange={e => setEmbed(e.currentTarget.checked)} />
-          </Group>
-          {embed && (
-            <Tooltip label="Reload" withArrow><ActionIcon size="sm" variant="subtle" onClick={() => setNonce(n => n + 1)}><IconRefresh size={14} /></ActionIcon></Tooltip>
-          )}
-        </Group>
-        {embed ? (
-          <iframe key={nonce} src={proxied} title="Aspire Dashboard"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            style={{ flex: 1, width: "100%", border: 0 }} />
-        ) : (
-          <Center style={{ flex: 1 }}>
-            <MStack align="center" gap="sm" maw={380} px="md">
-              <Text fw={600}>Dashboard is running</Text>
-              <Text size="sm" c="dimmed" ta="center">
-                Opens best in its own tab — the Aspire dashboard (Blazor + live SignalR) blocks embedding for
-                security and misbehaves inside an iframe. Use the button above, or try the experimental embed.
-              </Text>
-              <Button leftSection={<IconExternalLink size={16} />} component="a" href={url!} target="_blank">Open Aspire dashboard</Button>
-            </MStack>
-          </Center>
-        )}
-        {embed && (
-          <Alert color="yellow" radius={0} icon={<IconInfoCircle size={14} />} py={4}>
-            <Text size="xs">Experimental — SignalR/navigation may glitch. The dashboard can't escape this panel. Prefer “Open dashboard”.</Text>
-          </Alert>
-        )}
-      </div>
+      <Center h="100%">
+        <MStack align="center" gap="sm" maw={340} px="md">
+          <Text fw={600}>Dashboard</Text>
+          <Text size="sm" c="dimmed" ta="center">
+            Start the stack to see live per-resource status, endpoints and logs here.
+          </Text>
+          <Button leftSection={<IconPlayerPlay size={16} />} color="green" onClick={start}>Start stack</Button>
+          {state === "Failed" && <Text size="xs" c="red">Last run failed — check the Logs panel.</Text>}
+        </MStack>
+      </Center>
     );
   }
 
   return (
-    <Center h="100%">
-      <MStack align="center" gap="sm" maw={340} px="md">
-        {runStatus.state === "Starting" ? (
-          <><Loader /><Text size="sm" c="dimmed">Starting… the dashboard link appears here once it's ready.</Text></>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Group justify="space-between" px="sm" py={6} wrap="nowrap">
+        <Group gap={8} wrap="nowrap">
+          <Button size="xs" color="red" variant="light" leftSection={<IconPlayerStop size={14} />} onClick={stop}>Stop</Button>
+          <Text size="xs" c="dimmed">{runningCount}/{live.filter(r => !r.hidden).length} running</Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Tooltip label="Refresh" withArrow><ActionIcon size="sm" variant="subtle" onClick={refresh}><IconRefresh size={14} /></ActionIcon></Tooltip>
+          {url && (
+            <Button size="xs" variant="subtle" leftSection={<IconExternalLink size={14} />} component="a" href={url} target="_blank">
+              Aspire dashboard
+            </Button>
+          )}
+        </Group>
+      </Group>
+
+      <ScrollArea style={{ flex: 1 }} px="xs">
+        {rows.length === 0 ? (
+          <Center py="xl"><Group gap="xs"><Loader size="xs" /><Text size="sm" c="dimmed">Waiting for resources…</Text></Group></Center>
         ) : (
-          <>
-            <Text fw={600}>Dashboard</Text>
-            <Text size="sm" c="dimmed" ta="center">
-              The Aspire dashboard shows live logs, traces, metrics and per-resource status. Start the stack to open it.
-            </Text>
-            <Button leftSection={<IconPlayerPlay size={16} />} color="green" onClick={start}>Start stack</Button>
-            {runStatus.state === "Failed" && <Text size="xs" c="red">Last run failed — check the Logs panel.</Text>}
-          </>
+          <MStack gap={2} py="xs">
+            {rows.map(({ r, depth }) => {
+              const u = primaryUrl(r);
+              return (
+                <Group key={r.name} gap={8} wrap="nowrap" px={6} py={4}
+                  style={{ paddingLeft: 6 + depth * 18, borderRadius: 4 }} className="ctx-item">
+                  <Tooltip label={r.state ?? "…"} withArrow>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot(r.state), flexShrink: 0 }} />
+                  </Tooltip>
+                  <Text size="sm" fw={depth === 0 ? 600 : 400} truncate style={{ flex: 1, minWidth: 0 }} title={r.name}>
+                    {r.displayName}
+                  </Text>
+                  <Badge size="xs" variant="light" color="gray">{r.type}</Badge>
+                  {u && (
+                    <Tooltip label={u} withArrow><Anchor href={u} target="_blank" rel="noreferrer" style={{ display: "flex" }}><IconExternalLink size={14} /></Anchor></Tooltip>
+                  )}
+                  <Tooltip label="Stream logs" withArrow>
+                    <ActionIcon size="sm" variant="subtle" onClick={() => setLogTarget({ name: r.name, display: r.displayName })}>
+                      <IconTerminal2 size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              );
+            })}
+          </MStack>
         )}
-      </MStack>
-    </Center>
+      </ScrollArea>
+
+      <ResourceLogDrawer stackId={stack.id} target={logTarget} onClose={() => setLogTarget(null)} />
+    </div>
   );
 }

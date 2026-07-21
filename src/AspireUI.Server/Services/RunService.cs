@@ -137,12 +137,6 @@ public class RunService : IDisposable
     public RunStatus Status(string id) =>
         _runs.TryGetValue(id, out var h) ? Snapshot(h) : new RunStatus(RunState.NotRunning, null, new());
 
-    // Origin (scheme://host:port) of a running stack's dashboard, for the same-origin reverse proxy.
-    public string? DashboardBase(string id) =>
-        _runs.TryGetValue(id, out var h) && h.DashboardUrl is { } u && Uri.TryCreate(u, UriKind.Absolute, out var uri)
-            ? $"{uri.Scheme}://{uri.Authority}"
-            : null;
-
     private static RunStatus Snapshot(Handle h)
     {
         lock (h.Log) return new RunStatus(h.State, h.DashboardUrl, new List<string>(h.Log));

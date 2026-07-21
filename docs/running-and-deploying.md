@@ -25,11 +25,12 @@ a live traffic-light (grey/yellow/green/red, with the error detail in the toolti
 
 ## The Dashboard panel
 
-The editor's **Dashboard** tab gives in-tool access to the Aspire dashboard. When the stack is
-running it shows an **Open dashboard** button (opens the real dashboard in a new tab — the reliable
-path, since the Blazor dashboard blocks embedding) and an optional **Embed (experimental)** toggle
-that renders it in a sandboxed iframe via a built-in reverse proxy. When it isn't running, a Start
-button.
+The editor's **Dashboard** tab is a built-in mini dashboard, rendered from the Aspire resource-service
+feed (the same live data behind the canvas overlay) — no fragile iframe embedding. While the stack
+runs it lists every resource (parents with their spawned children indented), each with a live status
+traffic-light, its endpoint link, and a **logs** button that streams that resource's console output.
+A **Stop** button and a running-count are in the header, plus a one-click link to the full **Aspire
+dashboard** (new tab) for traces/metrics. When the stack isn't running, a Start button.
 
 ## Publishing & deploying
 

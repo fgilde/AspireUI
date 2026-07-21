@@ -4,10 +4,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Shared so the dashboard reverse proxy and the stack endpoints see the same run state.
+// Shared so the built-in dashboard panel and the stack endpoints see the same run state.
 builder.Services.AddSingleton<ResourceGraphService>();
 builder.Services.AddSingleton<RunService>(sp => new RunService(graph: sp.GetRequiredService<ResourceGraphService>()));
-builder.Services.AddHttpForwarder();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
@@ -17,12 +16,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         o.SlidingExpiration = true;
         o.ExpireTimeSpan = TimeSpan.FromDays(7);
-        // API-friendly: 401/403 instead of redirecting to an HTML login page.
-        // API-friendly for XHR (JSON 401). But the dashboard iframe is a top-level browser
-        // navigation — if the session lapsed, redirect it to the SPA login instead of a bare 401.
+        // API-friendly: 401 for XHR instead of redirecting to an HTML login page.
         o.Events.OnRedirectToLogin = ctx =>
         {
-            if (ctx.Request.Path.StartsWithSegments("/dash")) { ctx.Response.Redirect("/login"); return Task.CompletedTask; }
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask;
         };
         o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
@@ -41,7 +37,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();     // /auth/*, /env/health — anonymous
 app.MapStackEndpoints();    // app endpoints — require auth (gated inside)
-app.MapDashboardProxy();    // /dash/{id}/** — same-origin reverse proxy to the running dashboard
 app.MapFallbackToFile("index.html");
 
 app.Run();
