@@ -32,7 +32,8 @@
     "package": "Nextended.Aspire.Hosting.Supabase",
     "packageVersion": "10.1.14",
     "usings": [
-      "Nextended.Aspire.Hosting.Supabase.Builders"
+      "Nextended.Aspire.Hosting.Supabase.Builders",
+      "Nextended.Aspire.Hosting.Observability"
     ],
     "description": "Supabase backend (Postgres + auth + storage + APIs)."
   },

@@ -18,6 +18,7 @@ public class TemplateService
         new("keycloak-auth", "Keycloak + Postgres", "Keycloak identity server backed by a Postgres database."),
         new("observability", "Observability (Seq)", "A Seq server for structured logs — point your apps at it."),
         new("grafana-stack", "Grafana + Prometheus + OTEL", "Grafana dashboards + Prometheus metrics + an OpenTelemetry collector (containers)."),
+        new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
     ];
 
     public StackModel? Create(string templateId) => templateId switch
@@ -29,6 +30,7 @@ public class TemplateService
         "keycloak-auth" => KeycloakAuth(),
         "observability" => Observability(),
         "grafana-stack" => GrafanaStack(),
+        "supabase-observability" => SupabaseObservability(),
         _ => null,
     };
 
@@ -105,6 +107,15 @@ public class TemplateService
             ], ["\"grafana/grafana:latest\""]);
         return Stack("Grafana + Prometheus + OTEL", [prom, otel, grafana],
             [new EdgeModel(Eid(), grafana.Id, prom.Id, "waitFor")]);
+    }
+
+    // Composite builder-extension via a raw statement — shows how to use "macro" extensions
+    // (AddObservabilityStack adds Grafana/Prometheus/Loki/Tempo/OTEL wired to Supabase).
+    private static StackModel SupabaseObservability()
+    {
+        var supabase = Node("supabase", "AddSupabase", 120, 140);
+        return Stack("Supabase + Observability", [supabase], [],
+            ["builder.AddObservabilityStack(supabase);"]);
     }
 
     private static StackModel LocalAiDemo()
