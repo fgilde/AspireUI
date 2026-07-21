@@ -20,13 +20,14 @@ function defaultName(rt: ResourceType, existingCount: number): string {
 
 export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCreate, onClose }: {
   rt: ResourceType; existingCount: number; totalCount: number;
-  nodes: Node[]; onCreate: (node: Node, refIds: string[]) => void; onClose: () => void;
+  nodes: Node[]; onCreate: (node: Node, refIds: string[], usedByIds: string[]) => void; onClose: () => void;
 }) {
   const { colorScheme } = useMantineColorScheme();
   const [name, setName] = useState(() => defaultName(rt, existingCount));
   const [overloadIdx, setOverloadIdx] = useState(0);
   const [values, setValues] = useState<Record<string, string>>({});
   const [refs, setRefs] = useState<string[]>([]);
+  const [usedBy, setUsedBy] = useState<string[]>([]);
   const overload = rt.addOverloads[overloadIdx] ?? rt.addOverloads[0];
   const setValue = (p: string, v: string) => setValues(vs => ({ ...vs, [p]: v }));
 
@@ -79,8 +80,12 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       const t = nodes.find(n => n.id === id);
       if (t) lines.push(`${varName}.WithReference(${t.varName});`);
     }
+    for (const id of usedBy) {
+      const t = nodes.find(n => n.id === id);
+      if (t) lines.push(`${t.varName}.WithReference(${varName});`);
+    }
     return lines.join("\n");
-  }, [name, varName, addArgs, refs, nodes, rt.addMethod]);
+  }, [name, varName, addArgs, refs, usedBy, nodes, rt.addMethod]);
 
   const create = () => {
     if (!overload || !canCreate) return;
@@ -89,7 +94,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       varName, resourceName: name, addMethod: rt.addMethod,
       addArgs, withCalls: [],
       x: 60 + totalCount * 28, y: 60 + totalCount * 28,
-    }, refs);
+    }, refs, usedBy);
   };
 
   return (
@@ -105,9 +110,14 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
         {overload?.params.map(p => field(p))}
 
         {nodes.length > 0 && (
-          <MultiSelect label="References" description="Resources this one should reference (adds .WithReference)"
-            data={nodes.map(n => ({ value: n.id, label: n.resourceName }))} value={refs} onChange={setRefs}
-            searchable clearable />
+          <>
+            <MultiSelect label="References" description={`Resources this one should reference (${varName}.WithReference(x))`}
+              data={nodes.map(n => ({ value: n.id, label: n.resourceName }))} value={refs} onChange={setRefs}
+              searchable clearable />
+            <MultiSelect label="Referenced by" description={`Resources that should reference this one (x.WithReference(${varName}))`}
+              data={nodes.map(n => ({ value: n.id, label: n.resourceName }))} value={usedBy} onChange={setUsedBy}
+              searchable clearable />
+          </>
         )}
 
         <Divider label="Code preview" labelPosition="left" />

@@ -247,6 +247,19 @@ export function StacksOverview() {
                 <Button mt="sm" leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
                   New Stack
                 </Button>
+                {templates.length > 0 && (
+                  <>
+                    <Text c="dimmed" size="xs" mt="lg">…or start from a template</Text>
+                    <Group justify="center" gap="xs" maw={460} mt={4}>
+                      {templates.map(t => (
+                        <Tooltip key={t.id} label={t.description} withArrow multiline w={260}>
+                          <Button size="xs" variant="light" leftSection={<IconSparkles size={13} />}
+                            onClick={() => createDemo(t.id)}>{t.name}</Button>
+                        </Tooltip>
+                      ))}
+                    </Group>
+                  </>
+                )}
                 <Text c="dimmed" size="xs" mt="md">Tip: press <b>Ctrl/⌘ + K</b> anywhere for the command palette, or <b>?</b> for shortcuts.</Text>
               </MStack>
             </Center>

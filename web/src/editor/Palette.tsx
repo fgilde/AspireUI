@@ -18,10 +18,12 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     return by;
   }, [cat, q]);
 
-  const onCreate = (node: Node, refIds: string[]) => {
-    const edges = refIds.map(toNodeId => ({
-      id: "e" + crypto.randomUUID().slice(0, 8), fromNodeId: node.id, toNodeId, kind: "reference",
-    }));
+  const onCreate = (node: Node, refIds: string[], usedByIds: string[]) => {
+    const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+    const edges = [
+      ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: node.id, toNodeId, kind: "reference" })),
+      ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: node.id, kind: "reference" })),
+    ];
     api.saveStack({ ...stack, nodes: [...stack.nodes, node], edges: [...stack.edges, ...edges] }).then(setStack);
     setSelectedRt(null);
   };
