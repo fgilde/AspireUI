@@ -133,6 +133,23 @@ public static class StackEndpoints
         app2.MapGet("/stacks/{id}/packages", (string id) =>
             store.Get(id) is { } s ? Results.Ok(gen.GetPackages(s)) : Results.NotFound());
 
+        app2.MapPost("/stacks/{id}/explain", async (string id) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var appSettings = settings.Get();
+            if (string.IsNullOrEmpty(appSettings.AiBaseUrl))
+                return Results.BadRequest("AI not configured — set it in Settings");
+            try
+            {
+                var reply = await assist.ExplainAsync(s, appSettings);
+                return Results.Ok(new { reply });
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
+            }
+        });
+
         app2.MapPost("/stacks/{id}/assist", async (string id, AssistRequest body) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();

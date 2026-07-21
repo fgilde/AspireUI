@@ -37,6 +37,24 @@ public class AssistService(IChatClient chat, CatalogService catalog)
         }
     }
 
+    // Read-only: explain the current stack for someone learning Aspire. Returns Markdown prose
+    // (no stack changes, no JSON contract).
+    public async Task<string> ExplainAsync(StackModel stack, AppSettings settings)
+    {
+        var stackJson = JsonSerializer.Serialize(stack, JsonOpts);
+        var system = $$"""
+            You are a .NET Aspire expert helping a developer understand an AppHost stack.
+            Explain the stack below in clear Markdown with short sections: what each resource is and
+            does, how they're wired together (references / wait-for ordering), roughly what the
+            generated Program.cs looks like, and any practical suggestions or gotchas. Teach — assume
+            the reader is still learning Aspire. Do NOT output JSON or code fences around the whole reply.
+
+            Stack (JSON):
+            {{stackJson}}
+            """;
+        return await chat.CompleteAsync(system, "Explain this stack.", settings);
+    }
+
     // ponytail: catalog summary is addMethod + label + group + addParam names only (no withs, no
     // overload details) to keep the system prompt small — the full reflected catalog is ~50
     // resources deep with many With* methods each, which would blow the token budget of a

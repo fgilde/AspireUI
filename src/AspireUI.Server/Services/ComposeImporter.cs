@@ -15,7 +15,8 @@ public class ComposeImporter
         public List<string>? Ports { get; set; }
         public object? Environment { get; set; }         // list ("K=V") or map (K: V)
         public object? DependsOn { get; set; }            // list or map (long syntax)
-        public List<string>? Command { get; set; }
+        public object? Command { get; set; }             // string or list
+        public List<string>? Volumes { get; set; }        // "src:dst[:mode]"
     }
 
     public (StackModel? stack, string? error) Import(string id, string name, string yaml)
@@ -51,6 +52,18 @@ public class ComposeImporter
             }
             foreach (var (k, v) in ReadEnv(def.Environment))
                 withs.Add(new WithCall("WithEnvironment", [Quote(k), Quote(v)]));
+            foreach (var vol in def.Volumes ?? [])
+            {
+                var parts = vol.Split(':');
+                if (parts.Length < 2) continue;
+                var (src, dst) = (parts[0], parts[1]);
+                // Path-like source -> bind mount; otherwise a named volume.
+                withs.Add(src.StartsWith('.') || src.StartsWith('/') || src.Contains('\\')
+                    ? new WithCall("WithBindMount", [Quote(src), Quote(dst)])
+                    : new WithCall("WithVolume", [Quote(src), Quote(dst)]));
+            }
+            var cmdArgs = ReadCommand(def.Command);
+            if (cmdArgs.Count > 0) withs.Add(new WithCall("WithArgs", cmdArgs.Select(Quote).ToList()));
 
             var id2 = "n" + Guid.NewGuid().ToString("n")[..8];
             nameToId[svc] = id2;
@@ -98,6 +111,13 @@ public class ComposeImporter
         if (dep is List<object> list) foreach (var d in list) yield return d?.ToString() ?? "";
         else if (dep is Dictionary<object, object> map) foreach (var k in map.Keys) yield return k?.ToString() ?? "";
     }
+
+    private static List<string> ReadCommand(object? cmd) => cmd switch
+    {
+        List<object> list => list.Select(x => x?.ToString() ?? "").Where(s => s.Length > 0).ToList(),
+        string s when s.Trim().Length > 0 => s.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList(),
+        _ => [],
+    };
 
     private static string Quote(string s) => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
     private static string Sanitize(string s)

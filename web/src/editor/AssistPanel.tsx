@@ -48,6 +48,20 @@ export function AssistPanel() {
     }
   };
 
+  // Read-only: ask the AI to explain the current stack (doesn't change it).
+  const explain = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { reply } = await api.explainStack(stack.id);
+      setHistory(h => [...h, { prompt: "Explain this stack", reply }]);
+    } catch (err) {
+      setHistory(h => [...h, { prompt: "Explain this stack", error: extractMessage(err) }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <ScrollArea style={{ flex: 1 }} px="sm" py="xs">
@@ -73,7 +87,8 @@ export function AssistPanel() {
         </MStack>
       </ScrollArea>
       <Group px="xs" pt="xs" gap={6}>
-        {["Add a Redis cache", "Add a Postgres database", "Explain this stack", "What could be improved?"].map(s => (
+        <Button size="compact-xs" variant="light" loading={busy} onClick={() => void explain()}>Explain this stack</Button>
+        {["Add a Redis cache", "Add a Postgres database", "What could be improved?"].map(s => (
           <Chip key={s} size="xs" checked={false} variant="light" onClick={() => setPrompt(s)}>{s}</Chip>
         ))}
       </Group>
