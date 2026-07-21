@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -49,6 +49,7 @@ const MAP: Record<string, Visual> = {
   AddGrafana:          { si: siGrafana, color: "#F46800" },
 
   // Container-preset ("app") icons — keyed by the preset's `icon` field.
+  localagi:            { tabler: IconRobot, color: "#0EA5E9" },
   localrecall:         { tabler: IconBrain, color: "#16A34A" },
   openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
   comfyui:             { tabler: IconPhoto, color: "#7C3AED" },

@@ -1,5 +1,14 @@
 [
   {
+    "id": "localagi",
+    "label": "LocalAGI",
+    "group": "AI Apps",
+    "image": "quay.io/mudler/localagi:latest",
+    "port": 3000,
+    "icon": "localagi",
+    "description": "LocalAGI — self-hostable AI agent platform (mudler), drop-in for OpenAI Responses API. Pairs with LocalAI (LLM) + LocalRecall (memory). Verify tag (latest/master)."
+  },
+  {
     "id": "localrecall",
     "label": "LocalRecall",
     "group": "AI Apps",
