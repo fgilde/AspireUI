@@ -1,6 +1,4 @@
-
-
-<p align="center"><img src="docs/aspireui.png" alt="AspireUI" width="740" /></p>
+<p align="center"><img src="docs/aspireui_transparent.svg" alt="AspireUI" width="540" /></p>
 
 <hr>
 
