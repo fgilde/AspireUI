@@ -178,5 +178,95 @@
     "port": 3000,
     "icon": "homepage",
     "description": "Homepage — a sleek, configurable start page/dashboard for your services."
+  },
+  {
+    "id": "onlyoffice",
+    "label": "OnlyOffice",
+    "group": "Tools",
+    "image": "onlyoffice/documentserver:latest",
+    "port": 80,
+    "icon": "onlyoffice",
+    "description": "OnlyOffice Document Server — collaborative editing of docs/sheets/slides (integrates with Nextcloud etc.)."
+  },
+  {
+    "id": "gokapi",
+    "label": "Gokapi",
+    "group": "Tools",
+    "image": "f0rc3/gokapi:latest",
+    "port": 53842,
+    "icon": "gokapi",
+    "description": "Gokapi — lightweight self-hosted file sharing with expiring links."
+  },
+  {
+    "id": "stirling-pdf",
+    "label": "Stirling-PDF",
+    "group": "Tools",
+    "image": "ghcr.io/stirling-tools/stirling-pdf:latest",
+    "port": 8080,
+    "icon": "stirlingpdf",
+    "description": "Stirling-PDF — local, privacy-friendly PDF toolbox (merge/split/OCR/convert…)."
+  },
+  {
+    "id": "actualbudget",
+    "label": "Actual Budget",
+    "group": "Tools",
+    "image": "actualbudget/actual-server:latest",
+    "port": 5006,
+    "icon": "actual",
+    "description": "Actual — fast, local-first personal budgeting/finance."
+  },
+  {
+    "id": "it-tools",
+    "label": "IT-Tools",
+    "group": "Tools",
+    "image": "ghcr.io/corentinth/it-tools:latest",
+    "port": 80,
+    "icon": "ittools",
+    "description": "IT-Tools — a big box of handy dev utilities (encoders, converters, generators…)."
+  },
+  {
+    "id": "ntfy",
+    "label": "ntfy",
+    "group": "Tools",
+    "image": "binwiederhier/ntfy:latest",
+    "port": 80,
+    "icon": "ntfy",
+    "description": "ntfy — simple pub/sub push notifications to your phone/desktop via HTTP."
+  },
+  {
+    "id": "freshrss",
+    "label": "FreshRSS",
+    "group": "Tools",
+    "image": "freshrss/freshrss:latest",
+    "port": 80,
+    "icon": "freshrss",
+    "description": "FreshRSS — self-hosted RSS feed aggregator/reader."
+  },
+  {
+    "id": "immich",
+    "label": "Immich",
+    "group": "Tools",
+    "image": "ghcr.io/immich-app/immich-server:release",
+    "port": 2283,
+    "icon": "immich",
+    "description": "Immich — self-hosted photo & video backup (Google-Photos-like). Needs Postgres + Redis + the ML container alongside."
+  },
+  {
+    "id": "dockge",
+    "label": "Dockge",
+    "group": "Tools",
+    "image": "louislam/dockge:1",
+    "port": 5001,
+    "icon": "dockge",
+    "description": "Dockge — a tidy manager for docker-compose stacks (by the Uptime-Kuma author)."
+  },
+  {
+    "id": "dozzle",
+    "label": "Dozzle",
+    "group": "Observability Apps",
+    "image": "amir20/dozzle:latest",
+    "port": 8080,
+    "icon": "dozzle",
+    "description": "Dozzle — real-time Docker container log viewer in the browser."
   }
 ]

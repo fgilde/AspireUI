@@ -1,17 +1,42 @@
-import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Button, ScrollArea, Divider, Tooltip, Badge, Group } from "@mantine/core";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton } from "@mantine/core";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { sanitizeIdentifier } from "../model";
-import { ResourceGlyph } from "../resourceIcons";
+import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { AddResourceDialog } from "./AddResourceDialog";
+
+// One compact palette tile: colored icon box + label + a small caption, hover-highlighted.
+function Tile({ iconKey, label, caption, badge, onClick, tooltip }: {
+  iconKey: string; label: string; caption?: string; badge?: string; onClick: () => void; tooltip?: string;
+}) {
+  const color = resourceVisual(iconKey).color;
+  return (
+    <Tooltip label={tooltip || label} position="right" withArrow openDelay={500} multiline w={250} disabled={!tooltip}>
+      <UnstyledButton onClick={onClick} className="ctx-item"
+        style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "6px 8px", borderRadius: 8 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center",
+          background: `${color}1f`, border: `1px solid ${color}33` }}>
+          <ResourceGlyph addMethod={iconKey} size={17} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text size="sm" fw={550} truncate lh={1.15}>{label}</Text>
+          {caption && <Text size="10px" c="dimmed" truncate lh={1.2}>{caption}</Text>}
+        </div>
+        {badge && <Badge size="xs" variant="light" color="grape" style={{ flexShrink: 0 }}>{badge}</Badge>}
+      </UnstyledButton>
+    </Tooltip>
+  );
+}
 
 export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack) => void }) {
   const [cat, setCat] = useState<ResourceType[]>([]);
   const [presets, setPresets] = useState<ContainerPreset[]>([]);
   const [q, setQ] = useState("");
   const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
+  const [opened, setOpened] = useState<string[]>([]);
+  const inited = useRef(false);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
   const groups = useMemo(() => {
@@ -23,6 +48,11 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       if (p.label.toLowerCase().includes(ql)) (by[p.group || "Apps"] ??= { rts: [], presets: [] }).presets.push(p);
     return by;
   }, [cat, presets, q]);
+
+  // Sort groups: AspireUI first (🤯), then alphabetical.
+  const groupKeys = useMemo(() => Object.keys(groups)
+    .sort((a, b) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : a.localeCompare(b))), [groups]);
+  useEffect(() => { if (!inited.current && groupKeys.length) { setOpened(groupKeys); inited.current = true; } }, [groupKeys]);
 
   const onCreate = (node: Node, refIds: string[], usedByIds: string[]) => {
     const eid = () => "e" + crypto.randomUUID().slice(0, 8);
@@ -38,7 +68,6 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     setSelectedRt(null);
   };
 
-  // A preset drops a ready-made AddContainer node (image + HTTP endpoint + any preset env) directly.
   const createPreset = (p: ContainerPreset) => {
     const taken = new Set(stack.nodes.map(n => n.resourceName));
     let name = p.id, i = 2;
@@ -61,32 +90,35 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     <MStack gap="xs" p="sm" h="100%">
       <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
       <ScrollArea style={{ flex: 1 }}>
-        {Object.entries(groups)
-          .sort(([a], [b]) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : 0)) // pin AspireUI first — because why not 🤯
-          .map(([g, items]) => (
-          <div key={g}>
-            <Divider my="xs" label={g} labelPosition="left" />
-            {items.rts.map(rt => (
-              <Tooltip key={rt.addMethod} label={rt.description || "Click to add to the canvas"} position="right" withArrow openDelay={400} multiline w={260}>
-                <Button variant="light" fullWidth justify="start" mb={4} onClick={() => setSelectedRt(rt)}
-                  leftSection={<ResourceGlyph addMethod={rt.addMethod} size={16} />}>
-                  <Text size="sm">{rt.label}</Text>
-                </Button>
-              </Tooltip>
-            ))}
-            {items.presets.map(p => (
-              <Tooltip key={p.id} label={p.description || p.image} position="right" withArrow openDelay={400} multiline w={260}>
-                <Button variant="subtle" fullWidth justify="start" mb={4} onClick={() => createPreset(p)}
-                  leftSection={<ResourceGlyph addMethod={p.icon || ""} size={16} />}>
-                  <Group gap={6} wrap="nowrap" justify="space-between" style={{ flex: 1 }}>
-                    <Text size="sm" truncate>{p.label}</Text>
-                    <Badge size="xs" variant="light" color="grape">app</Badge>
+        <Accordion multiple value={q ? groupKeys : opened} onChange={setOpened} chevronPosition="left"
+          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px" }, item: { border: "none" }, label: { padding: 0 } }}>
+          {groupKeys.map(g => {
+            const items = groups[g];
+            const count = items.rts.length + items.presets.length;
+            return (
+              <Accordion.Item key={g} value={g}>
+                <Accordion.Control>
+                  <Group gap={7} wrap="nowrap">
+                    <Text size="xs" fw={700} tt="uppercase" c="dimmed" style={{ letterSpacing: 0.4 }}>{g}</Text>
+                    <Badge size="xs" variant="default" c="dimmed">{count}</Badge>
                   </Group>
-                </Button>
-              </Tooltip>
-            ))}
-          </div>
-        ))}
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <MStack gap={1}>
+                    {items.rts.map(rt => (
+                      <Tile key={rt.addMethod} iconKey={rt.addMethod} label={rt.label} caption={rt.addMethod}
+                        tooltip={rt.description || undefined} onClick={() => setSelectedRt(rt)} />
+                    ))}
+                    {items.presets.map(p => (
+                      <Tile key={p.id} iconKey={p.icon || ""} label={p.label} caption={`:${p.port} · ${p.image.split("/").pop()}`}
+                        badge="app" tooltip={p.description || p.image} onClick={() => createPreset(p)} />
+                    ))}
+                  </MStack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            );
+          })}
+        </Accordion>
       </ScrollArea>
       {selectedRt && (
         <AddResourceDialog

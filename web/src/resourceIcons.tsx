@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard, IconPaperclip } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard, IconPaperclip, IconFileSpreadsheet, IconShare, IconFileTypePdf, IconWallet, IconTool, IconBell, IconRss, IconBrandDocker, IconStack3 } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -71,6 +71,16 @@ const MAP: Record<string, Visual> = {
   metabase:            { tabler: IconChartBar, color: "#509EE3" },
   jaeger:              { tabler: IconRoute, color: "#60D0E4" },
   homepage:            { tabler: IconLayoutDashboard, color: "#0EA5E9" },
+  onlyoffice:          { tabler: IconFileSpreadsheet, color: "#FF6F3D" },
+  gokapi:              { tabler: IconShare, color: "#2B6CB0" },
+  stirlingpdf:         { tabler: IconFileTypePdf, color: "#E53E3E" },
+  actual:              { tabler: IconWallet, color: "#7C3AED" },
+  ittools:             { tabler: IconTool, color: "#4A5568" },
+  ntfy:                { tabler: IconBell, color: "#16A34A" },
+  freshrss:            { tabler: IconRss, color: "#F97316" },
+  immich:              { tabler: IconPhoto, color: "#4250AF" },
+  dockge:              { tabler: IconStack3, color: "#06B6D4" },
+  dozzle:              { tabler: IconBrandDocker, color: "#2496ED" },
   AddQdrant:           { si: siQdrant, color: "#DC244C" },
   AddMilvus:           { si: siMilvus, color: "#00A1EA" },
   AddDaprComponent:    { si: siDapr, color: "#4756C7" },
