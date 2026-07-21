@@ -2,7 +2,7 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, Base
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2 } from "@tabler/icons-react";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor } from "../model";
@@ -155,6 +155,8 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [query, setQuery] = useState("");
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
+  const [showMinimap, setShowMinimap] = useState(() => localStorage.getItem("aspireui.minimap") !== "off");
+  const toggleMinimap = () => setShowMinimap(v => { localStorage.setItem("aspireui.minimap", v ? "off" : "on"); return !v; });
   const onLogs = useCallback((name: string, display: string) => setLogTarget({ name, display }), []);
 
   // While the stack runs, poll the Aspire resource service for live per-resource state/urls/children.
@@ -326,7 +328,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
       <Background /><Controls />
-      <MiniMap pannable zoomable nodeColor={n => (n.data as any).addMethod ? resourceVisual((n.data as any).addMethod).color : "#888"} />
+      {showMinimap && <MiniMap pannable zoomable nodeColor={n => (n.data as any).addMethod ? resourceVisual((n.data as any).addMethod).color : "#888"} />}
       <Panel position="top-left">
         <Group gap={6}>
           <TextInput size="xs" w={180} placeholder="Find resource…" value={query}
@@ -337,6 +339,13 @@ export function Canvas({ stack, setStack, onSelect, runState }:
               style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
                 background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
               <IconLayoutGrid size={15} />
+            </UnstyledButton>
+          </Tooltip>
+          <Tooltip label={showMinimap ? "Hide minimap" : "Show minimap"} withArrow>
+            <UnstyledButton onClick={toggleMinimap}
+              style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
+                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
+              {showMinimap ? <IconMapOff size={15} /> : <IconMap size={15} />}
             </UnstyledButton>
           </Tooltip>
         </Group>
