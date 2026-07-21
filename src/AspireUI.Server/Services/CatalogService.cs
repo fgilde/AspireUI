@@ -293,6 +293,7 @@ public class CatalogService
                      "Nextended.Aspire.Hosting.Supabase",
                      "Nextended.Aspire.Hosting.N8n",
                      "Nextended.Aspire.Hosting.LocalAI",
+                     "Nextended.Aspire.Hosting.Grafana",
                      "Nextended.Aspire",
                      "CommunityToolkit.Aspire.Hosting.Ollama",
                      // Catalog breadth (referenced in the .csproj; force-load so their AddX reflect in):

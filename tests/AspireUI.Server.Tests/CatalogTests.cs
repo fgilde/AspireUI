@@ -39,6 +39,15 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Catalog_IncludesGrafana()
+    {
+        // Nextended.Aspire.Hosting.Grafana must be force-loaded in LoadDefault(), else AddGrafana
+        // never reflects in and the palette silently drops it.
+        var cat = new CatalogService().GetCatalog();
+        Assert.Contains(cat, r => r.AddMethod == "AddGrafana");
+    }
+
+    [Fact]
     public void Catalog_IncludesOllamaAndGithubRepository()
     {
         // CommunityToolkit.Aspire.Hosting.Ollama (13.4.0) and Nextended.Aspire (10.1.15) are
