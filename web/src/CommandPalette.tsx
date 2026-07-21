@@ -22,7 +22,7 @@ export function CommandPalette() {
     ...(status?.user?.isAdmin ? [{ id: "users", label: "Users", description: "Manage users", leftSection: <IconUsers size={18} />, onClick: () => nav("/users") }] : []),
     ...stacks.map(s => ({
       id: "stack-" + s.id, label: s.name, description: `Open stack (${s.nodes.length} resources)`,
-      leftSection: <IconStack2 size={18} />, onClick: () => nav(`/stacks/${s.id}`),
+      leftSection: <IconStack2 size={18} />, onClick: () => nav(`/editor/${s.id}`),
     })),
     ...themes.map(t => ({
       id: "theme-" + t.id, label: `Theme: ${t.label}`, description: "Switch theme",

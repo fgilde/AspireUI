@@ -78,12 +78,12 @@ export function StacksOverview() {
       nodes: [], edges: [], rawStatements: [], extraFiles: [], extraPackages: [],
     });
     setOpen(false); setName("");
-    nav(`/stacks/${s.id}`);
+    nav(`/editor/${s.id}`);
   };
 
   const createDemo = async (templateId: string) => {
     const s = await api.createFromTemplate(templateId);
-    nav(`/stacks/${s.id}`);
+    nav(`/editor/${s.id}`);
   };
 
   const rename = (s: Stack) => promptText("Rename stack", "Name", s.name).then(name => {
@@ -95,7 +95,7 @@ export function StacksOverview() {
     if (files.length === 0) { toastErr("No .cs/.csproj files found to import.", "Nothing to import"); return; }
     try {
       const s = await api.importBundle(bundleName, files, pickAppHost(files));
-      nav(`/stacks/${s.id}`);
+      nav(`/editor/${s.id}`);
     } catch (e) {
       toastErr(e, "Import failed");
     }
@@ -107,7 +107,7 @@ export function StacksOverview() {
     if (!file) return;
     try {
       const s = await api.importCompose(file.name.replace(/\.(ya?ml)$/i, "") || "compose", await file.text());
-      nav(`/stacks/${s.id}`);
+      nav(`/editor/${s.id}`);
     } catch (err) { toastErr(err, "Compose import failed"); }
   };
 
@@ -292,7 +292,7 @@ export function StacksOverview() {
                   padding="lg"
                   className="stack-card"
                   style={{ cursor: "pointer" }}
-                  onClick={() => nav(`/stacks/${s.id}`)}
+                  onClick={() => nav(`/editor/${s.id}`)}
                 >
                   <Group justify="space-between" wrap="nowrap" align="flex-start">
                     <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>

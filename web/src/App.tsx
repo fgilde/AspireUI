@@ -33,7 +33,7 @@ export default function App() {
         <Route path="/setup" element={<SetupWizard />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<StacksOverview />} />
-        <Route path="/stacks/:id" element={<Editor />} />
+        <Route path="/editor/:id" element={<Editor />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<AdminOnly><Users /></AdminOnly>} />
       </Routes>
