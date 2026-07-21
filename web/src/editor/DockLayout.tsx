@@ -33,6 +33,7 @@ export interface EditorState {
   diagnostics: CodeDiagnostic[];
   flashValidation: number;          // bumped when the badge is clicked, to flash the panel
   showValidation: () => void;       // focus the Validation panel + flash it
+  showPanel: (id: string) => void;  // open (or focus) a dock panel by id, e.g. "logs"
 }
 
 export const EditorContext = createContext<EditorState | null>(null);
@@ -154,6 +155,7 @@ export interface DockLayoutHandle {
   focusPanel: (id: string) => void;
   listPanels: () => { id: string; title: string; open: boolean }[];
   togglePanel: (id: string) => void;
+  showPanel: (id: string) => void;
 }
 
 // Named, reusable dock layouts (separate from the auto-persisted current layout).
@@ -188,22 +190,29 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
     focusPanel: (id: string) => { const p = apiRef.current?.getPanel(id); p?.api.setActive(); },
     listPanels: () => PANELS.map(p => ({ id: p.id, title: p.title, open: !!apiRef.current?.getPanel(p.id) })),
     togglePanel: (id: string) => {
-      const api = apiRef.current;
-      if (!api) return;
-      const existing = api.getPanel(id);
+      const existing = apiRef.current?.getPanel(id);
       if (existing) { existing.api.close(); return; }
-      const def = PANELS.find(p => p.id === id);
-      if (!def) return;
-      // Dock a reopened panel: sides flank the canvas; everything else joins the bottom group
-      // (falling back sensibly if those reference panels were themselves closed).
-      const pos = def.where === "left" ? { direction: "left" as const, referencePanel: "canvas" }
-        : def.where === "right" ? { direction: "right" as const, referencePanel: "canvas" }
-        : (api.getPanel("preview") ? { direction: "within" as const, referencePanel: "preview" } : undefined);
-      const referenceOk = pos && "referencePanel" in pos && api.getPanel(pos.referencePanel!);
-      api.addPanel({ id, component: id, title: def.title, position: referenceOk ? pos : undefined });
-      api.getPanel(id)?.api.setActive();
+      openPanel(id);
     },
+    showPanel: (id: string) => openPanel(id),
   }), [resetLayout]);
+
+  // Open (or focus, if already open) a panel. Reopened side panels flank the canvas; the rest join
+  // the bottom tab group (falling back sensibly if those reference panels were themselves closed).
+  function openPanel(id: string) {
+    const api = apiRef.current;
+    if (!api) return;
+    const existing = api.getPanel(id);
+    if (existing) { existing.api.setActive(); return; }
+    const def = PANELS.find(p => p.id === id);
+    if (!def) return;
+    const pos = def.where === "left" ? { direction: "left" as const, referencePanel: "canvas" }
+      : def.where === "right" ? { direction: "right" as const, referencePanel: "canvas" }
+      : (api.getPanel("preview") ? { direction: "within" as const, referencePanel: "preview" } : undefined);
+    const referenceOk = pos && "referencePanel" in pos && api.getPanel(pos.referencePanel!);
+    api.addPanel({ id, component: id, title: def.title, position: referenceOk ? pos : undefined });
+    api.getPanel(id)?.api.setActive();
+  }
 
   const onReady = useCallback((event: DockviewReadyEvent) => {
     apiRef.current = event.api;

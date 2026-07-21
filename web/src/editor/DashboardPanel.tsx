@@ -14,7 +14,7 @@ const primaryUrl = (r: LiveResource) => r.urls.find(u => !u.isInternal && !u.isI
 // our own from the Aspire resource-service feed we already consume — live per-resource state, endpoint
 // links and console-log streaming. The full Aspire dashboard (traces/metrics) stays one click away.
 export function DashboardPanel() {
-  const { stack, runStatus, setRunStatus } = useEditor();
+  const { stack, runStatus, setRunStatus, showPanel } = useEditor();
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const url = runStatus.dashboardUrl;
@@ -65,7 +65,11 @@ export function DashboardPanel() {
             Start the stack to see live per-resource status, endpoints and logs here.
           </Text>
           <Button leftSection={<IconPlayerPlay size={16} />} color="green" onClick={start}>Start stack</Button>
-          {state === "Failed" && <Text size="xs" c="red">Last run failed — check the Logs panel.</Text>}
+          {state === "Failed" && (
+            <Text size="xs" c="red">
+              Last run failed — check the <Anchor size="xs" c="red" fw={600} onClick={() => showPanel("logs")}>Logs panel</Anchor>.
+            </Text>
+          )}
         </MStack>
       </Center>
     );

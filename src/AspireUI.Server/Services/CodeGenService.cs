@@ -124,6 +124,17 @@ public class CodeGenService
     private static string Escape(string name) =>
         name.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
+    // A valid .NET assembly name (no spaces/commas/etc.): Aspire parses the app's ApplicationName —
+    // which defaults to the assembly name — as an AssemblyName, so a stack named "Me, Myself and I"
+    // would otherwise crash the AppHost at startup ("The given assembly name was invalid").
+    private static string SafeAssemblyName(string name)
+    {
+        var cleaned = new string((name ?? "").Select(c => char.IsLetterOrDigit(c) || c == '_' ? c : '_').ToArray())
+            .Trim('_');
+        if (cleaned.Length == 0) return "AppHost";
+        return char.IsDigit(cleaned[0]) ? "_" + cleaned : cleaned;
+    }
+
     public string GenerateCsproj(StackModel s, PublishEnv? env = null)
     {
         var resourcePackageIds = new HashSet<string>(StringComparer.Ordinal) { "Aspire.Hosting.AppHost" };
@@ -150,6 +161,8 @@ public class CodeGenService
             <ImplicitUsings>enable</ImplicitUsings>
             <Nullable>enable</Nullable>
             <IsAspireHost>true</IsAspireHost>
+            <AssemblyName>{SafeAssemblyName(s.Name)}</AssemblyName>
+            <RootNamespace>{SafeAssemblyName(s.Name)}</RootNamespace>
           </PropertyGroup>
           <ItemGroup>
             <PackageReference Include="Aspire.Hosting.AppHost" Version="{AspireVersion}" />

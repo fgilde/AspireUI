@@ -121,6 +121,18 @@ public class CodeGenTests
     }
 
     [Fact]
+    public void Csproj_SetsSafeAssemblyName_ForNameWithSpacesAndCommas()
+    {
+        // Aspire parses ApplicationName (defaults to the assembly name) as an AssemblyName, so a stack
+        // name with spaces/commas must not leak into <AssemblyName> or the AppHost crashes at startup.
+        var m = new StackModel("s", "Me, Myself and I", "net10.0",
+            [new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, [])], [], [], [], []);
+        var csproj = new CodeGenService().GenerateCsproj(m);
+        Assert.Contains("<AssemblyName>Me__Myself_and_I</AssemblyName>", csproj);
+        Assert.DoesNotContain("Me, Myself and I", csproj);
+    }
+
+    [Fact]
     public void Csproj_IncludesResourcePackages()
     {
         var m = new StackModel("s", "Demo", "net10.0",

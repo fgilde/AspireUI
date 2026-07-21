@@ -92,6 +92,7 @@ export function Editor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stackSig]);
   const showValidation = () => { dockRef.current?.focusPanel("validation"); setFlashValidation(f => f + 1); };
+  const showPanel = (id: string) => dockRef.current?.showPanel(id);
 
   // Single shared poller for run status: 2s while a run is starting/active,
   // 5s otherwise. RunToolbar, LogsPanel and any other consumer read the
@@ -116,7 +117,7 @@ export function Editor() {
   // Memoize the context value so the 2s status poller doesn't re-render every
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
-    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus, diagnostics, flashValidation, showValidation }),
+    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, runStatus, setRunStatus, diagnostics, flashValidation, showValidation, showPanel }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [stack, sel, runStatus, diagnostics, flashValidation]);
 
