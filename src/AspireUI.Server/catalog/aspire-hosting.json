@@ -1,4 +1,14 @@
 {
+  "AddAspireUI": {
+    "label": "AspireUI",
+    "group": "AspireUI",
+    "package": "Nextended.Aspire.Hosting.AspireUI",
+    "packageVersion": "10.1.16",
+    "usings": [
+      "Nextended.Aspire.Hosting.AspireUI"
+    ],
+    "description": "AspireUI itself, as a resource — the visual AppHost builder, running inside your own stack. Optionally seed an admin (WithAdminUser) and a starter stack (WithSeedStack)."
+  },
   "AddContainer": {
     "label": "Container",
     "icon": "docker",
@@ -30,7 +40,7 @@
     "icon": "supabase",
     "group": "Backend",
     "package": "Nextended.Aspire.Hosting.Supabase",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire.Hosting.Supabase.Builders",
       "Nextended.Aspire.Hosting.Observability"
@@ -42,7 +52,7 @@
     "icon": "grafana",
     "group": "Observability",
     "package": "Nextended.Aspire.Hosting.Grafana",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire.Hosting.Grafana"
     ],
@@ -53,7 +63,7 @@
     "icon": "n8n",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.N8n",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire.Hosting.N8n.Builders"
     ],
@@ -64,7 +74,7 @@
     "icon": "localai",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.LocalAI",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire.Hosting.LocalAI"
     ],
@@ -83,7 +93,7 @@
     "icon": "github",
     "group": "Source",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire"
     ],
@@ -93,7 +103,7 @@
     "label": "MinIO (S3 on NFS)",
     "group": "Storage",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.15",
+    "packageVersion": "10.1.16",
     "usings": [
       "Nextended.Aspire"
     ]

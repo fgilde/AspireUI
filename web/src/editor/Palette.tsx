@@ -61,7 +61,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     <MStack gap="xs" p="sm" h="100%">
       <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
       <ScrollArea style={{ flex: 1 }}>
-        {Object.entries(groups).map(([g, items]) => (
+        {Object.entries(groups)
+          .sort(([a], [b]) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : 0)) // pin AspireUI first — because why not 🤯
+          .map(([g, items]) => (
           <div key={g}>
             <Divider my="xs" label={g} labelPosition="left" />
             {items.rts.map(rt => (

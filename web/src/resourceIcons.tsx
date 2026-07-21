@@ -7,13 +7,16 @@ import {
   siBun, siDeno, siRust, siNgrok, siMeilisearch, siGrafana,
 } from "simple-icons";
 
+import aspireuiLogo from "./assets/logo.svg";
+
 type Brand = { path: string };
-interface Visual { si?: Brand; tabler?: Icon; color: string }
+interface Visual { si?: Brand; tabler?: Icon; img?: string; color: string }
 
 // "currentColor"-style adaptive tone for brands whose logo is near-black (invisible on dark themes).
 const TEXT = "var(--mantine-color-text)";
 
 const MAP: Record<string, Visual> = {
+  AddAspireUI:         { img: aspireuiLogo, color: "#10B981" },
   AddRedis:            { si: siRedis, color: "#FF4438" },
   AddPostgres:         { si: siPostgresql, color: "#4169E1" },
   AddContainer:        { si: siDocker, color: "#2496ED" },
@@ -101,6 +104,7 @@ export function resourceVisual(addMethod: string) {
 
 export function ResourceGlyph({ addMethod, size = 16 }: { addMethod: string; size?: number }) {
   const v = MAP[addMethod] ?? FALLBACK;
+  if (v.img) return <img src={v.img} alt="" width={size} height={size} style={{ display: "block", objectFit: "contain" }} />;
   if (v.si) {
     return (
       <svg role="img" viewBox="0 0 24 24" width={size} height={size} fill={v.color} style={{ display: "block" }}>

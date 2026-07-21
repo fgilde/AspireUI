@@ -19,6 +19,7 @@ public class TemplateService
         new("observability", "Observability (Seq)", "A Seq server for structured logs — point your apps at it."),
         new("grafana-stack", "Grafana + Prometheus + OTEL", "Grafana dashboards + Prometheus metrics + an OpenTelemetry collector (containers)."),
         new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
+        new("me-myself-and-i", "Me, Myself and I", "AspireUI running inside your own Aspire stack — the builder builds itself. Comes with a seeded admin."),
     ];
 
     public StackModel? Create(string templateId) => templateId switch
@@ -31,8 +32,16 @@ public class TemplateService
         "observability" => Observability(),
         "grafana-stack" => GrafanaStack(),
         "supabase-observability" => SupabaseObservability(),
+        "me-myself-and-i" => MeMyselfAndI(),
         _ => null,
     };
+
+    private static StackModel MeMyselfAndI()
+    {
+        var aspireui = Node("aspireui", "AddAspireUI", 140, 140,
+            [new WithCall("WithAdminUser", ["\"admin\"", "\"change-me-please\""])]);
+        return Stack("Me, Myself and I", [aspireui]);
+    }
 
     private static string NewId() => "n" + Guid.NewGuid().ToString("n")[..8];
     private static string Eid() => "e" + Guid.NewGuid().ToString("n")[..8];

@@ -61,7 +61,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
 
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == "13.4.6" && p.Resources.Count == 0);
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == "13.4.6" && p.Resources.SequenceEqual(["cache"]));
-        Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == "10.1.15" && p.Resources.SequenceEqual(["flow"]));
+        Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == "10.1.16" && p.Resources.SequenceEqual(["flow"]));
     }
 
     [Fact]
