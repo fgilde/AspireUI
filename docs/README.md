@@ -26,14 +26,21 @@ shows the exact C# it will generate, and the property grid has inline explanatio
 - **Typed property grid** — smart inputs per parameter (enums → dropdowns, configure-lambdas →
   expandable fields), environment variables with a Text/Expression toggle and a resource-reference
   picker, plus quick settings (public endpoint toggle, HTTP port).
+- **Setup / macro extensions** — composite helpers like `AddObservabilityStack` or `AddDapr` (which
+  wire up several resources at once) are discovered automatically and grouped under **Setup**.
 - **Live C# preview** and a full **Monaco code editor** with Roslyn IntelliSense; edits parse back into the graph.
-- **Run & dashboard** — run/stop with live logs; open the Aspire dashboard (or embed it experimentally).
+- **Run & live view** — run/stop with logs; while running, the canvas shows **real per-resource
+  status, endpoint URLs, and the child resources each builder spawns** (from the Aspire resource
+  service), with **per-resource console-log streaming**. Open the Aspire dashboard for full telemetry.
+- **Import** — an existing AppHost (`.cs` / `.csproj` / `.zip`) or a `docker-compose.yml`.
 - **Publish / deploy** — Docker Compose, Kubernetes (Helm), Azure Bicep, or the Aspire manifest;
   view/download the artifacts; deploy Compose locally.
 - **Whole-stack validation** — Roslyn diagnostics over the generated code, surfaced as a health badge.
 - **Themes** (GitHub, Aspire, Blazor, Dracula, Nord, Terminal, …), **command palette** (Ctrl/⌘+K),
   keyboard shortcuts, saveable dock **layouts**, undo/redo, toast notifications.
 - **Auth** — a first-run wizard creates an admin user; cookie-based login; user management.
+
+![A running stack with live child resources and status](screenshots/live-resources.png)
 
 ## Where to start
 
@@ -42,6 +49,7 @@ shows the exact C# it will generate, and the property grid has inline explanatio
 - **[Importing](importing.md)** — bring in an existing AppHost from `.cs`, `.csproj`, or a `.zip`.
 - **[AI Assistant](ai-assistant.md)** — configure a provider and let the assistant edit your stack.
 - **[Running & Deploying](running-and-deploying.md)** — run locally, publish to Compose/K8s/Bicep, open the dashboard, self-host AspireUI.
+- **[Live Resources & Logs](live-resources.md)** — per-resource status, spawned child resources, endpoint links, and live log streaming on the canvas.
 - **[UI, Themes & Shortcuts](ui-and-shortcuts.md)** — themes, command palette, layouts, keyboard shortcuts.
 
 ## Notes / limitations

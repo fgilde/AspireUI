@@ -10,8 +10,11 @@ a live, read-only view of exactly what will be generated.
 
 Nodes are resources (with a brand icon per type); edges are connections. The canvas has a **minimap**,
 **auto-arrange** (dagre layout) and a **resource search** box (top-left), **snap-to-grid**, and a
-**right-click context menu** per node (edit properties / duplicate / delete). Dragging is live, and a
-per-node status dot reflects the run state while the stack is running.
+**right-click context menu** per node (edit properties / duplicate / delete). Dragging is live.
+
+While the stack runs, each node shows its **real per-resource status** (a traffic-light dot) and a
+link to the endpoint it exposes, and the resources a builder spawns appear as live child nodes — see
+[Live Resources & Logs](live-resources.md).
 
 ## The palette
 
@@ -25,6 +28,16 @@ work generically. The generated project only references the packages for resourc
 
 Click a palette entry to open its add dialog.
 
+### Setup / composite extensions
+
+The catalog also surfaces **macro extensions** — methods that take the builder and wire up *several*
+resources at once (they return the builder, not a single resource), e.g. Nextended's
+`AddObservabilityStack` or CommunityToolkit's `AddDapr`. These are discovered the same way as regular
+resources and grouped under **Setup**. Adding one drops a **statement node** on the canvas (it emits
+`builder.AddX(...)` rather than `var x = builder.AddX(...)`); if it takes a resource reference (e.g.
+"which Supabase to attach observability to"), the dialog lets you pick an existing node for it. At run
+time you'll see everything it created via the [live child-resource view](live-resources.md).
+
 ## The add-resource dialog
 
 Adding a resource opens a form (not a bare node) that also teaches you the Aspire API:
@@ -35,12 +48,15 @@ Adding a resource opens a form (not a bare node) that also teaches you the Aspir
 - **Name** — required; becomes the resource's variable name in the generated code.
 - If the `AddX` method has more than one usable **overload**, a selector picks the signature.
 - The overload's parameters as typed controls: `string` → text, numeric → number, `bool` → switch,
-  `enum` → dropdown, and **configure-lambdas** (`Action<TOptions>`) expand into their settable fields
-  (e.g. a GitHub repo's `GitRef` branch).
+  `enum` → dropdown, a **resource-reference** parameter → a picker of existing nodes, and
+  **configure-lambdas** (`Action<TOptions>`) expand into their settable fields (e.g. a GitHub repo's
+  `GitRef` branch).
 - **References** — a multiselect of existing resources this one should reference; picking them adds
-  the matching `.WithReference(...)` edges on create.
-- A **live code preview** shows the exact C# the dialog will generate as you type — great for
-  learning what each option produces.
+  the matching `${new}.WithReference(x)` edges on create.
+- **Referenced by** — the inverse multiselect: existing resources that should reference the new one
+  (adds `x.WithReference(${new})` edges), so you can wire a resource into things that already exist.
+- A **live code preview** shows the exact C# the dialog will generate as you type — including the
+  reference wiring in both directions — great for learning what each option produces.
 
 ## The property grid
 

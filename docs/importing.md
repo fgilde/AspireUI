@@ -1,9 +1,25 @@
 # Importing
 
 Bring an existing Aspire AppHost into AspireUI as an editable stack, from a **.cs** file, a
-**.csproj**, or a **.zip** of the project.
+**.csproj**, or a **.zip** of the project — or convert a **docker-compose.yml** into an Aspire stack.
 
 Use the **Import** menu on the Stacks overview (next to New Stack / demos).
+
+## Docker Compose → Aspire
+
+The Import menu's **docker-compose.yml** option converts a Compose file into a stack of
+`AddContainer(...)` nodes. AspireUI parses the YAML and maps:
+
+- each **service** → an `AddContainer("name", "image")` node,
+- **ports** → `WithHttpEndpoint(port:, targetPort:)`,
+- **environment** (list or map form) → `WithEnvironment(...)`,
+- **volumes** → `WithBindMount(...)` (host path) or `WithVolume(...)` (named),
+- **command** → `WithArgs(...)`,
+- **depends_on** → `WaitFor` edges between the resulting nodes.
+
+It's a starting point, not a perfect 1:1 translation — review the generated stack and adjust (Aspire
+models some things differently, and Compose features without an Aspire equivalent are skipped). From
+there it's a normal editable stack.
 
 ## What gets parsed
 

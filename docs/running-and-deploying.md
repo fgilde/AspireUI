@@ -9,9 +9,12 @@ workspace directory and shells `dotnet run` on it, tailing the process output. S
 once running, and **Stop** kills the process tree.
 
 The **Logs** panel shows the same run log live, auto-scrolling, with error-looking lines
-(`error`/`exception`/`fail`) highlighted; a banner explains a `Failed` run at a glance. For full
-per-resource health and endpoint detail beyond the stack-level running/failed indicator, use the
-Aspire dashboard link — deep per-resource status on the canvas itself is on the backlog.
+(`error`/`exception`/`fail`) highlighted; a banner explains a `Failed` run at a glance.
+
+Beyond that stack-level log, AspireUI shows **real per-resource status, URLs, spawned child
+resources, and per-resource log streaming right on the canvas** while the stack runs — see
+[Live Resources & Logs](live-resources.md). For full telemetry (traces, metrics, queryable logs) use
+the Aspire dashboard link.
 
 Running a stack needs both the **.NET SDK** and **Docker** available wherever AspireUI runs, since
 Aspire resources (Postgres, Redis, Ollama, …) commonly start their own containers.

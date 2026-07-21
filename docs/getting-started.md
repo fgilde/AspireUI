@@ -25,13 +25,18 @@ reverse proxy + TLS in front before exposing it beyond localhost.
 
 1. The **Stacks overview** lists your stacks — each card shows a live status traffic-light and
    run/stop/open-dashboard buttons, plus a ⋯ menu (rename / duplicate / delete) and a search box.
-2. Click **New Stack** to start blank, or use the **demo dropdown** to create a runnable example
-   (see below) — either way you land in the editor.
+   With no stacks yet, the empty state offers **New Stack** and a **template picker** right there.
+2. Click **New Stack** to start blank, use the **demo dropdown** to create a runnable example
+   (see below), or **Import** an existing AppHost / a `docker-compose.yml` — either way you land in
+   the editor.
 3. In the editor, click a resource in the **Palette** to add it (the add dialog previews the C# it
    generates), or import an existing AppHost (see [Importing](importing.md)).
 4. Select a node to edit it in the **Properties** panel, wire up references between nodes, and watch
    the **Code preview** update with the generated `Program.cs`.
-5. Hit **Run** to start the stack, then open the **Dashboard** panel or the Aspire dashboard link.
+5. Hit **Run** to start the stack. Your nodes light up with real per-resource status and URLs, the
+   resources each builder spawns appear as live child nodes, and a terminal button streams any
+   resource's logs — see [Live Resources & Logs](live-resources.md). Open the **Dashboard** panel or
+   the Aspire dashboard link for full telemetry.
 
 ## Demo templates
 
@@ -43,6 +48,11 @@ The overview's demo dropdown creates a ready-to-run stack without building one b
 - **Kafka + UI** — Kafka broker with the provectus Kafka-UI.
 - **Keycloak + Postgres** — identity server backed by Postgres.
 - **Observability (Seq)** — a Seq log server.
+- **Grafana + Prometheus + OTEL** — Grafana dashboards, Prometheus metrics, and an OpenTelemetry
+  collector as containers.
+- **Supabase + Observability** — a full Supabase backend wired to Nextended's `AddObservabilityStack`
+  macro (Grafana / Prometheus / Loki / Tempo / OTEL). Great for seeing the live child-resource view
+  in action.
 
 ## Layout, themes & shortcuts
 
