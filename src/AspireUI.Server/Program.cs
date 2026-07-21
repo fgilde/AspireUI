@@ -11,6 +11,11 @@ builder.Services.AddSingleton<RunService>(sp => new RunService(graph: sp.GetRequ
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>
     {
+        // Cookies ignore the port, so two AspireUI instances on localhost (e.g. one running the other
+        // as a resource) would clobber each other's session with a shared cookie name. Make the name
+        // overridable per instance (the AddAspireUI extension sets ASPIREUI_COOKIE_NAME) so both stay
+        // logged in independently.
+        o.Cookie.Name = Environment.GetEnvironmentVariable("ASPIREUI_COOKIE_NAME") ?? "aspireui.auth";
         o.Cookie.HttpOnly = true;
         o.Cookie.SameSite = SameSiteMode.Lax;
         o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
