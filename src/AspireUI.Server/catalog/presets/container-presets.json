@@ -97,5 +97,77 @@
     "port": 3001,
     "icon": "uptimekuma",
     "description": "Uptime Kuma — self-hosted uptime/status monitoring."
+  },
+  {
+    "id": "paperless-ai",
+    "label": "Paperless-AI",
+    "group": "AI Apps",
+    "image": "clusterzx/paperless-ai:latest",
+    "port": 3000,
+    "icon": "paperless",
+    "description": "Paperless-AI — AI companion for Paperless-ngx: auto tagging/classification + semantic search. Point it at your Paperless instance."
+  },
+  {
+    "id": "paperless-ngx",
+    "label": "Paperless-ngx",
+    "group": "Tools",
+    "image": "ghcr.io/paperless-ngx/paperless-ngx:latest",
+    "port": 8000,
+    "icon": "paperless",
+    "description": "Paperless-ngx — scan/OCR document management. Needs a Postgres + Redis alongside (wire them up)."
+  },
+  {
+    "id": "nextcloud",
+    "label": "Nextcloud",
+    "group": "Tools",
+    "image": "nextcloud:latest",
+    "port": 80,
+    "icon": "nextcloud",
+    "description": "Nextcloud — self-hosted files, calendar, collaboration."
+  },
+  {
+    "id": "vaultwarden",
+    "label": "Vaultwarden",
+    "group": "Tools",
+    "image": "vaultwarden/server:latest",
+    "port": 80,
+    "icon": "vaultwarden",
+    "description": "Vaultwarden — lightweight Bitwarden-compatible password manager server."
+  },
+  {
+    "id": "gitea",
+    "label": "Gitea",
+    "group": "Tools",
+    "image": "gitea/gitea:latest",
+    "port": 3000,
+    "icon": "gitea",
+    "description": "Gitea — lightweight self-hosted Git service."
+  },
+  {
+    "id": "metabase",
+    "label": "Metabase",
+    "group": "Tools",
+    "image": "metabase/metabase:latest",
+    "port": 3000,
+    "icon": "metabase",
+    "description": "Metabase — BI dashboards & ad-hoc analytics over your databases."
+  },
+  {
+    "id": "jaeger",
+    "label": "Jaeger",
+    "group": "Observability Apps",
+    "image": "jaegertracing/all-in-one:latest",
+    "port": 16686,
+    "icon": "jaeger",
+    "description": "Jaeger — distributed tracing UI + collector (OTLP). All-in-one, in-memory storage."
+  },
+  {
+    "id": "homepage",
+    "label": "Homepage",
+    "group": "Tools",
+    "image": "ghcr.io/gethomepage/homepage:latest",
+    "port": 3000,
+    "icon": "homepage",
+    "description": "Homepage — a sleek, configurable start page/dashboard for your services."
   }
 ]
