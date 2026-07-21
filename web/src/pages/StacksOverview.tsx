@@ -7,12 +7,13 @@ import {
   Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip,
 } from "@mantine/core";
 import {
-  IconPlus, IconTrash, IconStack2, IconLayoutGrid, IconChevronDown, IconSparkles,
+  IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
   IconPlayerPlay, IconPlayerStop, IconExternalLink,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, runStateColor, type Stack, type RunStatus } from "../model";
 import * as api from "../api";
+import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
 import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
@@ -156,10 +157,7 @@ export function StacksOverview() {
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between">
             <Group gap="sm">
-              <ThemeIcon variant="light" size={32} radius="md">
-                <IconStack2 size={18} />
-              </ThemeIcon>
-              <Title order={3} fw={700}>AspireUI</Title>
+              <img src={logo} alt="AspireUI" height={30} style={{ display: "block" }} />
             </Group>
             <Group gap="sm">
               <Button.Group>

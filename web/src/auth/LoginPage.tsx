@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Button, Card, Center, PasswordInput, Stack as MStack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
-import { IconAlertCircle, IconStack2 } from "@tabler/icons-react";
+import { Alert, Button, Card, Center, PasswordInput, Stack as MStack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertCircle } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
+import logo from "../assets/logo.svg";
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -32,11 +33,9 @@ export function LoginPage() {
     <Center h="100vh">
       <Card withBorder shadow="sm" padding="xl" w={360}>
         <MStack gap="md">
-          <MStack gap={4} align="center">
-            <ThemeIcon variant="light" size={40} radius="xl">
-              <IconStack2 size={22} />
-            </ThemeIcon>
-            <Title order={3}>Sign in to AspireUI</Title>
+          <MStack gap={8} align="center">
+            <img src={logo} alt="AspireUI" width={190} style={{ maxWidth: "100%" }} />
+            <Title order={4}>Sign in</Title>
             <Text c="dimmed" size="sm">Welcome back.</Text>
           </MStack>
           {error && <Alert color="red" icon={<IconAlertCircle size={16} />}>{error}</Alert>}

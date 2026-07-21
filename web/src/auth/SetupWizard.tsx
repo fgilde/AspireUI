@@ -4,10 +4,11 @@ import {
   Alert, Button, Card, Center, Group, PasswordInput, Stack as MStack, Stepper,
   Text, TextInput, ThemeIcon, Title,
 } from "@mantine/core";
-import { IconAlertCircle, IconCheck, IconStack2, IconX } from "@tabler/icons-react";
+import { IconAlertCircle, IconCheck, IconX } from "@tabler/icons-react";
 import * as api from "../api";
 import type { EnvHealth } from "../model";
 import { useAuth } from "./AuthContext";
+import logo from "../assets/logo.svg";
 
 function CheckRow({ label, ok, detail, hint }: { label: string; ok: boolean; detail: string; hint: string }) {
   return (
@@ -61,11 +62,9 @@ export function SetupWizard() {
   return (
     <Center py={60}>
       <Card withBorder shadow="sm" padding="xl" w={500}>
-        <MStack gap={4} align="center" mb="lg">
-          <ThemeIcon variant="light" size={40} radius="xl">
-            <IconStack2 size={22} />
-          </ThemeIcon>
-          <Title order={3}>Welcome to AspireUI</Title>
+        <MStack gap={8} align="center" mb="lg">
+          <img src={logo} alt="AspireUI" width={220} style={{ maxWidth: "100%" }} />
+          <Title order={4}>Welcome</Title>
           <Text c="dimmed" size="sm" ta="center">Let's check your environment and create the admin account.</Text>
         </MStack>
 
