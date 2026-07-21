@@ -24,7 +24,13 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: node.id, toNodeId, kind: "reference" })),
       ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: node.id, kind: "reference" })),
     ];
-    api.saveStack({ ...stack, nodes: [...stack.nodes, node], edges: [...stack.edges, ...edges] }).then(setStack);
+    // A composite/macro node's NuGet package isn't in the overlay AddMethod->package map (it's
+    // discovered dynamically), so pull it in via extraPackages — deduped by id.
+    const extraPackages = [...stack.extraPackages];
+    const pkg = selectedRt?.package;
+    if (node.composite && pkg && !extraPackages.some(p => p.id === pkg))
+      extraPackages.push({ id: pkg, version: selectedRt?.packageVersion || "" });
+    api.saveStack({ ...stack, nodes: [...stack.nodes, node], edges: [...stack.edges, ...edges], extraPackages }).then(setStack);
     setSelectedRt(null);
   };
 

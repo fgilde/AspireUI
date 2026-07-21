@@ -1,7 +1,7 @@
 export const APP_VERSION = "0.1.0";
 
 export interface WithCall { method: string; args: string[] }
-export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[] }
+export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[] }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface ExtraFile { name: string; content: string }
 export interface PackageRef { id: string; version: string }
@@ -10,10 +10,10 @@ export interface Stack {
   extraFiles: ExtraFile[]; extraPackages: PackageRef[];
 }
 
-export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }
+export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
-export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[] }
+export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null }
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 export interface PublishFile { name: string; content: string }
@@ -64,6 +64,7 @@ export function toLiteral(value: string, type: CatalogParam["type"], enumTypeNam
   if (type === "number") return value === "" ? "0" : value;
   if (type === "bool") return value === "true" ? "true" : "false";
   if (type === "enum") return enumTypeName ? `${enumTypeName}.${value}` : value;
+  if (type === "resourceRef") return value; // a bare varName, passed verbatim (not a string literal)
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 // Build a `o => { o.Field = literal; … }` lambda from the set sub-fields of a configure param.

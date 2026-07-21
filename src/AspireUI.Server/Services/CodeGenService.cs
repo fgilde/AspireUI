@@ -48,6 +48,7 @@ public class CodeGenService
             .Concat(s.Nodes.Select(n => n.AddMethod).Distinct()
                 .Where(_resourceUsings.ContainsKey)
                 .SelectMany(m => _resourceUsings[m]))
+            .Concat(s.Nodes.SelectMany(n => n.Usings ?? (IEnumerable<string>)[])) // composite/macro node usings
             .Distinct()
             .OrderBy(u => u, StringComparer.Ordinal);
         foreach (var u in usings)
@@ -60,15 +61,18 @@ public class CodeGenService
             sb.AppendLine(env.Statement);
         sb.AppendLine();
         sb.AppendLine(Begin);
-        foreach (var n in s.Nodes)
+        foreach (var n in s.Nodes.Where(n => !n.Composite))
         {
             var args = new List<string> { $"\"{Escape(n.ResourceName)}\"" };
             args.AddRange(n.AddArgs);
             sb.AppendLine($"var {n.VarName} = builder.{n.AddMethod}({string.Join(", ", args)});");
         }
+        // Composite/macro statements after all resource vars exist (they reference those varNames).
+        foreach (var n in s.Nodes.Where(n => n.Composite))
+            sb.AppendLine($"builder.{n.AddMethod}({string.Join(", ", n.AddArgs)});");
         foreach (var raw in s.RawStatements)
             sb.AppendLine(raw);
-        foreach (var n in s.Nodes)
+        foreach (var n in s.Nodes.Where(n => !n.Composite))
             foreach (var w in n.WithCalls)
                 sb.AppendLine($"{n.VarName}.{w.Method}({string.Join(", ", w.Args)});");
         foreach (var e in s.Edges)

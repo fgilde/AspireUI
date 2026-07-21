@@ -8,7 +8,11 @@ namespace AspireUI.Server.Services;
 public record CatalogParam(string Name, string Type, bool Required, string? Default, List<string>? Options, string? EnumTypeName, string Label, List<CatalogParam>? Fields = null);
 public record CatalogOverload(List<CatalogParam> Params);
 public record CatalogMethod(string Method, string Label, List<CatalogOverload> Overloads);
-public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, string? Description, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs);
+public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, string? Description, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs,
+    // Composite/macro extension: AddX(this IDistributedApplicationBuilder,…) that returns the
+    // builder (not a resource). Emitted as a statement-node; Usings/Package/PackageVersion are the
+    // namespace + NuGet package the generated stack must pull in for it to compile.
+    bool Composite = false, List<string>? Usings = null, string? Package = null, string? PackageVersion = null);
 
 public class CatalogService
 {
@@ -108,6 +112,47 @@ public class CatalogService
                 over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
                 addOverloads, withs));
         }
+
+        // Composite/macro extensions: AddX(this IDistributedApplicationBuilder, …) that RETURN the
+        // builder (not a resource) — helpers wiring several resources at once (e.g. Nextended's
+        // AddObservabilityStack). Exposed as statement-nodes. Only overloads whose non-receiver
+        // params are all renderable (scalars / enums / resource-references / an options lambda)
+        // survive; pure options-object overloads drop out (ReadOverload returns null → no overload).
+        var pkgVersions = ResourcePackages().Values; // reverse-lookup a package's version by id
+        var composites = methods
+            .Where(m => m.Name.StartsWith("Add"))
+            .Where(m => IsAppBuilder(m.ReturnType))
+            .Where(m => { var p = m.GetParameters(); return p.Length >= 1 && IsAppBuilder(p[0].ParameterType); })
+            .ToList();
+        foreach (var grp in composites.GroupBy(m => m.Name))
+        {
+            var over = _overlay.TryGetValue(grp.Key, out var o) ? o : (JsonElement?)null;
+            if (over?.TryGetProperty("exclude", out var ex) == true && ex.GetBoolean()) continue;
+
+            var ovs = new List<CatalogOverload>();
+            foreach (var m in grp)
+            {
+                var ov = ReadOverload(m.GetParameters().Skip(1)); // skip builder receiver only
+                if (ov is not null) ovs.Add(ov);
+            }
+            ovs = DedupOverloads(ovs);
+            if (ovs.Count == 0) continue; // no renderable overload (options-object-only)
+
+            var decl = grp.First().DeclaringType;
+            var usings = new List<string>();
+            if (decl?.Namespace is { } nsp) usings.Add(nsp);
+            var pkgId = decl?.Assembly.GetName().Name;
+            var pkgVer = pkgVersions.FirstOrDefault(p => p.Id == pkgId).Version ?? CodeGenService.AspireVersion;
+
+            result.Add(new ResourceType(
+                grp.Key,
+                over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : Humanize(grp.Key[3..]),
+                over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
+                over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Setup",
+                over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
+                ovs, [], Composite: true, Usings: usings, Package: pkgId, PackageVersion: pkgVer));
+        }
+
         return result.OrderBy(r => r.Group).ThenBy(r => r.AddMethod).ToList();
     }
 
@@ -210,6 +255,9 @@ public class CatalogService
         if (t == typeof(double) || t == typeof(float) || t == typeof(decimal))
             return ("number", null, null);
         if (t.IsEnum) return ("enum", Enum.GetNames(t).ToList(), t.Name);
+        // IResourceBuilder<TRes> param (e.g. a composite's `supabase` arg): rendered as a picker of
+        // the stack's existing nodes; enumType carries the resource CLR type name as a hint.
+        if (IsResourceBuilder(t)) return ("resourceRef", null, ResourceArg(t)?.Name);
         return null;
     }
 

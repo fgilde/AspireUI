@@ -32,7 +32,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
   const setValue = (p: string, v: string) => setValues(vs => ({ ...vs, [p]: v }));
 
   const missingRequired = overload?.params.some(p => p.required && !(values[p.name] ?? p.default ?? "")) ?? false;
-  const canCreate = name.trim().length > 0 && !missingRequired;
+  const canCreate = (rt.composite || name.trim().length > 0) && !missingRequired;
 
   const field = (p: CatalogParam, keyPrefix = "") => {
     const key = keyPrefix + p.name;
@@ -49,6 +49,12 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       checked={value === "true"} onChange={e => set(e.currentTarget.checked ? "true" : "false")} />;
     if (p.type === "enum") return <Select key={key} label={p.label} withAsterisk={p.required}
       data={p.options ?? []} value={value || null} onChange={v => set(v ?? "")} />;
+    // A resource-reference arg (composite/macro extensions): pick an existing node; the raw varName
+    // is passed verbatim (not a string literal).
+    if (p.type === "resourceRef") return <Select key={key} label={p.label} withAsterisk={p.required}
+      placeholder="Pick a resource" searchable
+      data={nodes.filter(n => !n.composite && n.varName).map(n => ({ value: n.varName, label: `${n.resourceName} (${n.varName})` }))}
+      value={value || null} onChange={v => set(v ?? "")} />;
     return <TextInput key={key} label={p.label} withAsterisk={p.required} value={value}
       onChange={e => set(e.currentTarget.value)} />;
   };
@@ -56,7 +62,9 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
   const literalFor = (p: CatalogParam): string =>
     p.type === "configure"
       ? configureLiteral(p.fields ?? [], n => values[`${p.name}.${n}`] ?? "")
-      : toLiteral(values[p.name] ?? p.default ?? "", p.type, p.enumTypeName);
+      : p.type === "resourceRef"
+        ? (values[p.name] ?? p.default ?? "")
+        : toLiteral(values[p.name] ?? p.default ?? "", p.type, p.enumTypeName);
 
   // The add-args (trailing optionals trimmed) — shared by the code preview and create().
   const addArgs = useMemo(() => {
@@ -74,6 +82,8 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
 
   const varName = sanitizeIdentifier(name || "resource");
   const preview = useMemo(() => {
+    // Composite/macro: a bare statement, no `var`, no name arg.
+    if (rt.composite) return `builder.${rt.addMethod}(${addArgs.join(", ")});`;
     const args = [`"${name}"`, ...addArgs].join(", ");
     const lines = [`var ${varName} = builder.${rt.addMethod}(${args});`];
     for (const id of refs) {
@@ -85,10 +95,21 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       if (t) lines.push(`${t.varName}.WithReference(${varName});`);
     }
     return lines.join("\n");
-  }, [name, varName, addArgs, refs, usedBy, nodes, rt.addMethod]);
+  }, [name, varName, addArgs, refs, usedBy, nodes, rt.addMethod, rt.composite]);
 
   const create = () => {
     if (!overload || !canCreate) return;
+    if (rt.composite) {
+      // Statement-node: no var identifier, no references/wait-for edges; carries its own usings.
+      onCreate({
+        id: "n" + crypto.randomUUID().slice(0, 8),
+        varName: "", resourceName: rt.label, addMethod: rt.addMethod,
+        addArgs, withCalls: [],
+        x: 60 + totalCount * 28, y: 60 + totalCount * 28,
+        composite: true, usings: rt.usings ?? [],
+      }, [], []);
+      return;
+    }
     onCreate({
       id: "n" + crypto.randomUUID().slice(0, 8),
       varName, resourceName: name, addMethod: rt.addMethod,
@@ -101,7 +122,8 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
     <Modal opened onClose={onClose} title={`Add ${rt.label}`} size="lg">
       <MStack gap="sm">
         {rt.description && <Text size="sm" c="dimmed">{rt.description}</Text>}
-        <TextInput label="Name" withAsterisk value={name} onChange={e => setName(e.currentTarget.value)} />
+        {rt.composite && <Text size="xs" c="dimmed">Setup/macro extension — adds several resources at once and returns the builder (no single resource of its own).</Text>}
+        {!rt.composite && <TextInput label="Name" withAsterisk value={name} onChange={e => setName(e.currentTarget.value)} />}
         {rt.addOverloads.length > 1 && (
           <Select label="Overload" allowDeselect={false}
             data={rt.addOverloads.map((o, i) => ({ value: String(i), label: signature(o) }))}
@@ -109,7 +131,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
         )}
         {overload?.params.map(p => field(p))}
 
-        {nodes.length > 0 && (
+        {!rt.composite && nodes.length > 0 && (
           <>
             <MultiSelect label="References" description={`Resources this one should reference (${varName}.WithReference(x))`}
               data={nodes.map(n => ({ value: n.id, label: n.resourceName }))} value={refs} onChange={setRefs}

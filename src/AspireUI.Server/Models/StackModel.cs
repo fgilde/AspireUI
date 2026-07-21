@@ -18,7 +18,14 @@ public record NodeModel(
     List<WithCall> WithCalls,
     double X,
     double Y,
-    List<string> AddArgs); // positional args after ResourceName, raw C# literals e.g. "\"nginx\""
+    List<string> AddArgs, // positional args after ResourceName, raw C# literals e.g. "\"nginx\""
+    // Composite "setup"/macro builder-extension (e.g. Nextended's AddObservabilityStack): emitted
+    // as a bare statement `builder.AddX(args)` — no `var`, no name arg, returns the builder not a
+    // resource. AddArgs then holds ALL args (resource-reference varNames, configure lambda, …).
+    bool Composite = false,
+    // Extra `using` namespaces this node's statement needs (composite nodes carry their own, since
+    // discovered macro extensions aren't in the overlay's AddMethod->usings map).
+    List<string>? Usings = null);
 
 public record EdgeModel(string Id, string FromNodeId, string ToNodeId, string Kind); // Kind = "reference" | "waitFor"
 
