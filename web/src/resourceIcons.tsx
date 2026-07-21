@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard, IconPaperclip } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -63,6 +63,7 @@ const MAP: Record<string, Visual> = {
   whisper:             { tabler: IconMicrophone, color: "#6366F1" },
   vscode:              { tabler: IconBrandVscode, color: "#007ACC" },
   uptimekuma:          { tabler: IconActivityHeartbeat, color: "#22C55E" },
+  paperclip:           { tabler: IconPaperclip, color: "#6366F1" },
   paperless:           { tabler: IconFileText, color: "#17541F" },
   nextcloud:           { tabler: IconCloud, color: "#0082C9" },
   vaultwarden:         { tabler: IconLock, color: "#175DDC" },

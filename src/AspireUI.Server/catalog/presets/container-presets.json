@@ -99,6 +99,15 @@
     "description": "Uptime Kuma — self-hosted uptime/status monitoring."
   },
   {
+    "id": "paperclip",
+    "label": "Paperclip AI",
+    "group": "AI Apps",
+    "image": "ghcr.io/paperclipai/paperclip:latest",
+    "port": 3100,
+    "icon": "paperclip",
+    "description": "Paperclip (paperclipai) — open platform for orchestrating AI agents. API on 3100; embedded Postgres, no DB setup needed."
+  },
+  {
     "id": "paperless-ai",
     "label": "Paperless-AI",
     "group": "AI Apps",
