@@ -117,7 +117,10 @@
     "image": "codercom/code-server:latest",
     "port": 8080,
     "icon": "vscode",
-    "description": "code-server — VS Code in the browser."
+    "description": "code-server — VS Code in the browser. Login password seeded as a parameter (change it); without it code-server generates a random one each start.",
+    "params": [
+      { "key": "password", "env": "PASSWORD", "default": "please-change-me", "secret": true }
+    ]
   },
   {
     "id": "uptime-kuma",
