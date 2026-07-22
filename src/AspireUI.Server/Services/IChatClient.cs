@@ -82,6 +82,51 @@ public class CliChatClient : IChatClient
             throw new InvalidOperationException($"'{spec.Exe}' exited {proc.ExitCode}: {(await stderrTask).Trim()}");
         return stdout.Trim();
     }
+
+    // Best-effort model discovery per tool. ollama/llm expose a list command; claude/gemini/codex use
+    // the account's default model (no list) → empty. Never throws for "no list", only for launch errors.
+    public async Task<List<string>> ListModelsAsync(AppSettings s)
+    {
+        var tool = (s.AiCliTool ?? "").Trim().ToLowerInvariant();
+        if (tool == "ollama")
+        {
+            var (code, outp, err) = await RunCaptureAsync("ollama", ["list"]);
+            if (code != 0) throw new InvalidOperationException($"'ollama list' failed: {err.Trim()}");
+            return outp.Split('\n').Skip(1) // header row
+                .Select(l => l.Trim().Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
+                .Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!).Distinct().OrderBy(x => x).ToList();
+        }
+        if (tool == "llm")
+        {
+            var (code, outp, err) = await RunCaptureAsync("llm", ["models"]);
+            if (code != 0) throw new InvalidOperationException($"'llm models' failed: {err.Trim()}");
+            // Lines look like "OpenAI Chat: gpt-4o (aliases: 4o)"; take the id between ": " and " (".
+            return outp.Split('\n').Select(l =>
+            {
+                var i = l.IndexOf(": ", StringComparison.Ordinal);
+                if (i < 0) return null;
+                var rest = l[(i + 2)..].Trim();
+                var sp = rest.IndexOf(' ');
+                return sp > 0 ? rest[..sp] : rest;
+            }).Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m!).Distinct().OrderBy(x => x).ToList();
+        }
+        return []; // claude/gemini/codex: no list command
+    }
+
+    private static async Task<(int Code, string Stdout, string Stderr)> RunCaptureAsync(string exe, string[] args)
+    {
+        var psi = new ProcessStartInfo { FileName = exe, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        using var proc = new Process { StartInfo = psi };
+        try { proc.Start(); }
+        catch (Exception ex) { throw new InvalidOperationException($"Could not launch '{exe}' — installed and on PATH? ({ex.Message})"); }
+        var outT = proc.StandardOutput.ReadToEndAsync();
+        var errT = proc.StandardError.ReadToEndAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        try { await proc.WaitForExitAsync(cts.Token); }
+        catch (OperationCanceledException) { try { proc.Kill(true); } catch { } throw new InvalidOperationException($"'{exe}' timed out."); }
+        return (proc.ExitCode, await outT, await errT);
+    }
 }
 
 public class HttpChatClient(HttpClient http) : IChatClient
@@ -109,5 +154,19 @@ public class HttpChatClient(HttpClient http) : IChatClient
 
         using var doc = JsonDocument.Parse(await resp.Content.ReadAsStreamAsync());
         return doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";
+    }
+
+    // GET {base}/v1/models — the OpenAI-compatible model list (LocalAI/Ollama/OpenAI all expose it).
+    public async Task<List<string>> ListModelsAsync(AppSettings s)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, $"{s.AiBaseUrl!.TrimEnd('/')}/v1/models");
+        if (!string.IsNullOrEmpty(s.AiApiKey))
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", s.AiApiKey);
+        var resp = await http.SendAsync(req);
+        resp.EnsureSuccessStatusCode();
+        using var doc = JsonDocument.Parse(await resp.Content.ReadAsStreamAsync());
+        return doc.RootElement.GetProperty("data").EnumerateArray()
+            .Select(e => e.GetProperty("id").GetString()).Where(id => id is not null).Select(id => id!)
+            .OrderBy(x => x).ToList();
     }
 }

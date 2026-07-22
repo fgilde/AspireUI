@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select } from "@mantine/core";
+import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete } from "@mantine/core";
 import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle } from "@tabler/icons-react";
 import type { AppSettings } from "../model";
 import * as api from "../api";
@@ -15,9 +15,30 @@ export function Settings() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; model?: string; ms?: number; error?: string } | null>(null);
   const [cliTools, setCliTools] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMsg, setDetectMsg] = useState<string | null>(null);
   const kind = settings.aiKind === "cli" ? "cli" : "http";
 
   useEffect(() => { api.getSettings().then(setSettings); api.getAiCliTools().then(setCliTools).catch(() => {}); }, []);
+
+  const detect = async () => {
+    setDetecting(true); setDetectMsg(null);
+    try {
+      const r = await api.detectAiModels(settings);
+      setModels(r.models);
+      setDetectMsg(r.error ? `Couldn't detect: ${r.error}` : r.models.length ? `Found ${r.models.length} model(s).` : "No models reported — enter one manually.");
+    } catch (e) { setDetectMsg(e instanceof Error ? e.message : String(e)); }
+    finally { setDetecting(false); }
+  };
+  const modelField = (
+    <Group gap="xs" align="end" wrap="nowrap">
+      <Autocomplete style={{ flex: 1 }} label="Model" data={models}
+        placeholder={kind === "cli" ? "e.g. llama3.2 (ollama/llm)" : "gpt-4o-mini"}
+        value={settings.aiModel ?? ""} onChange={v => setSettings({ ...settings, aiModel: v })} />
+      <Button variant="default" onClick={detect} loading={detecting}>Detect</Button>
+    </Group>
+  );
 
   const save = async () => {
     setSaving(true);
@@ -75,12 +96,7 @@ export function Settings() {
                   value={settings.aiApiKey ?? ""}
                   onChange={e => setSettings({ ...settings, aiApiKey: e.currentTarget.value })}
                 />
-                <TextInput
-                  label="Model"
-                  placeholder="gpt-4o-mini"
-                  value={settings.aiModel ?? ""}
-                  onChange={e => setSettings({ ...settings, aiModel: e.currentTarget.value })}
-                />
+                {modelField}
               </>
             ) : (
               <>
@@ -92,15 +108,11 @@ export function Settings() {
                   value={settings.aiCliTool ?? null}
                   onChange={v => setSettings({ ...settings, aiCliTool: v })}
                 />
-                <TextInput
-                  label="Model"
-                  description="Required for ollama/llm; ignored by claude/gemini/codex."
-                  placeholder="e.g. llama3.2"
-                  value={settings.aiModel ?? ""}
-                  onChange={e => setSettings({ ...settings, aiModel: e.currentTarget.value })}
-                />
+                {modelField}
+                <Text size="xs" c="dimmed">Model required for ollama/llm; ignored by claude/gemini/codex.</Text>
               </>
             )}
+            {detectMsg && <Text size="xs" c="dimmed">{detectMsg}</Text>}
 
             <TextInput
               label="Provider label"

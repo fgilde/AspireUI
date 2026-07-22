@@ -87,7 +87,10 @@ public static class StackEndpoints
             var current = settings.Get();
             var apiKey = body.AiApiKey == "***" ? current.AiApiKey : body.AiApiKey;
             var s = body with { AiApiKey = apiKey };
-            if (string.IsNullOrWhiteSpace(s.AiBaseUrl))
+            var isCli = string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase);
+            if (isCli && string.IsNullOrWhiteSpace(s.AiCliTool))
+                return Results.Ok(new { ok = false, error = "No CLI tool selected." });
+            if (!isCli && string.IsNullOrWhiteSpace(s.AiBaseUrl))
                 return Results.Ok(new { ok = false, error = "Base URL is not set." });
             try
             {
@@ -102,6 +105,26 @@ public static class StackEndpoints
 
         // Whitelisted local agent CLIs the assistant can drive (for the Settings dropdown).
         app2.MapGet("/settings/ai-cli-tools", () => Results.Ok(CliChatClient.AllowedTools));
+
+        // Try to discover available models for the entered backend (HTTP /v1/models, or `ollama list`
+        // / `llm models` for CLI). Never throws — {models, error} for the UI.
+        app2.MapPost("/settings/ai-models", async (AppSettings body) =>
+        {
+            var current = settings.Get();
+            var apiKey = body.AiApiKey == "***" ? current.AiApiKey : body.AiApiKey;
+            var s = body with { AiApiKey = apiKey };
+            try
+            {
+                var isCli = string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase);
+                var models = isCli
+                    ? await new CliChatClient().ListModelsAsync(s)
+                    : string.IsNullOrWhiteSpace(s.AiBaseUrl)
+                        ? throw new InvalidOperationException("Base URL is not set.")
+                        : await new HttpChatClient(new HttpClient()).ListModelsAsync(s);
+                return Results.Ok(new { models, error = (string?)null });
+            }
+            catch (Exception ex) { return Results.Ok(new { models = new List<string>(), error = ex.Message }); }
+        });
 
         // Custom palette snippets (reusable sub-graphs the user saved from a stack). Per-instance.
         app2.MapGet("/snippets", () => snippets.List());
