@@ -359,13 +359,13 @@ export function StacksOverview() {
                   </Group>
                   {s.nodes.length > 0 && (
                     <Group gap={5} mt="sm" wrap="nowrap">
-                      {[...new Map(s.nodes.map(n => [n.addMethod, n])).values()].slice(0, 8).map(n => (
-                        <Tooltip key={n.addMethod} label={n.addMethod.replace(/^Add/, "")} withArrow>
-                          <span style={{ display: "flex" }}><ResourceGlyph addMethod={n.addMethod} size={17} /></span>
+                      {[...new Map(s.nodes.map(n => [n.icon || n.addMethod, n])).values()].slice(0, 8).map(n => (
+                        <Tooltip key={n.icon || n.addMethod} label={n.resourceName} withArrow>
+                          <span style={{ display: "flex" }}><ResourceGlyph addMethod={n.addMethod} iconKey={n.icon} size={17} /></span>
                         </Tooltip>
                       ))}
-                      {new Set(s.nodes.map(n => n.addMethod)).size > 8 &&
-                        <Text size="xs" c="dimmed">+{new Set(s.nodes.map(n => n.addMethod)).size - 8}</Text>}
+                      {new Map(s.nodes.map(n => [n.icon || n.addMethod, n])).size > 8 &&
+                        <Text size="xs" c="dimmed">+{new Map(s.nodes.map(n => [n.icon || n.addMethod, n])).size - 8}</Text>}
                     </Group>
                   )}
                   <Group mt="sm" gap="xs" justify="space-between">

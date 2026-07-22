@@ -5,7 +5,7 @@ export const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __AP
 export const BUILD_INFO: string = typeof __BUILD__ !== "undefined" ? __BUILD__ : "dev";
 
 export interface WithCall { method: string; args: string[] }
-export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[]; spawnedBy?: string | null }
+export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[]; spawnedBy?: string | null; icon?: string | null }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface ExtraFile { name: string; content: string }
 export interface PackageRef { id: string; version: string }
@@ -56,11 +56,20 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
   // Named data volumes (safe, no host-path assumptions): WithVolume("<app>-<name>", "/path").
   const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
     ({ method: "WithVolume", args: [JSON.stringify(`${mainName}-${name}`), JSON.stringify(target)] }));
+  // Companion icon from its image so DB/cache containers show a real brand icon too.
+  const iconForImage = (img?: string | null) => {
+    const i = (img ?? "").toLowerCase();
+    if (/postgres|pgvecto|vectorchord/.test(i)) return "AddPostgres";
+    if (/redis/.test(i)) return "AddRedis";
+    if (/mongo/.test(i)) return "AddMongoDB";
+    if (/meilisearch/.test(i)) return "AddMeilisearch";
+    return undefined;
+  };
   const main: Node = {
     id: nid(), varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
     withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...volumeCalls, ...expandEnv(preset.env)],
-    x: 60, y: 60,
+    x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];
   const edges: Edge[] = [];
@@ -70,7 +79,7 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
       id: nid(), varName: sanitizeIdentifier(rn), resourceName: rn, addMethod: c.addMethod,
       addArgs: c.image ? [JSON.stringify(c.image)] : [],
       withCalls: [...(c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${c.port}`] }] : []), ...expandEnv(c.env)],
-      x: 380, y: 40 + i * 130, spawnedBy: main.id,
+      x: 380, y: 40 + i * 130, spawnedBy: main.id, icon: iconForImage(c.image),
     };
     nodes.push(cn);
     edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" }); // only waitFor is valid for a plain container

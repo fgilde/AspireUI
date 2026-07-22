@@ -29,7 +29,7 @@ function ResourceNode({ data }: any) {
   // When the stack runs, prefer the real per-resource state from Aspire; otherwise the shared run state.
   const color = live ? liveStateColor(live.state) : (runStateColor(data.runState as RunState) ?? undefined);
   const stateLabel = live ? (live.state ?? "…") : data.runState;
-  const { color: iconColor } = resourceVisual(data.addMethod);
+  const { color: iconColor } = resourceVisual(data.icon || data.addMethod);
   const url = primaryUrl(live);
   return (
     <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 150 }}>
@@ -37,7 +37,7 @@ function ResourceNode({ data }: any) {
       <Group justify="space-between" wrap="nowrap" gap={6}>
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
           <ThemeIcon variant="light" size={22} radius="sm" style={{ background: `${iconColor}22`, flexShrink: 0 }}>
-            <ResourceGlyph addMethod={data.addMethod} size={15} />
+            <ResourceGlyph addMethod={data.addMethod} iconKey={data.icon} size={15} />
           </ThemeIcon>
           <Text fw={600} size="sm" truncate>{data.resourceName}</Text>
         </Group>
@@ -380,7 +380,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     setRfNodes([...annoFlow.filter(n => n.type === "group"),
       ...stack.nodes.map(n => ({
         id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
-        data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
+        data: { resourceName: n.resourceName, addMethod: n.addMethod, icon: n.icon, runState },
       })),
       ...annoFlow.filter(n => n.type === "note")]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -504,7 +504,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)}
-      onNodeDragStart={() => setMenu(null)} onSelectionChange={() => setMenu(null)} fitView>
+      onNodeDragStart={() => setMenu(null)} fitView>
       <Background /><Controls />
       {showMinimap && <MiniMap pannable zoomable nodeColor={n => (n.data as any).addMethod ? resourceVisual((n.data as any).addMethod).color : "#888"} />}
       <Panel position="top-left">

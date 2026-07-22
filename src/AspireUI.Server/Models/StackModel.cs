@@ -40,7 +40,10 @@ public record NodeModel(
     List<string>? Usings = null,
     // Canvas-only: id of the app node that dropped this one as a preset companion. Lets smart-delete
     // recognize "the app + exactly its companions" as a unit. Never affects generated code.
-    string? SpawnedBy = null);
+    string? SpawnedBy = null,
+    // Canvas-only: icon key (a preset's brand icon) so a preset-dropped AddContainer shows the app's
+    // real icon instead of the generic Docker one. Purely visual; never affects generated code.
+    string? Icon = null);
 
 public record EdgeModel(string Id, string FromNodeId, string ToNodeId, string Kind); // Kind = "reference" | "waitFor"
 
