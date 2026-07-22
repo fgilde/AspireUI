@@ -1,4 +1,4 @@
-import { createContext, forwardRef, useCallback, useContext, useImperativeHandle, useRef } from "react";
+import { createContext, forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { FunctionComponent, CSSProperties } from "react";
 import { DockviewReact } from "dockview-react";
 import type { DockviewApi, DockviewReadyEvent, IDockviewPanelProps } from "dockview-react";
@@ -33,11 +33,27 @@ export interface EditorState {
   runStatus: RunStatus;
   setRunStatus: (s: RunStatus) => void;
   diagnostics: CodeDiagnostic[];
-  flashValidation: number;          // bumped when the badge is clicked, to flash the panel
-  showValidation: () => void;       // focus the Validation panel + flash it
-  showPanel: (id: string) => void;  // open (or focus) a dock panel by id, e.g. "logs"
-  flashProps: number;               // bumped to flash the Properties panel (e.g. from "Edit properties")
-  showProperties: () => void;       // open + flash the Properties panel
+  // Open (or focus) a dock panel by id AND flash it (border glow). One helper for every "jump to panel"
+  // action — validation badge, dashboard links, "Edit properties", etc.
+  showPanel: (id: string) => void;
+  flashSignal: { id: string; n: number };  // last-flashed panel id + a bump counter (drives usePanelFlash)
+}
+
+// Border-glow highlight a panel briefly wears when activated via showPanel. usePanelFlash returns true
+// for ~700ms after this panel's id is flashed; apply PANEL_FLASH_STYLE while it's on.
+export const PANEL_FLASH_STYLE = { boxShadow: "inset 0 0 0 2px var(--mantine-color-orange-filled)", transition: "box-shadow .2s" } as const;
+export function usePanelFlash(panelId: string): boolean {
+  const { flashSignal } = useEditor();
+  const [on, setOn] = useState(false);
+  const seen = useRef(0);
+  useEffect(() => {
+    if (flashSignal.id !== panelId || flashSignal.n === seen.current) return;
+    seen.current = flashSignal.n;
+    setOn(true);
+    const t = setTimeout(() => setOn(false), 700);
+    return () => clearTimeout(t);
+  }, [flashSignal, panelId]);
+  return on;
 }
 
 export const EditorContext = createContext<EditorState | null>(null);
@@ -55,13 +71,14 @@ function PalettePanel() {
   return <Palette stack={stack} setStack={setStack} />;
 }
 function CanvasPanel() {
-  const { stack, setStack, setSelected, setSelectedIds, showProperties, runStatus } = useEditor();
+  const { stack, setStack, setSelected, setSelectedIds, showPanel, runStatus } = useEditor();
   return <Canvas stack={stack} setStack={setStack} onSelect={setSelected} onSelectIds={setSelectedIds}
-    onShowProperties={showProperties} runState={runStatus.state} />;
+    onShowProperties={() => showPanel("properties")} runState={runStatus.state} />;
 }
 function PropertiesPanel() {
-  const { stack, setStack, selected, setSelected, selectedIds, flashProps } = useEditor();
-  return <PropertyPanel stack={stack} nodeId={selected} selectedIds={selectedIds} flashProps={flashProps}
+  const { stack, setStack, selected, setSelected, selectedIds } = useEditor();
+  const flash = usePanelFlash("properties");
+  return <PropertyPanel stack={stack} nodeId={selected} selectedIds={selectedIds} flash={flash}
     setStack={setStack} onDeleted={() => setSelected(null)} />;
 }
 function PreviewPanel() {

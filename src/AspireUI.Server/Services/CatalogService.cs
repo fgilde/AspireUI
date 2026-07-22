@@ -31,7 +31,9 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     List<List<string>>? Volumes,
     // Optional configurable values (passwords/keys/settings) — offered on drop as an Aspire parameter
     // resource (AddParameter, secret:true when marked) or a literal env value, via WithEnvironment.
-    List<PresetParam>? Params = null, bool Gpu = false, bool HostNetwork = false);
+    List<PresetParam>? Params = null, bool Gpu = false, bool HostNetwork = false,
+    // Pin the published host port to the container port (some WebUIs reject a mismatched host port).
+    bool FixedPort = false);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
 // (Aspire AddX) instead of always dropping this container.

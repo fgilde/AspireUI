@@ -24,7 +24,7 @@ export function Editor() {
   const [stack, setStackState] = useState<Stack | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [selIds, setSelIds] = useState<string[]>([]);
-  const [flashProps, setFlashProps] = useState(0);
+  const [flashSignal, setFlashSignal] = useState({ id: "", n: 0 });
   const [runStatus, setRunStatus] = useState<RunStatus>(NOT_RUNNING);
   const dockRef = useRef<DockLayoutHandle>(null);
 
@@ -85,7 +85,6 @@ export function Editor() {
   // Central validation: Roslyn diagnostics over the generated code, debounced on stack change.
   // Shared via context so the header badge and the Validation panel read the same result.
   const [diagnostics, setDiagnostics] = useState<CodeDiagnostic[]>([]);
-  const [flashValidation, setFlashValidation] = useState(0);
   const stackSig = stack ? JSON.stringify(stack.nodes) + JSON.stringify(stack.edges) + JSON.stringify(stack.rawStatements) : "";
   useEffect(() => {
     if (!stack) return;
@@ -96,9 +95,8 @@ export function Editor() {
     return () => { cancelled = true; window.clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stackSig]);
-  const showValidation = () => { dockRef.current?.focusPanel("validation"); setFlashValidation(f => f + 1); };
-  const showPanel = (id: string) => dockRef.current?.showPanel(id);
-  const showProperties = () => { dockRef.current?.showPanel("properties"); setFlashProps(f => f + 1); };
+  // One helper to jump to a panel: open/focus it and flash it (border glow) so the eye lands on it.
+  const showPanel = (id: string) => { dockRef.current?.showPanel(id); setFlashSignal(s => ({ id, n: s.n + 1 })); };
 
   // Single shared poller for run status: 2s while a run is starting/active,
   // 5s otherwise. RunToolbar, LogsPanel and any other consumer read the
@@ -124,9 +122,9 @@ export function Editor() {
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
     () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, selectedIds: selIds, setSelectedIds: setSelIds,
-      runStatus, setRunStatus, diagnostics, flashValidation, showValidation, showPanel, flashProps, showProperties }),
+      runStatus, setRunStatus, diagnostics, showPanel, flashSignal }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stack, sel, selIds, runStatus, diagnostics, flashValidation, flashProps]);
+    [stack, sel, selIds, runStatus, diagnostics, flashSignal]);
 
   if (!stack) return null;
 

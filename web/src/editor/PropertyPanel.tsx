@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon, Button, Stack as MStack, Badge } from "@mantine/core";
 import { IconTrash, IconCopy } from "@tabler/icons-react";
 import type { Stack, ResourceType, OrphanDep } from "../model";
@@ -8,25 +8,13 @@ import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 import { SmartDeleteModal } from "./Canvas";
+import { PANEL_FLASH_STYLE } from "./DockLayout";
 
-// Brief highlight applied when the panel is focused via "Edit properties".
-const FLASH_STYLE = { boxShadow: "inset 0 0 0 2px var(--mantine-color-orange-filled)", transition: "box-shadow .2s" } as const;
-
-export function PropertyPanel({ stack, nodeId, selectedIds = [], flashProps = 0, setStack, onDeleted }:
-  { stack: Stack; nodeId: string | null; selectedIds?: string[]; flashProps?: number;
+export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, setStack, onDeleted }:
+  { stack: Stack; nodeId: string | null; selectedIds?: string[]; flash?: boolean;
     setStack: (s: Stack) => void; onDeleted: () => void }) {
   const [catalog, setCatalog] = useState<ResourceType[]>([]);
   useEffect(() => { api.getCatalog().then(setCatalog); }, []);
-
-  // Flash the panel when asked (e.g. context-menu "Edit properties") so the user sees where it landed.
-  const [flash, setFlash] = useState(false);
-  const firstFlash = useRef(true);
-  useEffect(() => {
-    if (firstFlash.current) { firstFlash.current = false; return; }
-    setFlash(true);
-    const t = setTimeout(() => setFlash(false), 700);
-    return () => clearTimeout(t);
-  }, [flashProps]);
 
   const node = stack.nodes.find(n => n.id === nodeId) ?? null;
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
@@ -92,7 +80,7 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flashProps = 0,
 
   if (multi.length > 1) {
     return (
-      <MStack gap="sm" p="md" style={flash ? FLASH_STYLE : undefined}>
+      <MStack gap="sm" p="md" style={flash ? PANEL_FLASH_STYLE : undefined}>
         <Group gap={8}><Badge size="lg" variant="light">{multi.length} selected</Badge></Group>
         <Text size="sm" c="dimmed">Batch actions apply to all selected resources.</Text>
         <Group gap="xs">
@@ -104,7 +92,7 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flashProps = 0,
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", ...(flash ? FLASH_STYLE : {}) }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", ...(flash ? PANEL_FLASH_STYLE : {}) }}>
       {node && (() => {
         const { color } = resourceVisual(node.addMethod);
         return (
