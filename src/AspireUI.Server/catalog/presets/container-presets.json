@@ -672,11 +672,21 @@
     "image": "vikunja/vikunja:latest",
     "port": 3456,
     "icon": "vikunja",
-    "description": "Vikunja — self-hosted to-do / task & project management. CORS disabled (frontend+API served from one container) — otherwise it demands service.publicurl and refuses to start.",
+    "description": "Vikunja — self-hosted to-do / task & project management. CORS disabled (single container); runs as root so it can create its files dir (image runs as uid 1000 but /app/vikunja is root-owned).",
     "env": [
       [
         "VIKUNJA_CORS_ENABLE",
         "false"
+      ]
+    ],
+    "runtimeArgs": [
+      "--user",
+      "0:0"
+    ],
+    "volumes": [
+      [
+        "files",
+        "/app/vikunja/files"
       ]
     ]
   },

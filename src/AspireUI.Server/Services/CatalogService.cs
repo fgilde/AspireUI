@@ -40,7 +40,10 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // qBittorrent.conf that disables host-header validation so its WebUI isn't "Unauthorized".
     List<PresetFile>? Files = null,
     // Container command args (WithArgs) — e.g. ntfy needs "serve" or it prints help and exits.
-    List<string>? Args = null);
+    List<string>? Args = null,
+    // Extra `docker run` flags (WithContainerRuntimeArgs) — e.g. "--user","0:0" for non-root images
+    // that must write to a root-owned image dir.
+    List<string>? RuntimeArgs = null);
 public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
