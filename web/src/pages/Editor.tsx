@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
@@ -146,11 +146,19 @@ export function Editor() {
                   <Button variant="default" size="xs" leftSection={<IconLayoutSidebar size={14} />}>Panels</Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Label>Show / hide panels</Menu.Label>
+                  <Menu.Label>Show / hide · ⤢ pops out to a window</Menu.Label>
                   {panels.map(p => (
                     <Menu.Item key={p.id}
                       leftSection={p.open ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
                       closeMenuOnClick={false}
+                      rightSection={
+                        <Tooltip label="Pop out to window" withArrow position="right">
+                          <ActionIcon component="div" size="sm" variant="subtle"
+                            onClick={e => { e.stopPropagation(); dockRef.current?.popoutPanel(p.id); refreshPanels(); }}>
+                            <IconWindowMaximize size={13} />
+                          </ActionIcon>
+                        </Tooltip>
+                      }
                       onClick={() => { dockRef.current?.togglePanel(p.id); refreshPanels(); }}>
                       {p.title}
                     </Menu.Item>

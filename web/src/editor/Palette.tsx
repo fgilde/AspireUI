@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Chip } from "@mantine/core";
-import { IconFoldUp, IconFoldDown } from "@tabler/icons-react";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { sanitizeIdentifier } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -11,6 +11,7 @@ import { AddResourceDialog } from "./AddResourceDialog";
 // Combinable filter tags — fully data-driven: a "kind" tag + the item's group + a couple of flags.
 const GPU_PRESETS = new Set(["comfyui", "sdnext", "acestep"]);
 const KINDS = ["app", "resource", "setup"];
+const TAG_COLLAPSE = 8; // ~2 rows before the +N toggle
 function presetTags(p: ContainerPreset): string[] {
   const t = ["app"];
   if (p.group) t.push(p.group);
@@ -63,6 +64,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   // Groups the user explicitly collapsed (everything else stays expanded — incl. groups that appear later).
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
   // Every tag actually assigned (kinds + groups + flags), stable order — drives the filter chips.
@@ -131,7 +133,15 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       {allTags.length > 0 && (
         <Chip.Group multiple value={activeTags} onChange={setActiveTags}>
           <Group gap={5}>
-            {allTags.map(t => <Chip key={t} value={t} size="xs" variant="light">{t}</Chip>)}
+            {(tagsExpanded ? allTags : allTags.slice(0, TAG_COLLAPSE)).map(t =>
+              <Chip key={t} value={t} size="xs" variant="light">{t}</Chip>)}
+            {allTags.length > TAG_COLLAPSE && (
+              <UnstyledButton onClick={() => setTagsExpanded(v => !v)} title={tagsExpanded ? "Show fewer" : "Show all filters"}
+                style={{ display: "flex", alignItems: "center", gap: 2, padding: "3px 9px", borderRadius: 999, fontSize: 12,
+                  border: "1px solid var(--mantine-color-default-border)", color: "var(--mantine-color-dimmed)" }}>
+                {tagsExpanded ? <><IconMinus size={12} /> less</> : <><IconPlus size={12} />{allTags.length - TAG_COLLAPSE}</>}
+              </UnstyledButton>
+            )}
           </Group>
         </Chip.Group>
       )}
@@ -147,7 +157,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       <ScrollArea style={{ flex: 1 }} offsetScrollbars scrollbarSize={8}>
         <Accordion multiple value={openValue}
           onChange={v => setCollapsed(groupKeys.filter(g => !v.includes(g)))} chevronPosition="left"
-          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px 26px" }, item: { border: "none" }, label: { padding: 0 } }}>
+          styles={{ control: { padding: "1px 0" }, chevron: { marginInlineEnd: 6 }, content: { padding: "2px 0 8px 23px" }, item: { border: "none" }, label: { padding: 0 } }}>
           {groupKeys.map(g => {
             const items = groups[g];
             const count = items.rts.length + items.presets.length;

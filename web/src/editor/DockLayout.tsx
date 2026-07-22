@@ -156,6 +156,7 @@ export interface DockLayoutHandle {
   listPanels: () => { id: string; title: string; open: boolean }[];
   togglePanel: (id: string) => void;
   showPanel: (id: string) => void;
+  popoutPanel: (id: string) => void;
 }
 
 // Named, reusable dock layouts (separate from the auto-persisted current layout).
@@ -195,6 +196,14 @@ export const DockLayout = forwardRef<DockLayoutHandle>(function DockLayout(_prop
       openPanel(id);
     },
     showPanel: (id: string) => openPanel(id),
+    // Detach a panel into its own OS window (dockview popout). Opens it first if closed.
+    popoutPanel: (id: string) => {
+      const api = apiRef.current;
+      if (!api) return;
+      if (!api.getPanel(id)) openPanel(id);
+      const p = api.getPanel(id);
+      if (p) { try { api.addPopoutGroup(p); } catch { /* popup blocked / unsupported */ } }
+    },
   }), [resetLayout]);
 
   // Open (or focus, if already open) a panel. Reopened side panels flank the canvas; the rest join
