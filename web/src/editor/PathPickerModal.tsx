@@ -6,8 +6,8 @@ import type { FsListing } from "../api";
 
 // Server-side path picker: browses the host filesystem via GET /fs (paths must resolve on the machine
 // the stacks run on, not the browser). Internal navigation history + keyboard-first: filter box stays
-// focused, arrows move the selection, Enter opens a folder or picks a file, Backspace (empty filter)
-// or the Up button steps up a folder.
+// focused, arrows move the selection, Enter opens a folder or picks a file. A pushState/popstate guard
+// makes the browser/mouse Back button step UP a folder instead of navigating the whole app away.
 export function PathPickerModal({ opened, initial, onPick, onClose }:
   { opened: boolean; initial?: string; onPick: (path: string) => void; onClose: () => void }) {
   const [history, setHistory] = useState<(string | null)[]>([null]);
@@ -47,11 +47,20 @@ export function PathPickerModal({ opened, initial, onPick, onClose }:
   useEffect(() => { setActive(0); }, [filter]);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [active]);
 
-  // NB: no browser-history hijack here. An earlier version pushed a dummy history entry + popstate
-  // listener so the browser Back button stepped up a folder — but manipulating window.history behind
-  // React Router's back desynced its internal location, and after using the picker a "← Stacks"
-  // nav("/") updated the URL without re-rendering (dead navigation until a full reload). Folder-up now
-  // lives on the Up button, arrow keys, and Backspace (see onFilterKey) — none touch global history.
+  // Back-button guard: keep a dummy history entry while open. A back press (mouse or browser) fires
+  // popstate → we step up one folder and re-push, so the app is never navigated away.
+  useEffect(() => {
+    if (!opened) return;
+    window.history.pushState({ pathPicker: true }, "");
+    const onPop = () => { back(); window.history.pushState({ pathPicker: true }, ""); };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if ((window.history.state as { pathPicker?: boolean } | null)?.pathPicker) window.history.back();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened]);
+
   const choose = (i: number) => {
     const e = entries[i];
     if (!e) return;
