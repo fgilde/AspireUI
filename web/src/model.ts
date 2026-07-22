@@ -1,4 +1,7 @@
 export const APP_VERSION = "0.1.0";
+// Baked in by vite (see vite.config.ts): "<git-sha> · <date>". `declare` so TS knows the global.
+declare const __BUILD__: string;
+export const BUILD_INFO: string = typeof __BUILD__ !== "undefined" ? __BUILD__ : "dev";
 
 export interface WithCall { method: string; args: string[] }
 export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[]; spawnedBy?: string | null }
@@ -11,6 +14,7 @@ export interface Stack {
   id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[]; rawStatements: string[];
   extraFiles: ExtraFile[]; extraPackages: PackageRef[];
   notes?: StackNote[]; groups?: StackGroup[];
+  createdAt?: string | null; createdBy?: string | null;
 }
 
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }

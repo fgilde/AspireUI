@@ -43,6 +43,14 @@ public static class StackEndpoints
 
         string Dir(string id) => Path.Combine(wsRoot, id);
 
+        // Stamp creation metadata on a brand-new stack (id + who + when).
+        StackModel New(StackModel s, HttpContext ctx) => s with
+        {
+            Id = Guid.NewGuid().ToString("n"),
+            CreatedAt = DateTime.UtcNow.ToString("O"),
+            CreatedBy = ctx.User.Identity?.Name ?? "admin",
+        };
+
         // Materialize + compile-check; returns error list (empty = ok).
         IResult Persist(StackModel s)
         {
@@ -90,24 +98,20 @@ public static class StackEndpoints
         app2.MapGet("/stacks/{id}", (string id) =>
             store.Get(id) is { } s ? Results.Ok(s) : Results.NotFound());
 
-        app2.MapPost("/stacks", (StackModel body) =>
-        {
-            var s = body with { Id = Guid.NewGuid().ToString("n") };
-            return Persist(s);
-        });
+        app2.MapPost("/stacks", (StackModel body, HttpContext ctx) => Persist(New(body, ctx)));
 
-        app2.MapPost("/stacks/{id}/duplicate", (string id) =>
+        app2.MapPost("/stacks/{id}/duplicate", (string id, HttpContext ctx) =>
             store.Get(id) is { } s
-                ? Persist(s with { Id = Guid.NewGuid().ToString("n"), Name = s.Name + " copy" })
+                ? Persist(New(s, ctx) with { Name = s.Name + " copy" })
                 : Results.NotFound());
 
-        app2.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
+        app2.MapPost("/stacks/from-template/{templateId}", (string templateId, HttpContext ctx) =>
         {
             // "user:<id>" → a saved user template; otherwise a built-in demo template.
             var s = templateId.StartsWith("user:")
                 ? userTemplates.Get(templateId["user:".Length..])
                 : templates.Create(templateId);
-            return s is not null ? Persist(s with { Id = Guid.NewGuid().ToString("n") }) : Results.NotFound();
+            return s is not null ? Persist(New(s, ctx)) : Results.NotFound();
         });
 
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
@@ -204,10 +208,10 @@ public static class StackEndpoints
         });
 
         // Docker Compose import: services -> AddContainer nodes, ports/env/depends_on mapped.
-        app2.MapPost("/stacks/import-compose", (ComposeRequest body) =>
+        app2.MapPost("/stacks/import-compose", (ComposeRequest body, HttpContext ctx) =>
         {
             var (stack, error) = compose.Import(Guid.NewGuid().ToString("n"), body.Name, body.Yaml);
-            return stack is null ? Results.UnprocessableEntity(error) : Persist(stack);
+            return stack is null ? Results.UnprocessableEntity(error) : Persist(New(stack, ctx));
         });
 
         app2.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
@@ -219,7 +223,7 @@ public static class StackEndpoints
         // Bundle import: a whole set of source files (folder/zip contents) -> editable stack,
         // carrying extra packages (csproj) and custom code (extra .cs files) the node-graph
         // model can't represent. Text-only /stacks/{id}/import above stays for back-compat.
-        app2.MapPost("/stacks/import-bundle", (ImportBundleRequest body) =>
+        app2.MapPost("/stacks/import-bundle", (ImportBundleRequest body, HttpContext ctx) =>
         {
             var id = Guid.NewGuid().ToString("n");
             var (stack, error, status) = bundle.Import(id, body.Name, body.Files, body.ProgramPath);
@@ -227,7 +231,7 @@ public static class StackEndpoints
                 return status == StatusCodes.Status413PayloadTooLarge
                     ? Results.Text(error ?? "payload too large", "text/plain", statusCode: StatusCodes.Status413PayloadTooLarge)
                     : Results.UnprocessableEntity(error);
-            return Persist(stack);
+            return Persist(New(stack, ctx));
         });
 
         // Open the materialized stack in a locally-installed IDE. Only meaningful when the server runs

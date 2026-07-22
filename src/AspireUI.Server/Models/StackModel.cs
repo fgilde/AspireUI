@@ -13,7 +13,11 @@ public record StackModel(
     // rectangles the user draws to document/organize the graph. Optional so all existing constructor
     // calls (templates, importers, tests, AI) keep working.
     List<StackNote>? Notes = null,
-    List<StackGroup>? Groups = null);
+    List<StackGroup>? Groups = null,
+    // Creation metadata (set once when a stack is first created; preserved on edits). Shown on the
+    // overview cards. Never affects generated code.
+    string? CreatedAt = null,
+    string? CreatedBy = null);
 
 public record StackNote(string Id, string Text, double X, double Y);
 public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);

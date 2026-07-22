@@ -4,14 +4,14 @@ import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
   AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon, Anchor,
-  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip,
+  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select,
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
 } from "@tabler/icons-react";
-import { pickAppHost, APP_VERSION, runStateColor, type Stack, type RunStatus } from "../model";
+import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
 import * as api from "../api";
 import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
@@ -45,6 +45,8 @@ export function StacksOverview() {
   const [name, setName] = useState("");
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [query, setQuery] = useState("");
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, RunStatus>>({});
 
   // Poll run status for every stack so the cards show a live traffic light + controls.
@@ -65,6 +67,7 @@ export function StacksOverview() {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const composeInputRef = useRef<HTMLInputElement>(null);
 
+  const creators = Array.from(new Set(stacks.map(s => s.createdBy).filter(Boolean))) as string[];
   const load = () => api.listStacks().then((s: Stack[]) => { setStacks(s); setLoading(false); });
   useEffect(() => { load(); }, []);
   useEffect(() => { api.getTemplates().then(setTemplates); }, []);
@@ -252,8 +255,16 @@ export function StacksOverview() {
               <Text c="dimmed" size="sm">Your Aspire hosting projects, ready to open or run.</Text>
             </div>
             {stacks.length > 0 && (
-              <TextInput w={240} placeholder="Search stacks…" value={query}
-                onChange={e => setQuery(e.currentTarget.value)} leftSection={<IconSearch size={14} />} />
+              <Group gap="xs">
+                <TextInput w={220} placeholder="Search stacks…" value={query}
+                  onChange={e => setQuery(e.currentTarget.value)} leftSection={<IconSearch size={14} />} />
+                {creators.length > 1 && (
+                  <Select w={150} placeholder="Any creator" clearable value={creatorFilter} onChange={setCreatorFilter}
+                    data={creators} leftSection={<IconUser size={14} />} />
+                )}
+                <Select w={140} placeholder="Any status" clearable value={statusFilter} onChange={setStatusFilter}
+                  data={[{ value: "running", label: "Running" }, { value: "stopped", label: "Not running" }]} />
+              </Group>
             )}
           </Group>
 
@@ -292,7 +303,16 @@ export function StacksOverview() {
             </Center>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              {stacks.filter(s => s.name.toLowerCase().includes(query.trim().toLowerCase())).map(s => {
+              {stacks.filter(s => {
+                if (!s.name.toLowerCase().includes(query.trim().toLowerCase())) return false;
+                if (creatorFilter && s.createdBy !== creatorFilter) return false;
+                if (statusFilter) {
+                  const running = ["Running", "Starting"].includes(statuses[s.id]?.state ?? "NotRunning");
+                  if (statusFilter === "running" && !running) return false;
+                  if (statusFilter === "stopped" && running) return false;
+                }
+                return true;
+              }).map(s => {
                 const st = statuses[s.id];
                 const state = st?.state ?? "NotRunning";
                 const dot = runStateColor(state) ?? "gray";
@@ -355,6 +375,13 @@ export function StacksOverview() {
                       )}
                     </Group>
                   </Group>
+                  {(s.createdBy || s.createdAt) && (
+                    <Text size="xs" c="dimmed" mt={8}>
+                      {s.createdBy && <>by <b>{s.createdBy}</b></>}
+                      {s.createdBy && s.createdAt && " · "}
+                      {s.createdAt && new Date(s.createdAt).toLocaleDateString()}
+                    </Text>
+                  )}
                 </Card>
                 );
               })}
@@ -366,7 +393,7 @@ export function StacksOverview() {
       <AppShell.Footer>
         <Container size="xl" h="100%">
           <Group h="100%" justify="center" gap={6}>
-            <Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text>
+            <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION} ({BUILD_INFO})</Text></Tooltip>
             <Text size="xs" c="dimmed">·</Text>
             <Anchor size="xs" c="dimmed" href="https://www.gilde.org" target="_blank" rel="noreferrer">by gilde.org</Anchor>
           </Group>
