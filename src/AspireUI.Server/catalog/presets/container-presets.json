@@ -4,7 +4,7 @@
     "label": "LocalAGI",
     "group": "AI Apps",
     "image": "quay.io/mudler/localagi:latest",
-    "port": 8080,
+    "port": 3000,
     "icon": "localagi",
     "description": "LocalAGI — self-hostable AI agent platform (mudler). Comes with a LocalAI companion; set LOCALAGI_MODEL to a model your LocalAI has pulled (scaffold — provide/pull the model).",
     "env": [
