@@ -232,6 +232,22 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const [del, setDel] = useState<{ node: Node; deps: OrphanDep[] } | null>(null);
+  const rf = useRef<any>(null);                          // ReactFlow instance (for centering)
+  const prevIds = useRef<Set<string> | null>(null);      // node ids last render, to detect additions
+  const [glow, setGlow] = useState<Set<string>>(new Set());
+  // When nodes are added, center the view on the first new one and briefly glow the additions.
+  useEffect(() => {
+    const ids = new Set(stack.nodes.map(n => n.id));
+    if (prevIds.current === null) { prevIds.current = ids; return; } // skip initial load
+    const added = stack.nodes.filter(n => !prevIds.current!.has(n.id));
+    prevIds.current = ids;
+    if (added.length === 0) return;
+    const first = added[0];
+    rf.current?.setCenter?.(first.x + 85, first.y + 37, { zoom: rf.current.getZoom?.() ?? 1, duration: 400 });
+    setGlow(new Set(added.map(n => n.id)));
+    const t = setTimeout(() => setGlow(new Set()), 1400);
+    return () => clearTimeout(t);
+  }, [stack.nodes]);
   const [groupDel, setGroupDel] = useState<{ id: string; count: number } | null>(null);
   // Tracks an in-progress group drag so contained nodes move with it (id -> {startX,startY,members,lastX,lastY}).
   const groupDrag = useRef<Record<string, { sx: number; sy: number; lx: number; ly: number; members: string[] }>>({});
@@ -498,15 +514,19 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       if (n.type !== "resource") return n; // annotations pass through unchanged
       const data = { ...n.data, live: overlay.statusByNodeId[n.id], onLogs };
       const opacity = q && !`${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q) ? 0.25 : 1;
-      return { ...n, data, style: { ...n.style, opacity } };
+      const glowing = glow.has(n.id);
+      return { ...n, data, style: { ...n.style, opacity,
+        boxShadow: glowing ? "0 0 0 3px var(--mantine-primary-color-filled), 0 0 16px var(--mantine-primary-color-filled)" : undefined,
+        borderRadius: glowing ? 12 : undefined, transition: "box-shadow .3s" } };
     });
     return [...base, ...liveFlow.rfLive];
-  }, [rfNodes, overlay, liveFlow, q, onLogs]);
+  }, [rfNodes, overlay, liveFlow, q, onLogs, glow]);
   const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
 
   return (
     <>
     <ReactFlow nodes={displayNodes} edges={allEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
+      onInit={i => { rf.current = i; }}
       colorMode={colorScheme === "light" ? "light" : "dark"}
       snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}

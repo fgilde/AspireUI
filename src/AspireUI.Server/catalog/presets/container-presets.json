@@ -6,10 +6,13 @@
     "image": "quay.io/mudler/localagi:latest",
     "port": 8080,
     "icon": "localagi",
-    "description": "LocalAGI — self-hostable AI agent platform (mudler), drop-in for OpenAI Responses API. Set LOCALAGI_MODEL + point LOCALAGI_LLM_API_URL at a LocalAI/OpenAI-compatible backend.",
+    "description": "LocalAGI — self-hostable AI agent platform (mudler). Comes with a LocalAI companion; set LOCALAGI_MODEL to a model your LocalAI has pulled (scaffold — provide/pull the model).",
     "env": [
-      ["LOCALAGI_MODEL", "gpt-4o-mini"],
-      ["LOCALAGI_LLM_API_URL", "http://localai:8080"]
+      ["LOCALAGI_MODEL", "gpt-4"],
+      ["LOCALAGI_LLM_API_URL", "http://${llm}:8080"]
+    ],
+    "companions": [
+      { "key": "llm", "addMethod": "AddContainer", "resourceName": "localagi-localai", "image": "localai/localai:latest", "port": 8080 }
     ]
   },
   {

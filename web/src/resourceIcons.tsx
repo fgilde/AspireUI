@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -11,6 +11,7 @@ import {
 } from "simple-icons";
 
 import aspireuiLogo from "./assets/logo.svg";
+import localagiLogo from "./assets/localagi.png";
 
 type Brand = { path: string };
 interface Visual { si?: Brand; tabler?: Icon; img?: string; color: string }
@@ -55,7 +56,7 @@ const MAP: Record<string, Visual> = {
   AddGrafana:          { si: siGrafana, color: "#F46800" },
 
   // Container-preset ("app") icons — keyed by the preset's `icon` field.
-  localagi:            { tabler: IconRobot, color: "#0EA5E9" },
+  localagi:            { img: localagiLogo, color: "#0EA5E9" },
   localrecall:         { tabler: IconBrain, color: "#16A34A" },
   openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
   comfyui:             { tabler: IconPhoto, color: "#7C3AED" },

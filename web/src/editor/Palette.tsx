@@ -40,8 +40,10 @@ function Tile({ iconKey, label, caption, badge, onClick, tooltip }: {
   const color = resourceVisual(iconKey).color;
   return (
     <Tooltip label={tooltip || label} position="right" withArrow openDelay={500} multiline w={250} disabled={!tooltip}>
-      <UnstyledButton onClick={onClick} className="ctx-item"
-        style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "6px 8px", borderRadius: 8 }}>
+      {/* Draggable for feel — dropping anywhere runs the same add as a click (dialog opens for resources,
+          companion prompt for presets). Prevents the "why can't I drag this" confusion. */}
+      <UnstyledButton onClick={onClick} draggable onDragEnd={onClick} className="ctx-item"
+        style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "6px 8px", borderRadius: 8, cursor: "grab" }}>
         <div style={{ width: 30, height: 30, borderRadius: 7, flexShrink: 0, display: "grid", placeItems: "center",
           background: `${color}1f`, border: `1px solid ${color}33` }}>
           <ResourceGlyph addMethod={iconKey} size={17} />

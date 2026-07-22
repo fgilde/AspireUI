@@ -307,10 +307,16 @@ export function PropertyGrid({ stack, node, rt, setStack }:
               const rowParams = matchOverloadByArity(w.overloads, row.length)?.params ?? simplest;
               return (
                 <Group key={ri} align="end" gap="xs" mb={4}>
-                  {rowParams.map((p, pi) => field(p, fromLiteral(row[pi] ?? '""'), v => {
-                    const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push('""');
-                    nr[ri][pi] = toLiteral(v, p.type, p.enumTypeName); commit(writeWithRows(draft, method, nr));
-                  }, fieldOpts))}
+                  {rowParams.length > 0
+                    ? rowParams.map((p, pi) => field(p, fromLiteral(row[pi] ?? '""'), v => {
+                        const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push('""');
+                        nr[ri][pi] = toLiteral(v, p.type, p.enumTypeName); commit(writeWithRows(draft, method, nr));
+                      }, fieldOpts))
+                    // Variadic / no-typed-param methods (e.g. WithContainerRuntimeArgs(params string[]))
+                    // — edit the raw args as comma-separated C# literals.
+                    : <TextInput style={{ flex: 1 }} label="Args (raw)" placeholder='"--gpus", "all"'
+                        value={row.join(", ")}
+                        onChange={e => { const nr = rows.map(r => [...r]); nr[ri] = e.currentTarget.value.split(",").map(s => s.trim()).filter(Boolean); commit(writeWithRows(draft, method, nr)); }} />}
                   <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, method, rows.filter((_, x) => x !== ri)))}><IconX size={14} /></ActionIcon>
                 </Group>
               );
