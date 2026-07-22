@@ -268,5 +268,105 @@
     "port": 8080,
     "icon": "dozzle",
     "description": "Dozzle — real-time Docker container log viewer in the browser."
+  },
+  {
+    "id": "jellyfin", "label": "Jellyfin", "group": "Media",
+    "image": "jellyfin/jellyfin:latest", "port": 8096, "icon": "jellyfin",
+    "description": "Jellyfin — free media server (movies/TV/music). Mount your media as volumes; GPU for transcoding."
+  },
+  {
+    "id": "navidrome", "label": "Navidrome", "group": "Media",
+    "image": "deluan/navidrome:latest", "port": 4533, "icon": "navidrome",
+    "description": "Navidrome — self-hosted music streaming (Subsonic-compatible)."
+  },
+  {
+    "id": "audiobookshelf", "label": "Audiobookshelf", "group": "Media",
+    "image": "ghcr.io/advplyr/audiobookshelf:latest", "port": 80, "icon": "audiobookshelf",
+    "description": "Audiobookshelf — audiobook & podcast server."
+  },
+  {
+    "id": "photoprism", "label": "PhotoPrism", "group": "Media",
+    "image": "photoprism/photoprism:latest", "port": 2342, "icon": "photoprism",
+    "description": "PhotoPrism — AI-powered photo gallery/backup."
+  },
+  {
+    "id": "sonarr", "label": "Sonarr", "group": "Media",
+    "image": "lscr.io/linuxserver/sonarr:latest", "port": 8989, "icon": "sonarr",
+    "description": "Sonarr — TV series collection manager (needs a download client + indexer)."
+  },
+  {
+    "id": "radarr", "label": "Radarr", "group": "Media",
+    "image": "lscr.io/linuxserver/radarr:latest", "port": 7878, "icon": "radarr",
+    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent)."
+  },
+  {
+    "id": "prowlarr", "label": "Prowlarr", "group": "Media",
+    "image": "lscr.io/linuxserver/prowlarr:latest", "port": 9696, "icon": "prowlarr",
+    "description": "Prowlarr — indexer manager for the *arr apps."
+  },
+  {
+    "id": "qbittorrent", "label": "qBittorrent", "group": "Media",
+    "image": "lscr.io/linuxserver/qbittorrent:latest", "port": 8080, "icon": "qbittorrent",
+    "description": "qBittorrent — torrent client with a web UI."
+  },
+  {
+    "id": "pihole", "label": "Pi-hole", "group": "Network",
+    "image": "pihole/pihole:latest", "port": 80, "icon": "pihole",
+    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Also binds DNS on :53 (host port conflicts possible)."
+  },
+  {
+    "id": "adguard", "label": "AdGuard Home", "group": "Network",
+    "image": "adguard/adguardhome:latest", "port": 3000, "icon": "adguard",
+    "description": "AdGuard Home — DNS-based ad/tracker blocking (setup UI on :3000, DNS on :53)."
+  },
+  {
+    "id": "npm", "label": "Nginx Proxy Manager", "group": "Network",
+    "image": "jc21/nginx-proxy-manager:latest", "port": 81, "icon": "npm",
+    "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443)."
+  },
+  {
+    "id": "homeassistant", "label": "Home Assistant", "group": "Smart Home",
+    "image": "ghcr.io/home-assistant/home-assistant:stable", "port": 8123, "icon": "homeassistant",
+    "description": "Home Assistant — open-source home automation. Works best on host networking for device discovery."
+  },
+  {
+    "id": "nodered", "label": "Node-RED", "group": "Smart Home",
+    "image": "nodered/node-red:latest", "port": 1880, "icon": "nodered",
+    "description": "Node-RED — low-code flow automation / event wiring."
+  },
+  {
+    "id": "vikunja", "label": "Vikunja", "group": "Tools",
+    "image": "vikunja/vikunja:latest", "port": 3456, "icon": "vikunja",
+    "description": "Vikunja — self-hosted to-do / task & project management."
+  },
+  {
+    "id": "memos", "label": "Memos", "group": "Tools",
+    "image": "neosmemo/memos:stable", "port": 5230, "icon": "memos",
+    "description": "Memos — lightweight, privacy-first note/memo hub."
+  },
+  {
+    "id": "excalidraw", "label": "Excalidraw", "group": "Tools",
+    "image": "excalidraw/excalidraw:latest", "port": 80, "icon": "excalidraw",
+    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams."
+  },
+  {
+    "id": "drawio", "label": "Draw.io", "group": "Tools",
+    "image": "jgraph/drawio:latest", "port": 8080, "icon": "drawio",
+    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted."
+  },
+  {
+    "id": "anythingllm", "label": "AnythingLLM", "group": "AI Apps",
+    "image": "mintplexlabs/anythingllm:latest", "port": 3001, "icon": "anythingllm",
+    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM."
+  },
+  {
+    "id": "librechat", "label": "LibreChat", "group": "AI Apps",
+    "image": "ghcr.io/danny-avila/librechat:latest", "port": 3080, "icon": "librechat",
+    "description": "LibreChat — polished multi-model chat UI (needs Mongo + a Meili/RAG sidecar for full features)."
+  },
+  {
+    "id": "searxng", "label": "SearXNG", "group": "AI Apps",
+    "image": "searxng/searxng:latest", "port": 8080, "icon": "searxng",
+    "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG."
   }
 ]

@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard, IconPaperclip, IconFileSpreadsheet, IconShare, IconFileTypePdf, IconWallet, IconTool, IconBell, IconRss, IconBrandDocker, IconStack3 } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconRobot, IconFileText, IconGitBranch, IconChartBar, IconRoute, IconLayoutDashboard, IconPaperclip, IconFileSpreadsheet, IconShare, IconFileTypePdf, IconWallet, IconTool, IconBell, IconRss, IconBrandDocker, IconStack3, IconMovie, IconHeadphones, IconDeviceTv, IconDownload, IconShieldHalf, IconShieldCheck, IconServer2, IconSmartHome, IconChecklist, IconNote, IconPencil, IconSchema, IconSearch } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -81,6 +81,26 @@ const MAP: Record<string, Visual> = {
   immich:              { tabler: IconPhoto, color: "#4250AF" },
   dockge:              { tabler: IconStack3, color: "#06B6D4" },
   dozzle:              { tabler: IconBrandDocker, color: "#2496ED" },
+  jellyfin:            { tabler: IconMovie, color: "#00A4DC" },
+  navidrome:           { tabler: IconMusic, color: "#2B9CE5" },
+  audiobookshelf:      { tabler: IconHeadphones, color: "#F97316" },
+  photoprism:          { tabler: IconPhoto, color: "#00A6A6" },
+  sonarr:              { tabler: IconDeviceTv, color: "#35C5F4" },
+  radarr:              { tabler: IconMovie, color: "#FFC230" },
+  prowlarr:            { tabler: IconSearch, color: "#E56E2C" },
+  qbittorrent:         { tabler: IconDownload, color: "#2F67BA" },
+  pihole:              { tabler: IconShieldHalf, color: "#96060C" },
+  adguard:             { tabler: IconShieldCheck, color: "#68BC71" },
+  npm:                 { tabler: IconServer2, color: "#F15A2B" },
+  homeassistant:       { tabler: IconSmartHome, color: "#18BCF2" },
+  nodered:             { tabler: IconSitemap, color: "#8F0000" },
+  vikunja:             { tabler: IconChecklist, color: "#1973FF" },
+  memos:               { tabler: IconNote, color: "#4CA57D" },
+  excalidraw:          { tabler: IconPencil, color: "#6965DB" },
+  drawio:              { tabler: IconSchema, color: "#F08705" },
+  anythingllm:         { tabler: IconMessageChatbot, color: "#3B82F6" },
+  librechat:           { tabler: IconMessages, color: "#10A37F" },
+  searxng:             { tabler: IconSearch, color: "#3050FF" },
   AddQdrant:           { si: siQdrant, color: "#DC244C" },
   AddMilvus:           { si: siMilvus, color: "#00A1EA" },
   AddDaprComponent:    { si: siDapr, color: "#4756C7" },

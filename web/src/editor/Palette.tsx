@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Chip } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus } from "@tabler/icons-react";
+import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton } from "@mantine/core";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { sanitizeIdentifier } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -63,7 +63,13 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
   // Groups the user explicitly collapsed (everything else stays expanded — incl. groups that appear later).
   const [collapsed, setCollapsed] = useState<string[]>([]);
-  const [activeTags, setActiveTags] = useState<string[]>([]);
+  // Tri-state tag filter: "in" = must have, "ex" = must NOT have (negate), absent = ignore.
+  const [tagState, setTagState] = useState<Record<string, "in" | "ex">>({});
+  const cycleTag = (t: string) => setTagState(s => {
+    const next = { ...s };
+    if (!s[t]) next[t] = "in"; else if (s[t] === "in") next[t] = "ex"; else delete next[t];
+    return next;
+  });
   const [tagsExpanded, setTagsExpanded] = useState(false);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
@@ -77,7 +83,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
 
   const groups = useMemo(() => {
     const ql = q.toLowerCase();
-    const hasTags = (tags: string[]) => activeTags.every(t => tags.includes(t)); // combine = AND
+    const inc = Object.keys(tagState).filter(t => tagState[t] === "in");
+    const exc = Object.keys(tagState).filter(t => tagState[t] === "ex");
+    const hasTags = (tags: string[]) => inc.every(t => tags.includes(t)) && !exc.some(t => tags.includes(t));
     const by: Record<string, { rts: ResourceType[]; presets: ContainerPreset[] }> = {};
     for (const r of cat)
       if (r.label.toLowerCase().includes(ql) && hasTags(rtTags(r)))
@@ -86,13 +94,14 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       if (p.label.toLowerCase().includes(ql) && hasTags(presetTags(p)))
         (by[p.group || "Apps"] ??= { rts: [], presets: [] }).presets.push(p);
     return by;
-  }, [cat, presets, q, activeTags]);
+  }, [cat, presets, q, tagState]);
 
   // Sort groups: AspireUI first (🤯), then alphabetical.
   const groupKeys = useMemo(() => Object.keys(groups)
     .sort((a, b) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : a.localeCompare(b))), [groups]);
   // Expanded = all groups minus the ones the user collapsed; search/tag filter forces all open.
-  const openValue = (q || activeTags.length > 0) ? groupKeys : groupKeys.filter(g => !collapsed.includes(g));
+  const filtering = q.length > 0 || Object.keys(tagState).length > 0;
+  const openValue = filtering ? groupKeys : groupKeys.filter(g => !collapsed.includes(g));
   const allOpen = groupKeys.every(g => !collapsed.includes(g));
 
   const onCreate = (node: Node, refIds: string[], usedByIds: string[]) => {
@@ -131,19 +140,30 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     <MStack gap="xs" p="sm" h="100%">
       <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
       {allTags.length > 0 && (
-        <Chip.Group multiple value={activeTags} onChange={setActiveTags}>
-          <Group gap={5}>
-            {(tagsExpanded ? allTags : allTags.slice(0, TAG_COLLAPSE)).map(t =>
-              <Chip key={t} value={t} size="xs" variant="light">{t}</Chip>)}
-            {allTags.length > TAG_COLLAPSE && (
-              <UnstyledButton onClick={() => setTagsExpanded(v => !v)} title={tagsExpanded ? "Show fewer" : "Show all filters"}
-                style={{ display: "flex", alignItems: "center", gap: 2, padding: "3px 9px", borderRadius: 999, fontSize: 12,
-                  border: "1px solid var(--mantine-color-default-border)", color: "var(--mantine-color-dimmed)" }}>
-                {tagsExpanded ? <><IconMinus size={12} /> less</> : <><IconPlus size={12} />{allTags.length - TAG_COLLAPSE}</>}
+        <Group gap={5}>
+          {(tagsExpanded ? allTags : allTags.slice(0, TAG_COLLAPSE)).map(t => {
+            const st = tagState[t];
+            const base = { display: "flex", alignItems: "center", gap: 3, padding: "2px 9px", borderRadius: 999, fontSize: 12, cursor: "pointer" } as const;
+            const style = st === "in"
+              ? { ...base, background: "var(--mantine-primary-color-light)", color: "var(--mantine-primary-color-light-color)", border: "1px solid transparent" }
+              : st === "ex"
+                ? { ...base, background: "var(--mantine-color-red-light)", color: "var(--mantine-color-red-light-color)", border: "1px solid transparent", textDecoration: "line-through" }
+                : { ...base, border: "1px solid var(--mantine-color-default-border)", color: "var(--mantine-color-dimmed)" };
+            return (
+              <UnstyledButton key={t} style={style} onClick={() => cycleTag(t)}
+                title={st === "in" ? "Included — click to exclude" : st === "ex" ? "Excluded — click to clear" : "Click to include"}>
+                {st === "ex" && <IconMinus size={11} />}{st === "in" && <IconCheck size={11} />}{t}
               </UnstyledButton>
-            )}
-          </Group>
-        </Chip.Group>
+            );
+          })}
+          {allTags.length > TAG_COLLAPSE && (
+            <UnstyledButton onClick={() => setTagsExpanded(v => !v)} title={tagsExpanded ? "Show fewer" : "Show all filters"}
+              style={{ display: "flex", alignItems: "center", gap: 2, padding: "2px 9px", borderRadius: 999, fontSize: 12,
+                border: "1px dashed var(--mantine-color-default-border)", color: "var(--mantine-color-dimmed)" }}>
+              {tagsExpanded ? <><IconMinus size={12} /> less</> : <><IconPlus size={12} />{allTags.length - TAG_COLLAPSE}</>}
+            </UnstyledButton>
+          )}
+        </Group>
       )}
       <Group justify="flex-end" gap={4}>
         <Tooltip label={allOpen ? "Collapse all" : "Expand all"} withArrow>
