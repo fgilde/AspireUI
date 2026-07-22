@@ -133,8 +133,16 @@
         "${db}"
       ],
       [
+        "PAPERLESS_DBUSER",
+        "paperless"
+      ],
+      [
+        "PAPERLESS_DBPASS",
+        "paperless"
+      ],
+      [
         "PAPERLESS_REDIS",
-        "${redis}"
+        "redis://${redis}:6379"
       ]
     ],
     "companions": [
@@ -324,6 +332,18 @@
       [
         "DB_HOSTNAME",
         "${db}"
+      ],
+      [
+        "DB_USERNAME",
+        "immich"
+      ],
+      [
+        "DB_PASSWORD",
+        "immich"
+      ],
+      [
+        "DB_DATABASE_NAME",
+        "immich"
       ],
       [
         "REDIS_HOSTNAME",
@@ -599,12 +619,20 @@
     "description": "LibreChat — polished multi-model chat UI. Comes with Mongo + Meilisearch companions (scaffold — finish the connection env).",
     "env": [
       [
+        "HOST",
+        "0.0.0.0"
+      ],
+      [
         "MONGO_URI",
-        "${mongo}"
+        "mongodb://${mongo}:27017/LibreChat"
       ],
       [
         "MEILI_HOST",
-        "${meili}"
+        "http://${meili}:7700"
+      ],
+      [
+        "MEILI_MASTER_KEY",
+        "aspireui-dev-master-key"
       ]
     ],
     "companions": [
@@ -625,6 +653,10 @@
           [
             "MEILI_NO_ANALYTICS",
             "true"
+          ],
+          [
+            "MEILI_MASTER_KEY",
+            "aspireui-dev-master-key"
           ]
         ]
       }
