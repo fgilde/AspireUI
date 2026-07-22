@@ -29,7 +29,7 @@ export interface PresetCompanion { key: string; addMethod: string; resourceName:
 // literal env value. `secret` marks it sensitive (AddParameter secret:true, masked). `default` seeds
 // the value; `name` overrides the generated parameter resource name.
 export interface PresetParam { key: string; env: string; default?: string | null; secret?: boolean; name?: string | null }
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean; fixedPort?: boolean }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; bindMounts?: string[][] | null; gpu?: boolean; hostNetwork?: boolean; fixedPort?: boolean }
 
 // What existing resources satisfy a companion role (reuse), and which Aspire resources can stand in
 // as alternatives to the default container. Drives the "reuse / new container / Aspire alternative"
@@ -152,13 +152,17 @@ export function buildPresetNodes(
   // Pass 2: build nodes.
   const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
     ({ method: "WithVolume", args: [JSON.stringify(`${mainName}-${name}`), JSON.stringify(target)] }));
+  // Bind mounts map a HOST path into the container (e.g. Dozzle needs /var/run/docker.sock) — a real
+  // host path, unlike named volumes. Optional 3rd element "ro" mounts it read-only.
+  const bindCalls = (preset.bindMounts ?? []).map(([source, target, ro]) =>
+    ({ method: "WithBindMount", args: [JSON.stringify(source), JSON.stringify(target), ...(ro === "ro" ? ["isReadOnly: true"] : [])] }));
   const gpuCalls = preset.gpu ? [{ method: "WithContainerRuntimeArgs", args: ['"--gpus"', '"all"'] }] : [];
   const main: Node = {
     id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
     // fixedPort pins the published host port to the container port (port: == targetPort:) — needed for
     // apps whose WebUI rejects a mismatched host port (qBittorrent's CSRF/host-header check → "Unauthorized").
-    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env), ...paramEnvCalls],
+    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...bindCalls, ...expandEnv(preset.env), ...paramEnvCalls],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];

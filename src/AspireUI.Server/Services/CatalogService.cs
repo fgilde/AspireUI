@@ -33,7 +33,9 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // resource (AddParameter, secret:true when marked) or a literal env value, via WithEnvironment.
     List<PresetParam>? Params = null, bool Gpu = false, bool HostNetwork = false,
     // Pin the published host port to the container port (some WebUIs reject a mismatched host port).
-    bool FixedPort = false);
+    bool FixedPort = false,
+    // Host-path bind mounts ([source, target] or [source, target, "ro"]) — e.g. Dozzle's docker.sock.
+    List<List<string>>? BindMounts = null);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
 // (Aspire AddX) instead of always dropping this container.

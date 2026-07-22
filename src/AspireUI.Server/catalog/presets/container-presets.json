@@ -443,7 +443,14 @@
     "image": "amir20/dozzle:latest",
     "port": 8080,
     "icon": "dozzle",
-    "description": "Dozzle — real-time Docker container log viewer in the browser."
+    "description": "Dozzle — real-time Docker container log viewer in the browser. Bind-mounts the host Docker socket (read-only) to read container logs.",
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock",
+        "ro"
+      ]
+    ]
   },
   {
     "id": "jellyfin",
