@@ -25,7 +25,7 @@ public static class AuthEndpoints
         var hasher = new PasswordHasher<User>();
         var envHealth = new EnvHealth();
 
-        static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt);
+        static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword);
 
         static async Task SignInUserAsync(HttpContext ctx, User user)
         {
@@ -73,10 +73,25 @@ public static class AuthEndpoints
 
             var result = hasher.VerifyHashedPassword(HasherUser, user.PasswordHash, body.Password);
             if (result == PasswordVerificationResult.Failed) return InvalidCredentials();
+            if (user.Disabled) return Results.Json(new { message = "account is disabled" }, statusCode: StatusCodes.Status403Forbidden);
 
             await SignInUserAsync(ctx, user);
             return Results.Ok(ToDto(user));
         });
+
+        // Self-service password change (any signed-in user). Verifies the current password; clears the
+        // must-change flag on success.
+        app.MapPost("/auth/change-password", async (HttpContext ctx, ChangePasswordRequest body) =>
+        {
+            var id = ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (id is null || store.Get(id) is not { } user) return Results.Unauthorized();
+            if (hasher.VerifyHashedPassword(HasherUser, user.PasswordHash, body.OldPassword) == PasswordVerificationResult.Failed)
+                return Results.BadRequest(new { message = "current password is incorrect" });
+            if (body.NewPassword.Length < 8) return Results.BadRequest(new { message = "password must be at least 8 characters" });
+            store.SetPassword(id, hasher.HashPassword(HasherUser, body.NewPassword), mustChange: false);
+            await Task.CompletedTask;
+            return Results.NoContent();
+        }).RequireAuthorization();
 
         app.MapPost("/auth/logout", async (HttpContext ctx) =>
         {
@@ -122,8 +137,31 @@ public static class AuthEndpoints
             store.Delete(id);
             return Results.NoContent();
         });
+
+        // Admin: set another user's password (optionally forcing a change on their next login).
+        users.MapPut("/{id}/password", (string id, SetPasswordRequest body) =>
+        {
+            if (store.Get(id) is null) return Results.NotFound();
+            if (body.Password.Length < 8) return Results.BadRequest(new { message = "password must be at least 8 characters" });
+            store.SetPassword(id, hasher.HashPassword(HasherUser, body.Password), body.MustChange);
+            return Results.NoContent();
+        });
+
+        // Admin: enable/disable an account. Guard the last admin so nobody locks everyone out.
+        users.MapPut("/{id}/disabled", (string id, SetDisabledRequest body) =>
+        {
+            var user = store.Get(id);
+            if (user is null) return Results.NotFound();
+            if (body.Disabled && user.IsAdmin && store.AdminCount() <= 1)
+                return Results.BadRequest(new { message = "cannot disable the last admin" });
+            store.SetDisabled(id, body.Disabled);
+            return Results.NoContent();
+        });
     }
 
     public record AuthRequest(string Username, string Password);
     public record CreateUserRequest(string Username, string Password, bool IsAdmin);
+    public record ChangePasswordRequest(string OldPassword, string NewPassword);
+    public record SetPasswordRequest(string Password, bool MustChange);
+    public record SetDisabledRequest(bool Disabled);
 }

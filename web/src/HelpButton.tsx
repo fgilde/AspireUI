@@ -7,16 +7,9 @@ const DOCS_URL = "https://fgilde.github.io/AspireUI/";
 // Self-contained Help button + modal used in both the Stacks overview and
 // the Editor header, so each just drops in <HelpButton /> with no shared
 // state to wire up.
-export function HelpButton() {
-  const [opened, setOpened] = useState(false);
+export function HelpModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   return (
-    <>
-      <Tooltip label="Help" withArrow>
-        <ActionIcon variant="default" size="lg" onClick={() => setOpened(true)} aria-label="Help">
-          <IconHelp size={18} />
-        </ActionIcon>
-      </Tooltip>
-      <Modal opened={opened} onClose={() => setOpened(false)} title="How to use AspireUI" size="lg">
+      <Modal opened={opened} onClose={onClose} title="How to use AspireUI" size="lg">
         <MStack gap="sm">
           <div>
             <Title order={6}>Create a stack</Title>
@@ -52,6 +45,19 @@ export function HelpButton() {
           </Anchor>
         </MStack>
       </Modal>
+  );
+}
+
+export function HelpButton() {
+  const [opened, setOpened] = useState(false);
+  return (
+    <>
+      <Tooltip label="Help" withArrow>
+        <ActionIcon variant="default" size="lg" onClick={() => setOpened(true)} aria-label="Help">
+          <IconHelp size={18} />
+        </ActionIcon>
+      </Tooltip>
+      <HelpModal opened={opened} onClose={() => setOpened(false)} />
     </>
   );
 }

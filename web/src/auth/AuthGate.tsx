@@ -33,6 +33,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const target = routeForStatus(status);
   if (target && location.pathname !== target) return <Navigate to={target} replace />;
   if (!target && AUTH_ROUTES.includes(location.pathname)) return <Navigate to="/" replace />;
+  // Admin forced a password change → keep the user on /profile until they change it.
+  if (!target && status.user?.mustChangePassword && location.pathname !== "/profile")
+    return <Navigate to="/profile" replace />;
 
   return <AuthContext.Provider value={{ status, refresh }}>{children}</AuthContext.Provider>;
 }

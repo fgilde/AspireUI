@@ -27,6 +27,10 @@ public class UserStore
                                "id TEXT PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT, " +
                                "is_admin INTEGER, created_at TEXT)";
             cmd.ExecuteNonQuery();
+            // Migrations: add columns for accounts added after v1 (ignore "duplicate column" on re-run).
+            foreach (var col in new[] { "disabled INTEGER DEFAULT 0", "must_change_password INTEGER DEFAULT 0" })
+                try { using var alter = conn.CreateCommand(); alter.CommandText = $"ALTER TABLE users ADD COLUMN {col}"; alter.ExecuteNonQuery(); }
+                catch { /* column already exists */ }
         });
     }
 
@@ -38,8 +42,10 @@ public class UserStore
         action(conn);
     }
 
+    private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password";
     private static User Read(SqliteDataReader r) => new(
-        r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0, r.GetString(4));
+        r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0, r.GetString(4),
+        !r.IsDBNull(5) && r.GetInt64(5) != 0, !r.IsDBNull(6) && r.GetInt64(6) != 0);
 
     public int Count()
     {
@@ -71,7 +77,7 @@ public class UserStore
         UsingConnection(conn =>
         {
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT id, username, password_hash, is_admin, created_at FROM users WHERE username=$u";
+            cmd.CommandText = $"SELECT {Cols} FROM users WHERE username=$u";
             cmd.Parameters.AddWithValue("$u", username);
             using var r = cmd.ExecuteReader();
             if (r.Read()) result = Read(r);
@@ -85,7 +91,7 @@ public class UserStore
         UsingConnection(conn =>
         {
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT id, username, password_hash, is_admin, created_at FROM users WHERE id=$i";
+            cmd.CommandText = $"SELECT {Cols} FROM users WHERE id=$i";
             cmd.Parameters.AddWithValue("$i", id);
             using var r = cmd.ExecuteReader();
             if (r.Read()) result = Read(r);
@@ -99,7 +105,7 @@ public class UserStore
         UsingConnection(conn =>
         {
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT id, username, password_hash, is_admin, created_at FROM users ORDER BY username";
+            cmd.CommandText = $"SELECT {Cols} FROM users ORDER BY username";
             using var r = cmd.ExecuteReader();
             while (r.Read()) result.Add(Read(r));
         });
@@ -124,6 +130,25 @@ public class UserStore
         });
         return user;
     }
+
+    public void SetPassword(string id, string passwordHash, bool mustChange) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE users SET password_hash=$h, must_change_password=$m WHERE id=$i";
+        cmd.Parameters.AddWithValue("$h", passwordHash);
+        cmd.Parameters.AddWithValue("$m", mustChange ? 1 : 0);
+        cmd.Parameters.AddWithValue("$i", id);
+        cmd.ExecuteNonQuery();
+    });
+
+    public void SetDisabled(string id, bool disabled) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE users SET disabled=$d WHERE id=$i";
+        cmd.Parameters.AddWithValue("$d", disabled ? 1 : 0);
+        cmd.Parameters.AddWithValue("$i", id);
+        cmd.ExecuteNonQuery();
+    });
 
     public bool Delete(string id)
     {

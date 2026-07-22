@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
-  IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
+  IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
@@ -16,10 +16,7 @@ import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
-import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
-import { ThemeMenu } from "../ThemeMenu";
-import { GitHubLink } from "../GitHubLink";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
@@ -234,14 +231,6 @@ export function StacksOverview() {
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
               <input ref={composeInputRef} type="file" accept=".yml,.yaml" hidden onChange={onComposePicked} />
 
-              <Tooltip label="Settings" withArrow>
-                <ActionIcon variant="default" size="lg" onClick={() => nav("/settings")} aria-label="Settings">
-                  <IconSettings size={18} />
-                </ActionIcon>
-              </Tooltip>
-              <HelpButton />
-              <GitHubLink />
-              <ThemeMenu />
               <UserMenu />
             </Group>
           </Group>

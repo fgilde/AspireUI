@@ -1,9 +1,41 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete } from "@mantine/core";
-import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle } from "@tabler/icons-react";
-import type { AppSettings } from "../model";
+import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader } from "@mantine/core";
+import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2 } from "@tabler/icons-react";
+import type { AppSettings, EnvHealth } from "../model";
+import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
+
+// Environment/about tab — server-side health of the tools a run needs, plus the build version.
+function EnvTab() {
+  const [env, setEnv] = useState<EnvHealth | null>(null);
+  useEffect(() => { api.envHealth().then(setEnv).catch(() => {}); }, []);
+  const row = (label: string, ok: boolean, detail: string) => (
+    <Group justify="space-between">
+      <Text size="sm">{label}</Text>
+      <Group gap={8}>
+        <Text size="xs" c="dimmed">{detail}</Text>
+        <Badge size="sm" variant="light" color={ok ? "green" : "red"}>{ok ? "OK" : "missing"}</Badge>
+      </Group>
+    </Group>
+  );
+  return (
+    <MStack gap="sm">
+      <Text size="sm" c="dimmed">Tools the machine hosting AspireUI needs to run stacks.</Text>
+      {!env ? <Loader size="sm" /> : (
+        <>
+          {row(".NET SDK", env.dotnet.ok, env.dotnet.version)}
+          {row("Docker", env.docker.ok, env.docker.detail)}
+          {row("Git", env.git.ok, env.git.detail)}
+        </>
+      )}
+      <Group justify="space-between" mt="md">
+        <Text size="sm">Version</Text>
+        <Text size="xs" c="dimmed">v{APP_VERSION} · {BUILD_INFO}</Text>
+      </Group>
+    </MStack>
+  );
+}
 
 const EMPTY: AppSettings = { aiBaseUrl: "", aiApiKey: "", aiModel: "", aiProviderLabel: "" };
 
@@ -69,7 +101,13 @@ export function Settings() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <Container size="sm">
+        <Container size="md">
+          <Tabs defaultValue="ai" orientation="vertical" variant="pills">
+            <Tabs.List mr="lg">
+              <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
+              <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="ai" style={{ flex: 1 }}>
           <Text c="dimmed" size="sm" mb="lg">
             Configure the AI backend used by the assistant. Either an OpenAI-compatible HTTP endpoint
             (LocalAI, Ollama, OpenAI, …) or a locally-installed agent CLI on this server.
@@ -142,6 +180,11 @@ export function Settings() {
               <Button onClick={save} loading={saving}>Save</Button>
             </Group>
           </MStack>
+            </Tabs.Panel>
+            <Tabs.Panel value="env" style={{ flex: 1 }}>
+              <EnvTab />
+            </Tabs.Panel>
+          </Tabs>
         </Container>
       </AppShell.Main>
     </AppShell>

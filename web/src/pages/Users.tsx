@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ActionIcon, Alert, AppShell, Badge, Button, Container, Group, PasswordInput,
-  Stack as MStack, Switch, Table, TextInput, Title, Tooltip,
+  Stack as MStack, Switch, Table, TextInput, Title, Menu, Modal,
 } from "@mantine/core";
-import { IconAlertCircle, IconArrowLeft, IconTrash } from "@tabler/icons-react";
+import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen } from "@tabler/icons-react";
 import type { UserDto } from "../model";
 import * as api from "../api";
 
@@ -61,6 +61,25 @@ export function Users() {
     }
   };
 
+  const toggleDisabled = async (u: UserDto) => {
+    setError(null);
+    try { await api.adminSetDisabled(u.id, !u.disabled); await refresh(); }
+    catch (e) { setError(errorMessage(e, "Failed to update user.")); }
+  };
+
+  // Set-password dialog state.
+  const [pwTarget, setPwTarget] = useState<UserDto | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [pwForce, setPwForce] = useState(true);
+  const submitPassword = async () => {
+    if (!pwTarget) return;
+    if (pwValue.length < 8) { setError("Password must be at least 8 characters."); return; }
+    setBusy(true);
+    try { await api.adminSetPassword(pwTarget.id, pwValue, pwForce); setPwTarget(null); setPwValue(""); await refresh(); }
+    catch (e) { setError(errorMessage(e, "Failed to set password.")); }
+    finally { setBusy(false); }
+  };
+
   return (
     <AppShell header={{ height: 56 }} padding="lg">
       <AppShell.Header>
@@ -83,6 +102,7 @@ export function Users() {
               <Table.Tr>
                 <Table.Th>Username</Table.Th>
                 <Table.Th>Role</Table.Th>
+                <Table.Th>Status</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th />
               </Table.Tr>
@@ -91,26 +111,43 @@ export function Users() {
               {users.map(u => {
                 const lastAdmin = u.isAdmin && adminCount <= 1;
                 return (
-                  <Table.Tr key={u.id}>
+                  <Table.Tr key={u.id} style={u.disabled ? { opacity: 0.55 } : undefined}>
                     <Table.Td>{u.username}</Table.Td>
                     <Table.Td>{u.isAdmin && <Badge color="indigo" variant="light">Admin</Badge>}</Table.Td>
+                    <Table.Td>
+                      {u.disabled
+                        ? <Badge color="red" variant="light">Disabled</Badge>
+                        : <Badge color="green" variant="light">Active</Badge>}
+                      {u.mustChangePassword && <Badge ml={4} color="yellow" variant="light">Must change pw</Badge>}
+                    </Table.Td>
                     <Table.Td>{new Date(u.createdAt).toLocaleDateString()}</Table.Td>
                     <Table.Td>
-                      <Tooltip label="Can't delete the last admin" withArrow disabled={!lastAdmin}>
-                        <ActionIcon
-                          variant="subtle" color="red"
-                          aria-label={`Delete ${u.username}`}
-                          onClick={() => removeUser(u.id)}
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Tooltip>
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${u.username}`}><IconDots size={16} /></ActionIcon></Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item leftSection={<IconKey size={14} />} onClick={() => { setPwTarget(u); setPwValue(""); setPwForce(true); }}>Set password…</Menu.Item>
+                          <Menu.Item leftSection={u.disabled ? <IconLockOpen size={14} /> : <IconLock size={14} />}
+                            disabled={!u.disabled && lastAdmin}
+                            onClick={() => toggleDisabled(u)}>{u.disabled ? "Enable" : "Disable"}</Menu.Item>
+                          <Menu.Divider />
+                          <Menu.Item color="red" leftSection={<IconTrash size={14} />} disabled={lastAdmin}
+                            onClick={() => removeUser(u.id)}>Delete</Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
                     </Table.Td>
                   </Table.Tr>
                 );
               })}
             </Table.Tbody>
           </Table>
+
+          <Modal opened={!!pwTarget} onClose={() => setPwTarget(null)} title={`Set password — ${pwTarget?.username}`} centered>
+            <MStack gap="md">
+              <PasswordInput label="New password" description="At least 8 characters" value={pwValue} onChange={e => setPwValue(e.currentTarget.value)} />
+              <Switch label="Require change on next login" checked={pwForce} onChange={e => setPwForce(e.currentTarget.checked)} />
+              <Group justify="flex-end"><Button onClick={submitPassword} loading={busy}>Set password</Button></Group>
+            </MStack>
+          </Modal>
 
           <MStack gap="md" maw={360}>
             <Title order={5}>Add user</Title>

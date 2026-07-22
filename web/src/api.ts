@@ -41,6 +41,12 @@ export const listUsers = (): Promise<UserDto[]> => fetch(`${base}/users`).then(o
 export const createUser = (username: string, password: string, isAdmin: boolean): Promise<UserDto> =>
   fetch(`${base}/users`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, isAdmin }) }).then(ok);
 export const deleteUser = (id: string): Promise<void> => fetch(`${base}/users/${id}`, { method: "DELETE" }).then(okVoid);
+export const adminSetPassword = (id: string, password: string, mustChange: boolean): Promise<void> =>
+  fetch(`${base}/users/${id}/password`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, mustChange }) }).then(okVoid);
+export const adminSetDisabled = (id: string, disabled: boolean): Promise<void> =>
+  fetch(`${base}/users/${id}/disabled`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ disabled }) }).then(okVoid);
+export const changePassword = (oldPassword: string, newPassword: string): Promise<void> =>
+  fetch(`${base}/auth/change-password`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ oldPassword, newPassword }) }).then(okVoid);
 
 export const getCatalog = () => fetch(`${base}/catalog`).then(ok);
 export const getPresets = (): Promise<import("./model").ContainerPreset[]> => fetch(`${base}/catalog/presets`).then(ok);

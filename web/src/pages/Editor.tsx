@@ -9,10 +9,7 @@ import { DockLayout, EditorContext } from "../editor/DockLayout";
 import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
 import { ValidateBadge } from "../editor/ValidateBadge";
-import { HelpButton } from "../HelpButton";
 import { UserMenu } from "../auth/UserMenu";
-import { ThemeMenu } from "../ThemeMenu";
-import { GitHubLink } from "../GitHubLink";
 import { promptText, toastOk, toastErr } from "../ui";
 
 const HEADER_HEIGHT = 56;
@@ -202,9 +199,6 @@ export function Editor() {
                   <Menu.Item onClick={() => openIde("vs")}>Visual Studio</Menu.Item>
                 </Menu.Dropdown>
               </Menu>
-              <HelpButton />
-              <GitHubLink />
-              <ThemeMenu />
               <UserMenu />
             </Group>
           </Group>
