@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper, Chip } from "@mantine/core";
-import { IconSend } from "@tabler/icons-react";
+import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper, Chip, ActionIcon, Tooltip } from "@mantine/core";
+import { IconSend, IconX, IconTrash } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
 import * as api from "../api";
 
@@ -64,6 +64,12 @@ export function AssistPanel() {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {history.length > 0 && (
+        <Group justify="flex-end" px="sm" pt={4}>
+          <Button size="compact-xs" variant="subtle" color="gray" leftSection={<IconTrash size={12} />}
+            onClick={() => setHistory([])}>Clear all</Button>
+        </Group>
+      )}
       <ScrollArea style={{ flex: 1 }} px="sm" py="xs">
         {history.length === 0 && (
           <Text size="sm" c="dimmed">Ask the AI assistant to change this stack, e.g. "add a Redis cache".</Text>
@@ -71,7 +77,13 @@ export function AssistPanel() {
         <MStack gap="xs">
           {history.map((e, i) => (
             <Paper key={i} withBorder p="xs" radius="sm">
-              <Text size="sm" fw={600}>{e.prompt}</Text>
+              <Group justify="space-between" wrap="nowrap" align="flex-start" gap={6}>
+                <Text size="sm" fw={600} style={{ flex: 1, minWidth: 0 }}>{e.prompt}</Text>
+                <Tooltip label="Remove" withArrow>
+                  <ActionIcon size="xs" variant="subtle" color="gray"
+                    onClick={() => setHistory(h => h.filter((_, j) => j !== i))}><IconX size={13} /></ActionIcon>
+                </Tooltip>
+              </Group>
               {e.error ? (
                 <>
                   <Text size="sm" c="red">{e.error}</Text>
