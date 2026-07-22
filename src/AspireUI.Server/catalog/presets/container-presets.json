@@ -83,7 +83,11 @@
     "image": "langflowai/langflow:latest",
     "port": 7860,
     "icon": "langflow",
-    "description": "Langflow — visual builder for LangChain-style LLM flows and agents."
+    "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
+    "env": [
+      ["LANGFLOW_SUPERUSER", "admin"],
+      ["LANGFLOW_SUPERUSER_PASSWORD", "admin"]
+    ]
   },
   {
     "id": "flowise",
@@ -631,7 +635,19 @@
     "image": "mintplexlabs/anythingllm:latest",
     "port": 3001,
     "icon": "anythingllm",
-    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM."
+    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM.",
+    "env": [
+      [
+        "STORAGE_DIR",
+        "/app/server/storage"
+      ]
+    ],
+    "volumes": [
+      [
+        "storage",
+        "/app/server/storage"
+      ]
+    ]
   },
   {
     "id": "librechat",
