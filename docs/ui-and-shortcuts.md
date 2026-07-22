@@ -24,24 +24,41 @@ The **Layout** menu (editor header) lets you:
 
 Your last arrangement is also auto-restored between sessions.
 
+## Account menu
+
+Everything account- and app-level lives in one tidy **account menu** (the avatar, top-right): your
+**Profile**, **Users** (admins), **Settings**, the **theme** picker, **Help & docs**, a **GitHub**
+link, and **Logout** — so the header itself stays uncluttered.
+
 ## Themes
 
-Pick a theme from the **palette icon** in the header. Themes replace the old dark/light toggle and
-restyle everything — Mantine surfaces, the dockview panels, the canvas, and the code editor:
+Open the **Theme** entry in the account menu to slide out a picker with a **live preview card** for
+each theme — drag nothing, just click one. Themes restyle everything: Mantine surfaces, the dockview
+panels, the canvas, and the code editor.
 
-![Theme menu](screenshots/themes.png)
+<div class="img-compare"><img src="screenshots/theme-drawer-github-dark.png" data-label="GitHub Dark"><img src="screenshots/theme-drawer-blazor.png" data-label="Blazor"></div>
 
 Included: **Ocean** (default), **GitHub Dark**, **GitHub Light**, **Aspire Dashboard**, **Blazor**,
-**Dracula**, **Nord**, **One Dark**, **Monokai**, **Terminal** (green-on-black, monospace),
-**Solarized Dark**, **Solarized Light**. Each carries a faithful palette (backgrounds, borders, text,
-accent) — GitHub really looks like GitHub, Terminal like a console, etc. Your choice persists locally.
+**Dracula**, **Nord**, **One Dark**, **Monokai**, **Terminal**, **Solarized Dark/Light**, plus the
+playful set: **Neon Glow**, **Synthwave**, **Hologram**, **Nightlife**, **Obsidian**, **Stage**,
+**Dev**, **Link Hub** and **Kiosk**. Each carries a faithful palette — GitHub really looks like
+GitHub, Terminal like a console. Your choice persists locally.
+
+## Custom palette tab
+
+The palette's **Custom** tab holds your own building blocks. Save any configured node (with its
+companions, referenced parameters and edges) — or a whole selection/group — as a reusable **snippet**
+via the bookmark action, then drop it again like any catalog item. With an AI backend configured, the
+**Auto-add from URL** button researches a GitHub/Docker Hub/docs URL and drafts the resources for you.
+
+<div class="img-compare"><img src="screenshots/palette-custom-github-dark.png" data-label="GitHub Dark"><img src="screenshots/palette-custom-blazor.png" data-label="Blazor"></div>
 
 ## Command palette
 
 Press **Ctrl/⌘ + K** anywhere for the command palette: jump to Stacks / Settings / Users, open any
 stack by name, or switch theme — all from the keyboard.
 
-![Command palette](screenshots/command-palette.png)
+<div class="img-compare"><img src="screenshots/command-palette-github-dark.png" data-label="GitHub Dark"><img src="screenshots/command-palette-blazor.png" data-label="Blazor"></div>
 
 ## Keyboard shortcuts
 

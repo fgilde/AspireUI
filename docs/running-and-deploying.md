@@ -32,6 +32,8 @@ traffic-light, its endpoint link, and a **logs** button that streams that resour
 A **Stop** button and a running-count are in the header, plus a one-click link to the full **Aspire
 dashboard** (new tab) for traces/metrics. When the stack isn't running, a Start button.
 
+<div class="img-compare"><img src="screenshots/dashboard-github-dark.png" data-label="GitHub Dark"><img src="screenshots/dashboard-blazor.png" data-label="Blazor"></div>
+
 ## Publishing & deploying
 
 The editor's **Publish / Deploy** panel turns a stack into real deployment artifacts using Aspire's

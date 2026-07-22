@@ -4,7 +4,7 @@ A stack is a canvas of resource nodes and references between them, backed 1:1 by
 `Program.cs`. Everything you do in the editor keeps that C# in sync — the **Code preview** panel is
 a live, read-only view of exactly what will be generated.
 
-![The editor](screenshots/editor.png)
+<div class="img-compare"><img src="screenshots/editor-github-dark.png" data-label="GitHub Dark"><img src="screenshots/editor-blazor.png" data-label="Blazor"></div>
 
 ## The canvas
 
@@ -26,7 +26,8 @@ Aspire integrations show up automatically once their package is referenced. A cu
 friendly labels, brand logos, grouping and descriptions on top; resources without an overlay still
 work generically. The generated project only references the packages for resources you actually use.
 
-Click a palette entry to open its add dialog.
+Click a palette entry to open its add dialog. Switch to the **Custom** tab for one-click **app
+presets** (see below) and your own saved snippets.
 
 ### Setup / composite extensions
 
@@ -42,7 +43,7 @@ time you'll see everything it created via the [live child-resource view](live-re
 
 Adding a resource opens a form (not a bare node) that also teaches you the Aspire API:
 
-![Add-resource dialog](screenshots/add-dialog.png)
+<div class="img-compare"><img src="screenshots/add-dialog-github-dark.png" data-label="GitHub Dark"><img src="screenshots/add-dialog-blazor.png" data-label="Blazor"></div>
 
 - A one-line **description** of what the resource is.
 - **Name** — required; becomes the resource's variable name in the generated code.
@@ -58,10 +59,35 @@ Adding a resource opens a form (not a bare node) that also teaches you the Aspir
 - A **live code preview** shows the exact C# the dialog will generate as you type — including the
   reference wiring in both directions — great for learning what each option produces.
 
+## App presets & their dependencies
+
+Beyond raw Aspire resources, the palette ships a big library of **one-click app presets** — ready-to-run
+containers like Jellyfin, the *arr apps + qBittorrent, Immich, Paperless, Pi-hole, AdGuard, Home
+Assistant, Node-RED, LibreChat, Open WebUI, ComfyUI, code-server and many more — each with the right
+image, ports, volumes and environment pre-filled.
+
+Many apps need **backing services** (a database, cache, search engine, LLM). When you drop such a
+preset, AspireUI asks how to satisfy each dependency — reuse a resource already on the canvas, drop a
+fresh container, or add a real Aspire resource — so you never end up with duplicate Postgres/Redis
+instances. Passwords and secrets are offered as **Aspire parameters** (or a plain value), and are
+seeded with a changeable default.
+
+Here Immich is being added to a stack that already has Postgres and Redis — its `postgres` and `redis`
+dependencies default to **reusing** the existing ones, while the ML service gets its own container:
+
+<div class="img-compare"><img src="screenshots/companion-picker-github-dark.png" data-label="GitHub Dark"><img src="screenshots/companion-picker-blazor.png" data-label="Blazor"></div>
+
+Everything a preset drops (the app, its companions, its parameters) is wired together on the canvas
+with the appropriate `WithReference` / `WaitFor` edges and env references — ready to tweak.
+
 ## The property grid
 
-Selecting a node shows its editable fields. Small **ℹ️ icons** on the sections explain the underlying
-Aspire concept as you go.
+Selecting a node shows its editable fields, and highlights the exact lines it produces in the **Code**
+panel (see [Learn Aspire as you build](#learn-aspire-as-you-build)).
+
+<div class="img-compare"><img src="screenshots/property-grid-github-dark.png" data-label="GitHub Dark"><img src="screenshots/property-grid-blazor.png" data-label="Blazor"></div>
+
+Small **ℹ️ icons** on the sections explain the underlying Aspire concept as you go.
 
 - **Quick settings** (for resources with endpoints): a **Publicly accessible** toggle
   (`WithExternalHttpEndpoints()`) and an **HTTP port** field (`WithHttpEndpoint(port:)`) — the common
@@ -98,12 +124,23 @@ direction, or **remove** the connection. `WaitFor`-only edges render dashed.
 The **Validation** panel (and the health badge in the header) run Roslyn diagnostics over the
 generated code and list any errors/warnings. Clicking the badge focuses the panel and flashes it.
 
+<div class="img-compare"><img src="screenshots/validation-github-dark.png" data-label="GitHub Dark"><img src="screenshots/validation-blazor.png" data-label="Blazor"></div>
+
 ## Code preview
 
 The **Code preview** panel is the generated `Program.cs`, syntax-highlighted, refreshed after every
 save. It's read-only — think of it as a live receipt, not an editing surface. Nothing you do bypasses
 it: every change on the canvas or in the property grid is round-tripped through the same model that
 generates this code.
+
+## Learn Aspire as you build
+
+AspireUI doubles as a way to *learn* .NET Aspire. Select any node and the **Code** panel highlights
+exactly the lines that resource produces — a gutter marker on every line, the node's variable name
+emphasised, and it scrolls the first one into view. Combined with the add-dialog's live preview and the
+property grid's ℹ️ hints, you can always see the C# behind each visual action.
+
+<div class="img-compare"><img src="screenshots/code-highlight-github-dark.png" data-label="GitHub Dark"><img src="screenshots/code-highlight-blazor.png" data-label="Blazor"></div>
 
 ## Code editor (Monaco + C# IntelliSense)
 

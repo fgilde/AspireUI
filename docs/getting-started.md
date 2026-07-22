@@ -21,7 +21,7 @@ reverse proxy + TLS in front before exposing it beyond localhost.
 
 ## Your first stack
 
-![Stacks overview](screenshots/overview.png)
+<div class="img-compare"><img src="screenshots/overview-github-dark.png" data-label="GitHub Dark"><img src="screenshots/overview-blazor.png" data-label="Blazor"></div>
 
 1. The **Stacks overview** lists your stacks — each card shows a live status traffic-light and
    run/stop/open-dashboard buttons, plus a ⋯ menu (rename / duplicate / delete) and a search box.
@@ -37,6 +37,11 @@ reverse proxy + TLS in front before exposing it beyond localhost.
    resources each builder spawns appear as live child nodes, and a terminal button streams any
    resource's logs — see [Live Resources & Logs](live-resources.md). Open the **Dashboard** panel or
    the Aspire dashboard link for full telemetry.
+
+The editor itself — palette on the left, canvas in the middle, properties on the right, dockable
+panels along the bottom:
+
+<div class="img-compare"><img src="screenshots/editor-github-dark.png" data-label="GitHub Dark"><img src="screenshots/editor-blazor.png" data-label="Blazor"></div>
 
 ## Demo templates
 

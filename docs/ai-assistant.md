@@ -6,28 +6,36 @@ applies the change directly to the canvas.
 
 ## Configure a provider
 
-Open **Settings** and fill in:
+Open **Settings → AI assistant** and pick a backend:
 
-- **Base URL** — an OpenAI-compatible endpoint, e.g. your own LocalAI or Ollama instance, OpenAI
-  itself, or any other service exposing `POST {baseUrl}/v1/chat/completions`.
-- **API key** — sent as a bearer token. Once saved it's never echoed back to the browser (the field
-  shows as masked); leave it as-is to keep the stored key, or clear it to remove it.
-- **Model** — the model name to request from that endpoint.
-- **Provider label** — a friendly name shown in the UI.
+**HTTP endpoint** — any OpenAI-compatible service exposing `POST {baseUrl}/v1/chat/completions`
+(your own LocalAI/Ollama, OpenAI itself, …):
 
-AspireUI deliberately doesn't hardcode a single AI vendor — any OpenAI-compatible endpoint works,
-so you can point it at a local model instead of a cloud provider. Settings are stored server-side
-(SQLite), separate from your stacks, so they apply across all of them.
+- **Base URL**, **API key** (bearer token, masked once saved), **Model**, and a friendly **Provider
+  label**. Hit **Detect** to list the endpoint's models, and **Test connection** for a live round-trip
+  that reports the model + latency or the exact error.
 
-Until a Base URL is configured, the assistant tells you to set it up in Settings rather than doing
-anything.
+**Local CLI** — an agent CLI installed on the machine running AspireUI: **claude**, **gemini**,
+**llm**, **ollama** or **codex** (whitelisted; the server runs the fixed executable with your prompt,
+never a shell). Pick the tool and a model where relevant, then **Test connection**.
+
+AspireUI deliberately doesn't hardcode a single AI vendor. Settings are stored server-side (SQLite),
+separate from your stacks, so they apply across all of them. Until a backend is configured the
+assistant tells you to set one up in Settings.
 
 ## Using the assistant
+
+<div class="img-compare"><img src="screenshots/assistant-github-dark.png" data-label="GitHub Dark"><img src="screenshots/assistant-blazor.png" data-label="Blazor"></div>
 
 In the editor, open the **Assistant** panel, type a request, and send it. AspireUI sends the
 current stack plus a compact summary of the catalog (available resource types and their parameters)
 to the configured model and asks for an updated stack back. On success, the change is applied to the
 canvas and code preview immediately; the assistant's reply text (plus any error) shows in the panel.
+Each answer can be dismissed individually, or clear the whole thread.
+
+A **Graph / Code** toggle picks how the assistant works: *Graph* edits the resource model directly
+(default); *Code* rewrites the generated `Program.cs` and re-parses it — more robust for backends that
+don't reliably produce the graph JSON.
 
 A few things to know:
 
