@@ -696,6 +696,14 @@
       [
         "CREDS_IV",
         "e2341419ec3dd3d19b13a1a87fafcbfb"
+      ],
+      [
+        "ALLOW_REGISTRATION",
+        "true"
+      ],
+      [
+        "ALLOW_EMAIL_LOGIN",
+        "true"
       ]
     ],
     "companions": [
