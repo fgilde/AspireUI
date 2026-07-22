@@ -37,58 +37,57 @@ public class AssistService(IChatClient chat, CatalogService catalog)
         }
     }
 
-    // Research a URL (github/dockerhub/docs) and, if the thing is runnable as a container app, draft a
-    // preset (image/port/env/params/companions/volumes) for review. The model uses the URL + its own
-    // knowledge (it does not fetch the page). Returns (ok, reason, preset).
-    public async Task<(bool Ok, string? Reason, ContainerPreset? Preset)> AutoPresetAsync(string url, AppSettings settings)
+    // Research a project (URL + fetched page/README content) and write the Aspire C# builder statements
+    // to add + wire it — open-minded: a GitHub repo → AddGithubRepository (built & run directly, no
+    // published image needed), a known image → AddContainer, plus companions (AddPostgres/…) and env/
+    // reference/waitFor wiring. Returns the raw C# body; the caller parses it into nodes/edges via the
+    // normal import path. Returns (ok, reason, code).
+    public async Task<(bool Ok, string? Reason, string? Code)> AutoAddCodeAsync(string url, string context, AppSettings settings)
     {
-        var system = """
-            You turn a project URL (GitHub repo, Docker Hub image, or docs page) into an AspireUI
-            container "preset" so it can be dropped onto a canvas. Decide from the URL and your own
-            knowledge whether the project can run as a Docker container.
+        var addMethods = string.Join(", ", catalog.GetCatalog().Select(r => r.AddMethod).Distinct().OrderBy(x => x));
+        var system = $$"""
+            You extend a .NET Aspire AppHost. Given a project (URL + fetched content below), write ONLY
+            the C# builder statements that add and wire it. No `var builder = ...`, no `builder.Build()`,
+            no using directives, no markdown fences, no prose.
 
-            Respond with ONLY a JSON object, no markdown fences, no prose. Either:
-              {"ok": false, "reason": "<short why not>"}
-            or a preset object with these fields (omit ones that don't apply):
-              {
-                "id": "<kebab-id>", "label": "<name>", "group": "Custom",
-                "image": "<docker image:tag>", "port": <main http port int>,
-                "description": "<one line>",
-                "env": [["KEY","value"], ...],
-                "params": [{"key":"password","env":"ENV_NAME","default":"...","secret":true}, ...],
-                "companions": [{"key":"db","addMethod":"AddContainer","resourceName":"<app>-db","image":"postgres:16","port":5432,"role":"postgres"}, ...],
-                "volumes": [["data","/container/path"], ...]
-              }
-            Rules: only a real, existing image. Put passwords/keys/secrets in "params" (secret:true),
-            plain settings in "env". Use companions with a "role" (postgres/redis/mongo/meilisearch/llm)
-            for required backends. Prefer an official image. If unsure it can containerize, return ok:false.
+            Be resourceful and open-minded — you do NOT need a published Docker image:
+            - A GitHub repo you can build & run directly: builder.AddGithubRepository("name", "<repo url>")
+              then .WithHttpEndpoint(...), .WithExternalHttpEndpoints(), .WithEnvironment(...), .WaitFor(...).
+            - A known published image: builder.AddContainer("name", "image:tag").WithHttpEndpoint(targetPort: N).
+            - Add required backends as companions and wire them: e.g.
+                var db = builder.AddPostgres("postgres").AddDatabase("appdb");
+                app.WithReference(db).WaitFor(db);
+              or set a connection string via .WithEnvironment("DATABASE_URL", ...).
+            - Read the fetched content to infer the framework, ports, needed services and env vars.
+
+            Only use AddX methods from this catalog: {{addMethods}}.
+            Prefer the simplest wiring that would actually run. If it is genuinely impossible, output ONLY
+            one line: // CANNOT: <short reason>.
+
+            Project URL: {{url}}
+
+            Fetched content (truncated):
+            {{context}}
             """;
-        var raw = await chat.CompleteAsync(system, $"URL: {url}", settings);
-        var json = ExtractJsonObject(raw);
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("ok", out var okp) && okp.ValueKind == JsonValueKind.False)
-                return (false, doc.RootElement.TryGetProperty("reason", out var rp) ? rp.GetString() : "Not feasible.", null);
-            var preset = JsonSerializer.Deserialize<ContainerPreset>(json, JsonOpts);
-            if (preset is null || string.IsNullOrWhiteSpace(preset.Image))
-                return (false, "The AI didn't return a usable container image.", null);
-            preset = preset with
-            {
-                Id = string.IsNullOrWhiteSpace(preset.Id) ? "ai-" + Guid.NewGuid().ToString("n")[..6] : preset.Id,
-                Label = string.IsNullOrWhiteSpace(preset.Label) ? preset.Id : preset.Label,
-                Group = string.IsNullOrWhiteSpace(preset.Group) ? "Custom" : preset.Group,
-                Port = preset.Port <= 0 ? 80 : preset.Port,
-            };
-            return (true, null, preset);
-        }
-        catch (Exception ex) { return (false, $"Could not parse the AI reply: {ex.Message}", null); }
+        var raw = (await chat.CompleteAsync(system, $"Write the Aspire builder statements for: {url}", settings)).Trim();
+        var code = StripFences(raw);
+        if (code.TrimStart().StartsWith("// CANNOT", StringComparison.OrdinalIgnoreCase))
+            return (false, code.TrimStart()["// CANNOT:".Length..].Trim().TrimStart(':').Trim(), null);
+        if (string.IsNullOrWhiteSpace(code) || !code.Contains(".Add", StringComparison.Ordinal))
+            return (false, "The AI didn't produce usable Aspire code.", null);
+        return (true, null, code);
     }
 
-    private static string ExtractJsonObject(string s)
+    // Some models wrap code in ```csharp ... ``` fences despite instructions; strip them.
+    private static string StripFences(string s)
     {
-        int i = s.IndexOf('{'), j = s.LastIndexOf('}');
-        return i >= 0 && j > i ? s[i..(j + 1)] : s;
+        s = s.Trim();
+        if (!s.StartsWith("```")) return s;
+        var firstNl = s.IndexOf('\n');
+        if (firstNl < 0) return s;
+        var body = s[(firstNl + 1)..];
+        var lastFence = body.LastIndexOf("```", StringComparison.Ordinal);
+        return (lastFence >= 0 ? body[..lastFence] : body).Trim();
     }
 
     // Read-only: explain the current stack for someone learning Aspire. Returns Markdown prose

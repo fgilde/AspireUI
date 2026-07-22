@@ -137,14 +137,26 @@ public static class StackEndpoints
         app2.MapDelete("/snippets/{id}", (string id) =>
             snippets.Delete(id) ? Results.NoContent() : Results.NotFound());
 
-        // AI auto-add: research a URL and draft a container preset for review. Never throws.
+        // AI auto-add: fetch the URL (README/page), let the assistant write Aspire builder C# (open-minded:
+        // AddGithubRepository / AddContainer / companions / wiring), then parse it into nodes+edges via the
+        // normal import path for review. Never throws.
         app2.MapPost("/catalog/auto-preset", async (AutoPresetRequest body) =>
         {
             var s = settings.Get();
             if (!AiConfigured(s)) return Results.Ok(new { ok = false, reason = "AI backend not configured (see Settings)." });
             if (string.IsNullOrWhiteSpace(body.Url)) return Results.Ok(new { ok = false, reason = "No URL." });
-            var (okr, reason, preset) = await assist.AutoPresetAsync(body.Url, s);
-            return Results.Ok(new { ok = okr, reason, preset });
+            try
+            {
+                var context = await FetchUrlContext(body.Url);
+                var (okr, reason, code) = await assist.AutoAddCodeAsync(body.Url, context, s);
+                if (!okr || code is null) return Results.Ok(new { ok = false, reason });
+                var program = $"var builder = DistributedApplication.CreateBuilder(args);\n{code}\nbuilder.Build().Run();";
+                var frag = import.Import("autoadd", "autoadd", program, "");
+                if (frag.Nodes.Count == 0)
+                    return Results.Ok(new { ok = false, reason = "The generated code didn't parse into any resources.", code });
+                return Results.Ok(new { ok = true, code, nodes = frag.Nodes, edges = frag.Edges });
+            }
+            catch (Exception ex) { return Results.Ok(new { ok = false, reason = ex.Message }); }
         });
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
@@ -477,6 +489,59 @@ public static class StackEndpoints
             Directory.Exists(PublishOut(id))
                 ? Results.Ok(deploy.Down(PublishOut(id)))
                 : Results.Conflict(new { message = "nothing deployed" }));
+    }
+
+    private static readonly HttpClient Web = CreateWebClient();
+    private static HttpClient CreateWebClient()
+    {
+        var c = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        c.DefaultRequestHeaders.UserAgent.ParseAdd("AspireUI-AutoAdd/1.0");
+        return c;
+    }
+
+    // Gather text the AI can reason about for a project URL. For a GitHub repo, pull the README +
+    // Dockerfile + docker-compose + a manifest (best-effort, main then master). Otherwise fetch the page
+    // and crudely strip HTML. Capped so it fits the prompt.
+    private static async Task<string> FetchUrlContext(string url)
+    {
+        var sb = new System.Text.StringBuilder();
+        var m = System.Text.RegularExpressions.Regex.Match(url, @"github\.com/([^/\s]+)/([^/\s#?]+)");
+        if (m.Success)
+        {
+            var owner = m.Groups[1].Value; var repo = m.Groups[2].Value.TrimEnd('/');
+            if (repo.EndsWith(".git")) repo = repo[..^4];
+            async Task Try(string label, string path)
+            {
+                foreach (var branch in new[] { "main", "master" })
+                {
+                    try
+                    {
+                        var raw = await Web.GetStringAsync($"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}");
+                        if (!string.IsNullOrWhiteSpace(raw)) { sb.AppendLine($"--- {label} ---"); sb.AppendLine(raw.Length > 6000 ? raw[..6000] : raw); return; }
+                    }
+                    catch { /* try next branch / file */ }
+                }
+            }
+            await Try("README.md", "README.md");
+            await Try("Dockerfile", "Dockerfile");
+            await Try("docker-compose.yml", "docker-compose.yml");
+            await Try("package.json", "package.json");
+            await Try("csproj/appsettings", "appsettings.json");
+        }
+        if (sb.Length == 0)
+        {
+            try
+            {
+                var html = await Web.GetStringAsync(url);
+                var text = System.Text.RegularExpressions.Regex.Replace(html, "<script.*?</script>|<style.*?</style>", " ",
+                    System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", " ");
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+                sb.AppendLine(text.Length > 8000 ? text[..8000] : text);
+            }
+            catch (Exception ex) { sb.AppendLine($"(Could not fetch page: {ex.Message})"); }
+        }
+        return sb.ToString();
     }
 
     // The assistant is configured when there's an HTTP base URL, or a CLI backend with a tool selected.

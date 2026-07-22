@@ -101,6 +101,15 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const removeSnippet = (s: Snippet) =>
     api.deleteSnippet(s.id).then(loadSnippets).then(() => toastOk(`Deleted "${s.name}"`)).catch(toastErr);
 
+  // Drop an AI-generated fragment (parsed nodes+edges) onto the canvas — reuse the snippet
+  // instantiation so ids are freshened, names deduped, internal references remapped.
+  const dropFragment = (nodes: Node[], edges: Edge[]) => {
+    const off = stack.nodes.length * 28;
+    const r = instantiateSnippet({ id: "", name: "", nodes, edges, files: [] }, stack.nodes, off + 60, off + 60);
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...r.nodes], edges: [...stack.edges, ...r.edges] })
+      .then(s => { setStack(s); toastOk(`Added ${r.nodes.length} resource(s)`); }).catch(toastErr);
+  };
+
   // Every tag actually assigned (kinds + groups + flags), stable order — drives the filter chips.
   const allTags = useMemo(() => {
     const seen = new Set<string>();
@@ -287,52 +296,60 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       )}
       {autoOpen && (
         <AutoAddModal onClose={() => setAutoOpen(false)}
-          onUse={p => { setAutoOpen(false); createPreset(p); }} />
+          onUse={(nodes, edges) => { setAutoOpen(false); dropFragment(nodes, edges); }} />
       )}
     </MStack>
   );
 }
 
-// AI auto-add: paste a URL (repo / Docker Hub / docs), the assistant drafts a container preset, then
-// the user reviews it before it lands on the canvas (companion/param picker still applies on drop).
-function AutoAddModal({ onClose, onUse }: { onClose: () => void; onUse: (p: ContainerPreset) => void }) {
+// AI auto-add: paste a URL (repo / Docker Hub / docs). The server fetches the page/README, the assistant
+// writes the Aspire builder C# (AddGithubRepository / AddContainer / companions / wiring), and it's
+// parsed into resources for review before landing on the canvas.
+function AutoAddModal({ onClose, onUse }: { onClose: () => void; onUse: (nodes: Node[], edges: Edge[]) => void }) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preset, setPreset] = useState<ContainerPreset | null>(null);
+  const [result, setResult] = useState<{ code: string; nodes: Node[]; edges: Edge[] } | null>(null);
 
   const research = () => {
-    setBusy(true); setError(null); setPreset(null);
-    api.autoPreset(url.trim())
-      .then(r => { if (r.ok && r.preset) setPreset(r.preset); else setError(r.reason || "The AI couldn't build a preset for this."); })
+    setBusy(true); setError(null); setResult(null);
+    api.autoAdd(url.trim())
+      .then(r => {
+        if (r.ok && r.nodes?.length) setResult({ code: r.code ?? "", nodes: r.nodes, edges: r.edges ?? [] });
+        else setError(r.reason || "The AI couldn't build this into Aspire resources.");
+      })
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setBusy(false));
   };
 
   return (
-    <Modal opened onClose={onClose} title="Auto-add from URL (AI)" size="lg" centered>
+    <Modal opened onClose={onClose} title="Auto-add from URL (AI)" size="xl" centered>
       <MStack gap="sm">
-        <Text size="sm" c="dimmed">Paste a GitHub repo, Docker Hub image, or docs URL. The assistant drafts a container app preset for you to review.</Text>
+        <Text size="sm" c="dimmed">Paste a GitHub repo, Docker Hub image, or docs URL. The assistant reads it and wires it up as Aspire resources (a repo can run directly via AddGithubRepository — no image needed).</Text>
         <Group gap="xs" wrap="nowrap">
-          <TextInput style={{ flex: 1 }} placeholder="https://github.com/… or hub.docker.com/…" value={url}
+          <TextInput style={{ flex: 1 }} placeholder="https://github.com/owner/repo or hub.docker.com/…" value={url}
             onChange={e => setUrl(e.currentTarget.value)} onKeyDown={e => { if (e.key === "Enter" && url.trim()) research(); }} />
           <Button onClick={research} loading={busy} disabled={!url.trim()} leftSection={<IconSparkles size={14} />}>Research</Button>
         </Group>
         {error && <Text size="sm" c="red">{error}</Text>}
-        {preset && (
-          <MStack gap={6} p="sm" style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8 }}>
-            <Group gap={8}><Text fw={600} size="sm">{preset.label}</Text><Badge size="xs" variant="light">{preset.group}</Badge></Group>
-            {preset.description && <Text size="xs" c="dimmed">{preset.description}</Text>}
-            <Text size="xs"><b>Image:</b> {preset.image} · <b>Port:</b> {preset.port}</Text>
-            {!!preset.params?.length && <Text size="xs"><b>Params:</b> {preset.params.map(p => p.key + (p.secret ? "🔒" : "")).join(", ")}</Text>}
-            {!!preset.companions?.length && <Text size="xs"><b>Companions:</b> {preset.companions.map(c => c.role || c.key).join(", ")}</Text>}
-            {!!preset.volumes?.length && <Text size="xs"><b>Volumes:</b> {preset.volumes.map(v => v[1]).join(", ")}</Text>}
+        {result && (
+          <MStack gap={6}>
+            <Text size="xs" fw={600}>Resources ({result.nodes.length}):</Text>
+            <Group gap={6}>
+              {result.nodes.map(n => (
+                <Badge key={n.id} size="sm" variant="light">{n.addMethod.replace(/^Add/, "")}: {n.resourceName}</Badge>
+              ))}
+            </Group>
+            <Text size="xs" fw={600} mt={4}>Generated code:</Text>
+            <ScrollArea.Autosize mah={260}>
+              <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", background: "var(--mantine-color-default)", padding: 8, borderRadius: 6 }}>{result.code}</pre>
+            </ScrollArea.Autosize>
             <Text size="10px" c="dimmed">AI-generated — review before running.</Text>
           </MStack>
         )}
         <Group justify="flex-end" gap="xs" mt="xs">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
-          <Button disabled={!preset} onClick={() => preset && onUse(preset)}>Add to canvas</Button>
+          <Button disabled={!result} onClick={() => result && onUse(result.nodes, result.edges)}>Add to canvas</Button>
         </Group>
       </MStack>
     </Modal>
