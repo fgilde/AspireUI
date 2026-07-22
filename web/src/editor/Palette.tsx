@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
+import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
 import { buildPresetNodes, reuseCandidates, ROLE_ALTERNATIVES } from "../model";
@@ -34,8 +34,8 @@ function sortTags(tags: string[]): string[] {
 }
 
 // One compact palette tile: colored icon box + label + a small caption, hover-highlighted.
-function Tile({ iconKey, label, caption, badge, onClick, tooltip }: {
-  iconKey: string; label: string; caption?: string; badge?: string; onClick: () => void; tooltip?: string;
+function Tile({ iconKey, label, caption, badge, onClick, tooltip, highlight }: {
+  iconKey: string; label: string; caption?: string; badge?: string; onClick: () => void; tooltip?: string; highlight?: string;
 }) {
   const color = resourceVisual(iconKey).color;
   return (
@@ -49,7 +49,7 @@ function Tile({ iconKey, label, caption, badge, onClick, tooltip }: {
           <ResourceGlyph addMethod={iconKey} size={17} />
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Text size="sm" fw={550} truncate lh={1.15}>{label}</Text>
+          <Highlight component={Text} highlight={highlight || ""} size="sm" fw={550} truncate lh={1.15}>{label}</Highlight>
           {caption && <Text size="10px" c="dimmed" truncate lh={1.2}>{caption}</Text>}
         </div>
         {badge && <Badge size="xs" variant="light" color="grape" style={{ flexShrink: 0 }}>{badge}</Badge>}
@@ -104,9 +104,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   // Sort groups: AspireUI first (🤯), then alphabetical.
   const groupKeys = useMemo(() => Object.keys(groups)
     .sort((a, b) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : a.localeCompare(b))), [groups]);
-  // Expanded = all groups minus the ones the user collapsed; search/tag filter forces all open.
-  const filtering = q.length > 0 || Object.keys(tagState).length > 0;
-  const openValue = filtering ? groupKeys : groupKeys.filter(g => !collapsed.includes(g));
+  // Expanded = all groups minus the ones the user collapsed — respected even while filtering/searching.
+  const openValue = groupKeys.filter(g => !collapsed.includes(g));
   const allOpen = groupKeys.every(g => !collapsed.includes(g));
 
   const onCreate = (node: Node, refIds: string[], usedByIds: string[], extra?: { nodes: Node[]; edges: Edge[] }) => {
@@ -191,10 +190,10 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
                   <MStack gap={1}>
                     {items.rts.map(rt => (
                       <Tile key={rt.addMethod} iconKey={rt.addMethod} label={rt.label} caption={rt.addMethod}
-                        tooltip={rt.description || undefined} onClick={() => setSelectedRt(rt)} />
+                        highlight={q} tooltip={rt.description || undefined} onClick={() => setSelectedRt(rt)} />
                     ))}
                     {items.presets.map(p => (
-                      <Tile key={p.id} iconKey={p.icon || ""} label={p.label}
+                      <Tile key={p.id} iconKey={p.icon || ""} label={p.label} highlight={q}
                         caption={[`:${p.port}`, p.gpu ? "GPU" : null, p.hostNetwork ? "host-net" : null, p.volumes?.length ? `${p.volumes.length} vol` : null].filter(Boolean).join(" · ")}
                         badge="app" tooltip={p.description || p.image} onClick={() => createPreset(p)} />
                     ))}
