@@ -168,6 +168,40 @@ export function sanitizeIdentifier(name: string): string {
   const s = /^[0-9]/.test(cleaned) ? "_" + cleaned : cleaned;
   return s || "resource";
 }
+// Graph-level lint (instant, model-only) — catches issues before a run that Roslyn wouldn't flag:
+// duplicate resource names, colliding fixed HTTP ports, and edges pointing at removed nodes.
+// Shape matches CodeDiagnostic so it merges into the existing validation UI.
+export interface LintIssue { severity: "error" | "warning"; message: string }
+export function lintStack(stack: Stack): LintIssue[] {
+  const issues: LintIssue[] = [];
+  const nodes = stack.nodes;
+
+  // Duplicate resource names — Aspire requires unique resource names; a dup fails at build/run.
+  const byName = new Map<string, number>();
+  for (const n of nodes) if (n.resourceName) byName.set(n.resourceName, (byName.get(n.resourceName) ?? 0) + 1);
+  for (const [name, count] of byName) if (count > 1)
+    issues.push({ severity: "error", message: `Duplicate resource name "${name}" (${count}×) — resource names must be unique.` });
+
+  // Colliding fixed HTTP ports (WithHttpEndpoint(port: N)). Auto-assigned (no port) never collide.
+  const byPort = new Map<string, string[]>();
+  for (const n of nodes)
+    for (const w of n.withCalls)
+      if (w.method === "WithHttpEndpoint")
+        for (const a of w.args) {
+          const m = /port:\s*(\d+)/.exec(a);
+          if (m) (byPort.get(m[1]) ?? byPort.set(m[1], []).get(m[1])!).push(n.resourceName);
+        }
+  for (const [port, users] of byPort) if (users.length > 1)
+    issues.push({ severity: "warning", message: `Port ${port} is fixed on multiple resources (${users.join(", ")}) — they can't all bind it.` });
+
+  // Dangling edges — a reference/waitFor pointing at a node that no longer exists.
+  const ids = new Set(nodes.map(n => n.id));
+  for (const e of stack.edges)
+    if (!ids.has(e.fromNodeId) || !ids.has(e.toNodeId))
+      issues.push({ severity: "warning", message: `Dangling ${e.kind} edge — one endpoint no longer exists.` });
+
+  return issues;
+}
 export function isErrorLine(line: string): boolean {
   return /error|exception|fail/i.test(line);
 }

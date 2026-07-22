@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -219,5 +219,30 @@ describe("live overlay", () => {
     expect(isPathParam(p("scriptPath"))).toBe(true);
     expect(isPathParam(p("name"))).toBe(false);
     expect(isPathParam(p("path", "int"))).toBe(false); // only string params
+  });
+});
+
+describe("lintStack", () => {
+  const mk = (nodes: Node[], edges = stack.edges.filter(() => false)): Stack =>
+    ({ id: "s", name: "s", targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: [], extraPackages: [] });
+  const node = (id: string, name: string, withCalls: Node["withCalls"] = []): Node =>
+    ({ id, varName: name, addMethod: "AddContainer", resourceName: name, withCalls, x: 0, y: 0, addArgs: [] });
+
+  it("flags duplicate resource names as error", () => {
+    const issues = lintStack(mk([node("n1", "db"), node("n2", "db")]));
+    expect(issues.some(i => i.severity === "error" && i.message.includes("db"))).toBe(true);
+  });
+  it("flags colliding fixed ports as warning", () => {
+    const hp = [{ method: "WithHttpEndpoint", args: ["port: 8080"] }];
+    const issues = lintStack(mk([node("n1", "a", hp), node("n2", "b", hp)]));
+    expect(issues.some(i => i.severity === "warning" && i.message.includes("8080"))).toBe(true);
+  });
+  it("flags dangling edges", () => {
+    const s = mk([node("n1", "a")]);
+    s.edges = [{ id: "e", fromNodeId: "n1", toNodeId: "gone", kind: "reference" }];
+    expect(lintStack(s).some(i => i.message.includes("Dangling"))).toBe(true);
+  });
+  it("clean stack has no issues", () => {
+    expect(lintStack(mk([node("n1", "a"), node("n2", "b")]))).toHaveLength(0);
   });
 });

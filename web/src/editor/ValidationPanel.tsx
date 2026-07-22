@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea, Table, Badge, Text, Code, Group, ThemeIcon } from "@mantine/core";
 import { IconCircleCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
+import { lintStack } from "../model";
 
 // Live validation results (Roslyn diagnostics over the generated code). Flashes when the header
 // badge is clicked so it's obvious where the details landed.
 export function ValidationPanel() {
-  const { diagnostics, flashValidation } = useEditor();
+  const { diagnostics: roslyn, stack, flashValidation } = useEditor();
+  // Merge instant graph-lint (dup names/ports, dangling edges) with the Roslyn compile diagnostics.
+  const lint = useMemo(() => lintStack(stack).map(l => ({ ...l, message: `[graph] ${l.message}`, start: 0, end: 0 })), [stack]);
+  const diagnostics = useMemo(() => [...lint, ...roslyn], [lint, roslyn]);
   const [flash, setFlash] = useState(false);
   const first = useRef(true);
   useEffect(() => {
