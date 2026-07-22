@@ -302,7 +302,14 @@ public class CatalogService
     private static List<CatalogOverload> DedupOverloads(List<CatalogOverload> ovs)
     {
         string Sig(CatalogOverload o) => string.Join(",", o.Params.Select(p => p.Name + ":" + p.Type));
-        return ovs.GroupBy(Sig).Select(g => g.First()).OrderBy(o => o.Params.Count).ToList();
+        // The property grid matches an overload by ARITY alone (arg count), so two overloads with the
+        // same param count are indistinguishable to it — and picking the wrong one renders a string
+        // value on a bool switch (e.g. AddParameter's (value,secret) vs (secret,persist)). Collapse to
+        // one overload per arity, preferring the one with the most "real" (non-bool) fields to edit.
+        return ovs.GroupBy(Sig).Select(g => g.First())
+                  .GroupBy(o => o.Params.Count)
+                  .Select(g => g.OrderByDescending(o => o.Params.Count(p => p.Type != "bool")).First())
+                  .OrderBy(o => o.Params.Count).ToList();
     }
 
     private static string Humanize(string name) =>
