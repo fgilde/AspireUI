@@ -2,7 +2,18 @@
 
 <hr>
 
-<img width="1797" height="1153" alt="image" src="https://github.com/user-attachments/assets/6f1d8138-2b63-45bf-b19e-736a79ea91c4" />
+<table>
+  <tr>
+    <td align="center"><b>GitHub Dark</b></td>
+    <td align="center"><b>Blazor</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/editor-github-dark.png" alt="AspireUI editor — GitHub Dark theme" /></td>
+    <td><img src="docs/screenshots/editor-blazor.png" alt="AspireUI editor — Blazor theme" /></td>
+  </tr>
+</table>
+
+<sub>The <a href="https://fgilde.github.io/AspireUI/">docs</a> have an interactive before/after slider for every screenshot.</sub>
 
 # AspireUI
 

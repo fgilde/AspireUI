@@ -1,6 +1,4 @@
-<img width="2547" height="1261" alt="image" src="https://github.com/user-attachments/assets/54d51236-c6c0-4cf7-a4a3-ae5b814a879a" />
-
-<p align="center"><img src="aspireui_transparent.svg" alt="AspireUI" width="420" /></p>
+<p align="center"><img class="no-frame" src="aspireui_transparent.svg" alt="AspireUI" width="420" /></p>
 
 # AspireUI
 
@@ -14,7 +12,13 @@ assistant build it for you.
 It also doubles as a way to **learn Aspire**: every resource carries a description, the add dialog
 shows the exact C# it will generate, and the property grid has inline explanations.
 
-![Stacks overview](screenshots/overview.png)
+> **Drag the slider** to compare the same screen in the **GitHub Dark** and **Blazor** themes.
+
+<div class="img-compare"><img src="screenshots/editor-github-dark.png" data-label="GitHub Dark"><img src="screenshots/editor-blazor.png" data-label="Blazor"></div>
+
+The stacks overview:
+
+<div class="img-compare"><img src="screenshots/overview-github-dark.png" data-label="GitHub Dark"><img src="screenshots/overview-blazor.png" data-label="Blazor"></div>
 
 ## Highlights
 

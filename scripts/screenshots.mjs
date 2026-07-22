@@ -45,14 +45,14 @@ const page = await ctx.newPage();
 await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
 await page.getByLabel("Username").waitFor({ timeout: 15000 });
 await page.getByLabel("Username").fill(USER);
-await page.getByLabel("Password").fill(PASS);
+await page.locator("input[type=password]").first().fill(PASS);
 await page.getByRole("button", { name: "Sign in" }).click();
 await page.waitForURL(u => !u.pathname.endsWith("/login"), { timeout: 15000 }).catch(() => {});
 await wait(800);
 
 // Create the demo stack via the session cookie, get its id.
 const stackId = await page.evaluate(async (body) => {
-  const r = await fetch("/stacks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch("/api/stacks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const s = await r.json(); return s.id;
 }, demoStack);
 
