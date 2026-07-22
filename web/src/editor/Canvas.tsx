@@ -472,12 +472,24 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
   // One visual edge per directed pair, combining the reference/waitFor edges that connect them.
   const edges = useMemo(() => {
     const pairs = new Map<string, { from: string; to: string; hasRef: boolean; hasWait: boolean; hasEnv: boolean }>();
+    const bump = (from: string, to: string) => {
+      const key = `${from}->${to}`;
+      const g = pairs.get(key) ?? { from, to, hasRef: false, hasWait: false, hasEnv: false };
+      pairs.set(key, g); return g;
+    };
     for (const e of stack.edges) {
-      const key = `${e.fromNodeId}->${e.toNodeId}`;
-      const g = pairs.get(key) ?? { from: e.fromNodeId, to: e.toNodeId, hasRef: false, hasWait: false, hasEnv: false };
+      const g = bump(e.fromNodeId, e.toNodeId);
       if (e.kind === "waitFor") g.hasWait = true; else if (e.kind === "env") g.hasEnv = true; else g.hasRef = true;
-      pairs.set(key, g);
     }
+    // Derive a "param" line from each WithEnvironment(key, <paramVar>) reference — its 2nd arg is a bare
+    // identifier (not a quoted literal) naming another node's varName. Covers pre-existing nodes too.
+    const byVar = new Map(stack.nodes.filter(n => n.varName).map(n => [n.varName, n.id]));
+    for (const n of stack.nodes)
+      for (const w of n.withCalls)
+        if (w.method === "WithEnvironment" && w.args[1] && !w.args[1].startsWith('"')) {
+          const toId = byVar.get(w.args[1]);
+          if (toId && toId !== n.id) bump(n.id, toId).hasEnv = true;
+        }
     return [...pairs.values()].map(g => ({
       id: `${g.from}->${g.to}`, source: g.from, target: g.to, type: "editable",
       data: { hasRef: g.hasRef, hasWait: g.hasWait, hasEnv: g.hasEnv, from: g.from, to: g.to, ops },
