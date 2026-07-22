@@ -85,6 +85,7 @@
     "icon": "langflow",
     "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
     "env": [
+      ["LANGFLOW_AUTO_LOGIN", "false"],
       ["LANGFLOW_SUPERUSER", "admin"],
       ["LANGFLOW_SUPERUSER_PASSWORD", "admin"]
     ]
