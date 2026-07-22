@@ -65,10 +65,12 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
     if (/meilisearch/.test(i)) return "AddMeilisearch";
     return undefined;
   };
+  // GPU presets: pass the NVIDIA GPU into the container (needs the NVIDIA Container Toolkit on the host).
+  const gpuCalls = preset.gpu ? [{ method: "WithContainerRuntimeArgs", args: ['"--gpus"', '"all"'] }] : [];
   const main: Node = {
     id: nid(), varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
-    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...volumeCalls, ...expandEnv(preset.env)],
+    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env)],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];
