@@ -35,7 +35,11 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // Pin the published host port to the container port (some WebUIs reject a mismatched host port).
     bool FixedPort = false,
     // Host-path bind mounts ([source, target] or [source, target, "ro"]) — e.g. Dozzle's docker.sock.
-    List<List<string>>? BindMounts = null);
+    List<List<string>>? BindMounts = null,
+    // Config files seeded into the stack workspace on drop (then bind-mounted in) — e.g. a pre-set
+    // qBittorrent.conf that disables host-header validation so its WebUI isn't "Unauthorized".
+    List<PresetFile>? Files = null);
+public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
 // (Aspire AddX) instead of always dropping this container.

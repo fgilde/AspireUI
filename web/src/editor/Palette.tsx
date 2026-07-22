@@ -127,7 +127,11 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     const off = stack.nodes.length * 28;
     const { nodes, edges } = buildPresetNodes(p, stack.nodes, choices);
     const placed = nodes.map(n => ({ ...n, x: n.x + off, y: n.y + off }));
-    api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
+    // Seed any config files the preset ships (e.g. qBittorrent.conf) into the workspace, then a bind
+    // mount maps them into the container. Skip names already present so re-drops don't clobber edits.
+    const newFiles = (p.files ?? []).filter(f => !stack.extraFiles.some(x => x.name === f.name));
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges],
+      extraFiles: [...stack.extraFiles, ...newFiles] })
       .then(s => { setStack(s); toastOk(`Added ${p.label}`); }).catch(toastErr);
   };
   // Presets with companions or params ask first (backend choice + parameter/value picks); others drop directly.

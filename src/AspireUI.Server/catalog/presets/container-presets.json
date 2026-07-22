@@ -559,7 +559,7 @@
     "image": "lscr.io/linuxserver/qbittorrent:latest",
     "port": 8080,
     "icon": "qbittorrent",
-    "description": "qBittorrent — torrent client with a web UI. First run: user 'admin' + a temporary password printed in the container log (search 'temporary password'); set your own in the UI. Config volume keeps it after that. Host port pinned to 8080 so the WebUI's CSRF/host-header check doesn't reject it (Unauthorized).",
+    "description": "qBittorrent — torrent client with a web UI. First run: user 'admin' + a temporary password printed in the container log (search 'temporary password'); set your own in the UI. Ships a qBittorrent.conf that disables host-header/CSRF validation so the WebUI isn't 'Unauthorized' behind Aspire.",
     "fixedPort": true,
     "env": [
       [
@@ -572,6 +572,18 @@
         "config",
         "/config"
       ]
+    ],
+    "bindMounts": [
+      [
+        "qbittorrent/qBittorrent.conf",
+        "/config/qBittorrent/qBittorrent.conf"
+      ]
+    ],
+    "files": [
+      {
+        "name": "qbittorrent/qBittorrent.conf",
+        "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nWebUI\\HostHeaderValidation=false\nWebUI\\CSRFProtection=false\n"
+      }
     ]
   },
   {
