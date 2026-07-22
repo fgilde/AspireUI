@@ -297,6 +297,36 @@ public static class StackEndpoints
 
         // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
         app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
+        // Best-effort container CPU/memory via `docker stats` (single snapshot). Returns all running
+        // containers; the client matches them to resources by name. Empty on any error / no docker.
+        app2.MapGet("/stacks/{id}/stats", (string id) =>
+        {
+            try
+            {
+                var psi = new ProcessStartInfo("docker", "stats --no-stream --format \"{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\"")
+                { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                using var p = Process.Start(psi);
+                if (p is null) return Results.Ok(Array.Empty<object>());
+                var outp = p.StandardOutput.ReadToEnd();
+                if (!p.WaitForExit(4000)) { try { p.Kill(); } catch { } return Results.Ok(Array.Empty<object>()); }
+                var rows = outp.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line =>
+                {
+                    var c = line.Split('\t');
+                    if (c.Length < 3) return null;
+                    var cpu = double.TryParse(c[1].TrimEnd('%', ' '), System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+                    // MemUsage looks like "12.3MiB / 1.9GiB" — take the used side, normalize to MB.
+                    var used = c[2].Split('/')[0].Trim();
+                    double memMb = 0;
+                    var num = double.TryParse(new string(used.TakeWhile(ch => char.IsDigit(ch) || ch == '.').ToArray()), System.Globalization.CultureInfo.InvariantCulture, out var mv) ? mv : 0;
+                    if (used.Contains("GiB", StringComparison.OrdinalIgnoreCase)) memMb = num * 1024;
+                    else if (used.Contains("KiB", StringComparison.OrdinalIgnoreCase)) memMb = num / 1024;
+                    else memMb = num; // MiB / MB
+                    return (object)new { name = c[0].Trim(), cpu, memMb = Math.Round(memMb, 1) };
+                }).Where(x => x is not null).ToList();
+                return Results.Ok(rows);
+            }
+            catch { return Results.Ok(Array.Empty<object>()); }
+        });
         // Run a resource command (Start/Stop/Restart/…) advertised by a live resource.
         app2.MapPost("/stacks/{id}/resources/{name}/command", async (string id, string name, ResourceCommandBody body, HttpContext ctx) =>
         {

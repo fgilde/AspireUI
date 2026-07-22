@@ -10,6 +10,14 @@ import * as api from "../api";
 const dot = (state?: string | null) => `var(--mantine-color-${liveStateColor(state)}-filled)`;
 const primaryUrl = (r: LiveResource) => r.urls.find(u => !u.isInternal && !u.isInactive)?.url;
 
+// Tiny inline sparkline (0..max normalized) — no chart lib.
+function Spark({ values, color }: { values: number[]; color: string }) {
+  if (values.length < 2) return null;
+  const w = 46, h = 14, max = Math.max(1, ...values);
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - (v / max) * h}`).join(" ");
+  return <svg width={w} height={h} style={{ display: "block" }}><polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} /></svg>;
+}
+
 // A built-in mini dashboard: instead of embedding the fragile Blazor dashboard in an iframe, we render
 // our own from the Aspire resource-service feed we already consume — live per-resource state, endpoint
 // links and console-log streaming. The full Aspire dashboard (traces/metrics) stays one click away.
@@ -29,6 +37,28 @@ export function DashboardPanel() {
     const iv = setInterval(tick, 2500);
     return () => { alive = false; clearInterval(iv); };
   }, [active, stack.id]);
+
+  // Container CPU/mem via docker stats — keep a short per-container history for sparklines.
+  const [cpuHist, setCpuHist] = useState<Record<string, number[]>>({});
+  const [memNow, setMemNow] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!active) { setCpuHist({}); setMemNow({}); return; }
+    let alive = true;
+    const tick = () => api.stackStats(stack.id).then(stats => {
+      if (!alive) return;
+      setCpuHist(prev => {
+        const next: Record<string, number[]> = { ...prev };
+        for (const s of stats) next[s.name] = [...(prev[s.name] ?? []), s.cpu].slice(-20);
+        return next;
+      });
+      setMemNow(Object.fromEntries(stats.map(s => [s.name, s.memMb])));
+    }).catch(() => {});
+    tick();
+    const iv = setInterval(tick, 3000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [active, stack.id]);
+  // A live resource's docker name isn't its exact resource name; match loosely by containment.
+  const statKey = (r: LiveResource) => Object.keys(memNow).find(n => n === r.name || n.includes(r.displayName) || r.name.includes(n));
 
   // Order parents before their children (nesting from Aspire relationships), children indented.
   const rows = useMemo(() => {
@@ -115,6 +145,19 @@ export function DashboardPanel() {
                     {r.displayName}
                   </Text>
                   <Badge size="xs" variant="light" color="gray">{r.type}</Badge>
+                  {(() => {
+                    const k = statKey(r);
+                    if (!k) return null;
+                    const cpu = cpuHist[k]?.at(-1) ?? 0;
+                    return (
+                      <Tooltip label={`CPU ${cpu.toFixed(1)}% · ${memNow[k] ?? 0} MB`} withArrow>
+                        <Group gap={5} wrap="nowrap">
+                          <Spark values={cpuHist[k] ?? []} color="var(--mantine-color-blue-4)" />
+                          <Text size="10px" c="dimmed" ff="monospace" style={{ width: 66, textAlign: "right" }}>{cpu.toFixed(0)}% · {memNow[k] ?? 0}MB</Text>
+                        </Group>
+                      </Tooltip>
+                    );
+                  })()}
                   {u && (
                     <Tooltip label={u} withArrow><Anchor href={u} target="_blank" rel="noreferrer" style={{ display: "flex" }}><IconExternalLink size={14} /></Anchor></Tooltip>
                   )}

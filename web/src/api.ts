@@ -70,6 +70,8 @@ export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { me
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
 export const stackResources = (id: string): Promise<import("./model").LiveResource[]> =>
   fetch(`${base}/stacks/${id}/resources`).then(ok);
+export interface ContainerStat { name: string; cpu: number; memMb: number }
+export const stackStats = (id: string): Promise<ContainerStat[]> => fetch(`${base}/stacks/${id}/stats`).then(ok);
 export const runResourceCommand = (id: string, name: string, command: string, resourceType: string): Promise<{ ok: boolean; message?: string }> =>
   fetch(`${base}/stacks/${id}/resources/${encodeURIComponent(name)}/command`, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command, resourceType }),

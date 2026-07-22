@@ -22,7 +22,7 @@ value first. Each slice: build → test → commit/push → restart. Tick as don
 - [ ] **Connection-string explorer** — per resource, show exposed env/connection strings; click to reference.
 
 ### P3 — live/runtime
-- [ ] **Metrics sparklines** per node (CPU/RAM from docker stats).
+- [x] **Metrics sparklines** per node (CPU/RAM from docker stats).
 - [x] **Log search/filter + download**; combined multi-resource log.
 - [ ] **Container exec/terminal** (docker exec → xterm in drawer). Security note.
 
