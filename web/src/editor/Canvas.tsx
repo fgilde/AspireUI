@@ -339,7 +339,8 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     const g = (stack.groups ?? []).find(x => x.id === id);
     if (!g) return;
     const dx = 40, dy = 40;
-    const members = nodesInGroup(stack, g);
+    const memberIds = new Set(nodesInGroup(stack, g));
+    const members = stack.nodes.filter(n => memberIds.has(n.id));
     const taken = new Set(stack.nodes.map(n => n.resourceName));
     const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
     const copies = members.map(n => {
