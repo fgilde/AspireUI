@@ -44,6 +44,22 @@ public class CodeGenService
 
     public string GenerateProgram(StackModel s, PublishEnv? env = null)
     {
+        // Coerce nulls up front: an assisted/imported model can arrive with null list props (the AI
+        // omits "addArgs"/"withCalls", and System.Text.Json leaves them null), which would NRE in the
+        // ordering/emit passes below. Normalize once so everything downstream is safe.
+        s = s with
+        {
+            Nodes = (s.Nodes ?? []).Select(n => n with
+            {
+                AddArgs = n.AddArgs ?? [],
+                WithCalls = (n.WithCalls ?? []).Select(w => w with { Args = w.Args ?? [] }).ToList(),
+            }).ToList(),
+            Edges = s.Edges ?? [],
+            RawStatements = s.RawStatements ?? [],
+            ExtraFiles = s.ExtraFiles ?? [],
+            ExtraPackages = s.ExtraPackages ?? [],
+        };
+
         var sb = new StringBuilder();
         var usings = BaseUsings
             .Concat(s.Nodes.Select(n => n.AddMethod).Distinct()

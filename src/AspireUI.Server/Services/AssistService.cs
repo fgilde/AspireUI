@@ -26,7 +26,18 @@ public class AssistService(IChatClient chat, CatalogService catalog)
             // Treat that the same as any other unusable model reply: a parse failure.
             var incomplete = parsed is null || parsed.Nodes is null || parsed.Edges is null
                 || parsed.RawStatements is null || parsed.ExtraFiles is null || parsed.ExtraPackages is null;
-            return incomplete ? new AssistResult(raw, null, false) : new AssistResult(reply, parsed!, true);
+            if (incomplete) return new AssistResult(raw, null, false);
+            // The model often omits per-node list props (addArgs/withCalls) → null after deserialize.
+            // Coerce so codegen/canvas never hit a null list.
+            parsed = parsed! with
+            {
+                Nodes = parsed.Nodes.Select(n => n with
+                {
+                    AddArgs = n.AddArgs ?? [],
+                    WithCalls = (n.WithCalls ?? []).Select(w => w with { Args = w.Args ?? [] }).ToList(),
+                }).ToList(),
+            };
+            return new AssistResult(reply, parsed, true);
         }
         catch (Exception)
         {
