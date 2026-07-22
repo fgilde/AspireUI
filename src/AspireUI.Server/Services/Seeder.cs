@@ -27,15 +27,31 @@ public static class Seeder
             ["ASPIREUI_ADMIN_PASSWORD"] = Environment.GetEnvironmentVariable("ASPIREUI_ADMIN_PASSWORD"),
             ["ASPIREUI_SEED_STACK_NAME"] = Environment.GetEnvironmentVariable("ASPIREUI_SEED_STACK_NAME"),
             ["ASPIREUI_SEED_STACK_PROJECTS"] = Environment.GetEnvironmentVariable("ASPIREUI_SEED_STACK_PROJECTS"),
+            ["ASPIREUI_AI_BASE_URL"] = Environment.GetEnvironmentVariable("ASPIREUI_AI_BASE_URL"),
+            ["ASPIREUI_AI_MODEL"] = Environment.GetEnvironmentVariable("ASPIREUI_AI_MODEL"),
+            ["ASPIREUI_AI_API_KEY"] = Environment.GetEnvironmentVariable("ASPIREUI_AI_API_KEY"),
         };
-        Seed(new UserStore(dbPath), new StackStore(dbPath), env);
+        Seed(new UserStore(dbPath), new StackStore(dbPath), new SettingsStore(dbPath), env);
     }
 
     // Testable core: pure over the given stores + env map.
-    public static void Seed(UserStore users, StackStore stacks, IReadOnlyDictionary<string, string?> env)
+    public static void Seed(UserStore users, StackStore stacks, SettingsStore settings, IReadOnlyDictionary<string, string?> env)
     {
         SeedAdmin(users, env);
         SeedStack(stacks, env);
+        SeedAi(settings, env);
+    }
+
+    // Configure the built-in assistant from env on first run (only if not already set), so an
+    // env-provisioned container (e.g. AddAspireUI().WithAi(...)) comes up with AI ready.
+    private static void SeedAi(SettingsStore settings, IReadOnlyDictionary<string, string?> env)
+    {
+        var url = env.GetValueOrDefault("ASPIREUI_AI_BASE_URL");
+        var model = env.GetValueOrDefault("ASPIREUI_AI_MODEL");
+        if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(model)) return;
+        var cur = settings.Get();
+        if (!string.IsNullOrWhiteSpace(cur.AiBaseUrl)) return; // don't override a configured install
+        settings.Save(cur with { AiBaseUrl = url, AiModel = model, AiApiKey = env.GetValueOrDefault("ASPIREUI_AI_API_KEY") });
     }
 
     private static void SeedAdmin(UserStore users, IReadOnlyDictionary<string, string?> env)

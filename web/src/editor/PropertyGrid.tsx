@@ -373,17 +373,18 @@ export function PropertyGrid({ stack, node, rt, setStack }:
           existingCount={stack.nodes.filter(n => n.addMethod === addRt.addMethod).length}
           totalCount={stack.nodes.length}
           nodes={stack.nodes}
-          onCreate={(newNode, refIds, usedByIds) => {
+          onCreate={(newNode, refIds, usedByIds, extra) => {
             const eid = () => "e" + crypto.randomUUID().slice(0, 8);
             const edges = [
               ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: newNode.id, toNodeId, kind: "reference" })),
               ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: newNode.id, kind: "reference" })),
+              ...(extra?.edges ?? []),
             ];
             const extraPackages = [...stack.extraPackages];
             if (newNode.composite && addRt.package && !extraPackages.some(p => p.id === addRt.package))
               extraPackages.push({ id: addRt.package, version: addRt.packageVersion || "" });
             const target = addTarget;
-            api.saveStack({ ...stack, nodes: [...stack.nodes, newNode], edges: [...stack.edges, ...edges], extraPackages })
+            api.saveStack({ ...stack, nodes: [...stack.nodes, newNode, ...(extra?.nodes ?? [])], edges: [...stack.edges, ...edges], extraPackages })
               .then(s => { setStack(s); target?.onPick(newNode.varName); });
           }}
           onClose={() => setAddRt(null)} />

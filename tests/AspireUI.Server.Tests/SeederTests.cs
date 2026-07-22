@@ -6,17 +6,17 @@ public class SeederTests
 {
     // Own temp DB per test: the ":memory:" stores share one fixed-name cache process-wide, which
     // would cross-contaminate these count/lookup assertions.
-    private static (UserStore, StackStore) Stores()
+    private static (UserStore, StackStore, SettingsStore) Stores()
     {
         var db = Path.Combine(Path.GetTempPath(), "aspireui-seedtest-" + Guid.NewGuid().ToString("n") + ".db");
-        return (new UserStore(db), new StackStore(db));
+        return (new UserStore(db), new StackStore(db), new SettingsStore(db));
     }
 
     [Fact]
     public void SeedsAdminAndStack_FromEnv()
     {
-        var (users, stacks) = Stores();
-        Seeder.Seed(users, stacks, new Dictionary<string, string?>
+        var (users, stacks, settings) = Stores();
+        Seeder.Seed(users, stacks, settings, new Dictionary<string, string?>
         {
             ["ASPIREUI_ADMIN_USERNAME"] = "admin",
             ["ASPIREUI_ADMIN_PASSWORD"] = "hunter2hunter",
@@ -39,16 +39,35 @@ public class SeederTests
     [Fact]
     public void NoEnv_SeedsNothing()
     {
-        var (users, stacks) = Stores();
-        Seeder.Seed(users, stacks, new Dictionary<string, string?>());
+        var (users, stacks, settings) = Stores();
+        Seeder.Seed(users, stacks, settings, new Dictionary<string, string?>());
         Assert.Equal(0, users.Count());
         Assert.Empty(stacks.List());
     }
 
     [Fact]
+    public void SeedsAi_FromEnv_OnlyWhenUnset()
+    {
+        var (users, stacks, settings) = Stores();
+        var env = new Dictionary<string, string?>
+        {
+            ["ASPIREUI_AI_BASE_URL"] = "http://ollama:11434/v1",
+            ["ASPIREUI_AI_MODEL"] = "llama3.2",
+        };
+        Seeder.Seed(users, stacks, settings, env);
+        Assert.Equal("http://ollama:11434/v1", settings.Get().AiBaseUrl);
+        Assert.Equal("llama3.2", settings.Get().AiModel);
+
+        // Second run with a different url must NOT override the now-configured install.
+        Seeder.Seed(users, stacks, settings, new Dictionary<string, string?>
+        { ["ASPIREUI_AI_BASE_URL"] = "http://other/v1", ["ASPIREUI_AI_MODEL"] = "x" });
+        Assert.Equal("http://ollama:11434/v1", settings.Get().AiBaseUrl);
+    }
+
+    [Fact]
     public void Idempotent_SkipsWhenUserOrStackExists()
     {
-        var (users, stacks) = Stores();
+        var (users, stacks, settings) = Stores();
         var env = new Dictionary<string, string?>
         {
             ["ASPIREUI_ADMIN_USERNAME"] = "admin",
@@ -56,8 +75,8 @@ public class SeederTests
             ["ASPIREUI_SEED_STACK_NAME"] = "My Stack",
             ["ASPIREUI_SEED_STACK_PROJECTS"] = @"C:\src\Api\Api.csproj",
         };
-        Seeder.Seed(users, stacks, env);
-        Seeder.Seed(users, stacks, env); // second run must not duplicate
+        Seeder.Seed(users, stacks, settings, env);
+        Seeder.Seed(users, stacks, settings, env); // second run must not duplicate
 
         Assert.Equal(1, users.Count());
         Assert.Single(stacks.List());

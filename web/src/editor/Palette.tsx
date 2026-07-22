@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
-import type { Stack, ResourceType, Node, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
+import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
 import { buildPresetNodes, reuseCandidates, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
@@ -109,17 +109,18 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const openValue = filtering ? groupKeys : groupKeys.filter(g => !collapsed.includes(g));
   const allOpen = groupKeys.every(g => !collapsed.includes(g));
 
-  const onCreate = (node: Node, refIds: string[], usedByIds: string[]) => {
+  const onCreate = (node: Node, refIds: string[], usedByIds: string[], extra?: { nodes: Node[]; edges: Edge[] }) => {
     const eid = () => "e" + crypto.randomUUID().slice(0, 8);
     const edges = [
       ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: node.id, toNodeId, kind: "reference" })),
       ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: node.id, kind: "reference" })),
+      ...(extra?.edges ?? []),
     ];
     const extraPackages = [...stack.extraPackages];
     const pkg = selectedRt?.package;
     if (node.composite && pkg && !extraPackages.some(p => p.id === pkg))
       extraPackages.push({ id: pkg, version: selectedRt?.packageVersion || "" });
-    api.saveStack({ ...stack, nodes: [...stack.nodes, node], edges: [...stack.edges, ...edges], extraPackages }).then(setStack);
+    api.saveStack({ ...stack, nodes: [...stack.nodes, node, ...(extra?.nodes ?? [])], edges: [...stack.edges, ...edges], extraPackages }).then(setStack);
     setSelectedRt(null);
   };
 

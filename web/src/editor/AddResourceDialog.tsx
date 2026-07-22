@@ -5,8 +5,8 @@ import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useMantineColorScheme } from "@mantine/core";
-import type { CatalogOverload, CatalogParam, Node, ResourceType } from "../model";
-import { sanitizeIdentifier, toLiteral, configureLiteral, isPathParam } from "../model";
+import type { CatalogOverload, CatalogParam, Node, Edge, ResourceType } from "../model";
+import { sanitizeIdentifier, toLiteral, configureLiteral, isPathParam, reuseCandidates } from "../model";
 import { PathPickerModal } from "./PathPickerModal";
 
 SyntaxHighlighter.registerLanguage("csharp", csharp);
@@ -22,7 +22,9 @@ function defaultName(rt: ResourceType, existingCount: number): string {
 
 export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCreate, onClose }: {
   rt: ResourceType; existingCount: number; totalCount: number;
-  nodes: Node[]; onCreate: (node: Node, refIds: string[], usedByIds: string[]) => void; onClose: () => void;
+  nodes: Node[];
+  onCreate: (node: Node, refIds: string[], usedByIds: string[], extra?: { nodes: Node[]; edges: Edge[] }) => void;
+  onClose: () => void;
 }) {
   const { colorScheme } = useMantineColorScheme();
   const [name, setName] = useState(() => defaultName(rt, existingCount));
@@ -30,6 +32,11 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
   const [values, setValues] = useState<Record<string, string>>({});
   const [refs, setRefs] = useState<string[]>([]);
   const [usedBy, setUsedBy] = useState<string[]>([]);
+  // AI-backend offer, only for the AspireUI resource: wire its built-in assistant to a backend.
+  const isAspireUI = rt.addMethod === "AddAspireUI";
+  const llmCandidates = useMemo(() => reuseCandidates(nodes, "llm"), [nodes]);
+  const [aiChoice, setAiChoice] = useState<string>("none");
+  const [aiModel, setAiModel] = useState("llama3.2");
   const [pathPick, setPathPick] = useState<{ value: string; set: (v: string) => void } | null>(null);
   const overload = rt.addOverloads[overloadIdx] ?? rt.addOverloads[0];
   const setValue = (p: string, v: string) => setValues(vs => ({ ...vs, [p]: v }));
@@ -104,8 +111,15 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       const t = nodes.find(n => n.id === id);
       if (t) lines.push(`${t.varName}.WithReference(${varName});`);
     }
+    if (isAspireUI && aiChoice !== "none") {
+      const bv = aiChoice.startsWith("reuse:") ? (nodes.find(n => n.id === aiChoice.slice(6))?.varName ?? "backend")
+        : aiChoice === "add:AddOllama" ? "ollama" : "localai";
+      if (aiChoice === "add:AddOllama") lines.push(`var ollama = builder.AddOllama("ollama").AddModel(${JSON.stringify(aiModel)});`);
+      if (aiChoice === "add:AddLocalAI") lines.push(`var localai = builder.AddLocalAI("localai");`);
+      lines.push(`${varName}.WithAi(${bv}, ${JSON.stringify(aiModel)});`);
+    }
     return lines.join("\n");
-  }, [name, varName, addArgs, refs, usedBy, nodes, rt.addMethod, rt.composite]);
+  }, [name, varName, addArgs, refs, usedBy, nodes, rt.addMethod, rt.composite, isAspireUI, aiChoice, aiModel]);
 
   const create = () => {
     if (!overload || !canCreate) return;
@@ -120,12 +134,39 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       }, [], []);
       return;
     }
-    onCreate({
+    const node: Node = {
       id: "n" + crypto.randomUUID().slice(0, 8),
       varName, resourceName: name, addMethod: rt.addMethod,
       addArgs, withCalls: [],
       x: 60 + totalCount * 28, y: 60 + totalCount * 28,
-    }, refs, usedBy);
+    };
+
+    // AspireUI + AI backend: wire the assistant via WithAi(<backend>, "<model>"), reusing an existing
+    // LLM resource or adding Ollama/LocalAI. The backend node (if new) + a waitFor edge come along.
+    if (isAspireUI && aiChoice !== "none") {
+      const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+      const extra: { nodes: Node[]; edges: Edge[] } = { nodes: [], edges: [] };
+      let backendVar: string | null = null, backendId: string | null = null;
+      if (aiChoice.startsWith("reuse:")) {
+        const t = nodes.find(n => n.id === aiChoice.slice(6));
+        if (t) { backendVar = t.varName; backendId = t.id; }
+      } else if (aiChoice === "add:AddOllama") {
+        backendVar = "ollama"; backendId = "n" + crypto.randomUUID().slice(0, 8);
+        extra.nodes.push({ id: backendId, varName: "ollama", resourceName: "ollama", addMethod: "AddOllama",
+          addArgs: [], withCalls: [{ method: "AddModel", args: [JSON.stringify(aiModel)] }], x: node.x + 260, y: node.y + 140 });
+      } else if (aiChoice === "add:AddLocalAI") {
+        backendVar = "localai"; backendId = "n" + crypto.randomUUID().slice(0, 8);
+        extra.nodes.push({ id: backendId, varName: "localai", resourceName: "localai", addMethod: "AddLocalAI",
+          addArgs: [], withCalls: [], x: node.x + 260, y: node.y + 140 });
+      }
+      if (backendVar && backendId) {
+        node.withCalls = [{ method: "WithAi", args: [backendVar, JSON.stringify(aiModel)] }];
+        extra.edges.push({ id: eid(), fromNodeId: node.id, toNodeId: backendId, kind: "waitFor" });
+      }
+      onCreate(node, refs, usedBy, extra);
+      return;
+    }
+    onCreate(node, refs, usedBy);
   };
 
   return (
@@ -149,6 +190,25 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
             <MultiSelect label="Referenced by" description={`Resources that should reference this one (x.WithReference(${varName}))`}
               data={nodes.map(n => ({ value: n.id, label: n.resourceName }))} value={usedBy} onChange={setUsedBy}
               searchable clearable />
+          </>
+        )}
+
+        {isAspireUI && (
+          <>
+            <Divider label="AI assistant" labelPosition="left" />
+            <Text size="xs" c="dimmed">Give AspireUI's built-in assistant an LLM backend (optional).</Text>
+            <Group gap="xs" align="end" wrap="nowrap">
+              <Select style={{ flex: 1 }} label="Backend" allowDeselect={false} value={aiChoice} onChange={v => setAiChoice(v ?? "none")}
+                data={[
+                  { value: "none", label: "None (configure later)" },
+                  ...llmCandidates.map(n => ({ value: `reuse:${n.id}`, label: `Reuse existing: ${n.resourceName}` })),
+                  { value: "add:AddOllama", label: "Add Ollama + model" },
+                  { value: "add:AddLocalAI", label: "Add LocalAI (Nextended)" },
+                ]} />
+              {aiChoice !== "none" && (
+                <TextInput style={{ flex: 1 }} label="Model" value={aiModel} onChange={e => setAiModel(e.currentTarget.value)} />
+              )}
+            </Group>
           </>
         )}
 
