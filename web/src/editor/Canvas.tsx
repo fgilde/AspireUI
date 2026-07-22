@@ -1,11 +1,11 @@
 import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState, NodeResizer } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon } from "@mantine/core";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon, Modal, Checkbox, Stack as MStack, Button } from "@mantine/core";
 import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, type OrphanDep, type Node } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import { ResourceLogDrawer } from "./ResourceLogDrawer";
@@ -146,6 +146,33 @@ function GroupNode({ id, data, selected }: any) {
 }
 const nodeTypes = { resource: ResourceNode, live: LiveNode, note: NoteNode, group: GroupNode };
 
+// Smart-delete confirmation: the node plus its orphanable deps as checkboxes (companions checked by
+// default). Only shown when there ARE such deps; otherwise a plain confirm is used.
+function SmartDeleteModal({ node, deps, onConfirm, onCancel }:
+  { node: Node; deps: OrphanDep[]; onConfirm: (ids: string[]) => void; onCancel: () => void }) {
+  const [checked, setChecked] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(deps.map(d => [d.node.id, true])));
+  return (
+    <Modal opened onClose={onCancel} title={`Delete "${node.resourceName}"?`} size="md" centered>
+      <MStack gap="sm">
+        <Text size="sm" c="dimmed">Also remove these resources it uses (nothing else references them)?</Text>
+        <MStack gap={4}>
+          {deps.map(d => (
+            <Checkbox key={d.node.id} checked={!!checked[d.node.id]}
+              onChange={e => setChecked(c => ({ ...c, [d.node.id]: e.currentTarget.checked }))}
+              label={<Group gap={6} component="span">{d.node.resourceName}
+                {d.owned && <Badge size="xs" variant="light" color="grape">companion</Badge>}</Group>} />
+          ))}
+        </MStack>
+        <Group justify="flex-end" gap="xs" mt="xs">
+          <Button variant="subtle" onClick={onCancel}>Cancel</Button>
+          <Button color="red" onClick={() => onConfirm(deps.filter(d => checked[d.node.id]).map(d => d.node.id))}>Delete</Button>
+        </Group>
+      </MStack>
+    </Modal>
+  );
+}
+
 // Editable edge for a directed pair (from → to). A connection can be a reference and/or a wait-for
 // independently (both are valid in Aspire); direction = who references / waits on whom. Clicking the
 // chip opens a menu to toggle each kind, reverse the direction, or remove the whole connection.
@@ -195,6 +222,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [query, setQuery] = useState("");
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
+  const [del, setDel] = useState<{ node: Node; deps: OrphanDep[] } | null>(null);
   const [showMinimap, setShowMinimap] = useState(() => localStorage.getItem("aspireui.minimap") !== "off");
   const toggleMinimap = () => setShowMinimap(v => { localStorage.setItem("aspireui.minimap", v ? "off" : "on"); return !v; });
   const onLogs = useCallback((name: string, display: string) => setLogTarget({ name, display }), []);
@@ -286,13 +314,24 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     api.saveStack({ ...stack, nodes }).then(s => { setStack(s); toastOk("Layout arranged"); }).catch(toastErr);
   }, [stack, setStack]);
 
+  // Smart delete: if the node has deps that would be orphaned (companions / things only it uses),
+  // open a dialog to optionally remove them too; otherwise a plain confirm.
   const deleteNodeById = useCallback((nodeId: string) => {
     const n = stack.nodes.find(x => x.id === nodeId);
     if (!n) return;
+    const deps = orphanableDeps(stack, nodeId);
+    if (deps.length > 0) { setDel({ node: n, deps }); return; }
     confirmDelete(`"${n.resourceName}"`, "This also removes its connections and any code that references it.").then(ok => {
       if (!ok) return;
       api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); toastOk("Resource deleted"); }).catch(toastErr);
     });
+  }, [stack, setStack, onSelect]);
+
+  // Apply a smart delete: remove the node + any dep ids the user kept checked.
+  const applyDelete = useCallback((nodeId: string, alsoRemove: string[]) => {
+    let next = removeNode(stack, nodeId);
+    for (const dep of alsoRemove) next = removeNode(next, dep);
+    api.saveStack(next).then(s => { setStack(s); onSelect(null); setDel(null); toastOk("Deleted"); }).catch(toastErr);
   }, [stack, setStack, onSelect]);
 
   // All edge mutations rewrite the pair's edges and persist the whole stack (edges live in the model,
@@ -352,8 +391,16 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   }, [stack.edges, ops]);
 
   const onNodesChange = useCallback((changes: any[]) => {
-    onNodesChangeInternal(changes); // apply live (drag, select) to the local RF state
     const isAnno = (id: string) => id.startsWith("note:") || id.startsWith("group:");
+    // A single resource-node delete that would orphan deps → route to the smart-delete dialog instead
+    // of removing it here. Suppress that change so the node doesn't visually vanish before deciding.
+    const removeChanges = changes.filter(c => c.type === "remove" && !isAnno(c.id));
+    let suppress: any = null;
+    if (removeChanges.length === 1 && orphanableDeps(stack, removeChanges[0].id).length > 0) {
+      suppress = removeChanges[0];
+      deleteNodeById(removeChanges[0].id);
+    }
+    onNodesChangeInternal(suppress ? changes.filter(c => c !== suppress) : changes);
 
     // Persist geometry of annotations (position + group resize) on drag/resize end.
     let notes = stack.notes ?? [], groups = stack.groups ?? [], annoDirty = false;
@@ -380,13 +427,13 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack({ ...stack,
         notes: (stack.notes ?? []).filter(n => !removedAnno.some(c => c.id === n.id)),
         groups: (stack.groups ?? []).filter(g => !removedAnno.some(c => c.id === g.id)) }).then(setStack);
-    const removedNodes = removed.filter(c => !isAnno(c.id));
+    const removedNodes = removed.filter(c => !isAnno(c.id) && c !== suppress);
     if (removedNodes.length > 0) {
       const next = removedNodes.reduce((s, c) => removeNode(s, c.id), stack);
       api.saveStack(next).then(setStack);
       onSelect(null);
     }
-  }, [stack, setStack, onSelect, onNodesChangeInternal]);
+  }, [stack, setStack, onSelect, onNodesChangeInternal, deleteNodeById]);
   const onConnect = useCallback((c: any) =>
     api.addEdge(stack.id, { fromNodeId: c.source, toNodeId: c.target, kind: "reference" }).then(setStack),
     [stack, setStack]);
@@ -479,6 +526,9 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       )}
     </ReactFlow>
     <ResourceLogDrawer stackId={stack.id} target={logTarget} onClose={() => setLogTarget(null)} />
+    {del && <SmartDeleteModal node={del.node} deps={del.deps}
+      onCancel={() => setDel(null)}
+      onConfirm={ids => applyDelete(del.node.id, ids)} />}
     </>
   );
 }

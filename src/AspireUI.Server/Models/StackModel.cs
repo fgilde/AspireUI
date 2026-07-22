@@ -33,7 +33,10 @@ public record NodeModel(
     bool Composite = false,
     // Extra `using` namespaces this node's statement needs (composite nodes carry their own, since
     // discovered macro extensions aren't in the overlay's AddMethod->usings map).
-    List<string>? Usings = null);
+    List<string>? Usings = null,
+    // Canvas-only: id of the app node that dropped this one as a preset companion. Lets smart-delete
+    // recognize "the app + exactly its companions" as a unit. Never affects generated code.
+    string? SpawnedBy = null);
 
 public record EdgeModel(string Id, string FromNodeId, string ToNodeId, string Kind); // Kind = "reference" | "waitFor"
 

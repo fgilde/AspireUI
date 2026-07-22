@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, buildPresetNodes, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource, type ContainerPreset } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, buildPresetNodes, orphanableDeps, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource, type ContainerPreset } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -288,5 +288,27 @@ describe("buildPresetNodes", () => {
     const { nodes, edges } = buildPresetNodes({ id: "x", label: "X", group: "T", image: "x:1", port: 80 }, new Set());
     expect(nodes).toHaveLength(1);
     expect(edges).toHaveLength(0);
+  });
+});
+
+describe("orphanableDeps", () => {
+  const N = (id: string, extra: Partial<Node> = {}): Node =>
+    ({ id, varName: id, addMethod: "AddContainer", resourceName: id, withCalls: [], x: 0, y: 0, addArgs: [], ...extra });
+  const S = (nodes: Node[], edges: { from: string; to: string }[]): Stack =>
+    ({ id: "s", name: "s", targetFramework: "net10.0", nodes,
+       edges: edges.map((e, i) => ({ id: "e" + i, fromNodeId: e.from, toNodeId: e.to, kind: "waitFor" })),
+       rawStatements: [], extraFiles: [], extraPackages: [] });
+
+  it("returns deps only this node uses, flags companions as owned", () => {
+    const s = S([N("app"), N("db", { spawnedBy: "app" }), N("redis")], [{ from: "app", to: "db" }, { from: "app", to: "redis" }]);
+    const deps = orphanableDeps(s, "app");
+    expect(deps.map(d => d.node.id).sort()).toEqual(["db", "redis"]);
+    expect(deps.find(d => d.node.id === "db")!.owned).toBe(true);
+    expect(deps.find(d => d.node.id === "redis")!.owned).toBe(false);
+  });
+
+  it("excludes deps still referenced by another node", () => {
+    const s = S([N("app"), N("other"), N("db")], [{ from: "app", to: "db" }, { from: "other", to: "db" }]);
+    expect(orphanableDeps(s, "app")).toHaveLength(0); // db still used by 'other'
   });
 });

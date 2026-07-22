@@ -1,7 +1,7 @@
 export const APP_VERSION = "0.1.0";
 
 export interface WithCall { method: string; args: string[] }
-export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[] }
+export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[]; spawnedBy?: string | null }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface ExtraFile { name: string; content: string }
 export interface PackageRef { id: string; version: string }
@@ -62,7 +62,7 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
       id: nid(), varName: sanitizeIdentifier(rn), resourceName: rn, addMethod: c.addMethod,
       addArgs: c.image ? [JSON.stringify(c.image)] : [],
       withCalls: [...(c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${c.port}`] }] : []), ...expandEnv(c.env)],
-      x: 380, y: 40 + i * 130,
+      x: 380, y: 40 + i * 130, spawnedBy: main.id,
     };
     nodes.push(cn);
     edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" }); // only waitFor is valid for a plain container
@@ -310,6 +310,22 @@ export function removeNode(s: Stack, id: string): Stack {
     edges: s.edges.filter(e => e.fromNodeId !== id && e.toNodeId !== id),
     rawStatements: raws,
   };
+}
+
+// Deps of `id` (nodes it references/waits-for) that would be ORPHANED by deleting `id` — i.e. no
+// other remaining node references/waits-for them. `owned` = this node spawned it as a companion.
+// Powers the smart-delete prompt ("also remove these?"). Shared deps (used elsewhere) aren't returned.
+export interface OrphanDep { node: Node; owned: boolean }
+export function orphanableDeps(s: Stack, id: string): OrphanDep[] {
+  const targets = [...new Set(s.edges.filter(e => e.fromNodeId === id && e.toNodeId !== id).map(e => e.toNodeId))];
+  const out: OrphanDep[] = [];
+  for (const t of targets) {
+    const node = s.nodes.find(n => n.id === t);
+    if (!node) continue;
+    const otherReferrer = s.edges.some(e => e.toNodeId === t && e.fromNodeId !== id && e.fromNodeId !== t);
+    if (!otherReferrer) out.push({ node, owned: node.spawnedBy === id });
+  }
+  return out;
 }
 // Stack-level run state shown per node (Running/Starting/Failed dot on the
 // canvas). NOT true per-resource Aspire health/URL — that needs the Aspire
