@@ -680,6 +680,22 @@
       [
         "MEILI_MASTER_KEY",
         "aspireui-dev-master-key"
+      ],
+      [
+        "JWT_SECRET",
+        "aspireui-dev-jwt-secret-change-me"
+      ],
+      [
+        "JWT_REFRESH_SECRET",
+        "aspireui-dev-jwt-refresh-secret-change-me"
+      ],
+      [
+        "CREDS_KEY",
+        "f34be427ebb29de8d88c107a715460196853c907c3f28e1a52a1d1f5973e9d0e"
+      ],
+      [
+        "CREDS_IV",
+        "e2341419ec3dd3d19b13a1a87fafcbfb"
       ]
     ],
     "companions": [
