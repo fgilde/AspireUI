@@ -1,11 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton } from "@mantine/core";
+import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Chip } from "@mantine/core";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { sanitizeIdentifier } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { AddResourceDialog } from "./AddResourceDialog";
+
+// Cross-cutting tags for the combinable filter (orthogonal to the group sections).
+const GPU_PRESETS = new Set(["comfyui", "sdnext", "acestep"]);
+const TAG_ORDER = ["app", "resource", "setup", "ai", "gpu", "observability", "azure"];
+function presetTags(p: ContainerPreset): string[] {
+  const g = (p.group || "").toLowerCase();
+  const t = ["app"];
+  if (g.includes("ai")) t.push("ai");
+  if (g.includes("observability")) t.push("observability");
+  if (GPU_PRESETS.has(p.id)) t.push("gpu");
+  return t;
+}
+function rtTags(rt: ResourceType): string[] {
+  const g = (rt.group || "").toLowerCase();
+  const t = [rt.composite ? "setup" : "resource"];
+  if (g === "ai") t.push("ai");
+  if (g === "observability") t.push("observability");
+  if (rt.addMethod.startsWith("AddAzure")) t.push("azure");
+  return t;
+}
 
 // One compact palette tile: colored icon box + label + a small caption, hover-highlighted.
 function Tile({ iconKey, label, caption, badge, onClick, tooltip }: {
@@ -36,18 +56,30 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const [q, setQ] = useState("");
   const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
   const [opened, setOpened] = useState<string[]>([]);
+  const [activeTags, setActiveTags] = useState<string[]>([]);
   const inited = useRef(false);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
+  // Tags actually present, in a stable order — drives the filter chips.
+  const allTags = useMemo(() => {
+    const seen = new Set<string>();
+    cat.forEach(r => rtTags(r).forEach(t => seen.add(t)));
+    presets.forEach(p => presetTags(p).forEach(t => seen.add(t)));
+    return TAG_ORDER.filter(t => seen.has(t));
+  }, [cat, presets]);
+
   const groups = useMemo(() => {
     const ql = q.toLowerCase();
+    const hasTags = (tags: string[]) => activeTags.every(t => tags.includes(t)); // combine = AND
     const by: Record<string, { rts: ResourceType[]; presets: ContainerPreset[] }> = {};
     for (const r of cat)
-      if (r.label.toLowerCase().includes(ql)) (by[r.group || "Other"] ??= { rts: [], presets: [] }).rts.push(r);
+      if (r.label.toLowerCase().includes(ql) && hasTags(rtTags(r)))
+        (by[r.group || "Other"] ??= { rts: [], presets: [] }).rts.push(r);
     for (const p of presets)
-      if (p.label.toLowerCase().includes(ql)) (by[p.group || "Apps"] ??= { rts: [], presets: [] }).presets.push(p);
+      if (p.label.toLowerCase().includes(ql) && hasTags(presetTags(p)))
+        (by[p.group || "Apps"] ??= { rts: [], presets: [] }).presets.push(p);
     return by;
-  }, [cat, presets, q]);
+  }, [cat, presets, q, activeTags]);
 
   // Sort groups: AspireUI first (🤯), then alphabetical.
   const groupKeys = useMemo(() => Object.keys(groups)
@@ -89,9 +121,16 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   return (
     <MStack gap="xs" p="sm" h="100%">
       <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
-      <ScrollArea style={{ flex: 1 }}>
-        <Accordion multiple value={q ? groupKeys : opened} onChange={setOpened} chevronPosition="left"
-          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px" }, item: { border: "none" }, label: { padding: 0 } }}>
+      {allTags.length > 0 && (
+        <Chip.Group multiple value={activeTags} onChange={setActiveTags}>
+          <Group gap={5}>
+            {allTags.map(t => <Chip key={t} value={t} size="xs" variant="light">{t}</Chip>)}
+          </Group>
+        </Chip.Group>
+      )}
+      <ScrollArea style={{ flex: 1 }} offsetScrollbars scrollbarSize={8}>
+        <Accordion multiple value={(q || activeTags.length > 0) ? groupKeys : opened} onChange={setOpened} chevronPosition="left"
+          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px 14px" }, item: { border: "none" }, label: { padding: 0 } }}>
           {groupKeys.map(g => {
             const items = groups[g];
             const count = items.rts.length + items.presets.length;
