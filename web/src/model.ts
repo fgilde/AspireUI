@@ -21,27 +21,31 @@ export interface ResourceType { addMethod: string; label: string; icon?: string 
 export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null }
 export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null }
 
-// Build the node(s) + edges a preset drops onto the canvas. Companions get deduped var names; env
-// values containing `${key}` tokens are treated as raw expressions (token → companion var name),
-// everything else is a quoted string literal. The main container references + waits-for each companion.
-export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<string>): { nodes: Node[]; edges: Edge[] } {
+// Build the node(s) + edges a preset drops onto the canvas. Companions get deduped names; an env
+// value's `${key}` token expands to that companion's resource NAME (its on-network hostname) as a
+// quoted string — NOT the builder var, since WithEnvironment/WithReference don't accept a plain
+// container builder (that was a compile error). The main container only waits-for each companion
+// (WithReference is invalid on a plain container). Env entries referencing an excluded companion are
+// dropped. Pass includeCompanions=false to drop just the app.
+export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<string>, includeCompanions = true): { nodes: Node[]; edges: Edge[] } {
   const taken = new Set(existingNames);
   const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
   const nid = () => "n" + crypto.randomUUID().slice(0, 8);
   const eid = () => "e" + crypto.randomUUID().slice(0, 8);
 
-  // key -> resolved var name (main uses the preset id).
-  const keyVar: Record<string, string> = {};
-  const companions = preset.companions ?? [];
+  const companions = includeCompanions ? (preset.companions ?? []) : [];
   const mainName = uniq(preset.id);
-  keyVar["__main"] = mainName;
-  for (const c of companions) keyVar[c.key] = uniq(sanitizeIdentifier(c.resourceName || c.key));
+  const keyName: Record<string, string> = { __main: mainName };          // key -> resource name (hostname)
+  for (const c of companions) keyName[c.key] = uniq(c.resourceName || c.key);
+  const knownKeys = new Set(Object.keys(keyName));
 
-  const expandEnv = (env?: string[][] | null) => (env ?? []).map(([k, v]) => {
+  const expandEnv = (env?: string[][] | null) => (env ?? []).flatMap(([k, v]) => {
+    // Drop entries that reference a companion we didn't include.
+    const refs = [...v.matchAll(/\$\{([^}]+)\}/g)].map(m => m[1]);
+    if (refs.some(r => !knownKeys.has(r))) return [];
     let val = v;
-    const raw = val.includes("${");
-    for (const [key, varName] of Object.entries(keyVar)) val = val.split(`\${${key}}`).join(varName);
-    return { method: "WithEnvironment", args: [JSON.stringify(k), raw ? val : JSON.stringify(val)] };
+    for (const [key, name] of Object.entries(keyName)) val = val.split(`\${${key}}`).join(name);
+    return [{ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(val)] }];
   });
 
   const main: Node = {
@@ -53,16 +57,15 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
   const nodes: Node[] = [main];
   const edges: Edge[] = [];
   companions.forEach((c, i) => {
-    const vn = keyVar[c.key];
+    const rn = keyName[c.key];
     const cn: Node = {
-      id: nid(), varName: sanitizeIdentifier(vn), resourceName: vn, addMethod: c.addMethod,
+      id: nid(), varName: sanitizeIdentifier(rn), resourceName: rn, addMethod: c.addMethod,
       addArgs: c.image ? [JSON.stringify(c.image)] : [],
       withCalls: [...(c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${c.port}`] }] : []), ...expandEnv(c.env)],
       x: 380, y: 40 + i * 130,
     };
     nodes.push(cn);
-    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "reference" });
-    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" });
+    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" }); // only waitFor is valid for a plain container
   });
   return { nodes, edges };
 }

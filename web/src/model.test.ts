@@ -254,20 +254,29 @@ describe("buildPresetNodes", () => {
     companions: [{ key: "db", addMethod: "AddContainer", resourceName: "app-db", image: "postgres:16", env: [["POSTGRES_DB", "app"]] }],
   };
 
-  it("drops main + companions and wires reference + waitFor edges", () => {
+  it("drops main + companions and wires waitFor edges only", () => {
     const { nodes, edges } = buildPresetNodes(preset, new Set());
     expect(nodes).toHaveLength(2);
-    expect(edges).toHaveLength(2); // reference + waitFor main->db
-    expect(edges.map(e => e.kind).sort()).toEqual(["reference", "waitFor"]);
+    expect(edges).toHaveLength(1); // waitFor main->db (no reference — invalid on a plain container)
+    expect(edges[0].kind).toBe("waitFor");
   });
 
-  it("expands ${key} env tokens to the companion var (raw expr) and quotes plain values", () => {
+  it("expands ${key} env tokens to the companion resource name as a quoted string", () => {
     const { nodes } = buildPresetNodes(preset, new Set());
     const main = nodes[0];
-    const dbVar = nodes[1].varName;
+    const dbName = nodes[1].resourceName;
     const env = main.withCalls.filter(w => w.method === "WithEnvironment");
-    expect(env.find(e => e.args[0] === '"DB"')!.args[1]).toBe(dbVar);       // raw, no quotes
-    expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');  // quoted literal
+    expect(env.find(e => e.args[0] === '"DB"')!.args[1]).toBe(JSON.stringify(dbName)); // quoted hostname
+    expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');
+  });
+
+  it("without companions, drops just the app and skips env referencing them", () => {
+    const { nodes, edges } = buildPresetNodes(preset, new Set(), false);
+    expect(nodes).toHaveLength(1);
+    expect(edges).toHaveLength(0);
+    const env = nodes[0].withCalls.filter(w => w.method === "WithEnvironment");
+    expect(env.find(e => e.args[0] === '"DB"')).toBeUndefined();   // dropped (references excluded companion)
+    expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');
   });
 
   it("dedupes names against existing", () => {

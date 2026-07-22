@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton } from "@mantine/core";
+import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { buildPresetNodes } from "../model";
@@ -71,6 +71,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     return next;
   });
   const [tagsExpanded, setTagsExpanded] = useState(false);
+  const [presetPick, setPresetPick] = useState<ContainerPreset | null>(null);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
   // Every tag actually assigned (kinds + groups + flags), stable order — drives the filter chips.
@@ -120,13 +121,15 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     setSelectedRt(null);
   };
 
-  const createPreset = (p: ContainerPreset) => {
+  const dropPreset = (p: ContainerPreset, withCompanions: boolean) => {
     const off = stack.nodes.length * 28;
-    const { nodes, edges } = buildPresetNodes(p, new Set(stack.nodes.map(n => n.resourceName)));
+    const { nodes, edges } = buildPresetNodes(p, new Set(stack.nodes.map(n => n.resourceName)), withCompanions);
     const placed = nodes.map(n => ({ ...n, x: n.x + off, y: n.y + off }));
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
-      .then(s => { setStack(s); toastOk(`Added ${p.label}${p.companions?.length ? ` + ${p.companions.length} companion(s)` : ""}`); }).catch(toastErr);
+      .then(s => { setStack(s); toastOk(`Added ${p.label}${withCompanions && p.companions?.length ? ` + ${p.companions.length} companion(s)` : ""}`); }).catch(toastErr);
   };
+  // Presets with companions ask first (include the extra containers or just the app); others drop directly.
+  const createPreset = (p: ContainerPreset) => p.companions?.length ? setPresetPick(p) : dropPreset(p, false);
 
   return (
     <MStack gap="xs" p="sm" h="100%">
@@ -208,6 +211,24 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           onClose={() => setSelectedRt(null)}
         />
       )}
+      <Modal opened={!!presetPick} onClose={() => setPresetPick(null)} title={`Add ${presetPick?.label}`} size="md" centered>
+        {presetPick && (
+          <MStack gap="sm">
+            <Text size="sm" c="dimmed">{presetPick.description}</Text>
+            <Text size="sm">This app comes with {presetPick.companions!.length} companion resource(s):</Text>
+            <MStack gap={2}>
+              {presetPick.companions!.map(c => (
+                <Group key={c.key} gap={6}><Badge size="xs" variant="light">{c.addMethod === "AddContainer" ? c.image : c.addMethod}</Badge><Text size="xs" c="dimmed">{c.resourceName}</Text></Group>
+              ))}
+            </MStack>
+            <Text size="xs" c="dimmed">Scaffold — you may still need to finish connection env/volumes.</Text>
+            <Group justify="flex-end" gap="xs" mt="xs">
+              <Button variant="subtle" onClick={() => { dropPreset(presetPick, false); setPresetPick(null); }}>Just the app</Button>
+              <Button onClick={() => { dropPreset(presetPick, true); setPresetPick(null); }}>Add with companions</Button>
+            </Group>
+          </MStack>
+        )}
+      </Modal>
     </MStack>
   );
 }
