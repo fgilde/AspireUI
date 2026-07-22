@@ -24,7 +24,7 @@ function primaryUrl(live: LiveResource | undefined): string | undefined {
   return live?.urls.find(u => !u.isInternal && !u.isInactive)?.url;
 }
 
-function ResourceNode({ data }: any) {
+function ResourceNode({ data, selected }: any) {
   const live = data.live as LiveResource | undefined;
   // When the stack runs, prefer the real per-resource state from Aspire; otherwise the shared run state.
   const color = live ? liveStateColor(live.state) : (runStateColor(data.runState as RunState) ?? undefined);
@@ -32,7 +32,11 @@ function ResourceNode({ data }: any) {
   const { color: iconColor } = resourceVisual(data.icon || data.addMethod);
   const url = primaryUrl(live);
   return (
-    <Card withBorder shadow="sm" padding="xs" radius="md" style={{ minWidth: 150 }}>
+    <Card withBorder shadow="sm" padding="xs" radius="md"
+      style={{ minWidth: 150,
+        borderColor: selected ? "var(--mantine-color-orange-filled)" : undefined,
+        borderWidth: selected ? 2 : undefined,
+        boxShadow: selected ? "0 0 0 2px var(--mantine-color-orange-filled)" : undefined }}>
       <Handle type="target" position={Position.Left} />
       <Group justify="space-between" wrap="nowrap" gap={6}>
         <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
