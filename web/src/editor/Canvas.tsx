@@ -218,6 +218,16 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
   const { colorScheme } = useMantineColorScheme();
   const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Close the node context menu on an outside click or Escape (not on hover — that felt broken).
+  useEffect(() => {
+    if (!menu) return;
+    const onDown = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as any)) setMenu(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(null); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey); };
+  }, [menu]);
   const [query, setQuery] = useState("");
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
@@ -543,9 +553,8 @@ export function Canvas({ stack, setStack, onSelect, runState }:
         </Group>
       </Panel>
       {menu && (
-        <Paper shadow="md" withBorder p={4} radius="sm"
-          style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}
-          onMouseLeave={() => setMenu(null)}>
+        <Paper ref={menuRef} shadow="md" withBorder p={4} radius="sm"
+          style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}>
           {[
             { icon: IconPencil, label: "Edit properties", run: () => onSelect(menu.nodeId), color: undefined },
             { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
