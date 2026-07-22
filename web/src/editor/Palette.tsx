@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles } from "@tabler/icons-react";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
 import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
-import { toastOk, toastErr } from "../ui";
+import { toastOk, toastErr, promptText } from "../ui";
 import * as api from "../api";
 import { AddResourceDialog } from "./AddResourceDialog";
 
@@ -296,7 +296,14 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       )}
       {autoOpen && (
         <AutoAddModal onClose={() => setAutoOpen(false)}
-          onUse={(nodes, edges) => { setAutoOpen(false); dropFragment(nodes, edges); }} />
+          onUse={(nodes, edges) => { setAutoOpen(false); dropFragment(nodes, edges); }}
+          onSaveSnippet={(nodes, edges) => {
+            promptText("Save as snippet", "Snippet name", nodes[0]?.resourceName || "imported").then(name => {
+              if (!name) return;
+              api.saveSnippet({ id: "", name, group: "Custom", icon: nodes[0]?.icon ?? nodes[0]?.addMethod ?? null, nodes, edges, files: [] })
+                .then(() => { loadSnippets(); toastOk(`Saved snippet "${name}"`); setAutoOpen(false); }).catch(toastErr);
+            });
+          }} />
       )}
     </MStack>
   );
@@ -305,7 +312,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
 // AI auto-add: paste a URL (repo / Docker Hub / docs). The server fetches the page/README, the assistant
 // writes the Aspire builder C# (AddGithubRepository / AddContainer / companions / wiring), and it's
 // parsed into resources for review before landing on the canvas.
-function AutoAddModal({ onClose, onUse }: { onClose: () => void; onUse: (nodes: Node[], edges: Edge[]) => void }) {
+function AutoAddModal({ onClose, onUse, onSaveSnippet }: {
+  onClose: () => void; onUse: (nodes: Node[], edges: Edge[]) => void; onSaveSnippet: (nodes: Node[], edges: Edge[]) => void;
+}) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -349,6 +358,8 @@ function AutoAddModal({ onClose, onUse }: { onClose: () => void; onUse: (nodes: 
         )}
         <Group justify="flex-end" gap="xs" mt="xs">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>
+          <Button variant="light" disabled={!result} leftSection={<IconBookmark size={14} />}
+            onClick={() => result && onSaveSnippet(result.nodes, result.edges)}>Save as snippet</Button>
           <Button disabled={!result} onClick={() => result && onUse(result.nodes, result.edges)}>Add to canvas</Button>
         </Group>
       </MStack>

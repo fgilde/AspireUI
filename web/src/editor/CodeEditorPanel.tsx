@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Group, Text, Alert } from "@mantine/core";
+import { Button, Group, Text, Alert, Modal } from "@mantine/core";
+import type { IDockviewPanelProps } from "dockview-react";
 import { IconDeviceFloppy, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
 // Lean import: the editor API + just the C# basic-language (tokenizer) contribution — avoids bundling
 // monaco's TS/CSS/HTML/JSON language workers (~8 MB) we don't use. IntelliSense is our Roslyn backend.
@@ -59,7 +60,7 @@ function extractMessage(err: unknown): string {
   return body;
 }
 
-export function CodeEditorPanel() {
+export function CodeEditorPanel(props: IDockviewPanelProps) {
   const { stack, setStack, selected } = useEditor();
   const { current } = useAppTheme();
   const monacoTheme = current.monaco;
@@ -70,6 +71,7 @@ export function CodeEditorPanel() {
   const applyingRef = useRef(false);  // a programmatic setValue is in flight (don't mark dirty)
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string | null>(null);
+  const [leavePrompt, setLeavePrompt] = useState(false);
   const id = stack.id;
 
   // Pull the canonical generated code from the server and put it in the editor without marking dirty.
@@ -235,6 +237,13 @@ export function CodeEditorPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, stack.name]);
 
+  // Warn on leaving the panel (tab switch / hide) with unsaved edits — Save or Discard.
+  useEffect(() => {
+    const d = props.api.onDidVisibilityChange(e => { if (!e.isVisible && dirtyRef.current) setLeavePrompt(true); });
+    return () => d.dispose();
+  }, [props.api]);
+  const discard = () => { const ed = edRef.current; if (ed) { dirtyRef.current = false; void applyRemote(ed); } setLeavePrompt(false); };
+
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" px="sm" py={4} wrap="nowrap">
@@ -253,6 +262,13 @@ export function CodeEditorPanel() {
         </Alert>
       )}
       <div ref={hostRef} style={{ flex: 1, minHeight: 0 }} />
+      <Modal opened={leavePrompt} onClose={() => setLeavePrompt(false)} title="Unsaved code changes" centered>
+        <Text size="sm" mb="md">You changed the code but didn't save. Save now, or discard your edits?</Text>
+        <Group justify="flex-end" gap="xs">
+          <Button variant="default" color="red" onClick={discard}>Discard</Button>
+          <Button loading={busy} onClick={async () => { await save(); setLeavePrompt(false); }}>Save</Button>
+        </Group>
+      </Modal>
     </div>
   );
 }

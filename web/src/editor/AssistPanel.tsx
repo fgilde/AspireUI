@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper, Chip, ActionIcon, Tooltip } from "@mantine/core";
+import { Stack as MStack, Group, Textarea, Button, ScrollArea, Text, Paper, Chip, ActionIcon, Tooltip, SegmentedControl } from "@mantine/core";
 import { IconSend, IconX, IconTrash } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
 import * as api from "../api";
@@ -31,13 +31,15 @@ export function AssistPanel() {
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<Entry[]>([]);
+  const [mode, setMode] = useState<string>(() => localStorage.getItem("aspireui.assistMode") || "graph");
+  const setModePersist = (m: string) => { setMode(m); localStorage.setItem("aspireui.assistMode", m); };
 
   const send = async () => {
     const p = prompt.trim();
     if (!p || busy) return;
     setBusy(true);
     try {
-      const { reply, stack: updated } = await api.assistStack(stack.id, p);
+      const { reply, stack: updated } = await (mode === "code" ? api.assistStackCode(stack.id, p) : api.assistStack(stack.id, p));
       setStack(updated);
       setHistory(h => [...h, { prompt: p, reply }]);
       setPrompt("");
@@ -98,7 +100,11 @@ export function AssistPanel() {
           ))}
         </MStack>
       </ScrollArea>
-      <Group px="xs" pt="xs" gap={6}>
+      <Group px="xs" pt="xs" gap={6} align="center">
+        <Tooltip label="Graph: edits the resource model. Code: rewrites Program.cs, then re-parses it (more robust for some backends)." withArrow multiline w={260}>
+          <SegmentedControl size="xs" value={mode} onChange={setModePersist}
+            data={[{ label: "Graph", value: "graph" }, { label: "Code", value: "code" }]} />
+        </Tooltip>
         <Button size="compact-xs" variant="light" loading={busy} onClick={() => void explain()}>Explain this stack</Button>
         {["Add a Redis cache", "Add a Postgres database", "What could be improved?"].map(s => (
           <Chip key={s} size="xs" checked={false} variant="light" onClick={() => setPrompt(s)}>{s}</Chip>

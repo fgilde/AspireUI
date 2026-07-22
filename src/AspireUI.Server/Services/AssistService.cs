@@ -89,6 +89,28 @@ public class AssistService(IChatClient chat, CatalogService catalog)
         return (true, null, code);
     }
 
+    // Code mode: hand the model the current Program.cs, have it apply the request, and return the full
+    // modified Program.cs. More robust for backends that don't nail our node-graph JSON schema — the
+    // result is parsed back via the normal import path. Returns (ok, reason, code).
+    public async Task<(bool Ok, string? Reason, string? Code)> RewriteCodeAsync(string currentCode, string prompt, AppSettings settings)
+    {
+        var addMethods = string.Join(", ", catalog.GetCatalog().Select(r => r.AddMethod).Distinct().OrderBy(x => x));
+        var system = $$"""
+            You edit a .NET Aspire AppHost Program.cs to satisfy the user's request. Return ONLY the full
+            modified Program.cs — no markdown fences, no prose, no explanation. Keep it compilable and
+            keep the parts the user didn't ask to change. Only use AddX methods from this catalog:
+            {{addMethods}}.
+
+            Current Program.cs:
+            {{currentCode}}
+            """;
+        var raw = (await chat.CompleteAsync(system, prompt, settings)).Trim();
+        var code = StripFences(raw);
+        if (string.IsNullOrWhiteSpace(code) || !code.Contains("builder", StringComparison.Ordinal))
+            return (false, "The AI didn't return usable code.", null);
+        return (true, null, code);
+    }
+
     // Some models wrap code in ```csharp ... ``` fences despite instructions; strip them.
     private static string StripFences(string s)
     {

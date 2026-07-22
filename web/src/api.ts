@@ -135,3 +135,5 @@ export const autoAdd = (url: string): Promise<{ ok: boolean; reason?: string; co
 
 export const assistStack = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
   fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
+export const assistStackCode = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
+  fetch(`${base}/stacks/${id}/assist-code`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);

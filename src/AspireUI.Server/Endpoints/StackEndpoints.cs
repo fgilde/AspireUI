@@ -288,6 +288,29 @@ public static class StackEndpoints
             return Results.Ok(new { reply = result.Reply, stack = forced });
         });
 
+        // Assistant "code mode": rewrite the generated Program.cs to satisfy the request, then parse it
+        // back into the graph. Robust for backends that don't produce our node-graph JSON reliably.
+        app2.MapPost("/stacks/{id}/assist-code", async (string id, AssistRequest body) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var appSettings = settings.Get();
+            if (!AiConfigured(appSettings)) return Results.BadRequest("AI not configured — set it in Settings");
+            try
+            {
+                var (okr, reason, newCode) = await assist.RewriteCodeAsync(gen.GenerateProgram(s), body.Prompt, appSettings);
+                if (!okr || newCode is null) return Results.UnprocessableEntity(new { reply = reason ?? "Could not apply." });
+                var updated = import.Import(id, s.Name, newCode, "") with { ExtraFiles = s.ExtraFiles, ExtraPackages = s.ExtraPackages };
+                var persisted = Persist(updated);
+                if (persisted is IStatusCodeHttpResult { StatusCode: StatusCodes.Status422UnprocessableEntity })
+                    return Results.UnprocessableEntity(new { reply = "Applied, but the code didn't compile — reverted.", errors = (persisted as IValueHttpResult)?.Value });
+                return Results.Ok(new { reply = "Applied your change via code.", stack = updated });
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
+            }
+        });
+
         // Docker Compose import: services -> AddContainer nodes, ports/env/depends_on mapped.
         app2.MapPost("/stacks/import-compose", (ComposeRequest body, HttpContext ctx) =>
         {
