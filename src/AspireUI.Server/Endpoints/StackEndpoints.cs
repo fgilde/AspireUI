@@ -141,9 +141,7 @@ public static class StackEndpoints
         app2.MapPost("/catalog/auto-preset", async (AutoPresetRequest body) =>
         {
             var s = settings.Get();
-            var configured = !string.IsNullOrWhiteSpace(s.AiBaseUrl)
-                || string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase);
-            if (!configured) return Results.Ok(new { ok = false, reason = "AI backend not configured (see Settings)." });
+            if (!AiConfigured(s)) return Results.Ok(new { ok = false, reason = "AI backend not configured (see Settings)." });
             if (string.IsNullOrWhiteSpace(body.Url)) return Results.Ok(new { ok = false, reason = "No URL." });
             var (okr, reason, preset) = await assist.AutoPresetAsync(body.Url, s);
             return Results.Ok(new { ok = okr, reason, preset });
@@ -235,7 +233,7 @@ public static class StackEndpoints
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             var appSettings = settings.Get();
-            if (string.IsNullOrEmpty(appSettings.AiBaseUrl))
+            if (!AiConfigured(appSettings))
                 return Results.BadRequest("AI not configured — set it in Settings");
             try
             {
@@ -253,7 +251,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
 
             var appSettings = settings.Get();
-            if (string.IsNullOrEmpty(appSettings.AiBaseUrl))
+            if (!AiConfigured(appSettings))
                 return Results.BadRequest("AI not configured — set it in Settings");
 
             AssistResult result;
@@ -480,6 +478,11 @@ public static class StackEndpoints
                 ? Results.Ok(deploy.Down(PublishOut(id)))
                 : Results.Conflict(new { message = "nothing deployed" }));
     }
+
+    // The assistant is configured when there's an HTTP base URL, or a CLI backend with a tool selected.
+    private static bool AiConfigured(AppSettings s) =>
+        !string.IsNullOrWhiteSpace(s.AiBaseUrl)
+        || (string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(s.AiCliTool));
 
     public record OpenIdeRequest(string Ide);
     public record ResourceCommandBody(string Command, string? ResourceType);
