@@ -24,6 +24,7 @@ public static class StackEndpoints
         var export = new ExportService();
         var catalog = new CatalogService();
         var templates = new TemplateService();
+        var userTemplates = new UserTemplateStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var run = app.Services.GetRequiredService<RunService>();
         var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
@@ -71,7 +72,20 @@ public static class StackEndpoints
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
-        app2.MapGet("/templates", () => templates.List());
+        // Built-in demo templates + the user's own saved templates (prefixed "user:" so ids never clash).
+        app2.MapGet("/templates", () => templates.List()
+            .Concat(userTemplates.List().Select(t => new TemplateInfo("user:" + t.Id, t.Name, t.Description)))
+            .ToList());
+        // Save a stack as a reusable user template.
+        app2.MapPost("/templates", (SaveTemplateRequest body) =>
+        {
+            if (store.Get(body.StackId) is not { } s) return Results.NotFound();
+            var id = Guid.NewGuid().ToString("n");
+            userTemplates.Save(id, string.IsNullOrWhiteSpace(body.Name) ? s.Name : body.Name, body.Description ?? "", s);
+            return Results.Ok(new TemplateInfo("user:" + id, body.Name ?? s.Name, body.Description ?? ""));
+        });
+        app2.MapDelete("/templates/user/{id}", (string id) =>
+            userTemplates.Delete(id) ? Results.NoContent() : Results.NotFound());
         app2.MapGet("/stacks", () => store.List());
         app2.MapGet("/stacks/{id}", (string id) =>
             store.Get(id) is { } s ? Results.Ok(s) : Results.NotFound());
@@ -88,7 +102,13 @@ public static class StackEndpoints
                 : Results.NotFound());
 
         app2.MapPost("/stacks/from-template/{templateId}", (string templateId) =>
-            templates.Create(templateId) is { } s ? Persist(s) : Results.NotFound());
+        {
+            // "user:<id>" → a saved user template; otherwise a built-in demo template.
+            var s = templateId.StartsWith("user:")
+                ? userTemplates.Get(templateId["user:".Length..])
+                : templates.Create(templateId);
+            return s is not null ? Persist(s with { Id = Guid.NewGuid().ToString("n") }) : Results.NotFound();
+        });
 
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
             store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }));
@@ -358,6 +378,7 @@ public static class StackEndpoints
 
     public record OpenIdeRequest(string Ide);
     public record ResourceCommandBody(string Command, string? ResourceType);
+    public record SaveTemplateRequest(string StackId, string? Name, string? Description);
     public record ComposeRequest(string Name, string Yaml);
     public record CodeRequest(string Code, int Offset);
     public record CodeSaveRequest(string Name, string Code);

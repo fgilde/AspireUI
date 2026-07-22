@@ -202,6 +202,21 @@ export function lintStack(stack: Stack): LintIssue[] {
 
   return issues;
 }
+// Parse a .env file into [key, value] pairs. Skips blanks/comments, strips an `export ` prefix and
+// surrounding quotes. Keeps insertion order; last value wins per key.
+export function parseDotenv(text: string): [string, string][] {
+  const out = new Map<string, string>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const m = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!m) continue;
+    let v = m[2].trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    out.set(m[1], v);
+  }
+  return [...out.entries()];
+}
 export function isErrorLine(line: string): boolean {
   return /error|exception|fail/i.test(line);
 }

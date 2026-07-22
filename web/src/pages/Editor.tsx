@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
@@ -74,6 +74,9 @@ export function Editor() {
   };
   const openIde = (ide: "vscode" | "rider" | "vs") =>
     api.openInIde(id, ide).then(r => r.ok ? toastOk("Opening in your IDE…") : toastErr(r.error, "Couldn't open")).catch(toastErr);
+  const saveAsTemplate = () => promptText("Save as template", "Template name", stack?.name ?? "").then(name => {
+    if (name) api.saveTemplate(id, name, "").then(() => toastOk(`Saved template "${name}"`)).catch(toastErr);
+  });
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);
 
@@ -170,6 +173,8 @@ export function Editor() {
                   <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}>Layout</Button>
                 </Menu.Target>
                 <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconBookmark size={14} />} onClick={saveAsTemplate}>Save stack as template…</Menu.Item>
+                  <Menu.Divider />
                   <Menu.Item leftSection={<IconDeviceFloppy size={14} />} onClick={saveLayout}>Save current layout…</Menu.Item>
                   <Menu.Item leftSection={<IconRestore size={14} />} onClick={() => dockRef.current?.resetLayout()}>Reset to default</Menu.Item>
                   {savedLayouts.length > 0 && <Menu.Label>Saved layouts</Menu.Label>}

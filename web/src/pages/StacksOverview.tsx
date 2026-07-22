@@ -9,7 +9,7 @@ import {
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconSettings, IconDots, IconCopy, IconPencil, IconSearch,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, runStateColor, type Stack, type RunStatus } from "../model";
 import * as api from "../api";
@@ -180,9 +180,23 @@ export function StacksOverview() {
                     ) : (
                       <>
                         <Menu.Label>From demo…</Menu.Label>
-                        {templates.map(t => (
+                        {templates.filter(t => !t.id.startsWith("user:")).map(t => (
                           <Menu.Item key={t.id} leftSection={<IconSparkles size={14} />}
                             onClick={() => createDemo(t.id)}>
+                            {t.name}
+                          </Menu.Item>
+                        ))}
+                        {templates.some(t => t.id.startsWith("user:")) && <Menu.Label>Your templates</Menu.Label>}
+                        {templates.filter(t => t.id.startsWith("user:")).map(t => (
+                          <Menu.Item key={t.id} leftSection={<IconBookmark size={14} />}
+                            onClick={() => createDemo(t.id)}
+                            rightSection={
+                              <ActionIcon component="div" size="sm" variant="subtle" color="red"
+                                onClick={e => { e.stopPropagation();
+                                  api.deleteUserTemplate(t.id.slice("user:".length)).then(() => { api.getTemplates().then(setTemplates); toastOk("Template deleted"); }).catch(toastErr); }}>
+                                <IconTrash size={13} />
+                              </ActionIcon>
+                            }>
                             {t.name}
                           </Menu.Item>
                         ))}

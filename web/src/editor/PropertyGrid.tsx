@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
-import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder } from "@tabler/icons-react";
+import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
-import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam } from "../model";
+import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier } from "../model";
+import { toastOk, toastErr } from "../ui";
 import { ResourceGlyph } from "../resourceIcons";
 import { PathPickerModal } from "./PathPickerModal";
 import { AddResourceDialog } from "./AddResourceDialog";
@@ -111,6 +113,41 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const envRows = readWithRows(draft, ENV_METHOD);
   const otherNodes = stack.nodes.filter(n => n.id !== node.id);
 
+  // Import a .env file onto this node. Plain: append WithEnvironment("K","V") rows. Secret: create an
+  // AddParameter(name, secret:true) node per key + reference it from the env row (value = param var).
+  const envFileRef = useRef<HTMLInputElement>(null);
+  const importSecret = useRef(false);
+  const importEnv = (secret: boolean) => { importSecret.current = secret; envFileRef.current?.click(); };
+  const onEnvFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = "";
+    if (!file) return;
+    const pairs = parseDotenv(await file.text());
+    if (pairs.length === 0) { toastErr("No KEY=VALUE lines found.", "Nothing to import"); return; }
+    if (!importSecret.current) {
+      const rows = [...envRows, ...pairs.map(([k, v]) => [toLiteral(k, "string"), toLiteral(v, "string")])];
+      commit(writeWithRows(draft, ENV_METHOD, rows));
+      toastOk(`Imported ${pairs.length} variable(s)`);
+      return;
+    }
+    // Secret: build parameter nodes + reference rows, saved in one shot at the stack level.
+    const taken = new Set(stack.nodes.map(n => n.varName));
+    const paramNodes: Node[] = [];
+    const newRows = [...envRows];
+    pairs.forEach(([k], i) => {
+      let vn = sanitizeIdentifier(k.toLowerCase()); while (taken.has(vn)) vn = `${vn}_${i}`; taken.add(vn);
+      paramNodes.push({
+        id: "n" + crypto.randomUUID().slice(0, 8), varName: vn, resourceName: k, addMethod: "AddParameter",
+        addArgs: ["true"], withCalls: [], x: node.x, y: node.y + 140 + i * 30, // secret:true
+      });
+      newRows.push([toLiteral(k, "string"), vn]); // env value references the parameter var (raw)
+    });
+    const updatedSelf = writeWithRows(draft, ENV_METHOD, newRows);
+    const nodes = stack.nodes.map(n => n.id === node.id ? updatedSelf : n).concat(paramNodes);
+    setDraft(updatedSelf);
+    api.saveStack({ ...stack, nodes }).then(setStack);
+    toastOk(`Imported ${pairs.length} secret parameter(s)`);
+  };
+
   // Path picker + inline "add a resource" flow for resource-reference params.
   const [catalog, setCatalog] = useState<ResourceType[]>([]);
   useEffect(() => { api.getCatalog().then(setCatalog); }, []);
@@ -217,8 +254,19 @@ export function PropertyGrid({ stack, node, rt, setStack }:
               </Group>
             );
           })}
-          <Button size="xs" variant="light" leftSection={<IconPlus size={12} />}
-            onClick={() => commit(writeWithRows(draft, ENV_METHOD, [...envRows, ['""', '""']]))}>Add variable</Button>
+          <Group gap="xs">
+            <Button size="xs" variant="light" leftSection={<IconPlus size={12} />}
+              onClick={() => commit(writeWithRows(draft, ENV_METHOD, [...envRows, ['""', '""']]))}>Add variable</Button>
+            <Menu position="bottom-start" withArrow>
+              <Menu.Target>
+                <Button size="xs" variant="subtle" leftSection={<IconUpload size={12} />}>Import .env</Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item onClick={() => importEnv(false)}>As values (plaintext)</Menu.Item>
+                <Menu.Item onClick={() => importEnv(true)}>As secret parameters</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </div>
       )}
 
@@ -295,6 +343,8 @@ export function PropertyGrid({ stack, node, rt, setStack }:
         <TextInput style={{ flex: 2 }} label="Args" placeholder='"a", 1, true' value={rawArgs} onChange={e => setRawArgs(e.currentTarget.value)} />
         <Button size="sm" variant="light" leftSection={<IconPlus size={12} />} onClick={addRaw}>Add</Button>
       </Group>
+
+      <input ref={envFileRef} type="file" accept=".env,text/plain" hidden onChange={onEnvFile} />
 
       {pathPick && (
         <PathPickerModal opened initial={pathPick.value} onClose={() => setPathPick(null)} onPick={pathPick.onPick} />

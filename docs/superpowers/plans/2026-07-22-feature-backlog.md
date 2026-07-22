@@ -6,18 +6,18 @@ value first. Each slice: build → test → commit/push → restart. Tick as don
 ## Priority order
 
 ### P1 — cheap, high value
-- [ ] **Per-resource restart/command** — Aspire `ExecuteResourceCommand` (proto already present; Resource
+- [x] **Per-resource restart/command** — Aspire `ExecuteResourceCommand` (proto already present; Resource
       snapshot carries `Commands`). Buttons in the mini-dashboard + on live nodes. **← doing first**
-- [ ] **Node notes/comments + boundary groups** — canvas: free-text sticky notes + labeled rectangles
+- [x] **Node notes/comments + boundary groups** — canvas: free-text sticky notes + labeled rectangles
       ("Backend"/"Media"). Persisted on the stack model (new arrays); no codegen impact.
-- [ ] **Validation: duplicate/dangling checks** — duplicate ports, duplicate resourceNames, edges to
+- [x] **Validation: duplicate/dangling checks** — duplicate ports, duplicate resourceNames, edges to
       missing nodes → surfaced as a badge before run.
 
 ### P2 — codegen / env
-- [ ] **.env import** → WithEnvironment rows; secret values → `AddParameter(secret:true)` instead of plaintext.
-- [ ] **Secrets as parameters** — mark an env value secret → parameter resource, not literal.
+- [x] **.env import** → WithEnvironment rows; secret values → `AddParameter(secret:true)` instead of plaintext.
+- [x] **Secrets as parameters** — mark an env value secret → parameter resource, not literal.
 - [ ] **Health-check quick setting** — `WithHttpHealthCheck` etc. as a toggle; reflected in live status.
-- [ ] **Save current stack as template**.
+- [x] **Save current stack as template**.
 - [ ] **AddProject<T> / project references** from the workspace (real .NET projects, not just containers). Big.
 - [ ] **Connection-string explorer** — per resource, show exposed env/connection strings; click to reference.
 
