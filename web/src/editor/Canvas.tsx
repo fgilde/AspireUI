@@ -447,10 +447,14 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     }
     if (annoDirty) api.saveStack({ ...stack, notes, groups }).then(setStack);
 
-    changes.filter(c => c.type === "position" && c.dragging === false && !isAnno(c.id)).forEach(c => {
-      const node = stack.nodes.find(n => n.id === c.id);
-      if (node && c.position) api.patchNode(stack.id, { ...node, x: c.position.x, y: c.position.y }).then(setStack);
-    });
+    // Persist moved resource nodes in ONE saveStack — a multi-select drag emits a position change per
+    // node, and firing a patchNode each (all off the same old stack) raced so only one stuck.
+    const moved = changes.filter(c => c.type === "position" && c.dragging === false && !isAnno(c.id) && c.position);
+    if (moved.length > 0) {
+      const at = new Map(moved.map(c => [c.id, c.position]));
+      const nodes = stack.nodes.map(n => at.has(n.id) ? { ...n, x: at.get(n.id).x, y: at.get(n.id).y } : n);
+      api.saveStack({ ...stack, nodes }).then(setStack);
+    }
     const removed = changes.filter(c => c.type === "remove");
     const removedAnno = removed.filter(c => isAnno(c.id));
     if (removedAnno.length > 0)
