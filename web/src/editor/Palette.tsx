@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Chip } from "@mantine/core";
+import { IconFoldUp, IconFoldDown } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
 import { sanitizeIdentifier } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -7,24 +8,28 @@ import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { AddResourceDialog } from "./AddResourceDialog";
 
-// Cross-cutting tags for the combinable filter (orthogonal to the group sections).
+// Combinable filter tags — fully data-driven: a "kind" tag + the item's group + a couple of flags.
 const GPU_PRESETS = new Set(["comfyui", "sdnext", "acestep"]);
-const TAG_ORDER = ["app", "resource", "setup", "ai", "gpu", "observability", "azure"];
+const KINDS = ["app", "resource", "setup"];
 function presetTags(p: ContainerPreset): string[] {
-  const g = (p.group || "").toLowerCase();
   const t = ["app"];
-  if (g.includes("ai")) t.push("ai");
-  if (g.includes("observability")) t.push("observability");
+  if (p.group) t.push(p.group);
   if (GPU_PRESETS.has(p.id)) t.push("gpu");
   return t;
 }
 function rtTags(rt: ResourceType): string[] {
-  const g = (rt.group || "").toLowerCase();
   const t = [rt.composite ? "setup" : "resource"];
-  if (g === "ai") t.push("ai");
-  if (g === "observability") t.push("observability");
+  if (rt.group) t.push(rt.group);
   if (rt.addMethod.startsWith("AddAzure")) t.push("azure");
   return t;
+}
+// kinds first, then everything else alphabetical.
+function sortTags(tags: string[]): string[] {
+  return [...tags].sort((a, b) => {
+    const ai = KINDS.indexOf(a), bi = KINDS.indexOf(b);
+    if (ai >= 0 || bi >= 0) return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    return a.localeCompare(b);
+  });
 }
 
 // One compact palette tile: colored icon box + label + a small caption, hover-highlighted.
@@ -55,17 +60,17 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const [presets, setPresets] = useState<ContainerPreset[]>([]);
   const [q, setQ] = useState("");
   const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
-  const [opened, setOpened] = useState<string[]>([]);
+  // Groups the user explicitly collapsed (everything else stays expanded — incl. groups that appear later).
+  const [collapsed, setCollapsed] = useState<string[]>([]);
   const [activeTags, setActiveTags] = useState<string[]>([]);
-  const inited = useRef(false);
   useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
 
-  // Tags actually present, in a stable order — drives the filter chips.
+  // Every tag actually assigned (kinds + groups + flags), stable order — drives the filter chips.
   const allTags = useMemo(() => {
     const seen = new Set<string>();
     cat.forEach(r => rtTags(r).forEach(t => seen.add(t)));
     presets.forEach(p => presetTags(p).forEach(t => seen.add(t)));
-    return TAG_ORDER.filter(t => seen.has(t));
+    return sortTags([...seen]);
   }, [cat, presets]);
 
   const groups = useMemo(() => {
@@ -84,7 +89,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   // Sort groups: AspireUI first (🤯), then alphabetical.
   const groupKeys = useMemo(() => Object.keys(groups)
     .sort((a, b) => (a === "AspireUI" ? -1 : b === "AspireUI" ? 1 : a.localeCompare(b))), [groups]);
-  useEffect(() => { if (!inited.current && groupKeys.length) { setOpened(groupKeys); inited.current = true; } }, [groupKeys]);
+  // Expanded = all groups minus the ones the user collapsed; search/tag filter forces all open.
+  const openValue = (q || activeTags.length > 0) ? groupKeys : groupKeys.filter(g => !collapsed.includes(g));
+  const allOpen = groupKeys.every(g => !collapsed.includes(g));
 
   const onCreate = (node: Node, refIds: string[], usedByIds: string[]) => {
     const eid = () => "e" + crypto.randomUUID().slice(0, 8);
@@ -128,9 +135,19 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           </Group>
         </Chip.Group>
       )}
+      <Group justify="flex-end" gap={4}>
+        <Tooltip label={allOpen ? "Collapse all" : "Expand all"} withArrow>
+          <UnstyledButton onClick={() => setCollapsed(allOpen ? groupKeys : [])}
+            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--mantine-color-dimmed)" }}>
+            {allOpen ? <IconFoldUp size={14} /> : <IconFoldDown size={14} />}
+            {allOpen ? "Collapse all" : "Expand all"}
+          </UnstyledButton>
+        </Tooltip>
+      </Group>
       <ScrollArea style={{ flex: 1 }} offsetScrollbars scrollbarSize={8}>
-        <Accordion multiple value={(q || activeTags.length > 0) ? groupKeys : opened} onChange={setOpened} chevronPosition="left"
-          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px 14px" }, item: { border: "none" }, label: { padding: 0 } }}>
+        <Accordion multiple value={openValue}
+          onChange={v => setCollapsed(groupKeys.filter(g => !v.includes(g)))} chevronPosition="left"
+          styles={{ control: { padding: "6px 4px" }, content: { padding: "2px 0 8px 26px" }, item: { border: "none" }, label: { padding: 0 } }}>
           {groupKeys.map(g => {
             const items = groups[g];
             const count = items.rts.length + items.presets.length;
