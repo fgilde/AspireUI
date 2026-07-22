@@ -5,33 +5,132 @@
   <title>AspireUI Docs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <meta name="description" content="Documentation for AspireUI — a visual canvas for .NET Aspire AppHost projects">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/dark.css" title="dark">
+  <link rel="icon" href="aspireui_transparent.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    :root { --theme-color: #6e56cf; }
+    :root {
+      --brand: #8b5cf6;
+      --brand-2: #6d4bd8;
+      --bg: #0f0f14;
+      --bg-alt: #17171f;
+      --surface: #1c1c26;
+      --border: #2a2a37;
+      --text: #e9e9ee;
+      --text-dim: #a0a0b0;
+      --theme-color: var(--brand);
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     body { text-rendering: optimizeLegibility; }
+
+    /* Sidebar */
+    .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); padding-top: 0; }
+    .sidebar > h1 { display: none; }
+    .app-name-link { display: none; }
+    .sidebar .sidebar-brand {
+      display: flex; align-items: center; gap: 10px; padding: 20px 22px 14px;
+      border-bottom: 1px solid var(--border); margin-bottom: 8px;
+    }
+    .sidebar .sidebar-brand img { width: 30px; height: 30px; }
+    .sidebar .sidebar-brand b { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+    .sidebar .sidebar-brand b span { color: var(--brand); }
+    .sidebar ul li a { color: var(--text-dim); border-radius: 8px; padding: 5px 12px; transition: background .12s, color .12s; }
+    .sidebar ul li a:hover { color: var(--text); background: rgba(139,92,246,.10); text-decoration: none; }
+    .sidebar ul li.active > a { color: var(--brand); background: rgba(139,92,246,.14); font-weight: 600; border-right: none; }
+
+    /* Content */
+    .content { background: var(--bg); }
+    .markdown-section { max-width: 860px; }
+    .markdown-section h1, .markdown-section h2, .markdown-section h3 { color: var(--text); font-weight: 700; letter-spacing: -.4px; }
+    .markdown-section h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; margin-top: 2.2rem; }
+    .markdown-section p, .markdown-section li { color: var(--text); line-height: 1.7; }
+    .markdown-section a { color: var(--brand); }
+    .markdown-section tr { background: transparent; border-top: 1px solid var(--border); }
+    .markdown-section tr:nth-child(2n) { background: var(--bg-alt); }
+    .markdown-section th, .markdown-section td { border: 1px solid var(--border); }
+    .markdown-section code { background: var(--surface); color: #d7c9ff; border-radius: 5px; }
+    .markdown-section pre, .markdown-section pre > code { background: #0b0b10 !important; }
+    .markdown-section blockquote { border-left: 3px solid var(--brand); background: var(--bg-alt); color: var(--text-dim); border-radius: 0 8px 8px 0; }
+    .markdown-section img:not(.no-frame) { border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+    .app-nav a { color: var(--text-dim); }
+    .app-nav a:hover { color: var(--brand); }
+    ::selection { background: rgba(139,92,246,.4); }
+
+    /* Search box */
+    .search input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; }
+    .search .results-panel { background: var(--bg-alt); }
+
+    /* Image compare slider (github-dark vs blazor) */
+    .img-compare { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,.4); user-select: none; touch-action: none; margin: 1.2rem 0; background: var(--surface); }
+    .img-compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: none !important; border-radius: 0 !important; box-shadow: none !important; margin: 0 !important; }
+    .img-compare .ic-top { clip-path: inset(0 0 0 50%); }
+    .img-compare .ic-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--brand); transform: translateX(-1px); z-index: 3; }
+    .img-compare .ic-handle::after { content: ""; position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; transform: translate(-50%,-50%);
+      background: var(--brand); border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
+    .img-compare .ic-handle::before { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 4;
+      color: #fff; font-size: 14px; letter-spacing: 1px; }
+    .img-compare .ic-label { position: absolute; bottom: 10px; z-index: 3; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+      background: rgba(0,0,0,.6); color: #fff; backdrop-filter: blur(4px); }
+    .img-compare .ic-label.left { left: 10px; }
+    .img-compare .ic-label.right { right: 10px; }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
+    // Turn <div class="img-compare"><img><img></div> into a draggable before/after slider.
+    function initImgCompare() {
+      document.querySelectorAll('.img-compare:not([data-ready])').forEach(function (el) {
+        var imgs = el.querySelectorAll('img');
+        if (imgs.length < 2) return;
+        el.setAttribute('data-ready', '1');
+        imgs[1].classList.add('ic-top');
+        var handle = document.createElement('div'); handle.className = 'ic-handle'; el.appendChild(handle);
+        var l = document.createElement('span'); l.className = 'ic-label left'; l.textContent = imgs[0].getAttribute('data-label') || 'A'; el.appendChild(l);
+        var r = document.createElement('span'); r.className = 'ic-label right'; r.textContent = imgs[1].getAttribute('data-label') || 'B'; el.appendChild(r);
+        function setPct(p) { p = Math.max(0, Math.min(100, p)); imgs[1].style.clipPath = 'inset(0 0 0 ' + p + '%)'; handle.style.left = p + '%'; }
+        var dragging = false;
+        function fromEvent(e) {
+          var rect = el.getBoundingClientRect();
+          var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+          setPct((x / rect.width) * 100);
+        }
+        el.addEventListener('pointerdown', function (e) { dragging = true; fromEvent(e); });
+        window.addEventListener('pointermove', function (e) { if (dragging) fromEvent(e); });
+        window.addEventListener('pointerup', function () { dragging = false; });
+        setPct(50);
+      });
+    }
     window.$docsify = {
-      name: 'AspireUI',
+      name: '',
       repo: 'https://github.com/fgilde/AspireUI',
       basePath: '/AspireUI/',
       loadSidebar: true,
       subMaxLevel: 3,
       auto2top: true,
-      search: {
-        maxAge: 86400000,
-        paths: 'auto',
-        placeholder: 'Search',
-        noData: 'No results',
-        depth: 4
-      }
+      themeColor: '#8b5cf6',
+      search: { maxAge: 86400000, paths: 'auto', placeholder: 'Search', noData: 'No results', depth: 4 },
+      plugins: [
+        function (hook) {
+          // Brand header at the top of the sidebar.
+          hook.doneEach(function () {
+            var sb = document.querySelector('.sidebar');
+            if (sb && !sb.querySelector('.sidebar-brand')) {
+              var b = document.createElement('div'); b.className = 'sidebar-brand';
+              b.innerHTML = '<img src="aspireui_transparent.svg" alt=""><b>Aspire<span>UI</span></b>';
+              sb.insertBefore(b, sb.firstChild);
+            }
+            initImgCompare();
+          });
+        }
+      ]
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-csharp.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-bash.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-docker.min.js"></script>
