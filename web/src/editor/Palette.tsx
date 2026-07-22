@@ -191,7 +191,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
                         tooltip={rt.description || undefined} onClick={() => setSelectedRt(rt)} />
                     ))}
                     {items.presets.map(p => (
-                      <Tile key={p.id} iconKey={p.icon || ""} label={p.label} caption={`:${p.port} · ${p.image.split("/").pop()}`}
+                      <Tile key={p.id} iconKey={p.icon || ""} label={p.label}
+                        caption={[`:${p.port}`, p.gpu ? "GPU" : null, p.hostNetwork ? "host-net" : null, p.volumes?.length ? `${p.volumes.length} vol` : null].filter(Boolean).join(" · ")}
                         badge="app" tooltip={p.description || p.image} onClick={() => createPreset(p)} />
                     ))}
                   </MStack>

@@ -25,7 +25,10 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // Optional companion resources dropped + wired alongside the main container (e.g. Postgres/Redis
     // for Immich/Paperless). The main container references + waits-for each. A scaffold to finish, not
     // a guaranteed-working deploy.
-    List<PresetCompanion>? Companions);
+    List<PresetCompanion>? Companions,
+    // Optional metadata: named data volumes to mount ([name, "/container/path"]) — emitted as
+    // WithVolume; and informational flags shown as badges/caveats (Aspire wiring for these is manual).
+    List<List<string>>? Volumes, bool Gpu = false, bool HostNetwork = false);
 // A companion node in a preset. Key is used to wire env references (`${key}` → its var name).
 public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env);
 

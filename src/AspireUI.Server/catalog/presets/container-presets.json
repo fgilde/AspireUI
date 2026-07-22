@@ -33,7 +33,8 @@
     "image": "ghcr.io/ai-dock/comfyui:latest-cuda",
     "port": 8188,
     "icon": "comfyui",
-    "description": "ComfyUI — node-based Stable Diffusion image/video pipeline (ai-dock build). GPU recommended."
+    "description": "ComfyUI — node-based Stable Diffusion image/video pipeline (ai-dock build). GPU recommended.",
+    "gpu": true
   },
   {
     "id": "sdnext",
@@ -42,7 +43,8 @@
     "image": "vladmandic/sdnext-cuda:latest",
     "port": 7860,
     "icon": "sdnext",
-    "description": "SD.Next — all-in-one WebUI for generative image/video (vladmandic). CUDA image shown; ROCm/IPEX/OpenVINO variants exist. GPU recommended."
+    "description": "SD.Next — all-in-one WebUI for generative image/video (vladmandic). CUDA image shown; ROCm/IPEX/OpenVINO variants exist. GPU recommended.",
+    "gpu": true
   },
   {
     "id": "acestep",
@@ -51,7 +53,8 @@
     "image": "ghcr.io/dotnetautor/ace-step-1.5-docker:latest",
     "port": 7860,
     "icon": "acestep",
-    "description": "ACE-Step 1.5 — open music generation (Gradio UI, models baked in ~15GB). GPU recommended."
+    "description": "ACE-Step 1.5 — open music generation (Gradio UI, models baked in ~15GB). GPU recommended.",
+    "gpu": true
   },
   {
     "id": "langflow",
@@ -124,10 +127,54 @@
     "port": 8000,
     "icon": "paperless",
     "description": "Paperless-ngx — scan/OCR document management. Comes with a Postgres + Redis companion (scaffold — finish the connection env).",
-    "env": [["PAPERLESS_DBHOST", "${db}"], ["PAPERLESS_REDIS", "${redis}"]],
+    "env": [
+      [
+        "PAPERLESS_DBHOST",
+        "${db}"
+      ],
+      [
+        "PAPERLESS_REDIS",
+        "${redis}"
+      ]
+    ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "paperless-db", "image": "postgres:16", "env": [["POSTGRES_DB", "paperless"], ["POSTGRES_USER", "paperless"], ["POSTGRES_PASSWORD", "paperless"]] },
-      { "key": "redis", "addMethod": "AddContainer", "resourceName": "paperless-redis", "image": "redis:7", "port": 6379 }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "paperless-db",
+        "image": "postgres:16",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "paperless"
+          ],
+          [
+            "POSTGRES_USER",
+            "paperless"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "paperless"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "paperless-redis",
+        "image": "redis:7",
+        "port": 6379
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/usr/src/paperless/data"
+      ],
+      [
+        "media",
+        "/usr/src/paperless/media"
+      ]
     ]
   },
   {
@@ -137,7 +184,13 @@
     "image": "nextcloud:latest",
     "port": 80,
     "icon": "nextcloud",
-    "description": "Nextcloud — self-hosted files, calendar, collaboration."
+    "description": "Nextcloud — self-hosted files, calendar, collaboration.",
+    "volumes": [
+      [
+        "data",
+        "/var/www/html"
+      ]
+    ]
   },
   {
     "id": "vaultwarden",
@@ -146,7 +199,13 @@
     "image": "vaultwarden/server:latest",
     "port": 80,
     "icon": "vaultwarden",
-    "description": "Vaultwarden — lightweight Bitwarden-compatible password manager server."
+    "description": "Vaultwarden — lightweight Bitwarden-compatible password manager server.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ]
   },
   {
     "id": "gitea",
@@ -155,7 +214,13 @@
     "image": "gitea/gitea:latest",
     "port": 3000,
     "icon": "gitea",
-    "description": "Gitea — lightweight self-hosted Git service."
+    "description": "Gitea — lightweight self-hosted Git service.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ]
   },
   {
     "id": "metabase",
@@ -255,11 +320,57 @@
     "port": 2283,
     "icon": "immich",
     "description": "Immich — self-hosted photo & video backup. Comes with pgvecto-rs Postgres + Redis + the ML container (scaffold — finish the connection env + volumes).",
-    "env": [["DB_HOSTNAME", "${db}"], ["REDIS_HOSTNAME", "${redis}"]],
+    "env": [
+      [
+        "DB_HOSTNAME",
+        "${db}"
+      ],
+      [
+        "REDIS_HOSTNAME",
+        "${redis}"
+      ]
+    ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "immich-db", "image": "tensorchord/pgvecto-rs:pg16-v0.2.0", "env": [["POSTGRES_DB", "immich"], ["POSTGRES_USER", "immich"], ["POSTGRES_PASSWORD", "immich"]] },
-      { "key": "redis", "addMethod": "AddContainer", "resourceName": "immich-redis", "image": "redis:7", "port": 6379 },
-      { "key": "ml", "addMethod": "AddContainer", "resourceName": "immich-ml", "image": "ghcr.io/immich-app/immich-machine-learning:release", "port": 3003 }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "immich-db",
+        "image": "tensorchord/pgvecto-rs:pg16-v0.2.0",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "immich"
+          ],
+          [
+            "POSTGRES_USER",
+            "immich"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "immich"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "immich-redis",
+        "image": "redis:7",
+        "port": 6379
+      },
+      {
+        "key": "ml",
+        "addMethod": "AddContainer",
+        "resourceName": "immich-ml",
+        "image": "ghcr.io/immich-app/immich-machine-learning:release",
+        "port": 3003
+      }
+    ],
+    "volumes": [
+      [
+        "upload",
+        "/usr/src/app/upload"
+      ]
     ]
   },
   {
@@ -281,108 +392,251 @@
     "description": "Dozzle — real-time Docker container log viewer in the browser."
   },
   {
-    "id": "jellyfin", "label": "Jellyfin", "group": "Media",
-    "image": "jellyfin/jellyfin:latest", "port": 8096, "icon": "jellyfin",
-    "description": "Jellyfin — free media server (movies/TV/music). Mount your media as volumes; GPU for transcoding."
+    "id": "jellyfin",
+    "label": "Jellyfin",
+    "group": "Media",
+    "image": "jellyfin/jellyfin:latest",
+    "port": 8096,
+    "icon": "jellyfin",
+    "description": "Jellyfin — free media server (movies/TV/music). Mount your media as volumes; GPU for transcoding.",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "cache",
+        "/cache"
+      ]
+    ],
+    "gpu": true
   },
   {
-    "id": "navidrome", "label": "Navidrome", "group": "Media",
-    "image": "deluan/navidrome:latest", "port": 4533, "icon": "navidrome",
-    "description": "Navidrome — self-hosted music streaming (Subsonic-compatible)."
-  },
-  {
-    "id": "audiobookshelf", "label": "Audiobookshelf", "group": "Media",
-    "image": "ghcr.io/advplyr/audiobookshelf:latest", "port": 80, "icon": "audiobookshelf",
-    "description": "Audiobookshelf — audiobook & podcast server."
-  },
-  {
-    "id": "photoprism", "label": "PhotoPrism", "group": "Media",
-    "image": "photoprism/photoprism:latest", "port": 2342, "icon": "photoprism",
-    "description": "PhotoPrism — AI-powered photo gallery/backup."
-  },
-  {
-    "id": "sonarr", "label": "Sonarr", "group": "Media",
-    "image": "lscr.io/linuxserver/sonarr:latest", "port": 8989, "icon": "sonarr",
-    "description": "Sonarr — TV series collection manager (needs a download client + indexer)."
-  },
-  {
-    "id": "radarr", "label": "Radarr", "group": "Media",
-    "image": "lscr.io/linuxserver/radarr:latest", "port": 7878, "icon": "radarr",
-    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent)."
-  },
-  {
-    "id": "prowlarr", "label": "Prowlarr", "group": "Media",
-    "image": "lscr.io/linuxserver/prowlarr:latest", "port": 9696, "icon": "prowlarr",
-    "description": "Prowlarr — indexer manager for the *arr apps."
-  },
-  {
-    "id": "qbittorrent", "label": "qBittorrent", "group": "Media",
-    "image": "lscr.io/linuxserver/qbittorrent:latest", "port": 8080, "icon": "qbittorrent",
-    "description": "qBittorrent — torrent client with a web UI."
-  },
-  {
-    "id": "pihole", "label": "Pi-hole", "group": "Network",
-    "image": "pihole/pihole:latest", "port": 80, "icon": "pihole",
-    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Also binds DNS on :53 (host port conflicts possible)."
-  },
-  {
-    "id": "adguard", "label": "AdGuard Home", "group": "Network",
-    "image": "adguard/adguardhome:latest", "port": 3000, "icon": "adguard",
-    "description": "AdGuard Home — DNS-based ad/tracker blocking (setup UI on :3000, DNS on :53)."
-  },
-  {
-    "id": "npm", "label": "Nginx Proxy Manager", "group": "Network",
-    "image": "jc21/nginx-proxy-manager:latest", "port": 81, "icon": "npm",
-    "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443)."
-  },
-  {
-    "id": "homeassistant", "label": "Home Assistant", "group": "Smart Home",
-    "image": "ghcr.io/home-assistant/home-assistant:stable", "port": 8123, "icon": "homeassistant",
-    "description": "Home Assistant — open-source home automation. Works best on host networking for device discovery."
-  },
-  {
-    "id": "nodered", "label": "Node-RED", "group": "Smart Home",
-    "image": "nodered/node-red:latest", "port": 1880, "icon": "nodered",
-    "description": "Node-RED — low-code flow automation / event wiring."
-  },
-  {
-    "id": "vikunja", "label": "Vikunja", "group": "Tools",
-    "image": "vikunja/vikunja:latest", "port": 3456, "icon": "vikunja",
-    "description": "Vikunja — self-hosted to-do / task & project management."
-  },
-  {
-    "id": "memos", "label": "Memos", "group": "Tools",
-    "image": "neosmemo/memos:stable", "port": 5230, "icon": "memos",
-    "description": "Memos — lightweight, privacy-first note/memo hub."
-  },
-  {
-    "id": "excalidraw", "label": "Excalidraw", "group": "Tools",
-    "image": "excalidraw/excalidraw:latest", "port": 80, "icon": "excalidraw",
-    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams."
-  },
-  {
-    "id": "drawio", "label": "Draw.io", "group": "Tools",
-    "image": "jgraph/drawio:latest", "port": 8080, "icon": "drawio",
-    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted."
-  },
-  {
-    "id": "anythingllm", "label": "AnythingLLM", "group": "AI Apps",
-    "image": "mintplexlabs/anythingllm:latest", "port": 3001, "icon": "anythingllm",
-    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM."
-  },
-  {
-    "id": "librechat", "label": "LibreChat", "group": "AI Apps",
-    "image": "ghcr.io/danny-avila/librechat:latest", "port": 3080, "icon": "librechat",
-    "description": "LibreChat — polished multi-model chat UI. Comes with Mongo + Meilisearch companions (scaffold — finish the connection env).",
-    "env": [["MONGO_URI", "${mongo}"], ["MEILI_HOST", "${meili}"]],
-    "companions": [
-      { "key": "mongo", "addMethod": "AddContainer", "resourceName": "librechat-mongo", "image": "mongo:7", "port": 27017 },
-      { "key": "meili", "addMethod": "AddContainer", "resourceName": "librechat-meili", "image": "getmeili/meilisearch:latest", "port": 7700, "env": [["MEILI_NO_ANALYTICS", "true"]] }
+    "id": "navidrome",
+    "label": "Navidrome",
+    "group": "Media",
+    "image": "deluan/navidrome:latest",
+    "port": 4533,
+    "icon": "navidrome",
+    "description": "Navidrome — self-hosted music streaming (Subsonic-compatible).",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
     ]
   },
   {
-    "id": "searxng", "label": "SearXNG", "group": "AI Apps",
-    "image": "searxng/searxng:latest", "port": 8080, "icon": "searxng",
+    "id": "audiobookshelf",
+    "label": "Audiobookshelf",
+    "group": "Media",
+    "image": "ghcr.io/advplyr/audiobookshelf:latest",
+    "port": 80,
+    "icon": "audiobookshelf",
+    "description": "Audiobookshelf — audiobook & podcast server.",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "metadata",
+        "/metadata"
+      ]
+    ]
+  },
+  {
+    "id": "photoprism",
+    "label": "PhotoPrism",
+    "group": "Media",
+    "image": "photoprism/photoprism:latest",
+    "port": 2342,
+    "icon": "photoprism",
+    "description": "PhotoPrism — AI-powered photo gallery/backup.",
+    "volumes": [
+      [
+        "storage",
+        "/photoprism/storage"
+      ]
+    ]
+  },
+  {
+    "id": "sonarr",
+    "label": "Sonarr",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/sonarr:latest",
+    "port": 8989,
+    "icon": "sonarr",
+    "description": "Sonarr — TV series collection manager (needs a download client + indexer)."
+  },
+  {
+    "id": "radarr",
+    "label": "Radarr",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/radarr:latest",
+    "port": 7878,
+    "icon": "radarr",
+    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent)."
+  },
+  {
+    "id": "prowlarr",
+    "label": "Prowlarr",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/prowlarr:latest",
+    "port": 9696,
+    "icon": "prowlarr",
+    "description": "Prowlarr — indexer manager for the *arr apps."
+  },
+  {
+    "id": "qbittorrent",
+    "label": "qBittorrent",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/qbittorrent:latest",
+    "port": 8080,
+    "icon": "qbittorrent",
+    "description": "qBittorrent — torrent client with a web UI."
+  },
+  {
+    "id": "pihole",
+    "label": "Pi-hole",
+    "group": "Network",
+    "image": "pihole/pihole:latest",
+    "port": 80,
+    "icon": "pihole",
+    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Also binds DNS on :53 (host port conflicts possible).",
+    "hostNetwork": true
+  },
+  {
+    "id": "adguard",
+    "label": "AdGuard Home",
+    "group": "Network",
+    "image": "adguard/adguardhome:latest",
+    "port": 3000,
+    "icon": "adguard",
+    "description": "AdGuard Home — DNS-based ad/tracker blocking (setup UI on :3000, DNS on :53).",
+    "hostNetwork": true
+  },
+  {
+    "id": "npm",
+    "label": "Nginx Proxy Manager",
+    "group": "Network",
+    "image": "jc21/nginx-proxy-manager:latest",
+    "port": 81,
+    "icon": "npm",
+    "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443)."
+  },
+  {
+    "id": "homeassistant",
+    "label": "Home Assistant",
+    "group": "Smart Home",
+    "image": "ghcr.io/home-assistant/home-assistant:stable",
+    "port": 8123,
+    "icon": "homeassistant",
+    "description": "Home Assistant — open-source home automation. Works best on host networking for device discovery.",
+    "hostNetwork": true
+  },
+  {
+    "id": "nodered",
+    "label": "Node-RED",
+    "group": "Smart Home",
+    "image": "nodered/node-red:latest",
+    "port": 1880,
+    "icon": "nodered",
+    "description": "Node-RED — low-code flow automation / event wiring."
+  },
+  {
+    "id": "vikunja",
+    "label": "Vikunja",
+    "group": "Tools",
+    "image": "vikunja/vikunja:latest",
+    "port": 3456,
+    "icon": "vikunja",
+    "description": "Vikunja — self-hosted to-do / task & project management."
+  },
+  {
+    "id": "memos",
+    "label": "Memos",
+    "group": "Tools",
+    "image": "neosmemo/memos:stable",
+    "port": 5230,
+    "icon": "memos",
+    "description": "Memos — lightweight, privacy-first note/memo hub."
+  },
+  {
+    "id": "excalidraw",
+    "label": "Excalidraw",
+    "group": "Tools",
+    "image": "excalidraw/excalidraw:latest",
+    "port": 80,
+    "icon": "excalidraw",
+    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams."
+  },
+  {
+    "id": "drawio",
+    "label": "Draw.io",
+    "group": "Tools",
+    "image": "jgraph/drawio:latest",
+    "port": 8080,
+    "icon": "drawio",
+    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted."
+  },
+  {
+    "id": "anythingllm",
+    "label": "AnythingLLM",
+    "group": "AI Apps",
+    "image": "mintplexlabs/anythingllm:latest",
+    "port": 3001,
+    "icon": "anythingllm",
+    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM."
+  },
+  {
+    "id": "librechat",
+    "label": "LibreChat",
+    "group": "AI Apps",
+    "image": "ghcr.io/danny-avila/librechat:latest",
+    "port": 3080,
+    "icon": "librechat",
+    "description": "LibreChat — polished multi-model chat UI. Comes with Mongo + Meilisearch companions (scaffold — finish the connection env).",
+    "env": [
+      [
+        "MONGO_URI",
+        "${mongo}"
+      ],
+      [
+        "MEILI_HOST",
+        "${meili}"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "mongo",
+        "addMethod": "AddContainer",
+        "resourceName": "librechat-mongo",
+        "image": "mongo:7",
+        "port": 27017
+      },
+      {
+        "key": "meili",
+        "addMethod": "AddContainer",
+        "resourceName": "librechat-meili",
+        "image": "getmeili/meilisearch:latest",
+        "port": 7700,
+        "env": [
+          [
+            "MEILI_NO_ANALYTICS",
+            "true"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "id": "searxng",
+    "label": "SearXNG",
+    "group": "AI Apps",
+    "image": "searxng/searxng:latest",
+    "port": 8080,
+    "icon": "searxng",
     "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG."
   }
 ]

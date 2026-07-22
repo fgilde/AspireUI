@@ -19,7 +19,7 @@ export interface CatalogMethod { method: string; label: string; overloads: Catal
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
 // A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
 export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null }
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
 
 // Build the node(s) + edges a preset drops onto the canvas. Companions get deduped names; an env
 // value's `${key}` token expands to that companion's resource NAME (its on-network hostname) as a
@@ -48,10 +48,13 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
     return [{ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(val)] }];
   });
 
+  // Named data volumes (safe, no host-path assumptions): WithVolume("<app>-<name>", "/path").
+  const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
+    ({ method: "WithVolume", args: [JSON.stringify(`${mainName}-${name}`), JSON.stringify(target)] }));
   const main: Node = {
     id: nid(), varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
-    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...expandEnv(preset.env)],
+    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...volumeCalls, ...expandEnv(preset.env)],
     x: 60, y: 60,
   };
   const nodes: Node[] = [main];

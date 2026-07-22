@@ -31,7 +31,7 @@ value first. Each slice: build → test → commit/push → restart. Tick as don
 - [ ] **Stack import via URL/Gist**; read-only share link of a running instance.
 - [x] **App dependency templates** — a preset pulls its companions (Immich → Postgres+Redis+ML). Also the
       springboard for the Appliance/Store mode (see 2026-07-22-appliance-store-mode.md).
-- [ ] **Richer preset metadata** — default volumes, required env, needs-GPU/host-net flags.
+- [x] **Richer preset metadata** — default volumes, required env, needs-GPU/host-net flags.
 - [ ] **Command palette can add resources/presets**, not just navigate.
 
 Explicitly NOT doing: GitHub-repo export.
