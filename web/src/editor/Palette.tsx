@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
-import { buildPresetNodes, reuseCandidates, ROLE_ALTERNATIVES } from "../model";
+import { buildPresetNodes, reuseCandidates, parameterCandidates, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
@@ -130,8 +130,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
       .then(s => { setStack(s); toastOk(`Added ${p.label}`); }).catch(toastErr);
   };
-  // Presets with companions ask first (per-companion backend choice); others drop directly.
-  const createPreset = (p: ContainerPreset) => p.companions?.length ? setPresetPick(p) : dropPreset(p);
+  // Presets with companions or secrets ask first (backend choice + parameter reuse); others drop directly.
+  const createPreset = (p: ContainerPreset) => (p.companions?.length || p.secrets?.length) ? setPresetPick(p) : dropPreset(p);
 
   return (
     <MStack gap="xs" p="sm" h="100%">
@@ -230,11 +230,13 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
   onConfirm: (choices: Record<string, CompanionChoice> | "none") => void; onCancel: () => void;
 }) {
   const companions = preset.companions ?? [];
+  const secrets = preset.secrets ?? [];
   const initial: Record<string, string> = {};
   for (const c of companions) {
     const reuse = reuseCandidates(stackNodes, c.role)[0];
     initial[c.key] = reuse ? `reuse:${reuse.id}` : "new";
   }
+  for (const s of secrets) initial[`sec:${s.key}`] = "new"; // default: fresh parameter (don't guess a reuse)
   const [sel, setSel] = useState<Record<string, string>>(initial);
 
   const optionsFor = (c: PresetCompanion) => {
@@ -246,16 +248,27 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
       opts.push({ value: `add:${alt.addMethod}`, label: `Add ${alt.label}` });
     return opts;
   };
+  const secretOptions = () => {
+    const opts = [{ value: "new", label: "New parameter (secret)" }];
+    for (const n of parameterCandidates(stackNodes))
+      opts.push({ value: `reuse:${n.id}`, label: `Reuse existing: ${n.resourceName}` });
+    return opts;
+  };
   const toChoice = (v: string): CompanionChoice =>
     v.startsWith("reuse:") ? { mode: "reuse", nodeId: v.slice(6) }
       : v.startsWith("add:") ? { mode: "add", addMethod: v.slice(4) }
       : { mode: "new" };
 
+  const buildChoices = () => ({
+    ...Object.fromEntries(companions.map(c => [c.key, toChoice(sel[c.key])])),
+    ...Object.fromEntries(secrets.map(s => [`sec:${s.key}`, toChoice(sel[`sec:${s.key}`])])),
+  });
+
   return (
     <Modal opened onClose={onCancel} title={`Add ${preset.label}`} size="lg" centered>
       <MStack gap="sm">
         <Text size="sm" c="dimmed">{preset.description}</Text>
-        <Text size="sm" fw={600}>Dependencies</Text>
+        {companions.length > 0 && <Text size="sm" fw={600}>Dependencies</Text>}
         {companions.map(c => (
           <Group key={c.key} gap="sm" wrap="nowrap" align="center">
             <Text size="sm" w={120} truncate>{c.role || c.key}</Text>
@@ -264,10 +277,19 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
               onChange={v => v && setSel(s => ({ ...s, [c.key]: v }))} />
           </Group>
         ))}
-        <Text size="xs" c="dimmed">Reuse picks a resource already on the canvas; “Add …” drops a real Aspire resource. Scaffold — finish connection env as needed.</Text>
+        {secrets.length > 0 && <Text size="sm" fw={600}>Secrets (Aspire parameters)</Text>}
+        {secrets.map(s => (
+          <Group key={s.key} gap="sm" wrap="nowrap" align="center">
+            <Text size="sm" w={120} truncate title={s.env}>{s.key}</Text>
+            <Select style={{ flex: 1 }} size="xs" allowDeselect={false}
+              data={secretOptions()} value={sel[`sec:${s.key}`]}
+              onChange={v => v && setSel(st => ({ ...st, [`sec:${s.key}`]: v }))} />
+          </Group>
+        ))}
+        <Text size="xs" c="dimmed">Reuse picks a resource already on the canvas; “Add …” drops a real Aspire resource. Secrets become AddParameter(secret) resources (seeded default, change before publishing).</Text>
         <Group justify="flex-end" gap="xs" mt="xs">
           <Button variant="subtle" onClick={() => onConfirm("none")}>Just the app</Button>
-          <Button onClick={() => onConfirm(Object.fromEntries(companions.map(c => [c.key, toChoice(sel[c.key])])))}>Add</Button>
+          <Button onClick={() => onConfirm(buildChoices())}>Add</Button>
         </Group>
       </MStack>
     </Modal>

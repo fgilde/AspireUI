@@ -86,8 +86,10 @@
     "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
     "env": [
       ["LANGFLOW_AUTO_LOGIN", "false"],
-      ["LANGFLOW_SUPERUSER", "admin"],
-      ["LANGFLOW_SUPERUSER_PASSWORD", "admin"]
+      ["LANGFLOW_SUPERUSER", "admin"]
+    ],
+    "secrets": [
+      { "key": "superuser-password", "env": "LANGFLOW_SUPERUSER_PASSWORD", "default": "admin" }
     ]
   },
   {
@@ -133,12 +135,9 @@
     "image": "ghcr.io/paperclipai/paperclip:latest",
     "port": 3100,
     "icon": "paperclip",
-    "description": "Paperclip (paperclipai) — open platform for orchestrating AI agents. API on 3100; embedded Postgres, no DB setup needed. BETTER_AUTH_SECRET seeded (change it).",
-    "env": [
-      [
-        "BETTER_AUTH_SECRET",
-        "paperclip-dev-secret"
-      ]
+    "description": "Paperclip (paperclipai) — open platform for orchestrating AI agents. API on 3100; embedded Postgres, no DB setup needed. BETTER_AUTH_SECRET seeded as a parameter (change it).",
+    "secrets": [
+      { "key": "auth-secret", "env": "BETTER_AUTH_SECRET", "default": "paperclip-dev-secret" }
     ]
   },
   {
@@ -512,11 +511,10 @@
       [
         "PHOTOPRISM_ADMIN_USER",
         "admin"
-      ],
-      [
-        "PHOTOPRISM_ADMIN_PASSWORD",
-        "please-change-me"
       ]
+    ],
+    "secrets": [
+      { "key": "admin-password", "env": "PHOTOPRISM_ADMIN_PASSWORD", "default": "please-change-me" }
     ],
     "volumes": [
       [
@@ -580,12 +578,9 @@
     "image": "pihole/pihole:latest",
     "port": 80,
     "icon": "pihole",
-    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Admin login password 'please-change-me' (change it). Also binds DNS on :53 (host port conflicts possible).",
-    "env": [
-      [
-        "FTLCONF_webserver_api_password",
-        "please-change-me"
-      ]
+    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Admin login password seeded as a parameter (change it). Also binds DNS on :53 (host port conflicts possible).",
+    "secrets": [
+      { "key": "web-password", "env": "FTLCONF_webserver_api_password", "default": "please-change-me" }
     ],
     "hostNetwork": true
   },

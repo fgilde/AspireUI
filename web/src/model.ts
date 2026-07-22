@@ -24,7 +24,11 @@ export interface CatalogMethod { method: string; label: string; overloads: Catal
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
 // A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
 export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null }
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
+// A password/secret the app needs. Emitted as an Aspire parameter resource (AddParameter(secret:true))
+// rather than a plaintext env string, and referenced via WithEnvironment(env, param). `default` seeds
+// its value; `name` overrides the generated parameter resource name.
+export interface PresetSecret { key: string; env: string; default?: string | null; name?: string | null }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; secrets?: PresetSecret[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
 
 // What existing resources satisfy a companion role (reuse), and which Aspire resources can stand in
 // as alternatives to the default container. Drives the "reuse / new container / Aspire alternative"
@@ -43,6 +47,10 @@ export const ROLE_ALTERNATIVES: Record<string, { addMethod: string; label: strin
   meilisearch: [{ addMethod: "AddMeilisearch", label: "Aspire Meilisearch" }],
   llm: [{ addMethod: "AddLocalAI", label: "LocalAI (Nextended)" }, { addMethod: "AddOllama", label: "Ollama" }],
 };
+// Existing parameter resources on the stack — candidates to reuse for a preset secret.
+export function parameterCandidates(nodes: Node[]): Node[] {
+  return nodes.filter(n => n.addMethod === "AddParameter");
+}
 // Existing nodes that satisfy a companion role — candidates to reuse instead of dropping a new one.
 export function reuseCandidates(nodes: Node[], role?: string | null): Node[] {
   if (!role || !ROLE_MATCHERS[role]) return [];
@@ -120,6 +128,23 @@ export function buildPresetNodes(
     return [{ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(val)] }];
   });
 
+  // Secrets → Aspire parameter resources (reuse an existing parameter, or a new AddParameter(secret:true)).
+  // Referenced from the app via WithEnvironment(env, <paramVar>) — the param varName is emitted unquoted
+  // so codegen treats it as a builder reference, not a literal string.
+  interface SecretPlan { sec: PresetSecret; varName: string; targetId: string; name: string; create: boolean; }
+  const secrets = preset.secrets ?? [];
+  const secretPlans: SecretPlan[] = secrets.map(sec => {
+    const choice = choices && choices !== "none" ? choices[`sec:${sec.key}`] : undefined;
+    if (choice?.mode === "reuse") {
+      const node = existing.find(n => n.id === choice.nodeId);
+      if (node) return { sec, varName: node.varName, targetId: node.id, name: node.resourceName, create: false };
+    }
+    const pname = uniq(sec.name || `${preset.id}-${sec.key}`);
+    return { sec, varName: sanitizeIdentifier(pname), targetId: nid(), name: pname, create: true };
+  });
+  const secretEnvCalls = secretPlans.map(p =>
+    ({ method: "WithEnvironment", args: [JSON.stringify(p.sec.env), p.varName] }));
+
   // Pass 2: build nodes.
   const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
     ({ method: "WithVolume", args: [JSON.stringify(`${mainName}-${name}`), JSON.stringify(target)] }));
@@ -127,11 +152,19 @@ export function buildPresetNodes(
   const main: Node = {
     id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
-    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env)],
+    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env), ...secretEnvCalls],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];
   const edges: Edge[] = [];
+  // New parameter nodes (reused ones already exist on the canvas).
+  secretPlans.filter(p => p.create).forEach((p, i) => {
+    nodes.push({
+      id: p.targetId, varName: p.varName, resourceName: p.name, addMethod: "AddParameter",
+      addArgs: [JSON.stringify(p.sec.default ?? ""), "secret: true"],
+      withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
+    });
+  });
   plans.forEach((p, i) => {
     if (p.create) {
       const isAdd = p.choice.mode === "add";
