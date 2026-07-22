@@ -85,7 +85,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     const ql = q.toLowerCase();
     const inc = Object.keys(tagState).filter(t => tagState[t] === "in");
     const exc = Object.keys(tagState).filter(t => tagState[t] === "ex");
-    const hasTags = (tags: string[]) => inc.every(t => tags.includes(t)) && !exc.some(t => tags.includes(t));
+    // Include = OR (union: any checked tag matches), Exclude = must have none of them.
+    const hasTags = (tags: string[]) =>
+      (inc.length === 0 || inc.some(t => tags.includes(t))) && !exc.some(t => tags.includes(t));
     const by: Record<string, { rts: ResourceType[]; presets: ContainerPreset[] }> = {};
     for (const r of cat)
       if (r.label.toLowerCase().includes(ql) && hasTags(rtTags(r)))
