@@ -321,12 +321,18 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   // node on mouse-up). Re-synced from the stack whenever the node set / positions / run-state change;
   // position changes are persisted to the backend on drag-stop, removals cascade through removeNode.
   const [rfNodes, setRfNodes, onNodesChangeInternal] = useNodesState<any>([]);
-  const nodeSig = JSON.stringify(stack.nodes.map(n => [n.id, n.resourceName, n.addMethod, n.x, n.y])) + runState;
+  // Include annotations in the sig so they re-sync; put them in the SAME rf-node state as resources
+  // so dragging/resizing renders live (a derived-then-appended list only moved them on mouse-up).
+  const nodeSig = JSON.stringify(stack.nodes.map(n => [n.id, n.resourceName, n.addMethod, n.x, n.y]))
+    + JSON.stringify((stack.groups ?? []).map(g => [g.id, g.label, g.x, g.y, g.width, g.height, g.color]))
+    + JSON.stringify((stack.notes ?? []).map(n => [n.id, n.text, n.x, n.y])) + runState;
   useEffect(() => {
-    setRfNodes(stack.nodes.map(n => ({
-      id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
-      data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
-    })));
+    setRfNodes([...annoFlow.filter(n => n.type === "group"),
+      ...stack.nodes.map(n => ({
+        id: n.id, type: "resource", position: { x: n.x, y: n.y }, deletable: true,
+        data: { resourceName: n.resourceName, addMethod: n.addMethod, runState },
+      })),
+      ...annoFlow.filter(n => n.type === "note")]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeSig]);
 
@@ -398,13 +404,13 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const q = query.trim().toLowerCase();
   const displayNodes = useMemo(() => {
     const base = rfNodes.map(n => {
+      if (n.type !== "resource") return n; // annotations pass through unchanged
       const data = { ...n.data, live: overlay.statusByNodeId[n.id], onLogs };
       const opacity = q && !`${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q) ? 0.25 : 1;
       return { ...n, data, style: { ...n.style, opacity } };
     });
-    // groups behind (rendered first), then resources/live, notes on top.
-    return [...annoFlow.filter(n => n.type === "group"), ...base, ...liveFlow.rfLive, ...annoFlow.filter(n => n.type === "note")];
-  }, [rfNodes, overlay, liveFlow, q, onLogs, annoFlow]);
+    return [...base, ...liveFlow.rfLive];
+  }, [rfNodes, overlay, liveFlow, q, onLogs]);
   const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
 
   return (
