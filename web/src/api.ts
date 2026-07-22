@@ -43,6 +43,8 @@ export const createUser = (username: string, password: string, isAdmin: boolean)
 export const deleteUser = (id: string): Promise<void> => fetch(`${base}/users/${id}`, { method: "DELETE" }).then(okVoid);
 export const adminSetPassword = (id: string, password: string, mustChange: boolean): Promise<void> =>
   fetch(`${base}/users/${id}/password`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, mustChange }) }).then(okVoid);
+export const adminSetAdmin = (id: string, isAdmin: boolean): Promise<void> =>
+  fetch(`${base}/users/${id}/admin`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ isAdmin }) }).then(okVoid);
 export const adminSetDisabled = (id: string, disabled: boolean): Promise<void> =>
   fetch(`${base}/users/${id}/disabled`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ disabled }) }).then(okVoid);
 export const changePassword = (oldPassword: string, newPassword: string): Promise<void> =>

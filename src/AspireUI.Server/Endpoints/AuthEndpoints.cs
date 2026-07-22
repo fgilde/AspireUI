@@ -147,6 +147,17 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
+        // Admin: promote/demote another account. Guard the last admin (can't demote the only one).
+        users.MapPut("/{id}/admin", (string id, SetAdminRequest body) =>
+        {
+            var user = store.Get(id);
+            if (user is null) return Results.NotFound();
+            if (!body.IsAdmin && user.IsAdmin && store.AdminCount() <= 1)
+                return Results.BadRequest(new { message = "cannot demote the last admin" });
+            store.SetAdmin(id, body.IsAdmin);
+            return Results.NoContent();
+        });
+
         // Admin: enable/disable an account. Guard the last admin so nobody locks everyone out.
         users.MapPut("/{id}/disabled", (string id, SetDisabledRequest body) =>
         {
@@ -164,4 +175,5 @@ public static class AuthEndpoints
     public record ChangePasswordRequest(string OldPassword, string NewPassword);
     public record SetPasswordRequest(string Password, bool MustChange);
     public record SetDisabledRequest(bool Disabled);
+    public record SetAdminRequest(bool IsAdmin);
 }

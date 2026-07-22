@@ -9,6 +9,9 @@ export interface AppTheme {
   theme: MantineThemeOverride;
   dockview: string;   // dockview theme class
   monaco: string;     // monaco editor theme (defined in CodeEditorPanel)
+  // Colors for the theme-picker preview card. Optional — the drawer falls back to sane
+  // scheme-based defaults + the swatch when omitted.
+  preview?: { bg: string; surface: string; accent: string; text: string };
 }
 
 const GH_SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -38,6 +41,26 @@ const solBlue:  MantineColorsTuple = ["#dceffb","#b3dbf5","#7cbfe9","#4aa3dc","#
 // light-scheme gray ramps
 const ghGrayL:  MantineColorsTuple = ["#f6f8fa","#eaeef2","#d0d7de","#afb8c1","#8c959f","#6e7781","#57606a","#424a53","#32383f","#24292f"];
 const solGrayL: MantineColorsTuple = ["#fdf6e3","#eee8d5","#d3cbb0","#93a1a1","#839496","#657b83","#586e75","#073642","#002b36","#00212b"];
+
+// --- fancy theme surface palettes (dark) ---
+const neonDark:  MantineColorsTuple = ["#f0eaff","#d9cbff","#b9a6f0","#8a78c0","#2a2a3a","#1e1e2c","#16161f","#0d0d15","#08080f","#050509"];
+const synthDark: MantineColorsTuple = ["#f5e6ff","#e3c9ff","#c9a3f0","#9a78c8","#3a2560","#2c1a4a","#241546","#1a1030","#120a22","#0b0518"];
+const holoDark:  MantineColorsTuple = ["#cdf7ff","#a3ecff","#6fd8f0","#3f9fb8","#0e3a4a","#0a2c38","#082230","#04161e","#020f15","#010a0e"];
+const nightDark: MantineColorsTuple = ["#ffd9fb","#ffb3f2","#f68ae0","#c05aad","#3a1550","#2a0f3d","#1e0a33","#12061f","#0c0417","#06020e"];
+const obsDark:   MantineColorsTuple = ["#e6e6ee","#cfcfdb","#a8a8bd","#70708a","#26262e","#1a1a20","#121216","#0a0a0d","#060608","#030304"];
+const stageDark: MantineColorsTuple = ["#f6ecd8","#ecdcb8","#d8bd82","#a8894a","#332b1a","#241d10","#17130d","#0c0a08","#080603","#040301"];
+const devDark:   MantineColorsTuple = ["#d6deea","#b8c4d6","#8fa0b8","#5f7088","#242c38","#1a212a","#171c24","#0e1116","#090c10","#050709"];
+const linkDark:  MantineColorsTuple = ["#eef0f6","#d5d9e6","#adb3c8","#767e98","#2a2e40","#1f2230","#1a1d2b","#10121a","#0b0d14","#06070c"];
+
+// --- fancy accent tuples ---
+const neonMagenta: MantineColorsTuple = ["#ffe0f8","#ffb0ee","#ff7fe2","#ff4fd6","#ff2fd0","#e620bb","#c4179c","#9e0f7d","#7a0a60","#560643"];
+const holoCyan:    MantineColorsTuple = ["#d6fbff","#a8f4ff","#6fe9ff","#38dcff","#22e0ff","#12b8d6","#0d93ab","#086e80","#054c58","#032e36"];
+const hotPink:     MantineColorsTuple = ["#ffe0fb","#ffb0f4","#ff7fed","#fb54e6","#f637ec","#d423c9","#ad1aa3","#84137c","#5c0d56","#380734"];
+const violetGlow:  MantineColorsTuple = ["#ece9ff","#d3ccff","#b3a6ff","#937fff","#7c6cff","#6a58e6","#5644c4","#43349e","#31257a","#221956"];
+const gold:        MantineColorsTuple = ["#fff2d6","#ffe0a8","#ffcc70","#ffb838","#ffb020","#e69412","#c4770d","#9e5c09","#7a4506","#563004"];
+const amber:       MantineColorsTuple = ["#fff0d6","#ffddaa","#fdc873","#f7ae3f","#f5a623","#d68814","#ac6c0f","#83510b","#5c3907","#382304"];
+const tealGlow:    MantineColorsTuple = ["#d3fff4","#a3ffe8","#6ff2d6","#38e0bf","#2bd4bd","#17b09b","#0f8a7a","#0a655a","#06453d","#032824"];
+const synthPink:   MantineColorsTuple = ["#ffe6f4","#ffb8de","#ff8ac8","#ff5cb0","#ff3d9e","#e62a86","#c41f6d","#9e1655","#7a103f","#56092a"];
 
 export const THEMES: AppTheme[] = [
   { id: "ocean", label: "Ocean (default)", scheme: "dark", swatch: "#4c6ef5", dockview: "dockview-theme-dark", monaco: "vs-dark",
@@ -79,6 +102,44 @@ export const THEMES: AppTheme[] = [
   { id: "solarized-light", label: "Solarized Light", scheme: "light", swatch: "#268bd2", dockview: "dockview-theme-solarized", monaco: "vs",
     theme: createTheme({ colors: { gray: solGrayL, brand: solBlue }, primaryColor: "brand", primaryShade: 4,
       white: "#fdf6e3", black: "#586e75", defaultRadius: "md" }) },
+
+  // --- fancy / playful ---
+  { id: "neon-glow", label: "Neon Glow", scheme: "dark", swatch: "#ff2fd0", dockview: "dockview-theme-abyss", monaco: "vs-dark",
+    preview: { bg: "#0d0d15", surface: "#16161f", accent: "#ff2fd0", text: "#f0eaff" },
+    theme: createTheme({ colors: { dark: neonDark, brand: neonMagenta }, primaryColor: "brand", primaryShade: 4, defaultRadius: "lg", autoContrast: true }) },
+
+  { id: "synthwave", label: "Synthwave", scheme: "dark", swatch: "#ff3d9e", dockview: "dockview-theme-dracula", monaco: "vs-dark",
+    preview: { bg: "#1a1030", surface: "#241546", accent: "#ff3d9e", text: "#f5e6ff" },
+    theme: createTheme({ colors: { dark: synthDark, brand: synthPink }, primaryColor: "brand", primaryShade: 4, defaultRadius: "md", autoContrast: true }) },
+
+  { id: "hologram", label: "Hologram", scheme: "dark", swatch: "#22e0ff", dockview: "dockview-theme-abyss", monaco: "vs-dark",
+    preview: { bg: "#04161e", surface: "#082230", accent: "#22e0ff", text: "#cdf7ff" },
+    theme: createTheme({ colors: { dark: holoDark, brand: holoCyan }, primaryColor: "brand", primaryShade: 4, defaultRadius: "lg", autoContrast: true }) },
+
+  { id: "nightlife", label: "Nightlife", scheme: "dark", swatch: "#f637ec", dockview: "dockview-theme-dracula", monaco: "vs-dark",
+    preview: { bg: "#12061f", surface: "#1e0a33", accent: "#f637ec", text: "#ffd9fb" },
+    theme: createTheme({ colors: { dark: nightDark, brand: hotPink }, primaryColor: "brand", primaryShade: 4, defaultRadius: "xl", autoContrast: true }) },
+
+  { id: "obsidian", label: "Obsidian", scheme: "dark", swatch: "#7c6cff", dockview: "dockview-theme-dark", monaco: "vs-dark",
+    preview: { bg: "#0a0a0d", surface: "#121216", accent: "#7c6cff", text: "#e6e6ee" },
+    theme: createTheme({ colors: { dark: obsDark, brand: violetGlow }, primaryColor: "brand", primaryShade: 4, defaultRadius: "md" }) },
+
+  { id: "stage", label: "Stage", scheme: "dark", swatch: "#ffb020", dockview: "dockview-theme-monokai", monaco: "vs-dark",
+    preview: { bg: "#0c0a08", surface: "#17130d", accent: "#ffb020", text: "#f6ecd8" },
+    theme: createTheme({ colors: { dark: stageDark, brand: gold }, primaryColor: "brand", primaryShade: 4, defaultRadius: "md", autoContrast: true }) },
+
+  { id: "dev", label: "Dev", scheme: "dark", swatch: "#f5a623", dockview: "dockview-theme-abyss", monaco: "vs-dark",
+    preview: { bg: "#0e1116", surface: "#171c24", accent: "#f5a623", text: "#d6deea" },
+    theme: createTheme({ colors: { dark: devDark, brand: amber }, primaryColor: "brand", primaryShade: 4, defaultRadius: "sm",
+      fontFamilyMonospace: MONO, autoContrast: true }) },
+
+  { id: "link-hub", label: "Link Hub", scheme: "dark", swatch: "#2bd4bd", dockview: "dockview-theme-abyss", monaco: "vs-dark",
+    preview: { bg: "#10121a", surface: "#1a1d2b", accent: "#2bd4bd", text: "#eef0f6" },
+    theme: createTheme({ colors: { dark: linkDark, brand: tealGlow }, primaryColor: "brand", primaryShade: 4, defaultRadius: "xl", autoContrast: true }) },
+
+  { id: "kiosk", label: "Kiosk", scheme: "light", swatch: "#1971c2", dockview: "dockview-theme-light", monaco: "vs",
+    preview: { bg: "#ffffff", surface: "#f1f3f5", accent: "#1971c2", text: "#1f2328" },
+    theme: createTheme({ colors: { gray: ghGrayL, brand: ghBlueL }, primaryColor: "brand", primaryShade: 6, defaultRadius: "xl" }) },
 ];
 
 export const DEFAULT_THEME = "ocean";

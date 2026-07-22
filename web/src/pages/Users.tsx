@@ -4,7 +4,7 @@ import {
   ActionIcon, Alert, AppShell, Badge, Button, Container, Group, PasswordInput,
   Stack as MStack, Switch, Table, TextInput, Title, Menu, Modal,
 } from "@mantine/core";
-import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen } from "@tabler/icons-react";
+import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff } from "@tabler/icons-react";
 import type { UserDto } from "../model";
 import * as api from "../api";
 
@@ -29,6 +29,7 @@ export function Users() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const refresh = () => api.listUsers().then(setUsers);
   useEffect(() => { refresh(); }, []);
@@ -43,12 +44,19 @@ export function Users() {
     try {
       await api.createUser(username, password, isAdmin);
       setUsername(""); setPassword(""); setIsAdmin(false);
+      setAddOpen(false);
       await refresh();
     } catch (e) {
       setError(errorMessage(e, "Failed to create user."));
     } finally {
       setBusy(false);
     }
+  };
+
+  const toggleAdmin = async (u: UserDto) => {
+    setError(null);
+    try { await api.adminSetAdmin(u.id, !u.isAdmin); await refresh(); }
+    catch (e) { setError(errorMessage(e, "Failed to update role.")); }
   };
 
   const removeUser = async (id: string) => {
@@ -83,9 +91,12 @@ export function Users() {
   return (
     <AppShell header={{ height: 56 }} padding="lg">
       <AppShell.Header>
-        <Group h="100%" px="md">
-          <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
-          <Title order={4}>Users</Title>
+        <Group h="100%" px="md" justify="space-between">
+          <Group>
+            <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
+            <Title order={4}>Users</Title>
+          </Group>
+          <Button leftSection={<IconPlus size={16} />} onClick={() => { setError(null); setAddOpen(true); }}>Add user</Button>
         </Group>
       </AppShell.Header>
 
@@ -126,6 +137,9 @@ export function Users() {
                         <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${u.username}`}><IconDots size={16} /></ActionIcon></Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconKey size={14} />} onClick={() => { setPwTarget(u); setPwValue(""); setPwForce(true); }}>Set password…</Menu.Item>
+                          <Menu.Item leftSection={u.isAdmin ? <IconShieldOff size={14} /> : <IconShield size={14} />}
+                            disabled={u.isAdmin && lastAdmin}
+                            onClick={() => toggleAdmin(u)}>{u.isAdmin ? "Remove admin" : "Make admin"}</Menu.Item>
                           <Menu.Item leftSection={u.disabled ? <IconLockOpen size={14} /> : <IconLock size={14} />}
                             disabled={!u.disabled && lastAdmin}
                             onClick={() => toggleDisabled(u)}>{u.disabled ? "Enable" : "Disable"}</Menu.Item>
@@ -149,21 +163,18 @@ export function Users() {
             </MStack>
           </Modal>
 
-          <MStack gap="md" maw={360}>
-            <Title order={5}>Add user</Title>
-            <TextInput
-              label="Username" value={username}
-              onChange={e => setUsername(e.currentTarget.value)}
-            />
-            <PasswordInput
-              label="Password" description="At least 8 characters"
-              value={password} onChange={e => setPassword(e.currentTarget.value)}
-            />
-            <Switch label="Admin" checked={isAdmin} onChange={e => setIsAdmin(e.currentTarget.checked)} />
-            <Group justify="flex-end">
-              <Button onClick={addUser} loading={busy}>Add user</Button>
-            </Group>
-          </MStack>
+          <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Add user" centered>
+            <MStack gap="md">
+              <TextInput label="Username" value={username} onChange={e => setUsername(e.currentTarget.value)} data-autofocus />
+              <PasswordInput label="Password" description="At least 8 characters"
+                value={password} onChange={e => setPassword(e.currentTarget.value)} />
+              <Switch label="Admin" checked={isAdmin} onChange={e => setIsAdmin(e.currentTarget.checked)} />
+              <Group justify="flex-end">
+                <Button variant="subtle" onClick={() => setAddOpen(false)}>Cancel</Button>
+                <Button onClick={addUser} loading={busy}>Add user</Button>
+              </Group>
+            </MStack>
+          </Modal>
         </Container>
       </AppShell.Main>
     </AppShell>

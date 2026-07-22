@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, UnstyledButton, Avatar, Group, Text, Badge } from "@mantine/core";
-import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconCheck, IconUser } from "@tabler/icons-react";
+import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
 import { useAppTheme } from "../ThemeProvider";
 import { HelpModal } from "../HelpButton";
+import { ThemeDrawer } from "../ThemeDrawer";
 import { REPO_URL } from "../GitHubLink";
 
 // One consolidated account menu for the header — folds in theme, GitHub, help/docs, admin Users,
@@ -13,8 +14,9 @@ import { REPO_URL } from "../GitHubLink";
 export function UserMenu() {
   const nav = useNavigate();
   const { status, refresh } = useAuth();
-  const { themeId, setThemeId, themes } = useAppTheme();
+  const { current } = useAppTheme();
   const [help, setHelp] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const user = status?.user;
   if (!user) return null;
 
@@ -41,16 +43,8 @@ export function UserMenu() {
           <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => nav("/settings")}>Settings</Menu.Item>
 
           <Menu.Divider />
-          <Menu.Label>Theme</Menu.Label>
-          {themes.map(t => (
-            <Menu.Item key={t.id} onClick={() => setThemeId(t.id)}
-              leftSection={
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, width: 28 }}>
-                  {t.id === themeId ? <IconCheck size={13} /> : <span style={{ width: 13 }} />}
-                  <span style={{ width: 11, height: 11, borderRadius: "50%", background: t.swatch, border: "1px solid rgba(128,128,128,.4)" }} />
-                </span>
-              }>{t.label}</Menu.Item>
-          ))}
+          <Menu.Item leftSection={<IconPalette size={14} />} onClick={() => setThemeOpen(true)}
+            rightSection={<Text size="xs" c="dimmed" truncate maw={90}>{current.label}</Text>}>Theme</Menu.Item>
 
           <Menu.Divider />
           <Menu.Item leftSection={<IconHelp size={14} />} onClick={() => setHelp(true)}>Help &amp; docs</Menu.Item>
@@ -60,6 +54,7 @@ export function UserMenu() {
         </Menu.Dropdown>
       </Menu>
       <HelpModal opened={help} onClose={() => setHelp(false)} />
+      <ThemeDrawer opened={themeOpen} onClose={() => setThemeOpen(false)} />
     </>
   );
 }

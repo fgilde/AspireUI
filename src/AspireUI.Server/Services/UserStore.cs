@@ -141,6 +141,15 @@ public class UserStore
         cmd.ExecuteNonQuery();
     });
 
+    public void SetAdmin(string id, bool isAdmin) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE users SET is_admin=$a WHERE id=$i";
+        cmd.Parameters.AddWithValue("$a", isAdmin ? 1 : 0);
+        cmd.Parameters.AddWithValue("$i", id);
+        cmd.ExecuteNonQuery();
+    });
+
     public void SetDisabled(string id, bool disabled) => UsingConnection(conn =>
     {
         using var cmd = conn.CreateCommand();
