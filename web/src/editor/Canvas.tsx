@@ -159,9 +159,8 @@ function SmartDeleteModal({ node, deps, onConfirm, onCancel }:
         <MStack gap={4}>
           {deps.map(d => (
             <Checkbox key={d.node.id} checked={!!checked[d.node.id]}
-              onChange={e => setChecked(c => ({ ...c, [d.node.id]: e.currentTarget.checked }))}
-              label={<Group gap={6} component="span">{d.node.resourceName}
-                {d.owned && <Badge size="xs" variant="light" color="grape">companion</Badge>}</Group>} />
+              onChange={() => setChecked(c => ({ ...c, [d.node.id]: !c[d.node.id] }))}
+              label={d.owned ? `${d.node.resourceName} (companion)` : d.node.resourceName} />
           ))}
         </MStack>
         <Group justify="flex-end" gap="xs" mt="xs">

@@ -327,7 +327,7 @@
     "image": "ghcr.io/immich-app/immich-server:release",
     "port": 2283,
     "icon": "immich",
-    "description": "Immich — self-hosted photo & video backup. Comes with pgvecto-rs Postgres + Redis + the ML container (scaffold — finish the connection env + volumes).",
+    "description": "Immich — self-hosted photo & video backup. Comes with Immich's VectorChord Postgres + Redis + the ML container (scaffold — add a media library volume as needed).",
     "env": [
       [
         "DB_HOSTNAME",
@@ -355,7 +355,7 @@
         "key": "db",
         "addMethod": "AddContainer",
         "resourceName": "immich-db",
-        "image": "tensorchord/pgvecto-rs:pg16-v0.2.0",
+        "image": "ghcr.io/immich-app/postgres:16-vectorchord0.3.0",
         "env": [
           [
             "POSTGRES_DB",
