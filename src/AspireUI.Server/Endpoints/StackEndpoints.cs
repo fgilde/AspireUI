@@ -41,7 +41,7 @@ public static class StackEndpoints
         // All app endpoints below require an authenticated session (cookie auth wired in
         // Program.cs). Anonymous endpoints (/auth/*, /env/health, SPA static files) are mapped
         // separately and never go through this group.
-        var app2 = app.MapGroup("").RequireAuthorization();
+        var app2 = app.MapGroup("/api").RequireAuthorization();
 
         string Dir(string id) => Path.Combine(wsRoot, id);
 

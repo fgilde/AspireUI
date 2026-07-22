@@ -51,57 +51,57 @@ public class AuthTests : IClassFixture<NoAuthTestFactory>
         var freshClient = _f.CreateClient();
 
         // Fresh DB: no users yet.
-        var status = await freshClient.GetFromJsonAsync<AuthStatusDto>("/auth/status");
+        var status = await freshClient.GetFromJsonAsync<AuthStatusDto>("/api/auth/status");
         Assert.True(status!.NeedsSetup);
         Assert.False(status.Authenticated);
 
         // App endpoint without a session -> 401.
-        var unauthed = await freshClient.GetAsync("/stacks");
+        var unauthed = await freshClient.GetAsync("/api/stacks");
         Assert.Equal(HttpStatusCode.Unauthorized, unauthed.StatusCode);
 
         // First-run setup creates the admin and signs in (cookie carried by this client).
-        var setup = await freshClient.PostAsJsonAsync("/auth/setup", new { username = "admin", password = "supersecret1" });
+        var setup = await freshClient.PostAsJsonAsync("/api/auth/setup", new { username = "admin", password = "supersecret1" });
         setup.EnsureSuccessStatusCode();
         var created = await setup.Content.ReadFromJsonAsync<UserDto>();
         Assert.Equal("admin", created!.Username);
         Assert.True(created.IsAdmin);
 
-        var afterSetup = await freshClient.GetFromJsonAsync<AuthStatusDto>("/auth/status");
+        var afterSetup = await freshClient.GetFromJsonAsync<AuthStatusDto>("/api/auth/status");
         Assert.False(afterSetup!.NeedsSetup);
         Assert.True(afterSetup.Authenticated);
 
         // App endpoint now works with the setup-issued cookie.
-        var authedStacks = await freshClient.GetAsync("/stacks");
+        var authedStacks = await freshClient.GetAsync("/api/stacks");
         Assert.Equal(HttpStatusCode.OK, authedStacks.StatusCode);
 
         // Second setup attempt -> 409 (users table no longer empty).
         var secondSetup = await _f.CreateClient()
-            .PostAsJsonAsync("/auth/setup", new { username = "admin2", password = "supersecret1" });
+            .PostAsJsonAsync("/api/auth/setup", new { username = "admin2", password = "supersecret1" });
         Assert.Equal(HttpStatusCode.Conflict, secondSetup.StatusCode);
 
         // Login: wrong password -> 401 generic.
         var badLogin = await _f.CreateClient()
-            .PostAsJsonAsync("/auth/login", new { username = "admin", password = "wrongpassword" });
+            .PostAsJsonAsync("/api/auth/login", new { username = "admin", password = "wrongpassword" });
         Assert.Equal(HttpStatusCode.Unauthorized, badLogin.StatusCode);
 
         // Login: right password -> 200 + authenticated.
         var loginClient = _f.CreateClient();
-        var goodLogin = await loginClient.PostAsJsonAsync("/auth/login", new { username = "admin", password = "supersecret1" });
+        var goodLogin = await loginClient.PostAsJsonAsync("/api/auth/login", new { username = "admin", password = "supersecret1" });
         goodLogin.EnsureSuccessStatusCode();
-        var loginStatus = await loginClient.GetFromJsonAsync<AuthStatusDto>("/auth/status");
+        var loginStatus = await loginClient.GetFromJsonAsync<AuthStatusDto>("/api/auth/status");
         Assert.True(loginStatus!.Authenticated);
 
         // Logout clears the session.
-        var logout = await loginClient.PostAsync("/auth/logout", content: null);
+        var logout = await loginClient.PostAsync("/api/auth/logout", content: null);
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
-        var afterLogout = await loginClient.GetFromJsonAsync<AuthStatusDto>("/auth/status");
+        var afterLogout = await loginClient.GetFromJsonAsync<AuthStatusDto>("/api/auth/status");
         Assert.False(afterLogout!.Authenticated);
     }
 
     [Fact]
     public async Task EnvHealth_DotnetOk_OnThisBox()
     {
-        var health = await _f.CreateClient().GetFromJsonAsync<JsonElement>("/env/health");
+        var health = await _f.CreateClient().GetFromJsonAsync<JsonElement>("/api/env/health");
         Assert.True(health.GetProperty("dotnet").GetProperty("ok").GetBoolean());
         // git is reported too (needed by AddGithubRepository); presence of the field is the contract.
         Assert.True(health.TryGetProperty("git", out _));

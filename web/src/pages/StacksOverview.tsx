@@ -14,6 +14,7 @@ import {
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
+import { useTitle } from "../useTitle";
 import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
 import { UserMenu } from "../auth/UserMenu";
@@ -37,6 +38,7 @@ async function walkDirectory(dir: any, prefix = ""): Promise<BundleFile[]> {
 
 export function StacksOverview() {
   const nav = useNavigate();
+  useTitle("Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);

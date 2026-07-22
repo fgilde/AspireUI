@@ -1,5 +1,5 @@
 import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth, PublishResult, DeployResult } from "./model";
-const base = "";
+const base = "/api";
 
 export interface TemplateInfo { id: string; name: string; description: string }
 export interface PackageInfo { id: string; version: string; resources: string[] }

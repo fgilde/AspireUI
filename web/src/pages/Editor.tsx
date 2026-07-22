@@ -5,6 +5,7 @@ import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDevice
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
+import { useTitle } from "../useTitle";
 import { DockLayout, EditorContext } from "../editor/DockLayout";
 import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
@@ -19,6 +20,7 @@ export function Editor() {
   const { id = "" } = useParams();
   const nav = useNavigate();
   const [stack, setStackState] = useState<Stack | null>(null);
+  useTitle(stack?.name ?? "Editor");
   const [sel, setSel] = useState<string | null>(null);
   const [selIds, setSelIds] = useState<string[]>([]);
   const [flashSignal, setFlashSignal] = useState({ id: "", n: 0 });

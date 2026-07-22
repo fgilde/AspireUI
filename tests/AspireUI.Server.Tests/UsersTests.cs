@@ -16,10 +16,10 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
     private async Task<HttpClient> AdminClientAsync()
     {
         var client = _f.CreateClient();
-        var setup = await client.PostAsJsonAsync("/auth/setup", new { username = "admin", password = "supersecret1" });
+        var setup = await client.PostAsJsonAsync("/api/auth/setup", new { username = "admin", password = "supersecret1" });
         if (setup.StatusCode == HttpStatusCode.Conflict)
         {
-            var login = await client.PostAsJsonAsync("/auth/login", new { username = "admin", password = "supersecret1" });
+            var login = await client.PostAsJsonAsync("/api/auth/login", new { username = "admin", password = "supersecret1" });
             login.EnsureSuccessStatusCode();
             return client;
         }
@@ -32,7 +32,7 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
     {
         var admin = await AdminClientAsync();
 
-        var create = await admin.PostAsJsonAsync("/users", new { username = "alice", password = "alicepass1", isAdmin = false });
+        var create = await admin.PostAsJsonAsync("/api/users", new { username = "alice", password = "alicepass1", isAdmin = false });
         create.EnsureSuccessStatusCode();
         var alice = await create.Content.ReadFromJsonAsync<UserDto>();
         Assert.Equal("alice", alice!.Username);
@@ -43,14 +43,14 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
         Assert.DoesNotContain("passwordHash", raw, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("alicepass1", raw);
 
-        var list = await admin.GetFromJsonAsync<List<UserDto>>("/users");
+        var list = await admin.GetFromJsonAsync<List<UserDto>>("/api/users");
         Assert.Contains(list!, u => u.Username == "alice");
         Assert.Contains(list!, u => u.Username == "admin");
 
-        var delete = await admin.DeleteAsync($"/users/{alice.Id}");
+        var delete = await admin.DeleteAsync($"/api/users/{alice.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
 
-        var afterDelete = await admin.GetFromJsonAsync<List<UserDto>>("/users");
+        var afterDelete = await admin.GetFromJsonAsync<List<UserDto>>("/api/users");
         Assert.DoesNotContain(afterDelete!, u => u.Username == "alice");
     }
 
@@ -59,10 +59,10 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
     {
         var admin = await AdminClientAsync();
 
-        var first = await admin.PostAsJsonAsync("/users", new { username = "bob", password = "bobpassword", isAdmin = false });
+        var first = await admin.PostAsJsonAsync("/api/users", new { username = "bob", password = "bobpassword", isAdmin = false });
         first.EnsureSuccessStatusCode();
 
-        var dup = await admin.PostAsJsonAsync("/users", new { username = "bob", password = "differentpass", isAdmin = false });
+        var dup = await admin.PostAsJsonAsync("/api/users", new { username = "bob", password = "differentpass", isAdmin = false });
         Assert.Equal(HttpStatusCode.Conflict, dup.StatusCode);
     }
 
@@ -71,10 +71,10 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
     {
         var admin = await AdminClientAsync();
 
-        var status = await admin.GetFromJsonAsync<System.Text.Json.JsonElement>("/auth/status");
+        var status = await admin.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/auth/status");
         var adminId = status.GetProperty("user").GetProperty("id").GetString();
 
-        var delete = await admin.DeleteAsync($"/users/{adminId}");
+        var delete = await admin.DeleteAsync($"/api/users/{adminId}");
         Assert.Equal(HttpStatusCode.BadRequest, delete.StatusCode);
     }
 
@@ -82,14 +82,14 @@ public class UsersTests : IClassFixture<NoAuthTestFactory>
     public async Task NonAdmin_GetUsers_Returns403()
     {
         var admin = await AdminClientAsync();
-        var create = await admin.PostAsJsonAsync("/users", new { username = "carol", password = "carolpassword", isAdmin = false });
+        var create = await admin.PostAsJsonAsync("/api/users", new { username = "carol", password = "carolpassword", isAdmin = false });
         create.EnsureSuccessStatusCode();
 
         var nonAdmin = _f.CreateClient();
-        var login = await nonAdmin.PostAsJsonAsync("/auth/login", new { username = "carol", password = "carolpassword" });
+        var login = await nonAdmin.PostAsJsonAsync("/api/auth/login", new { username = "carol", password = "carolpassword" });
         login.EnsureSuccessStatusCode();
 
-        var forbidden = await nonAdmin.GetAsync("/users");
+        var forbidden = await nonAdmin.GetAsync("/api/users");
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 }

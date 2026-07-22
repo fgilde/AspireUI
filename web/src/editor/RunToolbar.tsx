@@ -36,7 +36,7 @@ export function RunToolbar() {
             <Button size="xs" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={() => void start()}>Run</Button>
           </Tooltip>}
       <Button size="xs" variant="default" leftSection={<IconDownload size={14} />}
-        onClick={() => { window.location.href = `/stacks/${stack.id}/export`; }}>Export</Button>
+        onClick={() => { window.location.href = `/api/stacks/${stack.id}/export`; }}>Export</Button>
     </Group>
   );
 }

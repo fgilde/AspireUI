@@ -24,6 +24,7 @@ public static class AuthEndpoints
         var store = new UserStore(dbPath);
         var hasher = new PasswordHasher<User>();
         var envHealth = new EnvHealth();
+        var api = app.MapGroup("/api");
 
         static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword);
 
@@ -42,7 +43,7 @@ public static class AuthEndpoints
         static IResult InvalidCredentials() =>
             Results.Json(new { message = "invalid credentials" }, statusCode: StatusCodes.Status401Unauthorized);
 
-        app.MapGet("/auth/status", (HttpContext ctx) =>
+        api.MapGet("/auth/status", (HttpContext ctx) =>
         {
             var authenticated = ctx.User.Identity?.IsAuthenticated ?? false;
             UserDto? dto = null;
@@ -54,7 +55,7 @@ public static class AuthEndpoints
             return Results.Ok(new { needsSetup = store.Count() == 0, authenticated, user = dto });
         });
 
-        app.MapPost("/auth/setup", async (HttpContext ctx, AuthRequest body) =>
+        api.MapPost("/auth/setup", async (HttpContext ctx, AuthRequest body) =>
         {
             if (store.Count() > 0) return Results.Conflict(new { message = "setup already completed" });
             if (string.IsNullOrWhiteSpace(body.Username)) return Results.BadRequest(new { message = "username required" });
@@ -66,7 +67,7 @@ public static class AuthEndpoints
             return Results.Ok(ToDto(user));
         });
 
-        app.MapPost("/auth/login", async (HttpContext ctx, AuthRequest body) =>
+        api.MapPost("/auth/login", async (HttpContext ctx, AuthRequest body) =>
         {
             var user = store.FindByUsername(body.Username);
             if (user is null) return InvalidCredentials();
@@ -81,7 +82,7 @@ public static class AuthEndpoints
 
         // Self-service password change (any signed-in user). Verifies the current password; clears the
         // must-change flag on success.
-        app.MapPost("/auth/change-password", async (HttpContext ctx, ChangePasswordRequest body) =>
+        api.MapPost("/auth/change-password", async (HttpContext ctx, ChangePasswordRequest body) =>
         {
             var id = ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (id is null || store.Get(id) is not { } user) return Results.Unauthorized();
@@ -93,13 +94,13 @@ public static class AuthEndpoints
             return Results.NoContent();
         }).RequireAuthorization();
 
-        app.MapPost("/auth/logout", async (HttpContext ctx) =>
+        api.MapPost("/auth/logout", async (HttpContext ctx) =>
         {
             await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.NoContent();
         });
 
-        app.MapGet("/env/health", async () =>
+        api.MapGet("/env/health", async () =>
         {
             var r = await envHealth.CheckAsync();
             return Results.Ok(new
@@ -112,7 +113,7 @@ public static class AuthEndpoints
 
         // Admin-only user management. Cookie carries Role=Admin for admins (see SignInUserAsync),
         // so gating on that role claim is enough — no separate admin check needed per handler.
-        var users = app.MapGroup("/users").RequireAuthorization(policy => policy.RequireRole("Admin"));
+        var users = api.MapGroup("/users").RequireAuthorization(policy => policy.RequireRole("Admin"));
 
         users.MapGet("/", () => Results.Ok(store.List().Select(ToDto)));
 

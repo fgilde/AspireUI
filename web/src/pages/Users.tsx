@@ -7,6 +7,7 @@ import {
 import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff } from "@tabler/icons-react";
 import type { UserDto } from "../model";
 import * as api from "../api";
+import { useTitle } from "../useTitle";
 
 // Extracts the backend's `{ message }` JSON body out of ok()'s `"${status}: ${text}"`
 // Error shape, so 400 (last admin) / 409 (duplicate username) show the real reason.
@@ -23,6 +24,7 @@ function errorMessage(e: unknown, fallback: string): string {
 
 export function Users() {
   const nav = useNavigate();
+  useTitle("Users");
   const [users, setUsers] = useState<UserDto[]>([]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

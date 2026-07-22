@@ -4,9 +4,11 @@ import { AppShell, Group, Title, Button, Container, PasswordInput, Stack as MSta
 import { IconArrowLeft, IconCheck, IconAlertCircle } from "@tabler/icons-react";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
+import { useTitle } from "../useTitle";
 
 export function Profile() {
   const nav = useNavigate();
+  useTitle("Profile");
   const { status, refresh } = useAuth();
   const user = status?.user;
   const mustChange = !!user?.mustChangePassword;

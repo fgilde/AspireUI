@@ -5,6 +5,7 @@ import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle, IconRobot
 import type { AppSettings, EnvHealth } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
+import { useTitle } from "../useTitle";
 
 // Environment/about tab — server-side health of the tools a run needs, plus the build version.
 function EnvTab() {
@@ -41,6 +42,7 @@ const EMPTY: AppSettings = { aiBaseUrl: "", aiApiKey: "", aiModel: "", aiProvide
 
 export function Settings() {
   const nav = useNavigate();
+  useTitle("Settings");
   const [settings, setSettings] = useState<AppSettings>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);

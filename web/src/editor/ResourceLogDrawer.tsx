@@ -16,7 +16,7 @@ function LogStream({ stackId, name, display }: { stackId: string; name: string; 
 
   useEffect(() => {
     setLines([]); setFilter(""); setErrOnly(false);
-    const es = new EventSource(`/stacks/${stackId}/resources/${encodeURIComponent(name)}/logs`);
+    const es = new EventSource(`/api/stacks/${stackId}/resources/${encodeURIComponent(name)}/logs`);
     es.onmessage = e => {
       try {
         const d = JSON.parse(e.data) as { text: string; stderr?: boolean };

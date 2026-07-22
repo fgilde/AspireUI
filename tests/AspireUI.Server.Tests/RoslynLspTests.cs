@@ -36,7 +36,7 @@ public class CodeEndpointTests : IClassFixture<TestWebAppFactory>
     public async Task Complete_ReturnsAddRedis()
     {
         var code = "using Aspire.Hosting;\nvar builder = DistributedApplication.CreateBuilder(args);\nbuilder.";
-        var r = await _c.PostAsJsonAsync("/stacks/any/code/complete", new { code, offset = code.Length });
+        var r = await _c.PostAsJsonAsync("/api/stacks/any/code/complete", new { code, offset = code.Length });
         r.EnsureSuccessStatusCode();
         var items = await r.Content.ReadFromJsonAsync<List<CompletionItemDto>>();
         Assert.Contains(items!, i => i.Label.Contains("AddRedis"));
@@ -45,10 +45,10 @@ public class CodeEndpointTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Save_RoundTripsValidProgram_AndPersists()
     {
-        var create = await _c.PostAsJsonAsync("/stacks", new StackModel("", "CodeSave", "net10.0", [], [], [], [], []));
+        var create = await _c.PostAsJsonAsync("/api/stacks", new StackModel("", "CodeSave", "net10.0", [], [], [], [], []));
         var id = (await create.Content.ReadFromJsonAsync<StackModel>())!.Id;
         var code = "using Aspire.Hosting;\nvar builder = DistributedApplication.CreateBuilder(args);\nvar cache = builder.AddRedis(\"cache\");\nbuilder.Build().Run();";
-        var r = await _c.PostAsJsonAsync($"/stacks/{id}/code/save", new { name = "CodeSave", code });
+        var r = await _c.PostAsJsonAsync($"/api/stacks/{id}/code/save", new { name = "CodeSave", code });
         r.EnsureSuccessStatusCode();
         var stack = await r.Content.ReadFromJsonAsync<StackModel>();
         Assert.Contains(stack!.Nodes, n => n.AddMethod == "AddRedis");
@@ -57,11 +57,11 @@ public class CodeEndpointTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Save_PreservesExtraPackages()
     {
-        var create = await _c.PostAsJsonAsync("/stacks", new StackModel("", "KeepExtras", "net10.0",
+        var create = await _c.PostAsJsonAsync("/api/stacks", new StackModel("", "KeepExtras", "net10.0",
             [], [], [], [], [new PackageRef("Some.Extra.Pkg", "1.2.3")]));
         var id = (await create.Content.ReadFromJsonAsync<StackModel>())!.Id;
         var code = "using Aspire.Hosting;\nvar builder = DistributedApplication.CreateBuilder(args);\nvar cache = builder.AddRedis(\"cache\");\nbuilder.Build().Run();";
-        var r = await _c.PostAsJsonAsync($"/stacks/{id}/code/save", new { name = "KeepExtras", code });
+        var r = await _c.PostAsJsonAsync($"/api/stacks/{id}/code/save", new { name = "KeepExtras", code });
         r.EnsureSuccessStatusCode();
         var stack = await r.Content.ReadFromJsonAsync<StackModel>();
         Assert.Contains(stack!.ExtraPackages, p => p.Id == "Some.Extra.Pkg");
@@ -70,7 +70,7 @@ public class CodeEndpointTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Save_UnknownStack_404()
     {
-        var r = await _c.PostAsJsonAsync("/stacks/nope/code/save", new { name = "x", code = "var a=1;" });
+        var r = await _c.PostAsJsonAsync("/api/stacks/nope/code/save", new { name = "x", code = "var a=1;" });
         Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
     }
 }
@@ -84,7 +84,7 @@ public class CodeAuthTests : IClassFixture<NoAuthTestFactory>
     [Fact]
     public async Task Complete_WithoutAuth_401()
     {
-        var r = await _c.PostAsJsonAsync("/stacks/x/code/complete", new { code = "", offset = 0 });
+        var r = await _c.PostAsJsonAsync("/api/stacks/x/code/complete", new { code = "", offset = 0 });
         Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
     }
 }

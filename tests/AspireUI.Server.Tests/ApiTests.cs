@@ -12,27 +12,27 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task CreateThenGet_Works()
     {
-        var create = await _c.PostAsJsonAsync("/stacks",
+        var create = await _c.PostAsJsonAsync("/api/stacks",
             new StackModel("", "MyStack", "net9.0", [], [], [], [], []));
         create.EnsureSuccessStatusCode();
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
         Assert.False(string.IsNullOrEmpty(created!.Id));
 
-        var got = await _c.GetFromJsonAsync<StackModel>($"/stacks/{created.Id}");
+        var got = await _c.GetFromJsonAsync<StackModel>($"/api/stacks/{created.Id}");
         Assert.Equal("MyStack", got!.Name);
     }
 
     [Fact]
     public async Task Catalog_ReturnsList()
     {
-        var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/catalog");
+        var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/api/catalog");
         Assert.NotNull(cat);
     }
 
     [Fact]
     public async Task Catalog_ContainsCoreResourceTypes()
     {
-        var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/catalog");
+        var cat = await _c.GetFromJsonAsync<List<ResourceTypeDto>>("/api/catalog");
         Assert.Contains(cat!, r => r.AddMethod == "AddRedis");
         Assert.Contains(cat!, r => r.AddMethod == "AddPostgres");
         Assert.Contains(cat!, r => r.AddMethod == "AddContainer");
@@ -41,10 +41,10 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Preview_ReturnsGeneratedCode()
     {
-        var create = await _c.PostAsJsonAsync("/stacks",
+        var create = await _c.PostAsJsonAsync("/api/stacks",
             new StackModel("", "PrevStack", "net10.0", [], [], [], [], []));
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
-        var code = await _c.GetStringAsync($"/stacks/{created!.Id}/preview");
+        var code = await _c.GetStringAsync($"/api/stacks/{created!.Id}/preview");
         Assert.Contains("DistributedApplication.CreateBuilder", code);
         Assert.Contains("aspireui:begin", code);
     }
@@ -53,11 +53,11 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     {
         var redis = new NodeModel("n1", "cache", "AddRedis", "cache", [], 0, 0, []);
         var n8n = new NodeModel("n2", "flow", "AddN8n", "flow", [], 0, 0, []);
-        var create = await _c.PostAsJsonAsync("/stacks",
+        var create = await _c.PostAsJsonAsync("/api/stacks",
             new StackModel("", "PkgStack", "net10.0", [redis, n8n], [], [], [], []));
         var created = await create.Content.ReadFromJsonAsync<StackModel>();
 
-        var packages = await _c.GetFromJsonAsync<List<PackageDto>>($"/stacks/{created!.Id}/packages");
+        var packages = await _c.GetFromJsonAsync<List<PackageDto>>($"/api/stacks/{created!.Id}/packages");
 
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == "13.4.6" && p.Resources.Count == 0);
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == "13.4.6" && p.Resources.SequenceEqual(["cache"]));
@@ -67,7 +67,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Packages_UnknownStack_Returns404()
     {
-        var resp = await _c.GetAsync("/stacks/does-not-exist/packages");
+        var resp = await _c.GetAsync("/api/stacks/does-not-exist/packages");
         Assert.Equal(System.Net.HttpStatusCode.NotFound, resp.StatusCode);
     }
 
@@ -92,7 +92,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
             new("Helpers.cs", "public static class Helpers { }"),
         };
 
-        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
             new ImportBundleRequestDto("BundleStack", files, null));
         resp.EnsureSuccessStatusCode();
         var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
@@ -129,7 +129,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
                 """),
         };
 
-        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
             new ImportBundleRequestDto("BundleStack2", files, null));
         resp.EnsureSuccessStatusCode();
         var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
@@ -144,7 +144,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     public async Task ImportBundle_NoAppHostProgram_Returns422()
     {
         var files = new List<BundleFile> { new("Foo.cs", "public class Foo { }") };
-        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
             new ImportBundleRequestDto("NoProgram", files, null));
         Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, resp.StatusCode);
     }
@@ -153,7 +153,7 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     public async Task ImportBundle_OverSizeLimit_Returns413WithMessage()
     {
         var files = new List<BundleFile> { new("Big.cs", new string('a', 6 * 1024 * 1024)) };
-        var resp = await _c.PostAsJsonAsync("/stacks/import-bundle",
+        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
             new ImportBundleRequestDto("TooBig", files, null));
         Assert.Equal(System.Net.HttpStatusCode.RequestEntityTooLarge, resp.StatusCode);
         var body = await resp.Content.ReadAsStringAsync();

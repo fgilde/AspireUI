@@ -108,14 +108,14 @@ public class PublishEndpointTests : IClassFixture<TestWebAppFactory>
     [Fact]
     public async Task Publish_UnknownStack_404()
     {
-        var r = await _c.PostAsync("/stacks/does-not-exist/publish", null);
+        var r = await _c.PostAsync("/api/stacks/does-not-exist/publish", null);
         Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
     }
 
     [Fact]
     public async Task Deploy_UnpublishedStack_409()
     {
-        var r = await _c.PostAsync("/stacks/never-published/deploy", null);
+        var r = await _c.PostAsync("/api/stacks/never-published/deploy", null);
         Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
     }
 }
@@ -129,7 +129,7 @@ public class PublishAuthTests : IClassFixture<NoAuthTestFactory>
     [Fact]
     public async Task Publish_WithoutAuth_401()
     {
-        var r = await _c.PostAsync("/stacks/x/publish", null);
+        var r = await _c.PostAsync("/api/stacks/x/publish", null);
         Assert.Equal(HttpStatusCode.Unauthorized, r.StatusCode);
     }
 }
