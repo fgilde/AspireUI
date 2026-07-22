@@ -16,14 +16,14 @@ value first. Each slice: build → test → commit/push → restart. Tick as don
 ### P2 — codegen / env
 - [x] **.env import** → WithEnvironment rows; secret values → `AddParameter(secret:true)` instead of plaintext.
 - [x] **Secrets as parameters** — mark an env value secret → parameter resource, not literal.
-- [ ] **Health-check quick setting** — `WithHttpHealthCheck` etc. as a toggle; reflected in live status.
+- [x] **Health-check quick setting** — `WithHttpHealthCheck` etc. as a toggle; reflected in live status.
 - [x] **Save current stack as template**.
-- [ ] **AddProject<T> / project references** from the workspace (real .NET projects, not just containers). Big.
+- [x] **AddProject<T> / project references** from the workspace (real .NET projects, not just containers). Big.
 - [ ] **Connection-string explorer** — per resource, show exposed env/connection strings; click to reference.
 
 ### P3 — live/runtime
 - [ ] **Metrics sparklines** per node (CPU/RAM from docker stats).
-- [ ] **Log search/filter + download**; combined multi-resource log.
+- [x] **Log search/filter + download**; combined multi-resource log.
 - [ ] **Container exec/terminal** (docker exec → xterm in drawer). Security note.
 
 ### P4 — sharing / appliance prep
