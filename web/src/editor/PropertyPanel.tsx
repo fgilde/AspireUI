@@ -1,18 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
-import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon } from "@mantine/core";
-import { IconTrash } from "@tabler/icons-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon, Button, Stack as MStack, Badge } from "@mantine/core";
+import { IconTrash, IconCopy } from "@tabler/icons-react";
 import type { Stack, ResourceType, OrphanDep } from "../model";
-import { removeNode, orphanableDeps } from "../model";
+import { removeNode, orphanableDeps, sanitizeIdentifier } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 import { SmartDeleteModal } from "./Canvas";
 
-export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
-  { stack: Stack; nodeId: string | null; setStack: (s: Stack) => void; onDeleted: () => void }) {
+// Brief highlight applied when the panel is focused via "Edit properties".
+const FLASH_STYLE = { boxShadow: "inset 0 0 0 2px var(--mantine-color-orange-filled)", transition: "box-shadow .2s" } as const;
+
+export function PropertyPanel({ stack, nodeId, selectedIds = [], flashProps = 0, setStack, onDeleted }:
+  { stack: Stack; nodeId: string | null; selectedIds?: string[]; flashProps?: number;
+    setStack: (s: Stack) => void; onDeleted: () => void }) {
   const [catalog, setCatalog] = useState<ResourceType[]>([]);
   useEffect(() => { api.getCatalog().then(setCatalog); }, []);
+
+  // Flash the panel when asked (e.g. context-menu "Edit properties") so the user sees where it landed.
+  const [flash, setFlash] = useState(false);
+  const firstFlash = useRef(true);
+  useEffect(() => {
+    if (firstFlash.current) { firstFlash.current = false; return; }
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 700);
+    return () => clearTimeout(t);
+  }, [flashProps]);
 
   const node = stack.nodes.find(n => n.id === nodeId) ?? null;
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
@@ -55,8 +69,42 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
       });
   };
 
+  // Batch actions on a multi-selection (2+ nodes) — surfaced here instead of a canvas overlay button.
+  const multi = selectedIds.filter(id => stack.nodes.some(n => n.id === id));
+  const deleteMany = () => {
+    confirmDelete(`${multi.length} resources`, "This also removes their connections and any code that references them.")
+      .then(ok => {
+        if (!ok) return;
+        const next = multi.reduce((s, id) => removeNode(s, id), stack);
+        api.saveStack(next).then(s => { setStack(s); onDeleted(); toastOk(`Deleted ${multi.length}`); }).catch(toastErr);
+      });
+  };
+  const duplicateMany = () => {
+    const taken = new Set(stack.nodes.map(n => n.resourceName));
+    const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
+    const copies = multi.map(id => stack.nodes.find(n => n.id === id)).filter(Boolean).map(n => {
+      const name = uniq(n!.resourceName);
+      return { ...n!, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+        resourceName: name, x: n!.x + 40, y: n!.y + 40 };
+    });
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...copies] }).then(s => { setStack(s); toastOk(`Duplicated ${copies.length}`); }).catch(toastErr);
+  };
+
+  if (multi.length > 1) {
+    return (
+      <MStack gap="sm" p="md" style={flash ? FLASH_STYLE : undefined}>
+        <Group gap={8}><Badge size="lg" variant="light">{multi.length} selected</Badge></Group>
+        <Text size="sm" c="dimmed">Batch actions apply to all selected resources.</Text>
+        <Group gap="xs">
+          <Button variant="light" leftSection={<IconCopy size={15} />} onClick={duplicateMany}>Duplicate</Button>
+          <Button color="red" variant="light" leftSection={<IconTrash size={15} />} onClick={deleteMany}>Delete</Button>
+        </Group>
+      </MStack>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", ...(flash ? FLASH_STYLE : {}) }}>
       {node && (() => {
         const { color } = resourceVisual(node.addMethod);
         return (

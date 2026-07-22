@@ -218,8 +218,9 @@ function EditableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, 
 }
 const edgeTypes = { editable: EditableEdge };
 
-export function Canvas({ stack, setStack, onSelect, runState }:
-  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void; runState: RunState }) {
+export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowProperties, runState }:
+  { stack: Stack; setStack: (s: Stack) => void; onSelect: (id: string | null) => void;
+    onSelectIds?: (ids: string[]) => void; onShowProperties?: () => void; runState: RunState }) {
   const { colorScheme } = useMantineColorScheme();
   const [menu, setMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -367,19 +368,6 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); toastOk("Resource deleted"); }).catch(toastErr);
     });
   }, [stack, setStack, onSelect]);
-
-  // Delete a batch of resource nodes (rubberband / ctrl multi-select) with one confirm + one save.
-  const deleteManyByIds = useCallback((ids: string[]) => {
-    const real = ids.filter(id => stack.nodes.some(n => n.id === id));
-    if (real.length === 0) return;
-    if (real.length === 1) { deleteNodeById(real[0]); return; }
-    confirmDelete(`${real.length} resources`, "This also removes their connections and any code that references them.")
-      .then(ok => {
-        if (!ok) return;
-        const next = real.reduce((s, id) => removeNode(s, id), stack);
-        api.saveStack(next).then(s => { setStack(s); onSelect(null); toastOk(`Deleted ${real.length}`); }).catch(toastErr);
-      });
-  }, [stack, setStack, onSelect, deleteNodeById]);
 
   // Apply a smart delete: remove the node + any dep ids the user kept checked.
   const applyDelete = useCallback((nodeId: string, alsoRemove: string[]) => {
@@ -553,6 +541,20 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   // Derived from node state (not an onSelectionChange callback — that fired during unmount and threw,
   // leaving the route half-rendered so "<- Stacks" appeared dead).
   const selIds = useMemo(() => rfNodes.filter(n => n.selected && n.type === "resource").map(n => n.id), [rfNodes]);
+  // Publish the multi-selection so the Properties panel can show count + batch actions.
+  useEffect(() => { onSelectIds?.(selIds); }, [selIds, onSelectIds]);
+  // Ctrl/Cmd+A selects all resource nodes (ignored while typing in a field/editor).
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "a") return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.(".monaco-editor, input, textarea, [contenteditable=true]")) return;
+      e.preventDefault();
+      setRfNodes(ns => ns.map(n => n.type === "resource" ? { ...n, selected: true } : n));
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [setRfNodes]);
 
   return (
     <>
@@ -603,19 +605,11 @@ export function Canvas({ stack, setStack, onSelect, runState }:
           </Tooltip>
         </Group>
       </Panel>
-      {selIds.length > 1 && (
-        <Panel position="top-center">
-          <Button size="xs" color="red" leftSection={<IconTrash size={14} />}
-            onClick={() => deleteManyByIds(selIds)}>
-            Delete {selIds.length} selected
-          </Button>
-        </Panel>
-      )}
       {menu && (
         <Paper ref={menuRef} shadow="md" withBorder p={4} radius="sm"
           style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}>
           {[
-            { icon: IconPencil, label: "Edit properties", run: () => onSelect(menu.nodeId), color: undefined },
+            { icon: IconPencil, label: "Edit properties", run: () => { onSelect(menu.nodeId); onShowProperties?.(); }, color: undefined },
             { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
             { icon: IconTrash, label: "Delete", run: () => deleteNodeById(menu.nodeId), color: "var(--mantine-color-red-text)" },
           ].map(item => (

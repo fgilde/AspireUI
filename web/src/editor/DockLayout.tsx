@@ -28,12 +28,16 @@ export interface EditorState {
   setStack: (s: Stack) => void;
   selected: string | null;
   setSelected: (id: string | null) => void;
+  selectedIds: string[];                 // all canvas-selected node ids (multi-select)
+  setSelectedIds: (ids: string[]) => void;
   runStatus: RunStatus;
   setRunStatus: (s: RunStatus) => void;
   diagnostics: CodeDiagnostic[];
   flashValidation: number;          // bumped when the badge is clicked, to flash the panel
   showValidation: () => void;       // focus the Validation panel + flash it
   showPanel: (id: string) => void;  // open (or focus) a dock panel by id, e.g. "logs"
+  flashProps: number;               // bumped to flash the Properties panel (e.g. from "Edit properties")
+  showProperties: () => void;       // open + flash the Properties panel
 }
 
 export const EditorContext = createContext<EditorState | null>(null);
@@ -51,12 +55,14 @@ function PalettePanel() {
   return <Palette stack={stack} setStack={setStack} />;
 }
 function CanvasPanel() {
-  const { stack, setStack, setSelected, runStatus } = useEditor();
-  return <Canvas stack={stack} setStack={setStack} onSelect={setSelected} runState={runStatus.state} />;
+  const { stack, setStack, setSelected, setSelectedIds, showProperties, runStatus } = useEditor();
+  return <Canvas stack={stack} setStack={setStack} onSelect={setSelected} onSelectIds={setSelectedIds}
+    onShowProperties={showProperties} runState={runStatus.state} />;
 }
 function PropertiesPanel() {
-  const { stack, setStack, selected, setSelected } = useEditor();
-  return <PropertyPanel stack={stack} nodeId={selected} setStack={setStack} onDeleted={() => setSelected(null)} />;
+  const { stack, setStack, selected, setSelected, selectedIds, flashProps } = useEditor();
+  return <PropertyPanel stack={stack} nodeId={selected} selectedIds={selectedIds} flashProps={flashProps}
+    setStack={setStack} onDeleted={() => setSelected(null)} />;
 }
 function PreviewPanel() {
   const { stack } = useEditor();
