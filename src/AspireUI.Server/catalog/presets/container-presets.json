@@ -123,7 +123,12 @@
     "image": "ghcr.io/paperless-ngx/paperless-ngx:latest",
     "port": 8000,
     "icon": "paperless",
-    "description": "Paperless-ngx — scan/OCR document management. Needs a Postgres + Redis alongside (wire them up)."
+    "description": "Paperless-ngx — scan/OCR document management. Comes with a Postgres + Redis companion (scaffold — finish the connection env).",
+    "env": [["PAPERLESS_DBHOST", "${db}"], ["PAPERLESS_REDIS", "${redis}"]],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "paperless-db", "image": "postgres:16", "env": [["POSTGRES_DB", "paperless"], ["POSTGRES_USER", "paperless"], ["POSTGRES_PASSWORD", "paperless"]] },
+      { "key": "redis", "addMethod": "AddContainer", "resourceName": "paperless-redis", "image": "redis:7", "port": 6379 }
+    ]
   },
   {
     "id": "nextcloud",
@@ -249,7 +254,13 @@
     "image": "ghcr.io/immich-app/immich-server:release",
     "port": 2283,
     "icon": "immich",
-    "description": "Immich — self-hosted photo & video backup (Google-Photos-like). Needs Postgres + Redis + the ML container alongside."
+    "description": "Immich — self-hosted photo & video backup. Comes with pgvecto-rs Postgres + Redis + the ML container (scaffold — finish the connection env + volumes).",
+    "env": [["DB_HOSTNAME", "${db}"], ["REDIS_HOSTNAME", "${redis}"]],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "immich-db", "image": "tensorchord/pgvecto-rs:pg16-v0.2.0", "env": [["POSTGRES_DB", "immich"], ["POSTGRES_USER", "immich"], ["POSTGRES_PASSWORD", "immich"]] },
+      { "key": "redis", "addMethod": "AddContainer", "resourceName": "immich-redis", "image": "redis:7", "port": 6379 },
+      { "key": "ml", "addMethod": "AddContainer", "resourceName": "immich-ml", "image": "ghcr.io/immich-app/immich-machine-learning:release", "port": 3003 }
+    ]
   },
   {
     "id": "dockge",
@@ -362,7 +373,12 @@
   {
     "id": "librechat", "label": "LibreChat", "group": "AI Apps",
     "image": "ghcr.io/danny-avila/librechat:latest", "port": 3080, "icon": "librechat",
-    "description": "LibreChat — polished multi-model chat UI (needs Mongo + a Meili/RAG sidecar for full features)."
+    "description": "LibreChat — polished multi-model chat UI. Comes with Mongo + Meilisearch companions (scaffold — finish the connection env).",
+    "env": [["MONGO_URI", "${mongo}"], ["MEILI_HOST", "${meili}"]],
+    "companions": [
+      { "key": "mongo", "addMethod": "AddContainer", "resourceName": "librechat-mongo", "image": "mongo:7", "port": 27017 },
+      { "key": "meili", "addMethod": "AddContainer", "resourceName": "librechat-meili", "image": "getmeili/meilisearch:latest", "port": 7700, "env": [["MEILI_NO_ANALYTICS", "true"]] }
+    ]
   },
   {
     "id": "searxng", "label": "SearXNG", "group": "AI Apps",

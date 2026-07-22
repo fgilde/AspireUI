@@ -21,7 +21,13 @@ public record ResourceType(string AddMethod, string Label, string? Icon, string?
 // + optional env). Lets us offer cool self-hostable apps (LocalRecall, ComfyUI, SD.Next, …) as
 // palette nodes without an Aspire package for each. Read from catalog/presets/container-presets.json.
 public record ContainerPreset(string Id, string Label, string Group, string Image, int Port,
-    string? Icon, string? Description, List<List<string>>? Env);
+    string? Icon, string? Description, List<List<string>>? Env,
+    // Optional companion resources dropped + wired alongside the main container (e.g. Postgres/Redis
+    // for Immich/Paperless). The main container references + waits-for each. A scaffold to finish, not
+    // a guaranteed-working deploy.
+    List<PresetCompanion>? Companions);
+// A companion node in a preset. Key is used to wire env references (`${key}` → its var name).
+public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env);
 
 public class CatalogService
 {

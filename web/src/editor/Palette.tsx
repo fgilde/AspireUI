@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
-import { sanitizeIdentifier } from "../model";
+import { buildPresetNodes } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
@@ -121,21 +121,11 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   };
 
   const createPreset = (p: ContainerPreset) => {
-    const taken = new Set(stack.nodes.map(n => n.resourceName));
-    let name = p.id, i = 2;
-    while (taken.has(name)) name = `${p.id}${i++}`;
-    const node: Node = {
-      id: "n" + crypto.randomUUID().slice(0, 8),
-      varName: sanitizeIdentifier(name), resourceName: name, addMethod: "AddContainer",
-      addArgs: [JSON.stringify(p.image)],
-      withCalls: [
-        { method: "WithHttpEndpoint", args: [`targetPort: ${p.port}`] },
-        ...(p.env ?? []).map(([k, v]) => ({ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(v)] })),
-      ],
-      x: 60 + stack.nodes.length * 28, y: 60 + stack.nodes.length * 28,
-    };
-    api.saveStack({ ...stack, nodes: [...stack.nodes, node] })
-      .then(s => { setStack(s); toastOk(`Added ${p.label}`); }).catch(toastErr);
+    const off = stack.nodes.length * 28;
+    const { nodes, edges } = buildPresetNodes(p, new Set(stack.nodes.map(n => n.resourceName)));
+    const placed = nodes.map(n => ({ ...n, x: n.x + off, y: n.y + off }));
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
+      .then(s => { setStack(s); toastOk(`Added ${p.label}${p.companions?.length ? ` + ${p.companions.length} companion(s)` : ""}`); }).catch(toastErr);
   };
 
   return (

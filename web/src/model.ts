@@ -18,7 +18,54 @@ export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
 // A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null }
+export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null }
+
+// Build the node(s) + edges a preset drops onto the canvas. Companions get deduped var names; env
+// values containing `${key}` tokens are treated as raw expressions (token → companion var name),
+// everything else is a quoted string literal. The main container references + waits-for each companion.
+export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<string>): { nodes: Node[]; edges: Edge[] } {
+  const taken = new Set(existingNames);
+  const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
+  const nid = () => "n" + crypto.randomUUID().slice(0, 8);
+  const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+
+  // key -> resolved var name (main uses the preset id).
+  const keyVar: Record<string, string> = {};
+  const companions = preset.companions ?? [];
+  const mainName = uniq(preset.id);
+  keyVar["__main"] = mainName;
+  for (const c of companions) keyVar[c.key] = uniq(sanitizeIdentifier(c.resourceName || c.key));
+
+  const expandEnv = (env?: string[][] | null) => (env ?? []).map(([k, v]) => {
+    let val = v;
+    const raw = val.includes("${");
+    for (const [key, varName] of Object.entries(keyVar)) val = val.split(`\${${key}}`).join(varName);
+    return { method: "WithEnvironment", args: [JSON.stringify(k), raw ? val : JSON.stringify(val)] };
+  });
+
+  const main: Node = {
+    id: nid(), varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
+    addArgs: [JSON.stringify(preset.image)],
+    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...expandEnv(preset.env)],
+    x: 60, y: 60,
+  };
+  const nodes: Node[] = [main];
+  const edges: Edge[] = [];
+  companions.forEach((c, i) => {
+    const vn = keyVar[c.key];
+    const cn: Node = {
+      id: nid(), varName: sanitizeIdentifier(vn), resourceName: vn, addMethod: c.addMethod,
+      addArgs: c.image ? [JSON.stringify(c.image)] : [],
+      withCalls: [...(c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${c.port}`] }] : []), ...expandEnv(c.env)],
+      x: 380, y: 40 + i * 130,
+    };
+    nodes.push(cn);
+    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "reference" });
+    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" });
+  });
+  return { nodes, edges };
+}
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 

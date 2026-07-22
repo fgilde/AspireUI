@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, buildPresetNodes, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource, type ContainerPreset } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -244,5 +244,40 @@ describe("lintStack", () => {
   });
   it("clean stack has no issues", () => {
     expect(lintStack(mk([node("n1", "a"), node("n2", "b")]))).toHaveLength(0);
+  });
+});
+
+describe("buildPresetNodes", () => {
+  const preset: ContainerPreset = {
+    id: "app", label: "App", group: "Tools", image: "app:latest", port: 8080,
+    env: [["DB", "${db}"], ["MODE", "prod"]],
+    companions: [{ key: "db", addMethod: "AddContainer", resourceName: "app-db", image: "postgres:16", env: [["POSTGRES_DB", "app"]] }],
+  };
+
+  it("drops main + companions and wires reference + waitFor edges", () => {
+    const { nodes, edges } = buildPresetNodes(preset, new Set());
+    expect(nodes).toHaveLength(2);
+    expect(edges).toHaveLength(2); // reference + waitFor main->db
+    expect(edges.map(e => e.kind).sort()).toEqual(["reference", "waitFor"]);
+  });
+
+  it("expands ${key} env tokens to the companion var (raw expr) and quotes plain values", () => {
+    const { nodes } = buildPresetNodes(preset, new Set());
+    const main = nodes[0];
+    const dbVar = nodes[1].varName;
+    const env = main.withCalls.filter(w => w.method === "WithEnvironment");
+    expect(env.find(e => e.args[0] === '"DB"')!.args[1]).toBe(dbVar);       // raw, no quotes
+    expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');  // quoted literal
+  });
+
+  it("dedupes names against existing", () => {
+    const { nodes } = buildPresetNodes(preset, new Set(["app"]));
+    expect(nodes[0].resourceName).toBe("app2");
+  });
+
+  it("single-container preset (no companions) drops just one node", () => {
+    const { nodes, edges } = buildPresetNodes({ id: "x", label: "X", group: "T", image: "x:1", port: 80 }, new Set());
+    expect(nodes).toHaveLength(1);
+    expect(edges).toHaveLength(0);
   });
 });
