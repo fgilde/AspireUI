@@ -5,7 +5,7 @@ import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Me
 import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, nodesInGroup, type OrphanDep, type Node } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, nodesInGroup, type OrphanDep, type Node, type StackGroup } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import { ResourceLogDrawer } from "./ResourceLogDrawer";
@@ -278,6 +278,52 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
       remove: (id: string) => save({ notes: (stack.notes ?? []).filter(n => n.id !== id), groups: (stack.groups ?? []).filter(g => g.id !== id) }),
     };
   }, [stack, setStack]);
+
+  // Catalog + presets drive "auto-group": map each canvas node to its palette group (a preset by its
+  // icon, otherwise the catalog group of its AddMethod).
+  const [autoCat, setAutoCat] = useState<{ addMethod: string; group?: string | null }[]>([]);
+  const [autoPresets, setAutoPresets] = useState<{ id: string; icon?: string | null; group?: string | null }[]>([]);
+  useEffect(() => { api.getCatalog().then(setAutoCat).catch(() => {}); api.getPresets().then(setAutoPresets).catch(() => {}); }, []);
+
+  // Auto-group: create/reuse a boundary group per palette group present on the canvas, drop each node
+  // into its group's grid, size each group to fit, and arrange the groups row-by-row.
+  const autoGroupAll = useCallback(() => {
+    const catGroup = new Map(autoCat.map(r => [r.addMethod, r.group || "Other"]));
+    const presetGroup = new Map(autoPresets.map(p => [p.icon || p.id, p.group || "Apps"]));
+    const groupOf = (n: Node): string =>
+      (n.addMethod === "AddContainer" && n.icon && presetGroup.has(n.icon))
+        ? presetGroup.get(n.icon)! : (catGroup.get(n.addMethod) || "Other");
+
+    const byLabel = new Map<string, Node[]>();
+    for (const n of stack.nodes) { const l = groupOf(n); (byLabel.get(l) ?? byLabel.set(l, []).get(l)!).push(n); }
+    if (byLabel.size === 0) return;
+
+    const PALETTE = ["#4c6ef5", "#12b886", "#e8590c", "#ae3ec9", "#1098ad", "#f08c00", "#7c8291"];
+    const cellW = 200, cellH = 108, padX = 18, padTop = 42, padBottom = 16, gap = 48, maxRow = 1600;
+    let cx = 40, rowY = 40, rowMaxH = 0, ci = 0;
+    const existing = stack.groups ?? [];
+    const managed: StackGroup[] = [];
+    const moved = new Map<string, { x: number; y: number }>();
+
+    for (const label of [...byLabel.keys()].sort()) {
+      const members = byLabel.get(label)!;
+      const cols = Math.min(3, Math.ceil(Math.sqrt(members.length)));
+      const rows = Math.ceil(members.length / cols);
+      const w = padX * 2 + cols * cellW, h = padTop + padBottom + rows * cellH;
+      if (cx + w > maxRow && cx > 40) { cx = 40; rowY += rowMaxH + gap; rowMaxH = 0; }
+      members.forEach((n, i) => moved.set(n.id, {
+        x: cx + padX + (i % cols) * cellW, y: rowY + padTop + Math.floor(i / cols) * cellH,
+      }));
+      const prev = existing.find(g => g.label.toLowerCase() === label.toLowerCase());
+      managed.push({ id: prev?.id ?? "group:" + crypto.randomUUID().slice(0, 8), label,
+        x: cx, y: rowY, width: w, height: h, color: prev?.color ?? PALETTE[ci++ % PALETTE.length] });
+      cx += w + gap; rowMaxH = Math.max(rowMaxH, h);
+    }
+    const managedLabels = new Set(managed.map(g => g.label.toLowerCase()));
+    const groups = [...existing.filter(g => !managedLabels.has(g.label.toLowerCase())), ...managed];
+    const nodes = stack.nodes.map(n => moved.has(n.id) ? { ...n, ...moved.get(n.id)! } : n);
+    api.saveStack({ ...stack, groups, nodes }).then(s => { setStack(s); toastOk(`Grouped into ${managed.length}`); }).catch(toastErr);
+  }, [stack, setStack, autoCat, autoPresets]);
 
   // Deleting a group with resources inside asks whether to delete them too or just ungroup.
   const onGroupDelete = useCallback((id: string) => {
@@ -602,13 +648,23 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
               <IconNote size={15} />
             </UnstyledButton>
           </Tooltip>
-          <Tooltip label="Add a boundary group" withArrow>
-            <UnstyledButton onClick={annoOps.addGroup}
-              style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
-                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
-              <IconBoxMargin size={15} />
-            </UnstyledButton>
-          </Tooltip>
+          <Menu shadow="md" width={230} position="bottom-start" withArrow>
+            <Menu.Target>
+              <Tooltip label="Boundary groups" withArrow>
+                <UnstyledButton
+                  style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
+                    background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
+                  <IconBoxMargin size={15} />
+                </UnstyledButton>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item leftSection={<IconBoxMargin size={14} />} onClick={annoOps.addGroup}>Add a simple group</Menu.Item>
+              <Menu.Item leftSection={<IconLayoutGrid size={14} />} onClick={autoGroupAll}>
+                Auto-group all by palette group
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </Group>
       </Panel>
       {menu && (
