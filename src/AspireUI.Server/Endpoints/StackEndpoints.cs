@@ -277,6 +277,12 @@ public static class StackEndpoints
 
         // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
         app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
+        // Run a resource command (Start/Stop/Restart/…) advertised by a live resource.
+        app2.MapPost("/stacks/{id}/resources/{name}/command", async (string id, string name, ResourceCommandBody body, HttpContext ctx) =>
+        {
+            var (ok, message) = await graph.ExecuteCommandAsync(id, name, body.ResourceType ?? "", body.Command, ctx.RequestAborted);
+            return ok ? Results.Ok(new { ok, message }) : Results.Json(new { ok, message }, statusCode: StatusCodes.Status502BadGateway);
+        });
         // Live console-log stream for one resource (SSE). {name} is the full resource name (with suffix).
         app2.MapGet("/stacks/{id}/resources/{name}/logs", async (string id, string name, HttpContext ctx) =>
         {
@@ -351,6 +357,7 @@ public static class StackEndpoints
     }
 
     public record OpenIdeRequest(string Ide);
+    public record ResourceCommandBody(string Command, string? ResourceType);
     public record ComposeRequest(string Name, string Yaml);
     public record CodeRequest(string Code, int Offset);
     public record CodeSaveRequest(string Name, string Code);

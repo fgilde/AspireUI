@@ -21,7 +21,8 @@ export interface RunStatus { state: RunState; dashboardUrl?: string | null; log:
 
 // Live per-resource data from the running AppHost's Aspire resource service (see ResourceGraphService).
 export interface LiveUrl { name?: string | null; url: string; isInternal: boolean; isInactive: boolean }
-export interface LiveResource { name: string; displayName: string; type: string; state?: string | null; stateStyle?: string | null; parent?: string | null; urls: LiveUrl[]; hidden: boolean }
+export interface LiveCommand { name: string; displayName: string; enabled: boolean; confirmationMessage?: string | null; iconName?: string | null }
+export interface LiveResource { name: string; displayName: string; type: string; state?: string | null; stateStyle?: string | null; parent?: string | null; urls: LiveUrl[]; hidden: boolean; commands: LiveCommand[] }
 
 export function liveStateColor(state?: string | null): string {
   if (!state) return "gray";

@@ -70,6 +70,10 @@ export const stopStack = (id: string) => fetch(`${base}/stacks/${id}/stop`, { me
 export const statusStack = (id: string) => fetch(`${base}/stacks/${id}/status`).then(ok);
 export const stackResources = (id: string): Promise<import("./model").LiveResource[]> =>
   fetch(`${base}/stacks/${id}/resources`).then(ok);
+export const runResourceCommand = (id: string, name: string, command: string, resourceType: string): Promise<{ ok: boolean; message?: string }> =>
+  fetch(`${base}/stacks/${id}/resources/${encodeURIComponent(name)}/command`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ command, resourceType }),
+  }).then(ok);
 export const getPackages = (id: string): Promise<PackageInfo[]> => fetch(`${base}/stacks/${id}/packages`).then(ok);
 export interface CompletionItemDto { label: string; kind: string; insertText: string; detail?: string | null }
 export interface CodeDiagnostic { message: string; severity: string; start: number; end: number }

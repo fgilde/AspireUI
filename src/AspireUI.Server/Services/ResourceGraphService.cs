@@ -6,6 +6,7 @@ using Grpc.Net.Client;
 // `Resource` is ambiguous (proto message vs Aspire.Hosting.ApplicationModel.Resource pulled in by
 // implicit usings) — alias the proto one.
 using ProtoResource = Aspire.DashboardService.Proto.V1.Resource;
+using ProtoCommandState = Aspire.DashboardService.Proto.V1.ResourceCommandState;
 
 namespace AspireUI.Server.Services;
 
@@ -13,8 +14,11 @@ namespace AspireUI.Server.Services;
 // "resource service" — the same feed the Aspire dashboard renders. Parent is the resource this one
 // nests under (e.g. supabase-db -> supabase), derived from the "Parent" relationship.
 public record LiveUrl(string? Name, string Url, bool IsInternal, bool IsInactive);
+// A command the running resource offers (Start/Stop/Restart/…), as advertised by the resource service.
+// Enabled=false when currently not applicable (e.g. "Start" while already running).
+public record LiveCommand(string Name, string DisplayName, bool Enabled, string? ConfirmationMessage, string? IconName);
 public record LiveResource(string Name, string DisplayName, string Type, string? State, string? StateStyle,
-    string? Parent, List<LiveUrl> Urls, bool Hidden);
+    string? Parent, List<LiveUrl> Urls, bool Hidden, List<LiveCommand> Commands);
 
 // Connects to a running stack's resource service and keeps an in-memory snapshot of its resources,
 // updated from the WatchResources stream. Endpoint URL + api key are set deterministically by
@@ -127,7 +131,25 @@ public class ResourceGraphService : IDisposable
         r.HasStateStyle ? r.StateStyle : null,
         r.Relationships.FirstOrDefault(rel => string.Equals(rel.Type, "Parent", StringComparison.OrdinalIgnoreCase))?.ResourceName,
         r.Urls.Select(u => new LiveUrl(u.HasEndpointName ? u.EndpointName : null, u.FullUrl, u.IsInternal, u.IsInactive)).ToList(),
-        r.IsHidden);
+        r.IsHidden,
+        r.Commands.Where(c => c.State != ProtoCommandState.Hidden)
+            .Select(c => new LiveCommand(c.Name, c.DisplayName, c.State == ProtoCommandState.Enabled,
+                c.HasConfirmationMessage ? c.ConfirmationMessage : null, c.HasIconName ? c.IconName : null)).ToList());
+
+    // Execute a resource command (Start/Stop/Restart/…) against a running stack. Returns (ok, message).
+    public async Task<(bool ok, string? message)> ExecuteCommandAsync(
+        string id, string resourceName, string resourceType, string commandName, CancellationToken ct)
+    {
+        if (!_watches.TryGetValue(id, out var w)) return (false, "stack not running");
+        using var channel = GrpcChannel.ForAddress(w.Endpoint);
+        var client = new DashboardService.DashboardServiceClient(channel);
+        var headers = new Metadata { { ApiKeyHeader, w.ApiKey } };
+        var resp = await client.ExecuteResourceCommandAsync(new ResourceCommandRequest
+        {
+            CommandName = commandName, ResourceName = resourceName, ResourceType = resourceType,
+        }, headers, cancellationToken: ct);
+        return (resp.Kind == ResourceCommandResponseKind.Succeeded, resp.HasMessage ? resp.Message : null);
+    }
 
     public void Dispose()
     {

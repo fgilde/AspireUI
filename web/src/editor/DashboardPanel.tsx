@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Center, Stack as MStack, Text, Loader, Group, ActionIcon, Tooltip, Badge, ScrollArea, Anchor } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconExternalLink, IconRefresh, IconTerminal2 } from "@tabler/icons-react";
+import { Button, Center, Stack as MStack, Text, Loader, Group, ActionIcon, Tooltip, Badge, ScrollArea, Anchor, Menu } from "@mantine/core";
+import { IconPlayerPlay, IconPlayerStop, IconExternalLink, IconRefresh, IconTerminal2, IconDots } from "@tabler/icons-react";
 import { useEditor } from "./DockLayout";
-import { liveStateColor, type LiveResource } from "../model";
+import { liveStateColor, type LiveResource, type LiveCommand } from "../model";
 import { ResourceLogDrawer } from "./ResourceLogDrawer";
-import { toastErr, toastOk } from "../ui";
+import { confirmDelete, toastErr, toastOk } from "../ui";
 import * as api from "../api";
 
 const dot = (state?: string | null) => `var(--mantine-color-${liveStateColor(state)}-filled)`;
@@ -55,6 +55,12 @@ export function DashboardPanel() {
   const start = () => api.runStack(stack.id).then(setRunStatus).catch(e => toastErr(e, "Could not start"));
   const stop = () => api.stopStack(stack.id).then(r => { setRunStatus(r); toastOk("Stopped"); }).catch(e => toastErr(e, "Could not stop"));
   const refresh = () => api.stackResources(stack.id).then(setLive).catch(() => {});
+  const runCommand = async (r: LiveResource, c: LiveCommand) => {
+    if (c.confirmationMessage && !(await confirmDelete(c.displayName, c.confirmationMessage))) return;
+    api.runResourceCommand(stack.id, r.name, c.name, r.type)
+      .then(res => { res.ok ? toastOk(res.message || `${c.displayName} — done`) : toastErr(res.message || "command failed"); refresh(); })
+      .catch(e => toastErr(e, "Command failed"));
+  };
 
   if (!active) {
     return (
@@ -117,6 +123,21 @@ export function DashboardPanel() {
                       <IconTerminal2 size={14} />
                     </ActionIcon>
                   </Tooltip>
+                  {r.commands.length > 0 && (
+                    <Menu position="bottom-end" withArrow>
+                      <Menu.Target>
+                        <ActionIcon size="sm" variant="subtle"><IconDots size={14} /></ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Label>{r.displayName}</Menu.Label>
+                        {r.commands.map(c => (
+                          <Menu.Item key={c.name} disabled={!c.enabled} onClick={() => runCommand(r, c)}>
+                            {c.displayName}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Dropdown>
+                    </Menu>
+                  )}
                 </Group>
               );
             })}

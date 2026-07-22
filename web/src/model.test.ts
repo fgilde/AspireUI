@@ -163,7 +163,7 @@ describe("pickAppHost", () => {
 
 describe("live overlay", () => {
   const lr = (p: Partial<LiveResource>): LiveResource =>
-    ({ name: "", displayName: "", type: "Container", state: "Running", stateStyle: null, parent: null, urls: [], hidden: false, ...p });
+    ({ name: "", displayName: "", type: "Container", state: "Running", stateStyle: null, parent: null, urls: [], hidden: false, commands: [], ...p });
   const nodes = [{ id: "n1", resourceName: "supabase" }, { id: "n2", resourceName: "web" }];
 
   it("annotates a builder node with its matching top-level resource", () => {
