@@ -38,7 +38,9 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     List<List<string>>? BindMounts = null,
     // Config files seeded into the stack workspace on drop (then bind-mounted in) — e.g. a pre-set
     // qBittorrent.conf that disables host-header validation so its WebUI isn't "Unauthorized".
-    List<PresetFile>? Files = null);
+    List<PresetFile>? Files = null,
+    // Container command args (WithArgs) — e.g. ntfy needs "serve" or it prints help and exits.
+    List<string>? Args = null);
 public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives

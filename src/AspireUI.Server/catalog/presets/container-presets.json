@@ -290,7 +290,19 @@
     "image": "ghcr.io/gethomepage/homepage:latest",
     "port": 3000,
     "icon": "homepage",
-    "description": "Homepage — a sleek, configurable start page/dashboard for your services."
+    "description": "Homepage — a sleek, configurable start page/dashboard for your services. HOMEPAGE_ALLOWED_HOSTS=* (dev) so it doesn't reject the Aspire host; config volume so /app/config exists.",
+    "env": [
+      [
+        "HOMEPAGE_ALLOWED_HOSTS",
+        "*"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/app/config"
+      ]
+    ]
   },
   {
     "id": "onlyoffice",
@@ -299,7 +311,7 @@
     "image": "onlyoffice/documentserver:latest",
     "port": 80,
     "icon": "onlyoffice",
-    "description": "OnlyOffice Document Server — collaborative editing of docs/sheets/slides (integrates with Nextcloud etc.)."
+    "description": "OnlyOffice Document Server — a document-editing BACKEND (API), not a standalone app. The welcome/test page is expected; it's meant to be embedded in Nextcloud/your app, no user UI of its own."
   },
   {
     "id": "gokapi",
@@ -344,7 +356,10 @@
     "image": "binwiederhier/ntfy:latest",
     "port": 80,
     "icon": "ntfy",
-    "description": "ntfy — simple pub/sub push notifications to your phone/desktop via HTTP."
+    "description": "ntfy — simple pub/sub push notifications to your phone/desktop via HTTP. Runs the 'serve' subcommand (bare ntfy just prints help and exits).",
+    "args": [
+      "serve"
+    ]
   },
   {
     "id": "freshrss",
@@ -657,7 +672,13 @@
     "image": "vikunja/vikunja:latest",
     "port": 3456,
     "icon": "vikunja",
-    "description": "Vikunja — self-hosted to-do / task & project management."
+    "description": "Vikunja — self-hosted to-do / task & project management. CORS disabled (frontend+API served from one container) — otherwise it demands service.publicurl and refuses to start.",
+    "env": [
+      [
+        "VIKUNJA_CORS_ENABLE",
+        "false"
+      ]
+    ]
   },
   {
     "id": "memos",
@@ -684,7 +705,7 @@
     "image": "jgraph/drawio:latest",
     "port": 8080,
     "icon": "drawio",
-    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted."
+    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted. HTTP 400 'Request header is too large' = too many localhost cookies from other apps on other ports (Tomcat's 8KB limit); open it in a private window or clear localhost cookies."
   },
   {
     "id": "anythingllm",
