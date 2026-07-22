@@ -12,6 +12,7 @@ import {
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
+import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
@@ -356,6 +357,17 @@ export function StacksOverview() {
                       </Menu.Dropdown>
                     </Menu>
                   </Group>
+                  {s.nodes.length > 0 && (
+                    <Group gap={5} mt="sm" wrap="nowrap">
+                      {[...new Map(s.nodes.map(n => [n.addMethod, n])).values()].slice(0, 8).map(n => (
+                        <Tooltip key={n.addMethod} label={n.addMethod.replace(/^Add/, "")} withArrow>
+                          <span style={{ display: "flex" }}><ResourceGlyph addMethod={n.addMethod} size={17} /></span>
+                        </Tooltip>
+                      ))}
+                      {new Set(s.nodes.map(n => n.addMethod)).size > 8 &&
+                        <Text size="xs" c="dimmed">+{new Set(s.nodes.map(n => n.addMethod)).size - 8}</Text>}
+                    </Group>
+                  )}
                   <Group mt="sm" gap="xs" justify="space-between">
                     <Group gap="xs">
                       <Badge variant="light" color="indigo">{s.nodes.length} resource{s.nodes.length === 1 ? "" : "s"}</Badge>
@@ -393,7 +405,7 @@ export function StacksOverview() {
       <AppShell.Footer>
         <Container size="xl" h="100%">
           <Group h="100%" justify="center" gap={6}>
-            <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION} ({BUILD_INFO})</Text></Tooltip>
+            <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text></Tooltip>
             <Text size="xs" c="dimmed">·</Text>
             <Anchor size="xs" c="dimmed" href="https://www.gilde.org" target="_blank" rel="noreferrer">by gilde.org</Anchor>
           </Group>

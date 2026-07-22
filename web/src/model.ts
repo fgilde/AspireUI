@@ -1,6 +1,7 @@
-export const APP_VERSION = "0.1.0";
-// Baked in by vite (see vite.config.ts): "<git-sha> · <date>". `declare` so TS knows the global.
+// Baked in by vite (see vite.config.ts): version = 0.1.<commit-count>, build = "<sha> · <date>".
+declare const __APP_VERSION__: string;
 declare const __BUILD__: string;
+export const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0";
 export const BUILD_INFO: string = typeof __BUILD__ !== "undefined" ? __BUILD__ : "dev";
 
 export interface WithCall { method: string; args: string[] }
