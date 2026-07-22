@@ -152,7 +152,7 @@ const nodeTypes = { resource: ResourceNode, live: LiveNode, note: NoteNode, grou
 
 // Smart-delete confirmation: the node plus its orphanable deps as checkboxes (companions checked by
 // default). Only shown when there ARE such deps; otherwise a plain confirm is used.
-function SmartDeleteModal({ node, deps, onConfirm, onCancel }:
+export function SmartDeleteModal({ node, deps, onConfirm, onCancel }:
   { node: Node; deps: OrphanDep[]; onConfirm: (ids: string[]) => void; onCancel: () => void }) {
   const [checked, setChecked] = useState<Record<string, boolean>>(
     () => Object.fromEntries(deps.map(d => [d.node.id, true])));

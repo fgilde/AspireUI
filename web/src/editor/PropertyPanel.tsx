@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon } from "@mantine/core";
 import { IconTrash } from "@tabler/icons-react";
-import type { Stack, ResourceType } from "../model";
-import { removeNode } from "../model";
+import type { Stack, ResourceType, OrphanDep } from "../model";
+import { removeNode, orphanableDeps } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
+import { SmartDeleteModal } from "./Canvas";
 
 export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
   { stack: Stack; nodeId: string | null; setStack: (s: Stack) => void; onDeleted: () => void }) {
@@ -15,13 +16,24 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
 
   const node = stack.nodes.find(n => n.id === nodeId) ?? null;
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
+  const [del, setDel] = useState<{ node: NonNullable<typeof node>; deps: OrphanDep[] } | null>(null);
 
+  // Same smart-delete flow as the canvas: if the node has deps that would be orphaned, offer to remove
+  // them too; otherwise a plain confirm.
   const onDelete = () => {
     if (!nodeId || !node) return;
+    const deps = orphanableDeps(stack, nodeId);
+    if (deps.length > 0) { setDel({ node, deps }); return; }
     confirmDelete(`"${node.resourceName}"`, "This also removes its connections and any code that references it.").then(ok => {
       if (!ok) return;
       api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); toastOk("Resource deleted"); }).catch(toastErr);
     });
+  };
+  const applyDelete = (alsoRemove: string[]) => {
+    if (!nodeId) return;
+    let next = removeNode(stack, nodeId);
+    for (const d of alsoRemove) next = removeNode(next, d);
+    api.saveStack(next).then(s => { setStack(s); onDeleted(); setDel(null); toastOk("Deleted"); }).catch(toastErr);
   };
 
   const others = useMemo(() => stack.nodes.filter(n => n.id !== nodeId), [stack.nodes, nodeId]);
@@ -86,6 +98,8 @@ export function PropertyPanel({ stack, nodeId, setStack, onDeleted }:
           </Tabs.Panel>
         </ScrollArea>
       </Tabs>
+      {del && <SmartDeleteModal node={del.node} deps={del.deps}
+        onCancel={() => setDel(null)} onConfirm={applyDelete} />}
     </div>
   );
 }
