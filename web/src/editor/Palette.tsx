@@ -130,8 +130,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
       .then(s => { setStack(s); toastOk(`Added ${p.label}`); }).catch(toastErr);
   };
-  // Presets with companions or secrets ask first (backend choice + parameter reuse); others drop directly.
-  const createPreset = (p: ContainerPreset) => (p.companions?.length || p.secrets?.length) ? setPresetPick(p) : dropPreset(p);
+  // Presets with companions or params ask first (backend choice + parameter/value picks); others drop directly.
+  const createPreset = (p: ContainerPreset) => (p.companions?.length || p.params?.length) ? setPresetPick(p) : dropPreset(p);
 
   return (
     <MStack gap="xs" p="sm" h="100%">
@@ -230,14 +230,17 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
   onConfirm: (choices: Record<string, CompanionChoice> | "none") => void; onCancel: () => void;
 }) {
   const companions = preset.companions ?? [];
-  const secrets = preset.secrets ?? [];
+  const params = preset.params ?? [];
   const initial: Record<string, string> = {};
   for (const c of companions) {
     const reuse = reuseCandidates(stackNodes, c.role)[0];
     initial[c.key] = reuse ? `reuse:${reuse.id}` : "new";
   }
-  for (const s of secrets) initial[`sec:${s.key}`] = "new"; // default: fresh parameter (don't guess a reuse)
+  for (const p of params) initial[`param:${p.key}`] = "new"; // default: a fresh parameter resource
   const [sel, setSel] = useState<Record<string, string>>(initial);
+  // Literal value per param (used only when its mode is "value"); prefilled from the seeded default.
+  const [vals, setVals] = useState<Record<string, string>>(
+    () => Object.fromEntries(params.map(p => [p.key, p.default ?? ""])));
 
   const optionsFor = (c: PresetCompanion) => {
     const opts: { value: string; label: string }[] = [];
@@ -248,8 +251,11 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
       opts.push({ value: `add:${alt.addMethod}`, label: `Add ${alt.label}` });
     return opts;
   };
-  const secretOptions = () => {
-    const opts = [{ value: "new", label: "New parameter (secret)" }];
+  const paramOptions = (secret?: boolean) => {
+    const opts = [
+      { value: "new", label: secret ? "New parameter (secret)" : "New parameter" },
+      { value: "value", label: "Write value (plain env)" },
+    ];
     for (const n of parameterCandidates(stackNodes))
       opts.push({ value: `reuse:${n.id}`, label: `Reuse existing: ${n.resourceName}` });
     return opts;
@@ -261,7 +267,10 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
 
   const buildChoices = () => ({
     ...Object.fromEntries(companions.map(c => [c.key, toChoice(sel[c.key])])),
-    ...Object.fromEntries(secrets.map(s => [`sec:${s.key}`, toChoice(sel[`sec:${s.key}`])])),
+    ...Object.fromEntries(params.map(p => [`param:${p.key}`,
+      sel[`param:${p.key}`] === "value"
+        ? { mode: "value", value: vals[p.key] ?? "" } as CompanionChoice
+        : toChoice(sel[`param:${p.key}`])])),
   });
 
   return (
@@ -277,16 +286,21 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
               onChange={v => v && setSel(s => ({ ...s, [c.key]: v }))} />
           </Group>
         ))}
-        {secrets.length > 0 && <Text size="sm" fw={600}>Secrets (Aspire parameters)</Text>}
-        {secrets.map(s => (
-          <Group key={s.key} gap="sm" wrap="nowrap" align="center">
-            <Text size="sm" w={120} truncate title={s.env}>{s.key}</Text>
-            <Select style={{ flex: 1 }} size="xs" allowDeselect={false}
-              data={secretOptions()} value={sel[`sec:${s.key}`]}
-              onChange={v => v && setSel(st => ({ ...st, [`sec:${s.key}`]: v }))} />
+        {params.length > 0 && <Text size="sm" fw={600}>Parameters</Text>}
+        {params.map(p => (
+          <Group key={p.key} gap="sm" wrap="nowrap" align="center">
+            <Text size="sm" w={120} truncate title={p.env}>{p.key}{p.secret ? " 🔒" : ""}</Text>
+            <Select w={200} size="xs" allowDeselect={false}
+              data={paramOptions(p.secret)} value={sel[`param:${p.key}`]}
+              onChange={v => v && setSel(st => ({ ...st, [`param:${p.key}`]: v }))} />
+            {sel[`param:${p.key}`] === "value" && (
+              <TextInput style={{ flex: 1 }} size="xs" placeholder={p.env}
+                type={p.secret ? "password" : undefined}
+                value={vals[p.key] ?? ""} onChange={e => setVals(s => ({ ...s, [p.key]: e.currentTarget.value }))} />
+            )}
           </Group>
         ))}
-        <Text size="xs" c="dimmed">Reuse picks a resource already on the canvas; “Add …” drops a real Aspire resource. Secrets become AddParameter(secret) resources (seeded default, change before publishing).</Text>
+        <Text size="xs" c="dimmed">Reuse picks a resource already on the canvas; “Add …” drops a real Aspire resource. A parameter becomes an AddParameter resource (seeded default, change before publishing); “Write value” just sets a literal env value.</Text>
         <Group justify="flex-end" gap="xs" mt="xs">
           <Button variant="subtle" onClick={() => onConfirm("none")}>Just the app</Button>
           <Button onClick={() => onConfirm(buildChoices())}>Add</Button>

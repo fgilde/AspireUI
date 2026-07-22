@@ -24,11 +24,12 @@ export interface CatalogMethod { method: string; label: string; overloads: Catal
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
 // A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
 export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null }
-// A password/secret the app needs. Emitted as an Aspire parameter resource (AddParameter(secret:true))
-// rather than a plaintext env string, and referenced via WithEnvironment(env, param). `default` seeds
-// its value; `name` overrides the generated parameter resource name.
-export interface PresetSecret { key: string; env: string; default?: string | null; name?: string | null }
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; secrets?: PresetSecret[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
+// A configurable value the app needs (password, key, or plain setting). On drop the user picks per
+// param: a new Aspire parameter resource (AddParameter), reuse an existing parameter, or just write a
+// literal env value. `secret` marks it sensitive (AddParameter secret:true, masked). `default` seeds
+// the value; `name` overrides the generated parameter resource name.
+export interface PresetParam { key: string; env: string; default?: string | null; secret?: boolean; name?: string | null }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
 
 // What existing resources satisfy a companion role (reuse), and which Aspire resources can stand in
 // as alternatives to the default container. Drives the "reuse / new container / Aspire alternative"
@@ -64,7 +65,8 @@ export function reuseCandidates(nodes: Node[], role?: string | null): Node[] {
 export type CompanionChoice =
   | { mode: "reuse"; nodeId: string }
   | { mode: "new" }
-  | { mode: "add"; addMethod: string };
+  | { mode: "add"; addMethod: string }
+  | { mode: "value"; value: string };   // params only: a literal env value instead of a parameter resource
 
 // Companion icon from an image so DB/cache containers show a real brand icon too.
 function iconForImage(img?: string | null): string | undefined {
@@ -128,22 +130,24 @@ export function buildPresetNodes(
     return [{ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(val)] }];
   });
 
-  // Secrets → Aspire parameter resources (reuse an existing parameter, or a new AddParameter(secret:true)).
-  // Referenced from the app via WithEnvironment(env, <paramVar>) — the param varName is emitted unquoted
-  // so codegen treats it as a builder reference, not a literal string.
-  interface SecretPlan { sec: PresetSecret; varName: string; targetId: string; name: string; create: boolean; }
-  const secrets = preset.secrets ?? [];
-  const secretPlans: SecretPlan[] = secrets.map(sec => {
-    const choice = choices && choices !== "none" ? choices[`sec:${sec.key}`] : undefined;
+  // Params → either an Aspire parameter resource (new / reused; referenced via WithEnvironment(env,
+  // <paramVar>) with the varName emitted UNQUOTED so codegen treats it as a builder reference) or a
+  // plain literal env value ("value" mode). Default (no choice) = a new parameter.
+  interface ParamPlan { param: PresetParam; mode: "value" | "reuse" | "new"; value?: string; varName?: string; targetId?: string; name?: string; }
+  const params = preset.params ?? [];
+  const paramPlans: ParamPlan[] = params.map(param => {
+    const choice = choices && choices !== "none" ? choices[`param:${param.key}`] : undefined;
+    if (choice?.mode === "value") return { param, mode: "value", value: choice.value };
     if (choice?.mode === "reuse") {
       const node = existing.find(n => n.id === choice.nodeId);
-      if (node) return { sec, varName: node.varName, targetId: node.id, name: node.resourceName, create: false };
+      if (node) return { param, mode: "reuse", varName: node.varName };
     }
-    const pname = uniq(sec.name || `${preset.id}-${sec.key}`);
-    return { sec, varName: sanitizeIdentifier(pname), targetId: nid(), name: pname, create: true };
+    const pname = uniq(param.name || `${preset.id}-${param.key}`);
+    return { param, mode: "new", varName: sanitizeIdentifier(pname), targetId: nid(), name: pname };
   });
-  const secretEnvCalls = secretPlans.map(p =>
-    ({ method: "WithEnvironment", args: [JSON.stringify(p.sec.env), p.varName] }));
+  const paramEnvCalls = paramPlans.map(p => p.mode === "value"
+    ? { method: "WithEnvironment", args: [JSON.stringify(p.param.env), JSON.stringify(p.value ?? p.param.default ?? "")] }
+    : { method: "WithEnvironment", args: [JSON.stringify(p.param.env), p.varName!] });
 
   // Pass 2: build nodes.
   const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
@@ -152,20 +156,20 @@ export function buildPresetNodes(
   const main: Node = {
     id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
-    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env), ...secretEnvCalls],
+    withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env), ...paramEnvCalls],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];
   const edges: Edge[] = [];
-  // New parameter nodes (reused ones already exist on the canvas).
-  secretPlans.filter(p => p.create).forEach((p, i) => {
+  // New parameter nodes (reused ones already exist on the canvas; "value" mode adds no node).
+  paramPlans.filter(p => p.mode === "new").forEach((p, i) => {
     nodes.push({
       // AddParameter has no 2-arg overload — only (name, bool secret) and
       // (name, string value, bool publishValueAsDefault, bool secret). Emit the 3-arg form positionally
-      // → AddParameter("name", "value", false, true) so the grid's arity-3 overload renders the value
-      // field + both switches and round-trips (2 args would mis-match the 1-arg [secret] overload).
-      id: p.targetId, varName: p.varName, resourceName: p.name, addMethod: "AddParameter",
-      addArgs: [JSON.stringify(p.sec.default ?? ""), "false", "true"],
+      // → AddParameter("name", "value", false, <secret>) so the grid's arity-3 overload renders the
+      // value field + both switches and round-trips (2 args would mis-match the 1-arg [secret] overload).
+      id: p.targetId!, varName: p.varName!, resourceName: p.name!, addMethod: "AddParameter",
+      addArgs: [JSON.stringify(p.param.default ?? ""), "false", p.param.secret ? "true" : "false"],
       withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
     });
   });

@@ -29,16 +29,16 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // Optional metadata: named data volumes to mount ([name, "/container/path"]) — emitted as
     // WithVolume; and informational flags shown as badges/caveats (Aspire wiring for these is manual).
     List<List<string>>? Volumes,
-    // Optional secrets (passwords/keys) the app needs — emitted as Aspire parameter resources
-    // (AddParameter(secret:true)) referenced via WithEnvironment, not plaintext env strings.
-    List<PresetSecret>? Secrets = null, bool Gpu = false, bool HostNetwork = false);
+    // Optional configurable values (passwords/keys/settings) — offered on drop as an Aspire parameter
+    // resource (AddParameter, secret:true when marked) or a literal env value, via WithEnvironment.
+    List<PresetParam>? Params = null, bool Gpu = false, bool HostNetwork = false);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
 // (Aspire AddX) instead of always dropping this container.
 public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role);
-// A preset secret → an Aspire parameter. Env = the env var set on the app; Default = seeded value;
-// Name = optional override for the generated parameter resource name.
-public record PresetSecret(string Key, string Env, string? Default, string? Name);
+// A preset param → an Aspire parameter (or literal env). Env = the env var set on the app; Default =
+// seeded value; Secret marks it sensitive; Name = optional parameter resource-name override.
+public record PresetParam(string Key, string Env, string? Default, bool Secret = false, string? Name = null);
 
 public class CatalogService
 {

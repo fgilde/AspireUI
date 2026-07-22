@@ -85,11 +85,11 @@
     "icon": "langflow",
     "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
     "env": [
-      ["LANGFLOW_AUTO_LOGIN", "false"],
-      ["LANGFLOW_SUPERUSER", "admin"]
+      ["LANGFLOW_AUTO_LOGIN", "false"]
     ],
-    "secrets": [
-      { "key": "superuser-password", "env": "LANGFLOW_SUPERUSER_PASSWORD", "default": "admin" }
+    "params": [
+      { "key": "superuser", "env": "LANGFLOW_SUPERUSER", "default": "admin" },
+      { "key": "superuser-password", "env": "LANGFLOW_SUPERUSER_PASSWORD", "default": "admin", "secret": true }
     ]
   },
   {
@@ -136,8 +136,8 @@
     "port": 3100,
     "icon": "paperclip",
     "description": "Paperclip (paperclipai) — open platform for orchestrating AI agents. API on 3100; embedded Postgres, no DB setup needed. BETTER_AUTH_SECRET seeded as a parameter (change it).",
-    "secrets": [
-      { "key": "auth-secret", "env": "BETTER_AUTH_SECRET", "default": "paperclip-dev-secret" }
+    "params": [
+      { "key": "auth-secret", "env": "BETTER_AUTH_SECRET", "default": "paperclip-dev-secret", "secret": true }
     ]
   },
   {
@@ -507,14 +507,9 @@
     "port": 2342,
     "icon": "photoprism",
     "description": "PhotoPrism — AI-powered photo gallery/backup. Login admin / please-change-me (change it).",
-    "env": [
-      [
-        "PHOTOPRISM_ADMIN_USER",
-        "admin"
-      ]
-    ],
-    "secrets": [
-      { "key": "admin-password", "env": "PHOTOPRISM_ADMIN_PASSWORD", "default": "please-change-me" }
+    "params": [
+      { "key": "admin-user", "env": "PHOTOPRISM_ADMIN_USER", "default": "admin" },
+      { "key": "admin-password", "env": "PHOTOPRISM_ADMIN_PASSWORD", "default": "please-change-me", "secret": true }
     ],
     "volumes": [
       [
@@ -579,8 +574,8 @@
     "port": 80,
     "icon": "pihole",
     "description": "Pi-hole — network-wide ad/tracker blocking DNS. Admin login password seeded as a parameter (change it). Also binds DNS on :53 (host port conflicts possible).",
-    "secrets": [
-      { "key": "web-password", "env": "FTLCONF_webserver_api_password", "default": "please-change-me" }
+    "params": [
+      { "key": "web-password", "env": "FTLCONF_webserver_api_password", "default": "please-change-me", "secret": true }
     ],
     "hostNetwork": true
   },
