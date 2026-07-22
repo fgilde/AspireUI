@@ -236,7 +236,6 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const [del, setDel] = useState<{ node: Node; deps: OrphanDep[] } | null>(null);
-  const [selIds, setSelIds] = useState<string[]>([]);
   const rf = useRef<any>(null);                          // ReactFlow instance (for centering)
   const prevIds = useRef<Set<string> | null>(null);      // node ids last render, to detect additions
   const [glow, setGlow] = useState<Set<string>>(new Set());
@@ -551,6 +550,9 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     return [...base, ...liveFlow.rfLive];
   }, [rfNodes, overlay, liveFlow, q, onLogs, glow]);
   const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
+  // Derived from node state (not an onSelectionChange callback — that fired during unmount and threw,
+  // leaving the route half-rendered so "<- Stacks" appeared dead).
+  const selIds = useMemo(() => rfNodes.filter(n => n.selected && n.type === "resource").map(n => n.id), [rfNodes]);
 
   return (
     <>
@@ -559,9 +561,6 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       colorMode={colorScheme === "light" ? "light" : "dark"}
       snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
-      onSelectionChange={({ nodes }) => setSelIds(nodes
-        .map(n => n.id)
-        .filter(id => !id.startsWith("live:") && !id.startsWith("note:") && !id.startsWith("group:")))}
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
