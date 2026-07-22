@@ -78,6 +78,26 @@ public static class StackEndpoints
             return Results.Ok();
         });
 
+        // Test the assistant's AI backend with a tiny live round-trip (uses the settings as entered;
+        // "***" apiKey means keep the stored one). Never throws — returns {ok,error} for the UI.
+        app2.MapPost("/settings/test-ai", async (AppSettings body) =>
+        {
+            var current = settings.Get();
+            var apiKey = body.AiApiKey == "***" ? current.AiApiKey : body.AiApiKey;
+            var s = body with { AiApiKey = apiKey };
+            if (string.IsNullOrWhiteSpace(s.AiBaseUrl))
+                return Results.Ok(new { ok = false, error = "Base URL is not set." });
+            try
+            {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var reply = await chatClient.CompleteAsync(
+                    "You are a connectivity probe. Reply with the JSON object {\"ok\":true}.", "ping", s);
+                sw.Stop();
+                return Results.Ok(new { ok = true, model = s.AiModel, ms = sw.ElapsedMilliseconds, reply });
+            }
+            catch (Exception ex) { return Results.Ok(new { ok = false, error = ex.Message }); }
+        });
+
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
         // Built-in demo templates + the user's own saved templates (prefixed "user:" so ids never clash).

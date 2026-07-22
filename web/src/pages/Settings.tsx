@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert } from "@mantine/core";
-import { IconArrowLeft, IconCheck } from "@tabler/icons-react";
+import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle } from "@tabler/icons-react";
 import type { AppSettings } from "../model";
 import * as api from "../api";
 
@@ -12,6 +12,8 @@ export function Settings() {
   const [settings, setSettings] = useState<AppSettings>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; model?: string; ms?: number; error?: string } | null>(null);
 
   useEffect(() => { api.getSettings().then(setSettings); }, []);
 
@@ -24,6 +26,14 @@ export function Settings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const test = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try { setTestResult(await api.testAi(settings)); }
+    catch (e) { setTestResult({ ok: false, error: e instanceof Error ? e.message : String(e) }); }
+    finally { setTesting(false); }
   };
 
   return (
@@ -73,8 +83,19 @@ export function Settings() {
                 Settings saved.
               </Alert>
             )}
+            {testResult && (
+              <Alert color={testResult.ok ? "green" : "red"} variant="light"
+                icon={testResult.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
+                {testResult.ok
+                  ? `Connection OK${testResult.model ? ` — model "${testResult.model}"` : ""}${testResult.ms != null ? ` (${testResult.ms} ms)` : ""}.`
+                  : `Test failed: ${testResult.error}`}
+              </Alert>
+            )}
 
-            <Group justify="flex-end">
+            <Group justify="space-between">
+              <Button variant="default" leftSection={<IconPlugConnected size={16} />} onClick={test} loading={testing}>
+                Test connection
+              </Button>
               <Button onClick={save} loading={saving}>Save</Button>
             </Group>
           </MStack>
