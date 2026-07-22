@@ -16,6 +16,18 @@ import * as api from "../api";
   getWorker: () => new editorWorker(),
 };
 
+// Decoration styles for "highlight the selected node's lines in the code" (injected once).
+const HILITE_STYLE = "aspireui-code-hilite";
+if (typeof document !== "undefined" && !document.getElementById(HILITE_STYLE)) {
+  const el = document.createElement("style");
+  el.id = HILITE_STYLE;
+  el.textContent = `
+    .aspireui-node-line { background: rgba(255,165,0,0.10); }
+    .aspireui-node-glyph { background: var(--mantine-color-orange-filled, orange); width: 4px !important; margin-left: 3px; }
+    .aspireui-node-token { background: rgba(255,165,0,0.35); border-radius: 2px; }`;
+  document.head.appendChild(el);
+}
+
 // Custom green-on-black theme for the "Terminal" app theme.
 monaco.editor.defineTheme("aspireui-terminal", {
   base: "vs-dark", inherit: true,
@@ -48,11 +60,12 @@ function extractMessage(err: unknown): string {
 }
 
 export function CodeEditorPanel() {
-  const { stack, setStack } = useEditor();
+  const { stack, setStack, selected } = useEditor();
   const { current } = useAppTheme();
   const monacoTheme = current.monaco;
   const hostRef = useRef<HTMLDivElement>(null);
   const edRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const decoRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
   const dirtyRef = useRef(false);     // user has unsaved edits
   const applyingRef = useRef(false);  // a programmatic setValue is in flight (don't mark dirty)
   const [busy, setBusy] = useState(false);
@@ -79,6 +92,7 @@ export function CodeEditorPanel() {
       theme: monacoTheme,
       automaticLayout: true,
       minimap: { enabled: false },
+      glyphMargin: true, // gutter markers for the selected node's lines
       fontSize: 13,
       scrollBeyondLastLine: false,
       // Render suggest/hover widgets at document body level, not inside the dockview panel — the panel
@@ -172,6 +186,27 @@ export function CodeEditorPanel() {
     if (ed && !dirtyRef.current) void applyRemote(ed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stackKey]);
+
+  // Highlight the selected node's lines in the code: whole-line background + a gutter marker on every
+  // line mentioning its varName, the varName tokens themselves emphasized, and scroll the first into view.
+  const selectedVar = selected ? stack.nodes.find(n => n.id === selected)?.varName : undefined;
+  useEffect(() => {
+    const ed = edRef.current, model = ed?.getModel();
+    if (!ed || !model) return;
+    decoRef.current?.clear();
+    if (!selectedVar) return;
+    const matches = model.findMatches(`\\b${selectedVar}\\b`, false, true, true, null, false);
+    if (matches.length === 0) return;
+    const lines = [...new Set(matches.map(m => m.range.startLineNumber))];
+    decoRef.current = ed.createDecorationsCollection([
+      ...lines.map(ln => ({ range: new monaco.Range(ln, 1, ln, 1),
+        options: { isWholeLine: true, className: "aspireui-node-line", glyphMarginClassName: "aspireui-node-glyph" } })),
+      ...matches.map(m => ({ range: m.range, options: { inlineClassName: "aspireui-node-token" } })),
+    ]);
+    ed.revealLineInCenter(lines[0]);
+    // Re-run when the selection or the (already-synced) code text changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVar, stackKey]);
 
   const save = async () => {
     const code = edRef.current?.getValue();
