@@ -123,5 +123,11 @@ export const testAi = (s: AppSettings): Promise<{ ok: boolean; model?: string; m
   fetch(`${base}/settings/test-ai`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
 export const getAiCliTools = (): Promise<string[]> => fetch(`${base}/settings/ai-cli-tools`).then(ok);
 
+export const getSnippets = (): Promise<import("./model").Snippet[]> => fetch(`${base}/snippets`).then(ok);
+export const saveSnippet = (s: import("./model").Snippet): Promise<{ id: string }> =>
+  fetch(`${base}/snippets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
+export const deleteSnippet = (id: string): Promise<void> =>
+  fetch(`${base}/snippets/${id}`, { method: "DELETE" }).then(() => undefined);
+
 export const assistStack = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
   fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);

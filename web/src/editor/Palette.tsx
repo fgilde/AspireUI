@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
-import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
-import { buildPresetNodes, reuseCandidates, parameterCandidates, ROLE_ALTERNATIVES } from "../model";
+import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash } from "@tabler/icons-react";
+import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
+import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
@@ -74,7 +74,27 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   });
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [presetPick, setPresetPick] = useState<ContainerPreset | null>(null);
-  useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); }, []);
+  const [tab, setTab] = useState<string>("catalog");
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const loadSnippets = () => api.getSnippets().then(setSnippets).catch(() => {});
+  useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); loadSnippets(); }, []);
+  // Refresh the Custom tab when a snippet is saved elsewhere (PropertyPanel "Save as snippet").
+  useEffect(() => {
+    const h = () => loadSnippets();
+    window.addEventListener("aspireui:snippets-changed", h);
+    return () => window.removeEventListener("aspireui:snippets-changed", h);
+  }, []);
+
+  const dropSnippet = (s: Snippet) => {
+    const off = stack.nodes.length * 28;
+    const { nodes, edges } = instantiateSnippet(s, stack.nodes, off + 60, off + 60);
+    const newFiles = (s.files ?? []).filter(f => !stack.extraFiles.some(x => x.name === f.name));
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...nodes], edges: [...stack.edges, ...edges],
+      extraFiles: [...stack.extraFiles, ...newFiles] })
+      .then(st => { setStack(st); toastOk(`Added ${s.name}`); }).catch(toastErr);
+  };
+  const removeSnippet = (s: Snippet) =>
+    api.deleteSnippet(s.id).then(loadSnippets).then(() => toastOk(`Deleted "${s.name}"`)).catch(toastErr);
 
   // Every tag actually assigned (kinds + groups + flags), stable order — drives the filter chips.
   const allTags = useMemo(() => {
@@ -139,6 +159,13 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
 
   return (
     <MStack gap="xs" p="sm" h="100%">
+      <Tabs value={tab} onChange={v => setTab(v ?? "catalog")}
+        style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <Tabs.List>
+          <Tabs.Tab value="catalog">Catalog</Tabs.Tab>
+          <Tabs.Tab value="custom">Custom</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="catalog" pt="xs" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
       {allTags.length > 0 && (
         <Group gap={5}>
@@ -208,6 +235,32 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           })}
         </Accordion>
       </ScrollArea>
+        </Tabs.Panel>
+        <Tabs.Panel value="custom" pt="xs" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <Text size="xs" c="dimmed" mb="xs">
+            Your saved snippets — drop them like any palette item. Save one from a node's Properties panel
+            (bookmark icon) or a multi-selection.
+          </Text>
+          <ScrollArea style={{ flex: 1 }} offsetScrollbars scrollbarSize={8}>
+            {snippets.length === 0
+              ? <Text size="sm" c="dimmed" p="sm">No snippets yet.</Text>
+              : <MStack gap={1}>
+                  {snippets.map(s => (
+                    <Group key={s.id} gap={4} wrap="nowrap" align="center">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Tile iconKey={s.icon || ""} label={s.name}
+                          caption={`${s.nodes.length} resource${s.nodes.length === 1 ? "" : "s"}`}
+                          badge="snippet" onClick={() => dropSnippet(s)} />
+                      </div>
+                      <Tooltip label="Delete snippet" withArrow>
+                        <ActionIcon variant="subtle" color="red" onClick={() => removeSnippet(s)}><IconTrash size={14} /></ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  ))}
+                </MStack>}
+          </ScrollArea>
+        </Tabs.Panel>
+      </Tabs>
       {selectedRt && (
         <AddResourceDialog
           rt={selectedRt}

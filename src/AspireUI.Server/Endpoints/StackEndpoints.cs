@@ -25,6 +25,7 @@ public static class StackEndpoints
         var catalog = new CatalogService();
         var templates = new TemplateService();
         var userTemplates = new UserTemplateStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
+        var snippets = new SnippetStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var run = app.Services.GetRequiredService<RunService>();
         var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
@@ -101,6 +102,17 @@ public static class StackEndpoints
 
         // Whitelisted local agent CLIs the assistant can drive (for the Settings dropdown).
         app2.MapGet("/settings/ai-cli-tools", () => Results.Ok(CliChatClient.AllowedTools));
+
+        // Custom palette snippets (reusable sub-graphs the user saved from a stack). Per-instance.
+        app2.MapGet("/snippets", () => snippets.List());
+        app2.MapPost("/snippets", (SnippetModel body) =>
+        {
+            var id = string.IsNullOrWhiteSpace(body.Id) ? "snip" + Guid.NewGuid().ToString("n")[..8] : body.Id;
+            snippets.Save(body with { Id = id });
+            return Results.Ok(new { id });
+        });
+        app2.MapDelete("/snippets/{id}", (string id) =>
+            snippets.Delete(id) ? Results.NoContent() : Results.NotFound());
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());

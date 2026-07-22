@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon, Button, Stack as MStack, Badge } from "@mantine/core";
-import { IconTrash, IconCopy } from "@tabler/icons-react";
+import { IconTrash, IconCopy, IconBookmark } from "@tabler/icons-react";
 import type { Stack, ResourceType, OrphanDep } from "../model";
-import { removeNode, orphanableDeps, sanitizeIdentifier } from "../model";
+import { removeNode, orphanableDeps, sanitizeIdentifier, collectSubgraph } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
-import { confirmDelete, toastOk, toastErr } from "../ui";
+import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
 import { SmartDeleteModal } from "./Canvas";
@@ -57,6 +57,19 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
       });
   };
 
+  // Save a set of nodes (with their spawned deps + referenced params + internal edges) as a reusable
+  // palette snippet, so the whole configured part can be dropped again from the Custom tab.
+  const saveAsSnippet = (rootIds: string[], defaultName: string, icon?: string | null) => {
+    promptText("Save as snippet", "Snippet name", defaultName).then(name => {
+      if (!name) return;
+      const { nodes, edges } = collectSubgraph(stack, rootIds);
+      const files = stack.extraFiles ?? [];
+      api.saveSnippet({ id: "", name, group: "Custom", icon: icon ?? null, nodes, edges, files })
+        .then(() => { toastOk(`Saved snippet "${name}"`); window.dispatchEvent(new Event("aspireui:snippets-changed")); })
+        .catch(toastErr);
+    });
+  };
+
   // Batch actions on a multi-selection (2+ nodes) — surfaced here instead of a canvas overlay button.
   const multi = selectedIds.filter(id => stack.nodes.some(n => n.id === id));
   const deleteMany = () => {
@@ -85,6 +98,8 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
         <Text size="sm" c="dimmed">Batch actions apply to all selected resources.</Text>
         <Group gap="xs">
           <Button variant="light" leftSection={<IconCopy size={15} />} onClick={duplicateMany}>Duplicate</Button>
+          <Button variant="light" leftSection={<IconBookmark size={15} />}
+            onClick={() => saveAsSnippet(multi, "my-snippet")}>Save as snippet</Button>
           <Button color="red" variant="light" leftSection={<IconTrash size={15} />} onClick={deleteMany}>Delete</Button>
         </Group>
       </MStack>
@@ -103,9 +118,15 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
               </ThemeIcon>
               <Text fw={600} size="sm" truncate>{node.resourceName}</Text>
             </Group>
-            <ActionIcon color="red" variant="subtle" title="Delete node" onClick={onDelete}>
-              <IconTrash size={16} />
-            </ActionIcon>
+            <Group gap={4} wrap="nowrap">
+              <ActionIcon variant="subtle" title="Save as palette snippet"
+                onClick={() => saveAsSnippet([node.id], node.resourceName, node.icon ?? node.addMethod)}>
+                <IconBookmark size={16} />
+              </ActionIcon>
+              <ActionIcon color="red" variant="subtle" title="Delete node" onClick={onDelete}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Group>
           </Group>
         );
       })()}

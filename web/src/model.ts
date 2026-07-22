@@ -203,6 +203,55 @@ export function buildPresetNodes(
   });
   return { nodes, edges };
 }
+// A reusable palette snippet: a captured sub-graph (nodes + internal edges + files) the user saved.
+export interface Snippet { id: string; name: string; group?: string | null; icon?: string | null; nodes: Node[]; edges: Edge[]; files: ExtraFile[] }
+
+// Expand a set of root node ids into a self-contained sub-graph: pull in nodes they spawned
+// (companions/params) and any parameter they reference via WithEnvironment, plus the edges among them.
+export function collectSubgraph(stack: Stack, rootIds: string[]): { nodes: Node[]; edges: Edge[] } {
+  const set = new Set(rootIds);
+  for (const n of stack.nodes) if (n.spawnedBy && set.has(n.spawnedBy)) set.add(n.id);
+  const byVar = new Map(stack.nodes.filter(n => n.varName).map(n => [n.varName, n.id]));
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const n of stack.nodes)
+      if (set.has(n.id))
+        for (const w of n.withCalls)
+          if (w.method === "WithEnvironment" && w.args[1] && !w.args[1].startsWith('"')) {
+            const t = byVar.get(w.args[1]);
+            if (t && !set.has(t)) { set.add(t); changed = true; }
+          }
+  }
+  return {
+    nodes: stack.nodes.filter(n => set.has(n.id)),
+    edges: stack.edges.filter(e => set.has(e.fromNodeId) && set.has(e.toNodeId)),
+  };
+}
+
+// Clone a snippet's nodes+edges with fresh ids + unique names, offset, remapping internal varName
+// references (WithEnvironment / resource-ref args) and spawnedBy so the copy is self-contained.
+export function instantiateSnippet(snip: Snippet, existing: Node[], dx = 60, dy = 60): { nodes: Node[]; edges: Edge[] } {
+  const taken = new Set(existing.map(n => n.resourceName));
+  const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
+  const idMap = new Map<string, string>(), varMap = new Map<string, string>();
+  const plan = snip.nodes.map(n => {
+    const name = uniq(n.resourceName), id = "n" + crypto.randomUUID().slice(0, 8), varName = sanitizeIdentifier(name);
+    idMap.set(n.id, id); if (n.varName) varMap.set(n.varName, varName);
+    return { n, id, name, varName };
+  });
+  const remap = (arg: string) => { let a = arg; for (const [ov, nv] of varMap) a = a.replace(new RegExp(`\\b${ov}\\b`, "g"), nv); return a; };
+  const nodes = plan.map(p => ({
+    ...p.n, id: p.id, varName: p.varName, resourceName: p.name, x: p.n.x + dx, y: p.n.y + dy,
+    addArgs: p.n.addArgs.map(remap),
+    withCalls: p.n.withCalls.map(w => ({ method: w.method, args: w.args.map(remap) })),
+    spawnedBy: p.n.spawnedBy ? idMap.get(p.n.spawnedBy) ?? null : p.n.spawnedBy,
+  }));
+  const edges = snip.edges.filter(e => idMap.has(e.fromNodeId) && idMap.has(e.toNodeId)).map(e => ({
+    id: "e" + crypto.randomUUID().slice(0, 8), fromNodeId: idMap.get(e.fromNodeId)!, toNodeId: idMap.get(e.toNodeId)!, kind: e.kind,
+  }));
+  return { nodes, edges };
+}
+
 export type RunState = "NotRunning" | "Starting" | "Running" | "Failed";
 export interface RunStatus { state: RunState; dashboardUrl?: string | null; log: string[] }
 
