@@ -11,7 +11,7 @@ public record PackageInfo(string Id, string Version, List<string> Resources);
 
 public class CodeGenService
 {
-    public const string Begin = "// >>> aspireui:begin (nicht von Hand editieren)";
+    public const string Begin = "// >>> aspireui:begin (edit carefully — this block round-trips back into the visual graph)";
     public const string End = "// <<< aspireui:end";
     // internal (not private): BundleImporter reuses this as the fallback version for
     // ProjectReference->package resolution, so it doesn't drift from the csproj-generation version.

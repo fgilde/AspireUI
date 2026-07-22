@@ -318,6 +318,15 @@ export function removeNode(s: Stack, id: string): Stack {
 // Deps of `id` (nodes it references/waits-for) that would be ORPHANED by deleting `id` — i.e. no
 // other remaining node references/waits-for them. `owned` = this node spawned it as a companion.
 // Powers the smart-delete prompt ("also remove these?"). Shared deps (used elsewhere) aren't returned.
+// Resource-node ids whose center lies inside a boundary group's rectangle (approx node box 170×74).
+// Used to move contained nodes with the group and to prompt on group deletion.
+export function nodesInGroup(s: Stack, g: StackGroup): string[] {
+  return s.nodes.filter(n => {
+    const cx = n.x + 85, cy = n.y + 37;
+    return cx >= g.x && cx <= g.x + g.width && cy >= g.y && cy <= g.y + g.height;
+  }).map(n => n.id);
+}
+
 export interface OrphanDep { node: Node; owned: boolean }
 export function orphanableDeps(s: Stack, id: string): OrphanDep[] {
   const targets = [...new Set(s.edges.filter(e => e.fromNodeId === id && e.toNodeId !== id).map(e => e.toNodeId))];

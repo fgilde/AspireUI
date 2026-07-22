@@ -1,11 +1,11 @@
 import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState, NodeResizer } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon, Modal, Checkbox, Stack as MStack, Button } from "@mantine/core";
 import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, type OrphanDep, type Node } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, nodesInGroup, type OrphanDep, type Node } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import { ResourceLogDrawer } from "./ResourceLogDrawer";
@@ -222,6 +222,9 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const [del, setDel] = useState<{ node: Node; deps: OrphanDep[] } | null>(null);
+  const [groupDel, setGroupDel] = useState<{ id: string; count: number } | null>(null);
+  // Tracks an in-progress group drag so contained nodes move with it (id -> {startX,startY,members,lastX,lastY}).
+  const groupDrag = useRef<Record<string, { sx: number; sy: number; lx: number; ly: number; members: string[] }>>({});
   const [showMinimap, setShowMinimap] = useState(() => localStorage.getItem("aspireui.minimap") !== "off");
   const toggleMinimap = () => setShowMinimap(v => { localStorage.setItem("aspireui.minimap", v ? "off" : "on"); return !v; });
   const onLogs = useCallback((name: string, display: string) => setLogTarget({ name, display }), []);
@@ -239,18 +242,27 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     };
   }, [stack, setStack]);
 
+  // Deleting a group with resources inside asks whether to delete them too or just ungroup.
+  const onGroupDelete = useCallback((id: string) => {
+    const g = (stack.groups ?? []).find(x => x.id === id);
+    if (!g) return;
+    const members = nodesInGroup(stack, g);
+    if (members.length > 0) setGroupDel({ id, count: members.length });
+    else annoOps.remove(id);
+  }, [stack, annoOps]);
+
   // rf nodes for annotations: groups first (behind, low z), then notes.
   const annoFlow = useMemo(() => {
     const groups = (stack.groups ?? []).map(g => ({
       id: g.id, type: "group", position: { x: g.x, y: g.y }, zIndex: 0, style: { width: g.width, height: g.height },
-      data: { label: g.label, color: g.color, onLabel: annoOps.setGroupLabel, onDelete: annoOps.remove },
+      data: { label: g.label, color: g.color, onLabel: annoOps.setGroupLabel, onDelete: onGroupDelete },
     }));
     const notes = (stack.notes ?? []).map(n => ({
       id: n.id, type: "note", position: { x: n.x, y: n.y }, zIndex: 5,
       data: { text: n.text, onText: annoOps.setNoteText, onDelete: annoOps.remove },
     }));
     return [...groups, ...notes];
-  }, [stack.notes, stack.groups, annoOps]);
+  }, [stack.notes, stack.groups, annoOps, onGroupDelete]);
 
   // While the stack runs, poll the Aspire resource service for live per-resource state/urls/children.
   useEffect(() => {
@@ -390,6 +402,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   }, [stack.edges, ops]);
 
   const onNodesChange = useCallback((changes: any[]) => {
+    if (changes.some(c => c.type === "position" || c.type === "remove")) setMenu(null); // close ctx menu on canvas activity
     const isAnno = (id: string) => id.startsWith("note:") || id.startsWith("group:");
     // A single resource-node delete that would orphan deps → route to the smart-delete dialog instead
     // of removing it here. Suppress that change so the node doesn't visually vanish before deciding.
@@ -401,12 +414,30 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     }
     onNodesChangeInternal(suppress ? changes.filter(c => c !== suppress) : changes);
 
-    // Persist geometry of annotations (position + group resize) on drag/resize end.
+    // Group drag: move the resource nodes inside it live (rf state), persist on drop (group + members).
+    for (const c of changes) {
+      if (c.type !== "position" || !c.id.startsWith("group:") || !c.position) continue;
+      const g = (stack.groups ?? []).find(x => x.id === c.id);
+      if (!g) continue;
+      let d = groupDrag.current[c.id];
+      if (!d) { d = { sx: g.x, sy: g.y, lx: g.x, ly: g.y, members: nodesInGroup(stack, g) }; groupDrag.current[c.id] = d; }
+      const dx = c.position.x - d.lx, dy = c.position.y - d.ly;
+      if ((dx || dy) && d.members.length)
+        setRfNodes(ns => ns.map(n => d!.members.includes(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n));
+      d.lx = c.position.x; d.ly = c.position.y;
+      if (c.dragging === false) {
+        const tdx = c.position.x - d.sx, tdy = c.position.y - d.sy;
+        const nodes = stack.nodes.map(n => d!.members.includes(n.id) ? { ...n, x: n.x + tdx, y: n.y + tdy } : n);
+        api.saveStack({ ...stack, nodes, groups: (stack.groups ?? []).map(gg => gg.id === c.id ? { ...gg, x: c.position.x, y: c.position.y } : gg) }).then(setStack);
+        delete groupDrag.current[c.id];
+      }
+    }
+
+    // Persist notes position + group resize on drop (group position handled above).
     let notes = stack.notes ?? [], groups = stack.groups ?? [], annoDirty = false;
     for (const c of changes) {
-      if (c.type === "position" && c.dragging === false && isAnno(c.id) && c.position) {
+      if (c.type === "position" && c.dragging === false && c.id.startsWith("note:") && c.position) {
         notes = notes.map(n => n.id === c.id ? { ...n, x: c.position.x, y: c.position.y } : n);
-        groups = groups.map(g => g.id === c.id ? { ...g, x: c.position.x, y: c.position.y } : g);
         annoDirty = true;
       }
       if (c.type === "dimensions" && c.resizing === false && c.id.startsWith("group:") && c.dimensions) {
@@ -432,7 +463,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack(next).then(setStack);
       onSelect(null);
     }
-  }, [stack, setStack, onSelect, onNodesChangeInternal, deleteNodeById]);
+  }, [stack, setStack, onSelect, onNodesChangeInternal, deleteNodeById, setRfNodes]);
   const onConnect = useCallback((c: any) =>
     api.addEdge(stack.id, { fromNodeId: c.source, toNodeId: c.target, kind: "reference" }).then(setStack),
     [stack, setStack]);
@@ -468,7 +499,8 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
-      onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
+      onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)}
+      onNodeDragStart={() => setMenu(null)} onSelectionChange={() => setMenu(null)} fitView>
       <Background /><Controls />
       {showMinimap && <MiniMap pannable zoomable nodeColor={n => (n.data as any).addMethod ? resourceVisual((n.data as any).addMethod).color : "#888"} />}
       <Panel position="top-left">
@@ -528,6 +560,25 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     {del && <SmartDeleteModal node={del.node} deps={del.deps}
       onCancel={() => setDel(null)}
       onConfirm={ids => applyDelete(del.node.id, ids)} />}
+    {groupDel && (
+      <Modal opened onClose={() => setGroupDel(null)} title="Delete group" size="md" centered>
+        <MStack gap="sm">
+          <Text size="sm">This group contains {groupDel.count} resource(s). Delete them too, or just remove the group boundary?</Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="subtle" onClick={() => setGroupDel(null)}>Cancel</Button>
+            <Button variant="default" onClick={() => { annoOps.remove(groupDel.id); setGroupDel(null); }}>Just the group</Button>
+            <Button color="red" onClick={() => {
+              const g = (stack.groups ?? []).find(x => x.id === groupDel.id);
+              let next = stack;
+              if (g) for (const nid of nodesInGroup(stack, g)) next = removeNode(next, nid);
+              next = { ...next, groups: (next.groups ?? []).filter(x => x.id !== groupDel.id) };
+              api.saveStack(next).then(s => { setStack(s); onSelect(null); toastOk("Group + contents deleted"); }).catch(toastErr);
+              setGroupDel(null);
+            }}>Delete group + {groupDel.count}</Button>
+          </Group>
+        </MStack>
+      </Modal>
+    )}
     </>
   );
 }
