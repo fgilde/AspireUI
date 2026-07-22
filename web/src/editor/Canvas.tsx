@@ -334,6 +334,24 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     else annoOps.remove(id);
   }, [stack, annoOps]);
 
+  // Duplicate a group + its members, offset — a quick way to clone a whole cluster.
+  const duplicateGroup = useCallback((id: string) => {
+    const g = (stack.groups ?? []).find(x => x.id === id);
+    if (!g) return;
+    const dx = 40, dy = 40;
+    const members = nodesInGroup(stack, g);
+    const taken = new Set(stack.nodes.map(n => n.resourceName));
+    const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
+    const copies = members.map(n => {
+      const name = uniq(n.resourceName);
+      return { ...n, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+        resourceName: name, x: n.x + dx, y: n.y + dy };
+    });
+    const newGroup = { ...g, id: "group:" + crypto.randomUUID().slice(0, 8), label: `${g.label} copy`, x: g.x + dx, y: g.y + dy };
+    api.saveStack({ ...stack, nodes: [...stack.nodes, ...copies], groups: [...(stack.groups ?? []), newGroup] })
+      .then(s => { setStack(s); toastOk("Group duplicated"); }).catch(toastErr);
+  }, [stack, setStack]);
+
   // rf nodes for annotations: groups first (behind, low z), then notes.
   const annoFlow = useMemo(() => {
     const groups = (stack.groups ?? []).map(g => ({
@@ -629,7 +647,7 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
-      onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
+      onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:") || n.id.startsWith("note:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)}
       onNodeDragStart={() => setMenu(null)} fitView>
       <Background /><Controls />
@@ -682,11 +700,16 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
       {menu && (
         <Paper ref={menuRef} shadow="md" withBorder p={4} radius="sm"
           style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}>
-          {[
-            { icon: IconPencil, label: "Edit properties", run: () => { onSelect(menu.nodeId); onShowProperties?.(); }, color: undefined },
-            { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
-            { icon: IconTrash, label: "Delete", run: () => deleteNodeById(menu.nodeId), color: "var(--mantine-color-red-text)" },
-          ].map(item => (
+          {(menu.nodeId.startsWith("group:")
+            ? [
+                { icon: IconCopy, label: "Duplicate group", run: () => duplicateGroup(menu.nodeId), color: undefined },
+                { icon: IconTrash, label: "Delete group", run: () => onGroupDelete(menu.nodeId), color: "var(--mantine-color-red-text)" },
+              ]
+            : [
+                { icon: IconPencil, label: "Edit properties", run: () => { onSelect(menu.nodeId); onShowProperties?.(); }, color: undefined },
+                { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
+                { icon: IconTrash, label: "Delete", run: () => deleteNodeById(menu.nodeId), color: "var(--mantine-color-red-text)" },
+              ]).map(item => (
             <UnstyledButton key={item.label} onClick={() => { item.run(); setMenu(null); }}
               style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "6px 8px", borderRadius: 4, fontSize: 13, color: item.color }}
               className="ctx-item">
