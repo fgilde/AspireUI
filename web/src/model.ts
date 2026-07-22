@@ -266,6 +266,8 @@ export interface AppSettings {
   aiApiKey?: string | null;
   aiModel?: string | null;
   aiProviderLabel?: string | null;
+  aiKind?: string | null;       // "http" (default) or "cli"
+  aiCliTool?: string | null;    // when aiKind==="cli": one of the whitelisted CLI tools
 }
 
 export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string }

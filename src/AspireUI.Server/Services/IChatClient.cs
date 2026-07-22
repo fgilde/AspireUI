@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using AspireUI.Server.Models;
 
@@ -11,6 +13,75 @@ namespace AspireUI.Server.Services;
 public interface IChatClient
 {
     Task<string> CompleteAsync(string system, string user, AppSettings s);
+}
+
+// Routes each call to the HTTP or CLI backend based on AppSettings.AiKind ("cli" → local agent CLI,
+// otherwise the OpenAI-compatible HTTP endpoint).
+public class RoutingChatClient(HttpChatClient http, CliChatClient cli) : IChatClient
+{
+    public Task<string> CompleteAsync(string system, string user, AppSettings s) =>
+        string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase)
+            ? cli.CompleteAsync(system, user, s)
+            : http.CompleteAsync(system, user, s);
+}
+
+// Talks to a locally-installed agent CLI. Whitelist-only: the tool name maps to a FIXED executable and
+// arg layout, and the prompt is passed as a single argv element / stdin (never via a shell), so there's
+// no command-injection surface. Anything not in the whitelist is rejected.
+public class CliChatClient : IChatClient
+{
+    // tool -> (executable, leading args, prompt via stdin?). {model} is substituted from AppSettings.AiModel.
+    private static readonly Dictionary<string, (string Exe, string[] Args, bool Stdin)> Tools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["claude"] = ("claude", ["-p"], false),          // Claude Code CLI, headless print mode
+        ["gemini"] = ("gemini", ["-p"], false),          // Gemini CLI
+        ["llm"]    = ("llm", ["-m", "{model}"], false),   // Simon Willison's llm CLI
+        ["ollama"] = ("ollama", ["run", "{model}"], true),// local Ollama; prompt on stdin
+        ["codex"]  = ("codex", ["exec"], false),          // OpenAI Codex CLI, non-interactive exec
+    };
+    public static IReadOnlyCollection<string> AllowedTools => Tools.Keys;
+
+    public async Task<string> CompleteAsync(string system, string user, AppSettings s)
+    {
+        var tool = (s.AiCliTool ?? "").Trim();
+        if (!Tools.TryGetValue(tool, out var spec))
+            throw new InvalidOperationException($"CLI tool '{tool}' is not in the allowed list: {string.Join(", ", Tools.Keys)}.");
+
+        var prompt = $"{system}\n\n{user}";
+        var psi = new ProcessStartInfo
+        {
+            FileName = spec.Exe,
+            RedirectStandardOutput = true, RedirectStandardError = true, RedirectStandardInput = spec.Stdin,
+            UseShellExecute = false, CreateNoWindow = true,
+        };
+        foreach (var a in spec.Args)
+        {
+            if (a == "{model}")
+            {
+                if (string.IsNullOrWhiteSpace(s.AiModel))
+                    throw new InvalidOperationException($"CLI tool '{tool}' needs a model set.");
+                psi.ArgumentList.Add(s.AiModel);
+            }
+            else psi.ArgumentList.Add(a);
+        }
+        if (!spec.Stdin) psi.ArgumentList.Add(prompt); // prompt as a single (non-shell) argv element
+
+        using var proc = new Process { StartInfo = psi };
+        try { proc.Start(); }
+        catch (Exception ex) { throw new InvalidOperationException($"Could not launch '{spec.Exe}' — is it installed and on PATH? ({ex.Message})"); }
+
+        if (spec.Stdin) { await proc.StandardInput.WriteAsync(prompt); proc.StandardInput.Close(); }
+        var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+        var stderrTask = proc.StandardError.ReadToEndAsync();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        try { await proc.WaitForExitAsync(cts.Token); }
+        catch (OperationCanceledException) { try { proc.Kill(true); } catch { } throw new InvalidOperationException($"'{spec.Exe}' timed out after 120s."); }
+
+        var stdout = await stdoutTask;
+        if (proc.ExitCode != 0)
+            throw new InvalidOperationException($"'{spec.Exe}' exited {proc.ExitCode}: {(await stderrTask).Trim()}");
+        return stdout.Trim();
+    }
 }
 
 public class HttpChatClient(HttpClient http) : IChatClient

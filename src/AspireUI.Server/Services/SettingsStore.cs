@@ -53,7 +53,9 @@ public class SettingsStore
             values.GetValueOrDefault("AiBaseUrl"),
             values.GetValueOrDefault("AiApiKey"),
             values.GetValueOrDefault("AiModel"),
-            values.GetValueOrDefault("AiProviderLabel"));
+            values.GetValueOrDefault("AiProviderLabel"),
+            values.GetValueOrDefault("AiKind"),
+            values.GetValueOrDefault("AiCliTool"));
     }
 
     public void Save(AppSettings s) => UsingConnection(conn =>
@@ -71,5 +73,7 @@ public class SettingsStore
         Upsert("AiApiKey", s.AiApiKey);
         Upsert("AiModel", s.AiModel);
         Upsert("AiProviderLabel", s.AiProviderLabel);
+        Upsert("AiKind", s.AiKind);
+        Upsert("AiCliTool", s.AiCliTool);
     });
 }

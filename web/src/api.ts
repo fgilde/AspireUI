@@ -121,6 +121,7 @@ export const saveSettings = (s: AppSettings): Promise<void> =>
   fetch(`${base}/settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(() => undefined);
 export const testAi = (s: AppSettings): Promise<{ ok: boolean; model?: string; ms?: number; reply?: string; error?: string }> =>
   fetch(`${base}/settings/test-ai`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
+export const getAiCliTools = (): Promise<string[]> => fetch(`${base}/settings/ai-cli-tools`).then(ok);
 
 export const assistStack = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
   fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);

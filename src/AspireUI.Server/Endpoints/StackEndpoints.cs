@@ -32,7 +32,8 @@ public static class StackEndpoints
         var lsp = new RoslynLspService();
         // Real client by default (shared HttpClient); tests register a fake IChatClient in the
         // DI container before Build(), which this picks up instead.
-        var chatClient = app.Services.GetService<IChatClient>() ?? new HttpChatClient(new HttpClient());
+        var chatClient = app.Services.GetService<IChatClient>()
+            ?? new RoutingChatClient(new HttpChatClient(new HttpClient()), new CliChatClient());
         var assist = new AssistService(chatClient, catalog);
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
 
@@ -97,6 +98,9 @@ public static class StackEndpoints
             }
             catch (Exception ex) { return Results.Ok(new { ok = false, error = ex.Message }); }
         });
+
+        // Whitelisted local agent CLIs the assistant can drive (for the Settings dropdown).
+        app2.MapGet("/settings/ai-cli-tools", () => Results.Ok(CliChatClient.AllowedTools));
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
