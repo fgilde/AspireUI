@@ -8,7 +8,15 @@ public record StackModel(
     List<EdgeModel> Edges,
     List<string> RawStatements,
     List<ExtraFile> ExtraFiles,
-    List<PackageRef> ExtraPackages);
+    List<PackageRef> ExtraPackages,
+    // Canvas-only annotations — never affect the generated code. Sticky notes + labeled boundary
+    // rectangles the user draws to document/organize the graph. Optional so all existing constructor
+    // calls (templates, importers, tests, AI) keep working.
+    List<StackNote>? Notes = null,
+    List<StackGroup>? Groups = null);
+
+public record StackNote(string Id, string Text, double X, double Y);
+public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);
 
 public record NodeModel(
     string Id,

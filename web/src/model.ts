@@ -5,9 +5,12 @@ export interface Node { id: string; varName: string; addMethod: string; resource
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
 export interface ExtraFile { name: string; content: string }
 export interface PackageRef { id: string; version: string }
+export interface StackNote { id: string; text: string; x: number; y: number }
+export interface StackGroup { id: string; label: string; x: number; y: number; width: number; height: number; color?: string | null }
 export interface Stack {
   id: string; name: string; targetFramework: string; nodes: Node[]; edges: Edge[]; rawStatements: string[];
   extraFiles: ExtraFile[]; extraPackages: PackageRef[];
+  notes?: StackNote[]; groups?: StackGroup[];
 }
 
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }

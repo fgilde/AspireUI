@@ -1,8 +1,8 @@
-import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState } from "@xyflow/react";
+import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, BaseEdge, EdgeLabelRenderer, getBezierPath, useNodesState, NodeResizer } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff } from "@tabler/icons-react";
+import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon } from "@mantine/core";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
 import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor } from "../model";
@@ -104,7 +104,47 @@ function LiveNode({ data }: any) {
     </Card>
   );
 }
-const nodeTypes = { resource: ResourceNode, live: LiveNode };
+// Sticky note — canvas-only annotation. Double-click to edit; blur/save persists via data.onText.
+function NoteNode({ id, data }: any) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(data.text as string);
+  useEffect(() => setText(data.text), [data.text]);
+  return (
+    <div style={{ minWidth: 120, maxWidth: 240, background: "var(--mantine-color-yellow-light)",
+      border: "1px solid var(--mantine-color-yellow-filled)", borderRadius: 6, padding: 6, fontSize: 12 }}
+      onDoubleClick={() => setEditing(true)}>
+      <ActionIcon size="xs" variant="subtle" color="red" style={{ position: "absolute", top: 2, right: 2 }}
+        className="nodrag" onClick={() => data.onDelete(id)}><IconX size={11} /></ActionIcon>
+      {editing ? (
+        <textarea autoFocus value={text} className="nodrag nopan"
+          onChange={e => setText(e.target.value)}
+          onBlur={() => { setEditing(false); data.onText(id, text); }}
+          style={{ width: "100%", minHeight: 48, resize: "vertical", border: "none", background: "transparent",
+            font: "inherit", color: "inherit", outline: "none" }} />
+      ) : (
+        <div style={{ whiteSpace: "pre-wrap", cursor: "text", minHeight: 16 }}>{text || "Double-click to edit"}</div>
+      )}
+    </div>
+  );
+}
+
+// Boundary group — a labeled, resizable rectangle drawn behind resources to organize them.
+function GroupNode({ id, data, selected }: any) {
+  const c = (data.color as string) || "#7c8291";
+  return (
+    <div style={{ width: "100%", height: "100%", borderRadius: 10, border: `1.5px dashed ${c}`,
+      background: `${c}12`, boxSizing: "border-box" }}>
+      <NodeResizer isVisible={selected} minWidth={140} minHeight={90} color={c} />
+      <div className="nodrag" style={{ position: "absolute", top: -10, left: 10, display: "flex", alignItems: "center", gap: 4,
+        background: "var(--mantine-color-body)", padding: "0 6px", borderRadius: 4, fontSize: 11, fontWeight: 600, color: c }}>
+        <input value={data.label} onChange={e => data.onLabel(id, e.target.value)}
+          style={{ border: "none", background: "transparent", color: "inherit", font: "inherit", width: `${Math.max(6, (data.label?.length || 6))}ch`, outline: "none" }} />
+        <IconX size={11} style={{ cursor: "pointer" }} onClick={() => data.onDelete(id)} />
+      </div>
+    </div>
+  );
+}
+const nodeTypes = { resource: ResourceNode, live: LiveNode, note: NoteNode, group: GroupNode };
 
 // Editable edge for a directed pair (from → to). A connection can be a reference and/or a wait-for
 // independently (both are valid in Aspire); direction = who references / waits on whom. Clicking the
@@ -158,6 +198,32 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [showMinimap, setShowMinimap] = useState(() => localStorage.getItem("aspireui.minimap") !== "off");
   const toggleMinimap = () => setShowMinimap(v => { localStorage.setItem("aspireui.minimap", v ? "off" : "on"); return !v; });
   const onLogs = useCallback((name: string, display: string) => setLogTarget({ name, display }), []);
+
+  // Canvas annotations (notes + boundary groups) — persisted on the stack, never in the code.
+  const annoOps = useMemo(() => {
+    const save = (patch: Partial<Stack>) => api.saveStack({ ...stack, ...patch }).then(setStack);
+    const gid = (p: string) => p + crypto.randomUUID().slice(0, 8);
+    return {
+      addNote: () => save({ notes: [...(stack.notes ?? []), { id: gid("note:"), text: "", x: 80, y: 80 }] }),
+      addGroup: () => save({ groups: [...(stack.groups ?? []), { id: gid("group:"), label: "Group", x: 40, y: 40, width: 320, height: 220, color: "#7c8291" }] }),
+      setNoteText: (id: string, text: string) => save({ notes: (stack.notes ?? []).map(n => n.id === id ? { ...n, text } : n) }),
+      setGroupLabel: (id: string, label: string) => save({ groups: (stack.groups ?? []).map(g => g.id === id ? { ...g, label } : g) }),
+      remove: (id: string) => save({ notes: (stack.notes ?? []).filter(n => n.id !== id), groups: (stack.groups ?? []).filter(g => g.id !== id) }),
+    };
+  }, [stack, setStack]);
+
+  // rf nodes for annotations: groups first (behind, low z), then notes.
+  const annoFlow = useMemo(() => {
+    const groups = (stack.groups ?? []).map(g => ({
+      id: g.id, type: "group", position: { x: g.x, y: g.y }, zIndex: 0, style: { width: g.width, height: g.height },
+      data: { label: g.label, color: g.color, onLabel: annoOps.setGroupLabel, onDelete: annoOps.remove },
+    }));
+    const notes = (stack.notes ?? []).map(n => ({
+      id: n.id, type: "note", position: { x: n.x, y: n.y }, zIndex: 5,
+      data: { text: n.text, onText: annoOps.setNoteText, onDelete: annoOps.remove },
+    }));
+    return [...groups, ...notes];
+  }, [stack.notes, stack.groups, annoOps]);
 
   // While the stack runs, poll the Aspire resource service for live per-resource state/urls/children.
   useEffect(() => {
@@ -281,13 +347,36 @@ export function Canvas({ stack, setStack, onSelect, runState }:
 
   const onNodesChange = useCallback((changes: any[]) => {
     onNodesChangeInternal(changes); // apply live (drag, select) to the local RF state
-    changes.filter(c => c.type === "position" && c.dragging === false).forEach(c => {
+    const isAnno = (id: string) => id.startsWith("note:") || id.startsWith("group:");
+
+    // Persist geometry of annotations (position + group resize) on drag/resize end.
+    let notes = stack.notes ?? [], groups = stack.groups ?? [], annoDirty = false;
+    for (const c of changes) {
+      if (c.type === "position" && c.dragging === false && isAnno(c.id) && c.position) {
+        notes = notes.map(n => n.id === c.id ? { ...n, x: c.position.x, y: c.position.y } : n);
+        groups = groups.map(g => g.id === c.id ? { ...g, x: c.position.x, y: c.position.y } : g);
+        annoDirty = true;
+      }
+      if (c.type === "dimensions" && c.resizing === false && c.id.startsWith("group:") && c.dimensions) {
+        groups = groups.map(g => g.id === c.id ? { ...g, width: c.dimensions.width, height: c.dimensions.height } : g);
+        annoDirty = true;
+      }
+    }
+    if (annoDirty) api.saveStack({ ...stack, notes, groups }).then(setStack);
+
+    changes.filter(c => c.type === "position" && c.dragging === false && !isAnno(c.id)).forEach(c => {
       const node = stack.nodes.find(n => n.id === c.id);
       if (node && c.position) api.patchNode(stack.id, { ...node, x: c.position.x, y: c.position.y }).then(setStack);
     });
     const removed = changes.filter(c => c.type === "remove");
-    if (removed.length > 0) {
-      const next = removed.reduce((s, c) => removeNode(s, c.id), stack);
+    const removedAnno = removed.filter(c => isAnno(c.id));
+    if (removedAnno.length > 0)
+      api.saveStack({ ...stack,
+        notes: (stack.notes ?? []).filter(n => !removedAnno.some(c => c.id === n.id)),
+        groups: (stack.groups ?? []).filter(g => !removedAnno.some(c => c.id === g.id)) }).then(setStack);
+    const removedNodes = removed.filter(c => !isAnno(c.id));
+    if (removedNodes.length > 0) {
+      const next = removedNodes.reduce((s, c) => removeNode(s, c.id), stack);
       api.saveStack(next).then(setStack);
       onSelect(null);
     }
@@ -313,8 +402,9 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       const opacity = q && !`${n.data.resourceName} ${n.data.addMethod}`.toLowerCase().includes(q) ? 0.25 : 1;
       return { ...n, data, style: { ...n.style, opacity } };
     });
-    return [...base, ...liveFlow.rfLive];
-  }, [rfNodes, overlay, liveFlow, q, onLogs]);
+    // groups behind (rendered first), then resources/live, notes on top.
+    return [...annoFlow.filter(n => n.type === "group"), ...base, ...liveFlow.rfLive, ...annoFlow.filter(n => n.type === "note")];
+  }, [rfNodes, overlay, liveFlow, q, onLogs, annoFlow]);
   const allEdges = useMemo(() => [...edges, ...liveFlow.rfLiveEdges], [edges, liveFlow]);
 
   return (
@@ -324,7 +414,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
       deleteKeyCode={["Backspace", "Delete"]}
-      onNodeClick={(_, n) => { if (!n.id.startsWith("live:")) onSelect(n.id); }}
+      onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
       onPaneClick={() => setMenu(null)} onMoveStart={() => setMenu(null)} fitView>
       <Background /><Controls />
@@ -346,6 +436,20 @@ export function Canvas({ stack, setStack, onSelect, runState }:
               style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
                 background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
               {showMinimap ? <IconMapOff size={15} /> : <IconMap size={15} />}
+            </UnstyledButton>
+          </Tooltip>
+          <Tooltip label="Add a sticky note" withArrow>
+            <UnstyledButton onClick={annoOps.addNote}
+              style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
+                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
+              <IconNote size={15} />
+            </UnstyledButton>
+          </Tooltip>
+          <Tooltip label="Add a boundary group" withArrow>
+            <UnstyledButton onClick={annoOps.addGroup}
+              style={{ display: "flex", alignItems: "center", padding: 6, borderRadius: 6,
+                background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)" }}>
+              <IconBoxMargin size={15} />
             </UnstyledButton>
           </Tooltip>
         </Group>
