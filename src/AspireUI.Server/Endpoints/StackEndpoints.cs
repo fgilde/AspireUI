@@ -114,6 +114,18 @@ public static class StackEndpoints
         app2.MapDelete("/snippets/{id}", (string id) =>
             snippets.Delete(id) ? Results.NoContent() : Results.NotFound());
 
+        // AI auto-add: research a URL and draft a container preset for review. Never throws.
+        app2.MapPost("/catalog/auto-preset", async (AutoPresetRequest body) =>
+        {
+            var s = settings.Get();
+            var configured = !string.IsNullOrWhiteSpace(s.AiBaseUrl)
+                || string.Equals(s.AiKind, "cli", StringComparison.OrdinalIgnoreCase);
+            if (!configured) return Results.Ok(new { ok = false, reason = "AI backend not configured (see Settings)." });
+            if (string.IsNullOrWhiteSpace(body.Url)) return Results.Ok(new { ok = false, reason = "No URL." });
+            var (okr, reason, preset) = await assist.AutoPresetAsync(body.Url, s);
+            return Results.Ok(new { ok = okr, reason, preset });
+        });
+
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
         // Built-in demo templates + the user's own saved templates (prefixed "user:" so ids never clash).
@@ -453,6 +465,7 @@ public static class StackEndpoints
     public record CodeRequest(string Code, int Offset);
     public record CodeSaveRequest(string Name, string Code);
     public record AssistRequest(string Prompt);
+    public record AutoPresetRequest(string Url);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

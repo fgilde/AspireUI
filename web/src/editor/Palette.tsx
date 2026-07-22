@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash } from "@tabler/icons-react";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
 import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -76,8 +76,13 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const [presetPick, setPresetPick] = useState<ContainerPreset | null>(null);
   const [tab, setTab] = useState<string>("catalog");
   const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [aiConfigured, setAiConfigured] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
   const loadSnippets = () => api.getSnippets().then(setSnippets).catch(() => {});
-  useEffect(() => { api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); loadSnippets(); }, []);
+  useEffect(() => {
+    api.getCatalog().then(setCat); api.getPresets().then(setPresets).catch(() => {}); loadSnippets();
+    api.getSettings().then(s => setAiConfigured(!!s.aiBaseUrl || (s.aiKind === "cli" && !!s.aiCliTool))).catch(() => {});
+  }, []);
   // Refresh the Custom tab when a snippet is saved elsewhere (PropertyPanel "Save as snippet").
   useEffect(() => {
     const h = () => loadSnippets();
@@ -237,6 +242,10 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       </ScrollArea>
         </Tabs.Panel>
         <Tabs.Panel value="custom" pt="xs" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <Tooltip label={aiConfigured ? "Let AI build an app preset from a URL" : "Configure an AI backend in Settings first"} withArrow>
+            <Button size="xs" variant="light" mb="xs" leftSection={<IconSparkles size={14} />}
+              disabled={!aiConfigured} onClick={() => setAutoOpen(true)}>Auto-add from URL (AI)</Button>
+          </Tooltip>
           <Text size="xs" c="dimmed" mb="xs">
             Your saved snippets — drop them like any palette item. Save one from a node's Properties panel
             (bookmark icon) or a multi-selection.
@@ -276,7 +285,57 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           onCancel={() => setPresetPick(null)}
           onConfirm={choices => { dropPreset(presetPick, choices); setPresetPick(null); }} />
       )}
+      {autoOpen && (
+        <AutoAddModal onClose={() => setAutoOpen(false)}
+          onUse={p => { setAutoOpen(false); createPreset(p); }} />
+      )}
     </MStack>
+  );
+}
+
+// AI auto-add: paste a URL (repo / Docker Hub / docs), the assistant drafts a container preset, then
+// the user reviews it before it lands on the canvas (companion/param picker still applies on drop).
+function AutoAddModal({ onClose, onUse }: { onClose: () => void; onUse: (p: ContainerPreset) => void }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preset, setPreset] = useState<ContainerPreset | null>(null);
+
+  const research = () => {
+    setBusy(true); setError(null); setPreset(null);
+    api.autoPreset(url.trim())
+      .then(r => { if (r.ok && r.preset) setPreset(r.preset); else setError(r.reason || "The AI couldn't build a preset for this."); })
+      .catch(e => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <Modal opened onClose={onClose} title="Auto-add from URL (AI)" size="lg" centered>
+      <MStack gap="sm">
+        <Text size="sm" c="dimmed">Paste a GitHub repo, Docker Hub image, or docs URL. The assistant drafts a container app preset for you to review.</Text>
+        <Group gap="xs" wrap="nowrap">
+          <TextInput style={{ flex: 1 }} placeholder="https://github.com/… or hub.docker.com/…" value={url}
+            onChange={e => setUrl(e.currentTarget.value)} onKeyDown={e => { if (e.key === "Enter" && url.trim()) research(); }} />
+          <Button onClick={research} loading={busy} disabled={!url.trim()} leftSection={<IconSparkles size={14} />}>Research</Button>
+        </Group>
+        {error && <Text size="sm" c="red">{error}</Text>}
+        {preset && (
+          <MStack gap={6} p="sm" style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8 }}>
+            <Group gap={8}><Text fw={600} size="sm">{preset.label}</Text><Badge size="xs" variant="light">{preset.group}</Badge></Group>
+            {preset.description && <Text size="xs" c="dimmed">{preset.description}</Text>}
+            <Text size="xs"><b>Image:</b> {preset.image} · <b>Port:</b> {preset.port}</Text>
+            {!!preset.params?.length && <Text size="xs"><b>Params:</b> {preset.params.map(p => p.key + (p.secret ? "🔒" : "")).join(", ")}</Text>}
+            {!!preset.companions?.length && <Text size="xs"><b>Companions:</b> {preset.companions.map(c => c.role || c.key).join(", ")}</Text>}
+            {!!preset.volumes?.length && <Text size="xs"><b>Volumes:</b> {preset.volumes.map(v => v[1]).join(", ")}</Text>}
+            <Text size="10px" c="dimmed">AI-generated — review before running.</Text>
+          </MStack>
+        )}
+        <Group justify="flex-end" gap="xs" mt="xs">
+          <Button variant="subtle" onClick={onClose}>Cancel</Button>
+          <Button disabled={!preset} onClick={() => preset && onUse(preset)}>Add to canvas</Button>
+        </Group>
+      </MStack>
+    </Modal>
   );
 }
 

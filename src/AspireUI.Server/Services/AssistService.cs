@@ -37,6 +37,60 @@ public class AssistService(IChatClient chat, CatalogService catalog)
         }
     }
 
+    // Research a URL (github/dockerhub/docs) and, if the thing is runnable as a container app, draft a
+    // preset (image/port/env/params/companions/volumes) for review. The model uses the URL + its own
+    // knowledge (it does not fetch the page). Returns (ok, reason, preset).
+    public async Task<(bool Ok, string? Reason, ContainerPreset? Preset)> AutoPresetAsync(string url, AppSettings settings)
+    {
+        var system = """
+            You turn a project URL (GitHub repo, Docker Hub image, or docs page) into an AspireUI
+            container "preset" so it can be dropped onto a canvas. Decide from the URL and your own
+            knowledge whether the project can run as a Docker container.
+
+            Respond with ONLY a JSON object, no markdown fences, no prose. Either:
+              {"ok": false, "reason": "<short why not>"}
+            or a preset object with these fields (omit ones that don't apply):
+              {
+                "id": "<kebab-id>", "label": "<name>", "group": "Custom",
+                "image": "<docker image:tag>", "port": <main http port int>,
+                "description": "<one line>",
+                "env": [["KEY","value"], ...],
+                "params": [{"key":"password","env":"ENV_NAME","default":"...","secret":true}, ...],
+                "companions": [{"key":"db","addMethod":"AddContainer","resourceName":"<app>-db","image":"postgres:16","port":5432,"role":"postgres"}, ...],
+                "volumes": [["data","/container/path"], ...]
+              }
+            Rules: only a real, existing image. Put passwords/keys/secrets in "params" (secret:true),
+            plain settings in "env". Use companions with a "role" (postgres/redis/mongo/meilisearch/llm)
+            for required backends. Prefer an official image. If unsure it can containerize, return ok:false.
+            """;
+        var raw = await chat.CompleteAsync(system, $"URL: {url}", settings);
+        var json = ExtractJsonObject(raw);
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("ok", out var okp) && okp.ValueKind == JsonValueKind.False)
+                return (false, doc.RootElement.TryGetProperty("reason", out var rp) ? rp.GetString() : "Not feasible.", null);
+            var preset = JsonSerializer.Deserialize<ContainerPreset>(json, JsonOpts);
+            if (preset is null || string.IsNullOrWhiteSpace(preset.Image))
+                return (false, "The AI didn't return a usable container image.", null);
+            preset = preset with
+            {
+                Id = string.IsNullOrWhiteSpace(preset.Id) ? "ai-" + Guid.NewGuid().ToString("n")[..6] : preset.Id,
+                Label = string.IsNullOrWhiteSpace(preset.Label) ? preset.Id : preset.Label,
+                Group = string.IsNullOrWhiteSpace(preset.Group) ? "Custom" : preset.Group,
+                Port = preset.Port <= 0 ? 80 : preset.Port,
+            };
+            return (true, null, preset);
+        }
+        catch (Exception ex) { return (false, $"Could not parse the AI reply: {ex.Message}", null); }
+    }
+
+    private static string ExtractJsonObject(string s)
+    {
+        int i = s.IndexOf('{'), j = s.LastIndexOf('}');
+        return i >= 0 && j > i ? s[i..(j + 1)] : s;
+    }
+
     // Read-only: explain the current stack for someone learning Aspire. Returns Markdown prose
     // (no stack changes, no JSON contract).
     public async Task<string> ExplainAsync(StackModel stack, AppSettings settings)

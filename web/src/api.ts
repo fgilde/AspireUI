@@ -128,6 +128,8 @@ export const saveSnippet = (s: import("./model").Snippet): Promise<{ id: string 
   fetch(`${base}/snippets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
 export const deleteSnippet = (id: string): Promise<void> =>
   fetch(`${base}/snippets/${id}`, { method: "DELETE" }).then(() => undefined);
+export const autoPreset = (url: string): Promise<{ ok: boolean; reason?: string; preset?: import("./model").ContainerPreset }> =>
+  fetch(`${base}/catalog/auto-preset`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) }).then(ok);
 
 export const assistStack = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
   fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
