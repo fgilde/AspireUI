@@ -140,7 +140,7 @@ export function buildPresetNodes(
     if (choice?.mode === "value") return { param, mode: "value", value: choice.value };
     if (choice?.mode === "reuse") {
       const node = existing.find(n => n.id === choice.nodeId);
-      if (node) return { param, mode: "reuse", varName: node.varName };
+      if (node) return { param, mode: "reuse", varName: node.varName, targetId: node.id };
     }
     const pname = uniq(param.name || `${preset.id}-${param.key}`);
     return { param, mode: "new", varName: sanitizeIdentifier(pname), targetId: nid(), name: pname };
@@ -179,6 +179,10 @@ export function buildPresetNodes(
       withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
     });
   });
+  // Visual-only "env" edge from the app to each parameter it references (new or reused). Codegen skips
+  // this kind — the reference is already wired via WithEnvironment above; the edge is just for the graph.
+  for (const p of paramPlans)
+    if (p.targetId) edges.push({ id: eid(), fromNodeId: mainId, toNodeId: p.targetId, kind: "env" });
   plans.forEach((p, i) => {
     if (p.create) {
       const isAdd = p.choice.mode === "add";

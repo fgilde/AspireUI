@@ -81,6 +81,9 @@ public class CodeGenService
                 sb.AppendLine($"{n.VarName}.{w.Method}({string.Join(", ", w.Args)});");
         foreach (var e in s.Edges)
         {
+            // "env" edges are visual-only (the reference is already wired via WithEnvironment on the
+            // node) — don't emit code for them, or the parameter would be double-referenced.
+            if (e.Kind == "env") continue;
             var method = e.Kind == "waitFor" ? "WaitFor" : "WithReference";
             sb.AppendLine($"{Var(s, e.FromNodeId)}.{method}({Var(s, e.ToNodeId)});");
         }

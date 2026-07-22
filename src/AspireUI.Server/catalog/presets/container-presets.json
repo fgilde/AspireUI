@@ -562,7 +562,7 @@
     "image": "lscr.io/linuxserver/qbittorrent:latest",
     "port": 8080,
     "icon": "qbittorrent",
-    "description": "qBittorrent — torrent client with a web UI. First run: user 'admin' + a temporary password printed in the container log (search 'temporary password'); set your own in the UI. Ships a qBittorrent.conf that disables host-header/CSRF validation so the WebUI isn't 'Unauthorized' behind Aspire.",
+    "description": "qBittorrent — torrent client with a web UI. Login admin / adminadmin (change it in the UI). Ships a qBittorrent.conf with seeded credentials + host-header/CSRF validation disabled so the WebUI isn't 'Unauthorized' behind Aspire. (qBittorrent reads creds from its config file, not env, so they can't be Aspire parameters.)",
     "fixedPort": true,
     "env": [
       [
@@ -585,7 +585,7 @@
     "files": [
       {
         "name": "qbittorrent/qBittorrent.conf",
-        "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nWebUI\\HostHeaderValidation=false\nWebUI\\CSRFProtection=false\n"
+        "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nWebUI\\HostHeaderValidation=false\nWebUI\\CSRFProtection=false\nWebUI\\Username=admin\nWebUI\\Password_PBKDF2=\"@ByteArray(ASNFZ4mrze8BI0VniavN7w==:2eudnLCDJryVCeZQf9qr7NAUBmebSO3e9/32HTM945ugU8DM74Jj2MyIr1YSq0sOMwASMCn0emH3SB5ZbeKR4Q==)\"\n"
       }
     ]
   },

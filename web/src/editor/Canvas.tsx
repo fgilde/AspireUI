@@ -181,12 +181,14 @@ export function SmartDeleteModal({ node, deps, onConfirm, onCancel }:
 // chip opens a menu to toggle each kind, reverse the direction, or remove the whole connection.
 function EditableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }: any) {
   const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
-  const { hasRef, hasWait, from, to, ops } = data;
-  const label = hasRef && hasWait ? "ref + waits" : hasWait ? "waits for" : "references";
-  const dashed = hasWait && !hasRef;
+  const { hasRef, hasWait, hasEnv, from, to, ops } = data;
+  // env-only pair = an app→parameter reference (WithEnvironment); render it distinctly, no ref/wait toggles.
+  const envOnly = hasEnv && !hasRef && !hasWait;
+  const label = envOnly ? "param" : hasRef && hasWait ? "ref + waits" : hasWait ? "waits for" : "references";
+  const dashed = envOnly || (hasWait && !hasRef);
   return (
     <>
-      <BaseEdge id={id} path={path} style={dashed ? { strokeDasharray: "6 3" } : undefined} />
+      <BaseEdge id={id} path={path} style={{ ...(dashed ? { strokeDasharray: "6 3" } : {}), ...(envOnly ? { stroke: "var(--mantine-color-grape-5)" } : {}) }} />
       <EdgeLabelRenderer>
         <div style={{
           position: "absolute", transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`,
@@ -197,17 +199,21 @@ function EditableEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, 
               <span style={{
                 cursor: "pointer", padding: "1px 6px", borderRadius: 6,
                 background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)",
-                color: hasWait ? "var(--mantine-color-orange-text)" : "var(--mantine-color-indigo-text)",
+                color: envOnly ? "var(--mantine-color-grape-text)" : hasWait ? "var(--mantine-color-orange-text)" : "var(--mantine-color-indigo-text)",
               }}>{label} ▾</span>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Label>Connection: {from === to ? "self" : "→"}</Menu.Label>
-              <Menu.Item leftSection={hasRef ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
-                onClick={() => ops.setPair(from, to, !hasRef, hasWait)}>References</Menu.Item>
-              <Menu.Item leftSection={hasWait ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
-                onClick={() => ops.setPair(from, to, hasRef, !hasWait)}>Waits for</Menu.Item>
-              <Menu.Divider />
-              <Menu.Item leftSection={<IconArrowsLeftRight size={14} />} onClick={() => ops.reverse(from, to)}>Reverse direction</Menu.Item>
+              {envOnly
+                ? <Menu.Label>Env reference to a parameter (WithEnvironment)</Menu.Label>
+                : <>
+                    <Menu.Item leftSection={hasRef ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
+                      onClick={() => ops.setPair(from, to, !hasRef, hasWait)}>References</Menu.Item>
+                    <Menu.Item leftSection={hasWait ? <IconCheck size={14} /> : <span style={{ width: 14 }} />}
+                      onClick={() => ops.setPair(from, to, hasRef, !hasWait)}>Waits for</Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item leftSection={<IconArrowsLeftRight size={14} />} onClick={() => ops.reverse(from, to)}>Reverse direction</Menu.Item>
+                  </>}
               <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => ops.remove(from, to)}>Remove connection</Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -419,16 +425,16 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
 
   // One visual edge per directed pair, combining the reference/waitFor edges that connect them.
   const edges = useMemo(() => {
-    const pairs = new Map<string, { from: string; to: string; hasRef: boolean; hasWait: boolean }>();
+    const pairs = new Map<string, { from: string; to: string; hasRef: boolean; hasWait: boolean; hasEnv: boolean }>();
     for (const e of stack.edges) {
       const key = `${e.fromNodeId}->${e.toNodeId}`;
-      const g = pairs.get(key) ?? { from: e.fromNodeId, to: e.toNodeId, hasRef: false, hasWait: false };
-      if (e.kind === "waitFor") g.hasWait = true; else g.hasRef = true;
+      const g = pairs.get(key) ?? { from: e.fromNodeId, to: e.toNodeId, hasRef: false, hasWait: false, hasEnv: false };
+      if (e.kind === "waitFor") g.hasWait = true; else if (e.kind === "env") g.hasEnv = true; else g.hasRef = true;
       pairs.set(key, g);
     }
     return [...pairs.values()].map(g => ({
       id: `${g.from}->${g.to}`, source: g.from, target: g.to, type: "editable",
-      data: { hasRef: g.hasRef, hasWait: g.hasWait, from: g.from, to: g.to, ops },
+      data: { hasRef: g.hasRef, hasWait: g.hasWait, hasEnv: g.hasEnv, from: g.from, to: g.to, ops },
     }));
   }, [stack.edges, ops]);
 
