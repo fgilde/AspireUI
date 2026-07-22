@@ -507,7 +507,17 @@
     "image": "photoprism/photoprism:latest",
     "port": 2342,
     "icon": "photoprism",
-    "description": "PhotoPrism — AI-powered photo gallery/backup.",
+    "description": "PhotoPrism — AI-powered photo gallery/backup. Login admin / please-change-me (change it).",
+    "env": [
+      [
+        "PHOTOPRISM_ADMIN_USER",
+        "admin"
+      ],
+      [
+        "PHOTOPRISM_ADMIN_PASSWORD",
+        "please-change-me"
+      ]
+    ],
     "volumes": [
       [
         "storage",
@@ -549,7 +559,19 @@
     "image": "lscr.io/linuxserver/qbittorrent:latest",
     "port": 8080,
     "icon": "qbittorrent",
-    "description": "qBittorrent — torrent client with a web UI."
+    "description": "qBittorrent — torrent client with a web UI. First run: user 'admin' + a temporary password printed in the container log (search 'temporary password'); set your own in the UI. Config volume keeps it after that.",
+    "env": [
+      [
+        "WEBUI_PORT",
+        "8080"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ]
   },
   {
     "id": "pihole",
@@ -558,7 +580,13 @@
     "image": "pihole/pihole:latest",
     "port": 80,
     "icon": "pihole",
-    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Also binds DNS on :53 (host port conflicts possible).",
+    "description": "Pi-hole — network-wide ad/tracker blocking DNS. Admin login password 'please-change-me' (change it). Also binds DNS on :53 (host port conflicts possible).",
+    "env": [
+      [
+        "FTLCONF_webserver_api_password",
+        "please-change-me"
+      ]
+    ],
     "hostNetwork": true
   },
   {
@@ -578,7 +606,17 @@
     "image": "jc21/nginx-proxy-manager:latest",
     "port": 81,
     "icon": "npm",
-    "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443)."
+    "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443). Default login admin@example.com / changeme. Needs /data + /etc/letsencrypt volumes or it refuses to start.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ],
+      [
+        "letsencrypt",
+        "/etc/letsencrypt"
+      ]
+    ]
   },
   {
     "id": "homeassistant",
