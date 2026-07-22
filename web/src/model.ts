@@ -206,21 +206,24 @@ export function buildPresetNodes(
 // A reusable palette snippet: a captured sub-graph (nodes + internal edges + files) the user saved.
 export interface Snippet { id: string; name: string; group?: string | null; icon?: string | null; nodes: Node[]; edges: Edge[]; files: ExtraFile[] }
 
-// Expand a set of root node ids into a self-contained sub-graph: pull in nodes they spawned
-// (companions/params) and any parameter they reference via WithEnvironment, plus the edges among them.
+// Expand a set of root node ids into a self-contained sub-graph: pull in everything they're connected
+// to — nodes they spawned (companions/params), parameters referenced via WithEnvironment, and the
+// transitive closure over reference/waitFor/env edges (both directions) — plus the edges among them.
 export function collectSubgraph(stack: Stack, rootIds: string[]): { nodes: Node[]; edges: Edge[] } {
   const set = new Set(rootIds);
-  for (const n of stack.nodes) if (n.spawnedBy && set.has(n.spawnedBy)) set.add(n.id);
   const byVar = new Map(stack.nodes.filter(n => n.varName).map(n => [n.varName, n.id]));
   for (let changed = true; changed; ) {
     changed = false;
+    const add = (id?: string | null) => { if (id && !set.has(id) && stack.nodes.some(n => n.id === id)) { set.add(id); changed = true; } };
+    // spawned children of anything in the set
+    for (const n of stack.nodes) if (n.spawnedBy && set.has(n.spawnedBy)) add(n.id);
+    // edge neighbours (either direction)
+    for (const e of stack.edges) { if (set.has(e.fromNodeId)) add(e.toNodeId); if (set.has(e.toNodeId)) add(e.fromNodeId); }
+    // params referenced via WithEnvironment(key, <paramVar>)
     for (const n of stack.nodes)
       if (set.has(n.id))
         for (const w of n.withCalls)
-          if (w.method === "WithEnvironment" && w.args[1] && !w.args[1].startsWith('"')) {
-            const t = byVar.get(w.args[1]);
-            if (t && !set.has(t)) { set.add(t); changed = true; }
-          }
+          if (w.method === "WithEnvironment" && w.args[1] && !w.args[1].startsWith('"')) add(byVar.get(w.args[1]));
   }
   return {
     nodes: stack.nodes.filter(n => set.has(n.id)),

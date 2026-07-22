@@ -2,12 +2,12 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, Base
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon, Modal, Checkbox, Stack as MStack, Button } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX } from "@tabler/icons-react";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX, IconBookmark } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, nodesInGroup, type OrphanDep, type Node, type StackGroup } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, orphanableDeps, nodesInGroup, collectSubgraph, type OrphanDep, type Node, type StackGroup } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
-import { confirmDelete, toastOk, toastErr } from "../ui";
+import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import { ResourceLogDrawer } from "./ResourceLogDrawer";
 import * as api from "../api";
 
@@ -333,6 +333,17 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     if (members.length > 0) setGroupDel({ id, count: members.length });
     else annoOps.remove(id);
   }, [stack, annoOps]);
+
+  // Save a node (or a group's members) + everything it's connected to as a reusable palette snippet.
+  const saveAsSnippet = useCallback((rootIds: string[], defaultName: string, icon?: string | null) => {
+    promptText("Save as snippet", "Snippet name", defaultName).then(name => {
+      if (!name) return;
+      const { nodes, edges } = collectSubgraph(stack, rootIds);
+      api.saveSnippet({ id: "", name, group: "Custom", icon: icon ?? null, nodes, edges, files: stack.extraFiles ?? [] })
+        .then(() => { toastOk(`Saved snippet "${name}"`); window.dispatchEvent(new Event("aspireui:snippets-changed")); })
+        .catch(toastErr);
+    });
+  }, [stack]);
 
   // Duplicate a group + its members, offset — a quick way to clone a whole cluster.
   const duplicateGroup = useCallback((id: string) => {
@@ -704,11 +715,13 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
           {(menu.nodeId.startsWith("group:")
             ? [
                 { icon: IconCopy, label: "Duplicate group", run: () => duplicateGroup(menu.nodeId), color: undefined },
+                { icon: IconBookmark, label: "Save group as snippet", run: () => { const g = (stack.groups ?? []).find(x => x.id === menu.nodeId); saveAsSnippet(nodesInGroup(stack, g!), g?.label || "group"); }, color: undefined },
                 { icon: IconTrash, label: "Delete group", run: () => onGroupDelete(menu.nodeId), color: "var(--mantine-color-red-text)" },
               ]
             : [
                 { icon: IconPencil, label: "Edit properties", run: () => { onSelect(menu.nodeId); onShowProperties?.(); }, color: undefined },
                 { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
+                { icon: IconBookmark, label: "Save as snippet", run: () => { const n = stack.nodes.find(x => x.id === menu.nodeId); saveAsSnippet([menu.nodeId], n?.resourceName || "snippet", n?.icon ?? n?.addMethod); }, color: undefined },
                 { icon: IconTrash, label: "Delete", run: () => deleteNodeById(menu.nodeId), color: "var(--mantine-color-red-text)" },
               ]).map(item => (
             <UnstyledButton key={item.label} onClick={() => { item.run(); setMenu(null); }}
