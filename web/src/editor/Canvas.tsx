@@ -236,6 +236,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
   const [live, setLive] = useState<LiveResource[]>([]);
   const [logTarget, setLogTarget] = useState<{ name: string; display: string } | null>(null);
   const [del, setDel] = useState<{ node: Node; deps: OrphanDep[] } | null>(null);
+  const [selIds, setSelIds] = useState<string[]>([]);
   const rf = useRef<any>(null);                          // ReactFlow instance (for centering)
   const prevIds = useRef<Set<string> | null>(null);      // node ids last render, to detect additions
   const [glow, setGlow] = useState<Set<string>>(new Set());
@@ -367,6 +368,19 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onSelect(null); toastOk("Resource deleted"); }).catch(toastErr);
     });
   }, [stack, setStack, onSelect]);
+
+  // Delete a batch of resource nodes (rubberband / ctrl multi-select) with one confirm + one save.
+  const deleteManyByIds = useCallback((ids: string[]) => {
+    const real = ids.filter(id => stack.nodes.some(n => n.id === id));
+    if (real.length === 0) return;
+    if (real.length === 1) { deleteNodeById(real[0]); return; }
+    confirmDelete(`${real.length} resources`, "This also removes their connections and any code that references them.")
+      .then(ok => {
+        if (!ok) return;
+        const next = real.reduce((s, id) => removeNode(s, id), stack);
+        api.saveStack(next).then(s => { setStack(s); onSelect(null); toastOk(`Deleted ${real.length}`); }).catch(toastErr);
+      });
+  }, [stack, setStack, onSelect, deleteNodeById]);
 
   // Apply a smart delete: remove the node + any dep ids the user kept checked.
   const applyDelete = useCallback((nodeId: string, alsoRemove: string[]) => {
@@ -545,6 +559,9 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       colorMode={colorScheme === "light" ? "light" : "dark"}
       snapToGrid snapGrid={[16, 16]}
       onNodesChange={onNodesChange} onConnect={onConnect} onEdgesChange={onEdgesChange}
+      onSelectionChange={({ nodes }) => setSelIds(nodes
+        .map(n => n.id)
+        .filter(id => !id.startsWith("live:") && !id.startsWith("note:") && !id.startsWith("group:")))}
       deleteKeyCode={["Backspace", "Delete"]}
       onNodeClick={(_, n) => { if (!n.id.startsWith("live:") && !n.id.startsWith("note:") && !n.id.startsWith("group:")) onSelect(n.id); }}
       onNodeContextMenu={(e, n) => { if (n.id.startsWith("live:")) return; e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, nodeId: n.id }); }}
@@ -587,6 +604,14 @@ export function Canvas({ stack, setStack, onSelect, runState }:
           </Tooltip>
         </Group>
       </Panel>
+      {selIds.length > 1 && (
+        <Panel position="top-center">
+          <Button size="xs" color="red" leftSection={<IconTrash size={14} />}
+            onClick={() => deleteManyByIds(selIds)}>
+            Delete {selIds.length} selected
+          </Button>
+        </Panel>
+      )}
       {menu && (
         <Paper ref={menuRef} shadow="md" withBorder p={4} radius="sm"
           style={{ position: "fixed", left: menu.x, top: menu.y, zIndex: 1000, minWidth: 160 }}>
