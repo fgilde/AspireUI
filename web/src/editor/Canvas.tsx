@@ -437,12 +437,23 @@ export function Canvas({ stack, setStack, onSelect, runState }:
     // A single resource-node delete that would orphan deps → route to the smart-delete dialog instead
     // of removing it here. Suppress that change so the node doesn't visually vanish before deciding.
     const removeChanges = changes.filter(c => c.type === "remove" && !isAnno(c.id));
-    let suppress: any = null;
+    let suppress: any[] = [];
     if (removeChanges.length === 1 && orphanableDeps(stack, removeChanges[0].id).length > 0) {
-      suppress = removeChanges[0];
+      suppress = [removeChanges[0]];
       deleteNodeById(removeChanges[0].id);
+    } else if (removeChanges.length > 1) {
+      // Multi-select delete: suppress the raw removes (so nodes don't vanish before confirming) and
+      // route through one confirm + one batched saveStack.
+      suppress = removeChanges;
+      const ids = removeChanges.map(c => c.id);
+      confirmDelete(`${ids.length} resources`, "This also removes their connections and any code that references them.")
+        .then(ok => {
+          if (!ok) return;
+          const next = ids.reduce((s, id) => removeNode(s, id), stack);
+          api.saveStack(next).then(s => { setStack(s); onSelect(null); toastOk(`Deleted ${ids.length}`); }).catch(toastErr);
+        });
     }
-    onNodesChangeInternal(suppress ? changes.filter(c => c !== suppress) : changes);
+    onNodesChangeInternal(suppress.length ? changes.filter(c => !suppress.includes(c)) : changes);
 
     // Group drag: move the resource nodes inside it live (rf state), persist on drop (group + members).
     for (const c of changes) {
@@ -491,7 +502,7 @@ export function Canvas({ stack, setStack, onSelect, runState }:
       api.saveStack({ ...stack,
         notes: (stack.notes ?? []).filter(n => !removedAnno.some(c => c.id === n.id)),
         groups: (stack.groups ?? []).filter(g => !removedAnno.some(c => c.id === g.id)) }).then(setStack);
-    const removedNodes = removed.filter(c => !isAnno(c.id) && c !== suppress);
+    const removedNodes = removed.filter(c => !isAnno(c.id) && !suppress.includes(c));
     if (removedNodes.length > 0) {
       const next = removedNodes.reduce((s, c) => removeNode(s, c.id), stack);
       api.saveStack(next).then(setStack);
