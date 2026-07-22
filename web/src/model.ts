@@ -23,29 +23,96 @@ export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
 // A curated one-click app preset → a preconfigured AddContainer node (image + HTTP endpoint + env).
-export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null }
+export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null }
 export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; gpu?: boolean; hostNetwork?: boolean }
 
-// Build the node(s) + edges a preset drops onto the canvas. Companions get deduped names; an env
-// value's `${key}` token expands to that companion's resource NAME (its on-network hostname) as a
-// quoted string — NOT the builder var, since WithEnvironment/WithReference don't accept a plain
-// container builder (that was a compile error). The main container only waits-for each companion
-// (WithReference is invalid on a plain container). Env entries referencing an excluded companion are
-// dropped. Pass includeCompanions=false to drop just the app.
-export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<string>, includeCompanions = true): { nodes: Node[]; edges: Edge[] } {
-  const taken = new Set(existingNames);
+// What existing resources satisfy a companion role (reuse), and which Aspire resources can stand in
+// as alternatives to the default container. Drives the "reuse / new container / Aspire alternative"
+// choice on drop, so a stack doesn't end up with duplicate Postgres/LLM/etc.
+export const ROLE_MATCHERS: Record<string, { addMethods: string[]; images: string[] }> = {
+  postgres: { addMethods: ["AddPostgres"], images: ["postgres", "pgvecto", "vectorchord"] },
+  redis: { addMethods: ["AddRedis", "AddValkey", "AddGarnet"], images: ["redis", "valkey"] },
+  mongo: { addMethods: ["AddMongoDB"], images: ["mongo"] },
+  meilisearch: { addMethods: ["AddMeilisearch"], images: ["meilisearch"] },
+  llm: { addMethods: ["AddLocalAI", "AddOllama"], images: ["localai", "ollama"] },
+};
+export const ROLE_ALTERNATIVES: Record<string, { addMethod: string; label: string }[]> = {
+  postgres: [{ addMethod: "AddPostgres", label: "Aspire Postgres" }],
+  redis: [{ addMethod: "AddRedis", label: "Aspire Redis" }, { addMethod: "AddValkey", label: "Aspire Valkey" }],
+  mongo: [{ addMethod: "AddMongoDB", label: "Aspire MongoDB" }],
+  meilisearch: [{ addMethod: "AddMeilisearch", label: "Aspire Meilisearch" }],
+  llm: [{ addMethod: "AddLocalAI", label: "LocalAI (Nextended)" }, { addMethod: "AddOllama", label: "Ollama" }],
+};
+// Existing nodes that satisfy a companion role — candidates to reuse instead of dropping a new one.
+export function reuseCandidates(nodes: Node[], role?: string | null): Node[] {
+  if (!role || !ROLE_MATCHERS[role]) return [];
+  const m = ROLE_MATCHERS[role];
+  return nodes.filter(n =>
+    m.addMethods.includes(n.addMethod) ||
+    (n.addMethod === "AddContainer" && n.addArgs.some(a => m.images.some(img => a.toLowerCase().includes(img)))));
+}
+// Per-companion choice on drop: reuse an existing node, drop the default container, or add an Aspire
+// resource as the backend.
+export type CompanionChoice =
+  | { mode: "reuse"; nodeId: string }
+  | { mode: "new" }
+  | { mode: "add"; addMethod: string };
+
+// Companion icon from an image so DB/cache containers show a real brand icon too.
+function iconForImage(img?: string | null): string | undefined {
+  const i = (img ?? "").toLowerCase();
+  if (/postgres|pgvecto|vectorchord/.test(i)) return "AddPostgres";
+  if (/redis/.test(i)) return "AddRedis";
+  if (/mongo/.test(i)) return "AddMongoDB";
+  if (/meilisearch/.test(i)) return "AddMeilisearch";
+  if (/localai/.test(i)) return "AddLocalAI";
+  if (/ollama/.test(i)) return "AddOllama";
+  return undefined;
+}
+
+// Build the node(s) + edges a preset drops onto the canvas.
+// - `existing` = nodes already on the stack (for reuse + name dedup).
+// - `choices` = per-companion-key decision (reuse existing / new container / add an Aspire resource).
+//   Omitted → default per companion: reuse the first matching existing resource, else a new container.
+//   Pass "none" to drop just the app (no companions).
+// An env value's `${key}` token expands to the chosen backend's resource NAME (its on-network
+// hostname) as a quoted string. Companions/backends are wired with a waitFor edge from the app.
+export function buildPresetNodes(
+  preset: ContainerPreset,
+  existing: Node[] = [],
+  choices?: Record<string, CompanionChoice> | "none",
+): { nodes: Node[]; edges: Edge[] } {
+  const taken = new Set(existing.map(n => n.resourceName));
   const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
   const nid = () => "n" + crypto.randomUUID().slice(0, 8);
   const eid = () => "e" + crypto.randomUUID().slice(0, 8);
 
-  const companions = includeCompanions ? (preset.companions ?? []) : [];
+  const companions = choices === "none" ? [] : (preset.companions ?? []);
   const mainName = uniq(preset.id);
-  const keyName: Record<string, string> = { __main: mainName };          // key -> resource name (hostname)
-  for (const c of companions) keyName[c.key] = uniq(c.resourceName || c.key);
-  const knownKeys = new Set(Object.keys(keyName));
+  const mainId = nid();
 
+  const defaultChoice = (c: PresetCompanion): CompanionChoice => {
+    const cand = reuseCandidates(existing, c.role)[0];
+    return cand ? { mode: "reuse", nodeId: cand.id } : { mode: "new" };
+  };
+
+  // Pass 1: resolve each companion to its backend resource name + decide whether a node is needed.
+  interface Plan { c: PresetCompanion; choice: CompanionChoice; name: string; targetId: string; create: boolean; }
+  const keyName: Record<string, string> = { __main: mainName };
+  const plans: Plan[] = companions.map(c => {
+    const choice = (choices && choices !== "none" && choices[c.key]) || defaultChoice(c);
+    if (choice.mode === "reuse") {
+      const node = existing.find(n => n.id === choice.nodeId);
+      if (node) { keyName[c.key] = node.resourceName; return { c, choice, name: node.resourceName, targetId: node.id, create: false }; }
+    }
+    const rn = uniq(c.resourceName || c.key);
+    keyName[c.key] = rn;
+    return { c, choice, name: rn, targetId: nid(), create: true };
+  });
+
+  // knownKeys ready → env token expansion is safe.
+  const knownKeys = new Set(Object.keys(keyName));
   const expandEnv = (env?: string[][] | null) => (env ?? []).flatMap(([k, v]) => {
-    // Drop entries that reference a companion we didn't include.
     const refs = [...v.matchAll(/\$\{([^}]+)\}/g)].map(m => m[1]);
     if (refs.some(r => !knownKeys.has(r))) return [];
     let val = v;
@@ -53,38 +120,31 @@ export function buildPresetNodes(preset: ContainerPreset, existingNames: Set<str
     return [{ method: "WithEnvironment", args: [JSON.stringify(k), JSON.stringify(val)] }];
   });
 
-  // Named data volumes (safe, no host-path assumptions): WithVolume("<app>-<name>", "/path").
+  // Pass 2: build nodes.
   const volumeCalls = (preset.volumes ?? []).map(([name, target]) =>
     ({ method: "WithVolume", args: [JSON.stringify(`${mainName}-${name}`), JSON.stringify(target)] }));
-  // Companion icon from its image so DB/cache containers show a real brand icon too.
-  const iconForImage = (img?: string | null) => {
-    const i = (img ?? "").toLowerCase();
-    if (/postgres|pgvecto|vectorchord/.test(i)) return "AddPostgres";
-    if (/redis/.test(i)) return "AddRedis";
-    if (/mongo/.test(i)) return "AddMongoDB";
-    if (/meilisearch/.test(i)) return "AddMeilisearch";
-    return undefined;
-  };
-  // GPU presets: pass the NVIDIA GPU into the container (needs the NVIDIA Container Toolkit on the host).
   const gpuCalls = preset.gpu ? [{ method: "WithContainerRuntimeArgs", args: ['"--gpus"', '"all"'] }] : [];
   const main: Node = {
-    id: nid(), varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
+    id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
     withCalls: [{ method: "WithHttpEndpoint", args: [`targetPort: ${preset.port}`] }, ...gpuCalls, ...volumeCalls, ...expandEnv(preset.env)],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];
   const edges: Edge[] = [];
-  companions.forEach((c, i) => {
-    const rn = keyName[c.key];
-    const cn: Node = {
-      id: nid(), varName: sanitizeIdentifier(rn), resourceName: rn, addMethod: c.addMethod,
-      addArgs: c.image ? [JSON.stringify(c.image)] : [],
-      withCalls: [...(c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${c.port}`] }] : []), ...expandEnv(c.env)],
-      x: 380, y: 40 + i * 130, spawnedBy: main.id, icon: iconForImage(c.image),
-    };
-    nodes.push(cn);
-    edges.push({ id: eid(), fromNodeId: main.id, toNodeId: cn.id, kind: "waitFor" }); // only waitFor is valid for a plain container
+  plans.forEach((p, i) => {
+    if (p.create) {
+      const isAdd = p.choice.mode === "add";
+      nodes.push({
+        id: p.targetId, varName: sanitizeIdentifier(p.name), resourceName: p.name,
+        addMethod: isAdd ? (p.choice as { addMethod: string }).addMethod : p.c.addMethod,
+        addArgs: isAdd ? [] : (p.c.image ? [JSON.stringify(p.c.image)] : []),
+        withCalls: isAdd ? [] : [...(p.c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${p.c.port}`] }] : []), ...expandEnv(p.c.env)],
+        x: 380, y: 40 + i * 130, spawnedBy: mainId, icon: isAdd ? undefined : iconForImage(p.c.image),
+      });
+    }
+    // waitFor from the app to each backend (new, added, or reused existing).
+    edges.push({ id: eid(), fromNodeId: mainId, toNodeId: p.targetId, kind: "waitFor" });
   });
   return { nodes, edges };
 }

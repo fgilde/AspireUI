@@ -8,11 +8,24 @@
     "icon": "localagi",
     "description": "LocalAGI — self-hostable AI agent platform (mudler). Comes with a LocalAI companion; set LOCALAGI_MODEL to a model your LocalAI has pulled (scaffold — provide/pull the model).",
     "env": [
-      ["LOCALAGI_MODEL", "gpt-4"],
-      ["LOCALAGI_LLM_API_URL", "http://${llm}:8080"]
+      [
+        "LOCALAGI_MODEL",
+        "gpt-4"
+      ],
+      [
+        "LOCALAGI_LLM_API_URL",
+        "http://${llm}:8080"
+      ]
     ],
     "companions": [
-      { "key": "llm", "addMethod": "AddContainer", "resourceName": "localagi-localai", "image": "localai/localai:latest", "port": 8080 }
+      {
+        "key": "llm",
+        "addMethod": "AddContainer",
+        "resourceName": "localagi-localai",
+        "image": "localai/localai:latest",
+        "port": 8080,
+        "role": "llm"
+      }
     ]
   },
   {
@@ -171,14 +184,16 @@
             "POSTGRES_PASSWORD",
             "paperless"
           ]
-        ]
+        ],
+        "role": "postgres"
       },
       {
         "key": "redis",
         "addMethod": "AddContainer",
         "resourceName": "paperless-redis",
         "image": "redis:7",
-        "port": 6379
+        "port": 6379,
+        "role": "redis"
       }
     ],
     "volumes": [
@@ -376,14 +391,16 @@
             "POSTGRES_PASSWORD",
             "immich"
           ]
-        ]
+        ],
+        "role": "postgres"
       },
       {
         "key": "redis",
         "addMethod": "AddContainer",
         "resourceName": "immich-redis",
         "image": "redis:7",
-        "port": 6379
+        "port": 6379,
+        "role": "redis"
       },
       {
         "key": "ml",
@@ -648,7 +665,8 @@
         "addMethod": "AddContainer",
         "resourceName": "librechat-mongo",
         "image": "mongo:7",
-        "port": 27017
+        "port": 27017,
+        "role": "mongo"
       },
       {
         "key": "meili",
@@ -665,7 +683,8 @@
             "MEILI_MASTER_KEY",
             "aspireui-dev-master-key"
           ]
-        ]
+        ],
+        "role": "meilisearch"
       }
     ]
   },

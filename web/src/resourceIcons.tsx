@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconBrain, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
@@ -12,6 +12,8 @@ import {
 
 import aspireuiLogo from "./assets/logo.svg";
 import localagiLogo from "./assets/localagi.png";
+import localaiLogo from "./assets/localai.png";
+import localrecallLogo from "./assets/localrecall.png";
 
 type Brand = { path: string };
 interface Visual { si?: Brand; tabler?: Icon; img?: string; color: string }
@@ -27,7 +29,7 @@ const MAP: Record<string, Visual> = {
   AddDockerfile:       { si: siDocker, color: "#2496ED" },
   AddGithubRepository: { si: siGithub, color: TEXT },
   AddOllama:           { si: siOllama, color: TEXT },
-  AddLocalAI:          { tabler: IconBrandOpenai, color: "#10A37F" },
+  AddLocalAI:          { img: localaiLogo, color: "#10A37F" },
   AddN8n:              { si: siN8n, color: "#EA4B71" },
   AddSupabase:         { si: siSupabase, color: "#3FCF8E" },
   AddProject:          { si: siDotnet, color: "#512BD4" },
@@ -57,7 +59,7 @@ const MAP: Record<string, Visual> = {
 
   // Container-preset ("app") icons — keyed by the preset's `icon` field.
   localagi:            { img: localagiLogo, color: "#0EA5E9" },
-  localrecall:         { tabler: IconBrain, color: "#16A34A" },
+  localrecall:         { img: localrecallLogo, color: "#16A34A" },
   openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
   comfyui:             { tabler: IconPhoto, color: "#7C3AED" },
   sdnext:              { tabler: IconPhoto, color: "#EC4899" },

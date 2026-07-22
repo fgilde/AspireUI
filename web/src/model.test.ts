@@ -251,41 +251,56 @@ describe("buildPresetNodes", () => {
   const preset: ContainerPreset = {
     id: "app", label: "App", group: "Tools", image: "app:latest", port: 8080,
     env: [["DB", "${db}"], ["MODE", "prod"]],
-    companions: [{ key: "db", addMethod: "AddContainer", resourceName: "app-db", image: "postgres:16", env: [["POSTGRES_DB", "app"]] }],
+    companions: [{ key: "db", addMethod: "AddContainer", resourceName: "app-db", image: "postgres:16", env: [["POSTGRES_DB", "app"]], role: "postgres" }],
   };
+  const N = (id: string, extra: Partial<Node> = {}): Node =>
+    ({ id, varName: id, addMethod: "AddContainer", resourceName: id, withCalls: [], x: 0, y: 0, addArgs: [], ...extra });
 
   it("drops main + companions and wires waitFor edges only", () => {
-    const { nodes, edges } = buildPresetNodes(preset, new Set());
+    const { nodes, edges } = buildPresetNodes(preset, []);
     expect(nodes).toHaveLength(2);
-    expect(edges).toHaveLength(1); // waitFor main->db (no reference — invalid on a plain container)
+    expect(edges).toHaveLength(1);
     expect(edges[0].kind).toBe("waitFor");
   });
 
   it("expands ${key} env tokens to the companion resource name as a quoted string", () => {
-    const { nodes } = buildPresetNodes(preset, new Set());
+    const { nodes } = buildPresetNodes(preset, []);
     const main = nodes[0];
     const dbName = nodes[1].resourceName;
     const env = main.withCalls.filter(w => w.method === "WithEnvironment");
-    expect(env.find(e => e.args[0] === '"DB"')!.args[1]).toBe(JSON.stringify(dbName)); // quoted hostname
+    expect(env.find(e => e.args[0] === '"DB"')!.args[1]).toBe(JSON.stringify(dbName));
     expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');
   });
 
-  it("without companions, drops just the app and skips env referencing them", () => {
-    const { nodes, edges } = buildPresetNodes(preset, new Set(), false);
+  it("with choices 'none', drops just the app and skips env referencing companions", () => {
+    const { nodes, edges } = buildPresetNodes(preset, [], "none");
     expect(nodes).toHaveLength(1);
     expect(edges).toHaveLength(0);
     const env = nodes[0].withCalls.filter(w => w.method === "WithEnvironment");
-    expect(env.find(e => e.args[0] === '"DB"')).toBeUndefined();   // dropped (references excluded companion)
+    expect(env.find(e => e.args[0] === '"DB"')).toBeUndefined();
     expect(env.find(e => e.args[0] === '"MODE"')!.args[1]).toBe('"prod"');
   });
 
-  it("dedupes names against existing", () => {
-    const { nodes } = buildPresetNodes(preset, new Set(["app"]));
-    expect(nodes[0].resourceName).toBe("app2");
+  it("reuses an existing matching resource instead of creating a companion", () => {
+    // an existing Postgres satisfies role 'postgres' → no new companion, env points at it, edge to it
+    const existing = [N("mydb", { addMethod: "AddPostgres", resourceName: "mydb" })];
+    const { nodes, edges } = buildPresetNodes(preset, existing);
+    expect(nodes).toHaveLength(1); // only the app; db reused
+    expect(edges).toHaveLength(1);
+    expect(edges[0].toNodeId).toBe("mydb");
+    const env = nodes[0].withCalls.find(w => w.method === "WithEnvironment" && w.args[0] === '"DB"');
+    expect(env!.args[1]).toBe('"mydb"');
+  });
+
+  it("'add' choice creates an Aspire resource as the backend (name-only)", () => {
+    const { nodes } = buildPresetNodes(preset, [], { db: { mode: "add", addMethod: "AddPostgres" } });
+    const backend = nodes.find(n => n.addMethod === "AddPostgres");
+    expect(backend).toBeDefined();
+    expect(backend!.addArgs).toEqual([]); // AddPostgres("name") — no image arg
   });
 
   it("single-container preset (no companions) drops just one node", () => {
-    const { nodes, edges } = buildPresetNodes({ id: "x", label: "X", group: "T", image: "x:1", port: 80 }, new Set());
+    const { nodes, edges } = buildPresetNodes({ id: "x", label: "X", group: "T", image: "x:1", port: 80 }, []);
     expect(nodes).toHaveLength(1);
     expect(edges).toHaveLength(0);
   });

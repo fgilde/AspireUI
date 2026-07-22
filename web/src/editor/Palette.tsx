@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button } from "@mantine/core";
+import { Stack as MStack, TextInput, Text, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck } from "@tabler/icons-react";
-import type { Stack, ResourceType, Node, ContainerPreset } from "../model";
-import { buildPresetNodes } from "../model";
+import type { Stack, ResourceType, Node, ContainerPreset, PresetCompanion, CompanionChoice } from "../model";
+import { buildPresetNodes, reuseCandidates, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr } from "../ui";
 import * as api from "../api";
@@ -123,15 +123,15 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
     setSelectedRt(null);
   };
 
-  const dropPreset = (p: ContainerPreset, withCompanions: boolean) => {
+  const dropPreset = (p: ContainerPreset, choices?: Record<string, CompanionChoice> | "none") => {
     const off = stack.nodes.length * 28;
-    const { nodes, edges } = buildPresetNodes(p, new Set(stack.nodes.map(n => n.resourceName)), withCompanions);
+    const { nodes, edges } = buildPresetNodes(p, stack.nodes, choices);
     const placed = nodes.map(n => ({ ...n, x: n.x + off, y: n.y + off }));
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...placed], edges: [...stack.edges, ...edges] })
-      .then(s => { setStack(s); toastOk(`Added ${p.label}${withCompanions && p.companions?.length ? ` + ${p.companions.length} companion(s)` : ""}`); }).catch(toastErr);
+      .then(s => { setStack(s); toastOk(`Added ${p.label}`); }).catch(toastErr);
   };
-  // Presets with companions ask first (include the extra containers or just the app); others drop directly.
-  const createPreset = (p: ContainerPreset) => p.companions?.length ? setPresetPick(p) : dropPreset(p, false);
+  // Presets with companions ask first (per-companion backend choice); others drop directly.
+  const createPreset = (p: ContainerPreset) => p.companions?.length ? setPresetPick(p) : dropPreset(p);
 
   return (
     <MStack gap="xs" p="sm" h="100%">
@@ -214,24 +214,62 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           onClose={() => setSelectedRt(null)}
         />
       )}
-      <Modal opened={!!presetPick} onClose={() => setPresetPick(null)} title={`Add ${presetPick?.label}`} size="md" centered>
-        {presetPick && (
-          <MStack gap="sm">
-            <Text size="sm" c="dimmed">{presetPick.description}</Text>
-            <Text size="sm">This app comes with {presetPick.companions!.length} companion resource(s):</Text>
-            <MStack gap={2}>
-              {presetPick.companions!.map(c => (
-                <Group key={c.key} gap={6}><Badge size="xs" variant="light">{c.addMethod === "AddContainer" ? c.image : c.addMethod}</Badge><Text size="xs" c="dimmed">{c.resourceName}</Text></Group>
-              ))}
-            </MStack>
-            <Text size="xs" c="dimmed">Scaffold — you may still need to finish connection env/volumes.</Text>
-            <Group justify="flex-end" gap="xs" mt="xs">
-              <Button variant="subtle" onClick={() => { dropPreset(presetPick, false); setPresetPick(null); }}>Just the app</Button>
-              <Button onClick={() => { dropPreset(presetPick, true); setPresetPick(null); }}>Add with companions</Button>
-            </Group>
-          </MStack>
-        )}
-      </Modal>
+      {presetPick && (
+        <CompanionPickerModal preset={presetPick} stackNodes={stack.nodes}
+          onCancel={() => setPresetPick(null)}
+          onConfirm={choices => { dropPreset(presetPick, choices); setPresetPick(null); }} />
+      )}
     </MStack>
+  );
+}
+
+// Per-companion backend chooser for a preset with dependencies: reuse an existing matching resource,
+// drop the default container, or add an Aspire alternative — so stacks don't duplicate DB/LLM/etc.
+function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
+  preset: ContainerPreset; stackNodes: Node[];
+  onConfirm: (choices: Record<string, CompanionChoice> | "none") => void; onCancel: () => void;
+}) {
+  const companions = preset.companions ?? [];
+  const initial: Record<string, string> = {};
+  for (const c of companions) {
+    const reuse = reuseCandidates(stackNodes, c.role)[0];
+    initial[c.key] = reuse ? `reuse:${reuse.id}` : "new";
+  }
+  const [sel, setSel] = useState<Record<string, string>>(initial);
+
+  const optionsFor = (c: PresetCompanion) => {
+    const opts: { value: string; label: string }[] = [];
+    for (const n of reuseCandidates(stackNodes, c.role))
+      opts.push({ value: `reuse:${n.id}`, label: `Reuse existing: ${n.resourceName}` });
+    opts.push({ value: "new", label: `New container: ${c.image}` });
+    for (const alt of (c.role ? ROLE_ALTERNATIVES[c.role] ?? [] : []))
+      opts.push({ value: `add:${alt.addMethod}`, label: `Add ${alt.label}` });
+    return opts;
+  };
+  const toChoice = (v: string): CompanionChoice =>
+    v.startsWith("reuse:") ? { mode: "reuse", nodeId: v.slice(6) }
+      : v.startsWith("add:") ? { mode: "add", addMethod: v.slice(4) }
+      : { mode: "new" };
+
+  return (
+    <Modal opened onClose={onCancel} title={`Add ${preset.label}`} size="lg" centered>
+      <MStack gap="sm">
+        <Text size="sm" c="dimmed">{preset.description}</Text>
+        <Text size="sm" fw={600}>Dependencies</Text>
+        {companions.map(c => (
+          <Group key={c.key} gap="sm" wrap="nowrap" align="center">
+            <Text size="sm" w={120} truncate>{c.role || c.key}</Text>
+            <Select style={{ flex: 1 }} size="xs" allowDeselect={false}
+              data={optionsFor(c)} value={sel[c.key]}
+              onChange={v => v && setSel(s => ({ ...s, [c.key]: v }))} />
+          </Group>
+        ))}
+        <Text size="xs" c="dimmed">Reuse picks a resource already on the canvas; “Add …” drops a real Aspire resource. Scaffold — finish connection env as needed.</Text>
+        <Group justify="flex-end" gap="xs" mt="xs">
+          <Button variant="subtle" onClick={() => onConfirm("none")}>Just the app</Button>
+          <Button onClick={() => onConfirm(Object.fromEntries(companions.map(c => [c.key, toChoice(sel[c.key])])))}>Add</Button>
+        </Group>
+      </MStack>
+    </Modal>
   );
 }
