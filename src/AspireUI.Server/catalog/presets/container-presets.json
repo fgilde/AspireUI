@@ -4,18 +4,22 @@
     "label": "LocalAGI",
     "group": "AI Apps",
     "image": "quay.io/mudler/localagi:latest",
-    "port": 3000,
+    "port": 8080,
     "icon": "localagi",
-    "description": "LocalAGI — self-hostable AI agent platform (mudler), drop-in for OpenAI Responses API. Pairs with LocalAI (LLM) + LocalRecall (memory). Verify tag (latest/master)."
+    "description": "LocalAGI — self-hostable AI agent platform (mudler), drop-in for OpenAI Responses API. Set LOCALAGI_MODEL + point LOCALAGI_LLM_API_URL at a LocalAI/OpenAI-compatible backend.",
+    "env": [
+      ["LOCALAGI_MODEL", "gpt-4o-mini"],
+      ["LOCALAGI_LLM_API_URL", "http://localai:8080"]
+    ]
   },
   {
     "id": "localrecall",
     "label": "LocalRecall",
     "group": "AI Apps",
-    "image": "ghcr.io/mudler/localrecall:latest",
+    "image": "quay.io/mudler/localrecall:latest",
     "port": 8080,
     "icon": "localrecall",
-    "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI). Verify the image tag for your setup."
+    "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI)."
   },
   {
     "id": "openwebui",
