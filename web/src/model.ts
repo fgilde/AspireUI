@@ -16,6 +16,14 @@ export interface Stack {
   extraFiles: ExtraFile[]; extraPackages: PackageRef[];
   notes?: StackNote[]; groups?: StackGroup[];
   createdAt?: string | null; createdBy?: string | null;
+  deployment?: Deployment | null;   // set by GET /stacks/{id} when the stack is deployed to hosting
+}
+
+// A stack deployed persistently into the hosting area (a long-lived docker-compose project).
+export interface Deployment {
+  id: string; stackId: string; name: string;
+  state: "deploying" | "running" | "stopped" | "failed";
+  urls: string[]; createdAt: string; updatedAt: string; lastError?: string | null;
 }
 
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }

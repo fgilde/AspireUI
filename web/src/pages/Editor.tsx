@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip } from "@mantine/core";
+import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text } from "@mantine/core";
 import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
@@ -11,7 +11,7 @@ import type { DockLayoutHandle } from "../editor/DockLayout";
 import { RunToolbar } from "../editor/RunToolbar";
 import { ValidateBadge } from "../editor/ValidateBadge";
 import { UserMenu } from "../auth/UserMenu";
-import { promptText, toastOk, toastErr } from "../ui";
+import { promptText, toastOk, toastErr, confirmDelete } from "../ui";
 
 const HEADER_HEIGHT = 56;
 const NOT_RUNNING: RunStatus = { state: "NotRunning", log: [] };
@@ -117,13 +117,27 @@ export function Editor() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [stack?.id]);
 
+  // Edit-lock: a stack running/deploying in hosting is read-only in the editor (the server also 409s).
+  const locked = stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying";
+  const deployToHosting = () => stack && api.hostingDeploy(stack.id)
+    .then(() => api.getStack(stack.id)).then(setStackState)
+    .then(() => toastOk("Deployed to hosting")).catch(toastErr);
+  const stopHosting = () => stack && api.stopHosting(stack.id)
+    .then(() => api.getStack(stack.id)).then(setStackState).catch(toastErr);
+  const guardedSetStack = useCallback((next: Stack) => {
+    if (stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying") {
+      toastErr("Stop the hosting deployment to edit this stack."); return;
+    }
+    setStack(next);
+  }, [stack, setStack]);
+
   // Memoize the context value so the 2s status poller doesn't re-render every
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
-    () => ({ stack: stack!, setStack, selected: sel, setSelected: setSel, selectedIds: selIds, setSelectedIds: setSelIds,
+    () => ({ stack: stack!, setStack: guardedSetStack, selected: sel, setSelected: setSel, selectedIds: selIds, setSelectedIds: setSelIds,
       runStatus, setRunStatus, diagnostics, showPanel, flashSignal }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stack, sel, selIds, runStatus, diagnostics, flashSignal]);
+    [stack, sel, selIds, runStatus, diagnostics, flashSignal, locked]);
 
   if (!stack) return null;
 
@@ -137,6 +151,7 @@ export function Editor() {
               <Title order={4}>{stack.name}</Title>
             </Group>
             <Group>
+              {!locked && <Button variant="default" size="sm" onClick={deployToHosting}>Deploy to hosting</Button>}
               <ValidateBadge />
               <RunToolbar />
               <Tooltip label="Undo (Ctrl+Z)" withArrow>
@@ -205,8 +220,17 @@ export function Editor() {
             </Group>
           </Group>
         </AppShell.Header>
-        <AppShell.Main style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)` }}>
-          <DockLayout ref={dockRef} />
+        <AppShell.Main style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)`, display: "flex", flexDirection: "column" }}>
+          {locked && (
+            <Group gap="sm" px="md" py={6} style={{ background: "var(--mantine-color-orange-light)", flexShrink: 0 }}>
+              <Text size="sm">Running in hosting — this stack is read-only. Stop it to edit.</Text>
+              <Button size="compact-xs" color="orange"
+                onClick={() => confirmDelete("this deployment", "Stop it so you can edit? It stays deployed (stopped).").then(okd => { if (okd) stopHosting(); })}>
+                Stop &amp; edit
+              </Button>
+            </Group>
+          )}
+          <div style={{ flex: 1, minHeight: 0 }}><DockLayout ref={dockRef} /></div>
         </AppShell.Main>
       </AppShell>
     </EditorContext.Provider>

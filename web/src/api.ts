@@ -145,3 +145,13 @@ export const assistStack = (id: string, prompt: string): Promise<{ reply: string
   fetch(`${base}/stacks/${id}/assist`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
 export const assistStackCode = (id: string, prompt: string): Promise<{ reply: string; stack: Stack }> =>
   fetch(`${base}/stacks/${id}/assist-code`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
+
+export const listHosting = (): Promise<import("./model").Deployment[]> => fetch(`${base}/hosting`).then(ok);
+export const hostingDeploy = (id: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${id}/hosting/deploy`, { method: "POST" }).then(ok);
+export const stopHosting = (id: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${id}/hosting/stop`, { method: "POST" }).then(ok);
+export const startHosting = (id: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${id}/hosting/start`, { method: "POST" }).then(ok);
+export const undeployHosting = (id: string): Promise<void> =>
+  fetch(`${base}/stacks/${id}/hosting/undeploy`, { method: "POST" }).then(() => undefined);
