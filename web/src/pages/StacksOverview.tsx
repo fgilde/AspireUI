@@ -8,7 +8,7 @@ import {
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
-  IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch,
+  IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
@@ -339,6 +339,10 @@ export function StacksOverview() {
                       <Menu.Dropdown onClick={e => e.stopPropagation()}>
                         <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                         <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                        <Menu.Item leftSection={<IconServer size={14} />}
+                          onClick={() => { toastOk(`Deploying "${s.name}" to hosting…`); api.hostingDeploy(s.id).then(() => nav("/hosting")).catch(toastErr); }}>
+                          Deploy to hosting
+                        </Menu.Item>
                         <Menu.Divider />
                         <Menu.Item color="red" leftSection={<IconTrash size={14} />}
                           onClick={async () => {

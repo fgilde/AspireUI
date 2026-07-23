@@ -24,7 +24,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // Rebuild the reverse-proxy config from every running deployment that publishes a port.
     private void SyncProxy()
     {
-        if (proxy is null) return;
+        if (proxy is null || !proxy.Enabled) return;
         var routes = store.List()
             .Where(d => d.State == "running")
             .Select(d => (Slug: ProxyService.Slug(d.Name), Port: FirstPort(d.Urls)))
@@ -55,6 +55,39 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
+    // Aspire's compose publisher only `expose`s container ports (internal), so a hosted app isn't
+    // reachable from the host. For each non-dashboard service that has an `expose:` list, add a
+    // `ports:` block publishing each exposed port to the same host port. Idempotent (skips a service
+    // that already has `ports:`). ponytail: publishes host ports 1:1 → two deployed apps sharing a
+    // port collide; the reverse proxy (Linux) is the real multi-app answer, this makes single/localhost
+    // deploys reachable.
+    public static string PublishExposedPorts(string yaml)
+    {
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var outp = new List<string>();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            outp.Add(lines[i]);
+            var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
+            if (!svc.Success || svc.Groups[1].Value.Contains("dashboard")) continue;
+            // Scan this service block for expose ports + whether it already publishes ports.
+            var ports = new List<string>(); var hasPorts = false;
+            for (var j = i + 1; j < lines.Count; j++)
+            {
+                if (Regex.IsMatch(lines[j], @"^  \S")) break;          // next service / dedent
+                if (Regex.IsMatch(lines[j], @"^    ports:\s*$")) hasPorts = true;
+                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$"); // an expose entry
+                if (pm.Success) ports.Add(pm.Groups[1].Value);
+            }
+            if (!hasPorts && ports.Count > 0)
+            {
+                outp.Add("    ports:");
+                foreach (var p in ports) outp.Add($"      - \"{p}:{p}\"");
+            }
+        }
+        return string.Join("\n", outp);
+    }
+
     // Emit http://host:HOSTPORT for each published `- "HOST:CONTAINER"` mapping.
     public static List<string> ParseUrls(string yaml, string host)
     {
@@ -77,11 +110,11 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose");
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var yaml = File.ReadAllText(path);
-            File.WriteAllText(path, AddRestartPolicy(yaml));
-            var urls = ParseUrls(yaml, host);
-            // Prepend the friendly proxy URL (…/<slug>.<domain>) when a proxy is configured + app has a port.
-            if (proxy is not null && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
+            var processed = PublishExposedPorts(AddRestartPolicy(File.ReadAllText(path)));
+            File.WriteAllText(path, processed);
+            var urls = ParseUrls(processed, host);
+            // Prepend the friendly proxy URL (…/<slug>.<domain>) when the proxy is active + app has a port.
+            if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
             var up = deploy.UpProject(pub.OutputDir, project);
             store.Upsert(store.Get(id)! with
             {
@@ -157,7 +190,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     }
 
     public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); SyncProxy(); } }
-    public void Start(string id) { if (store.Get(id) is { } d) { deploy.StartProject(d.ComposeDir, d.Project); store.SetState(id, "running"); SyncProxy(); } }
+    // `up -d` (not `compose start`) so Start also (re)creates containers when a prior deploy failed or
+    // was pruned — plain `start` only resumes existing stopped containers and silently no-ops otherwise.
+    public void Start(string id) { if (store.Get(id) is { } d) { var r = deploy.UpProject(d.ComposeDir, d.Project); store.SetState(id, r.Ok ? "running" : "failed", r.Ok ? null : r.Log); SyncProxy(); } }
     public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); SyncProxy(); } }
 
     // Best-effort reconcile from `docker compose ps` (exit!=0 or no running container → stopped).

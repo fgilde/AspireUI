@@ -40,6 +40,28 @@ public class HostingServiceTests
     }
 
     [Fact]
+    public void PublishExposedPorts_publishes_expose_to_host_skipping_dashboard()
+    {
+        const string yaml = """
+            services:
+              aspireui-dashboard:
+                image: dash
+                ports:
+                  - "18888"
+                expose:
+                  - "18889"
+              pihole:
+                image: pihole/pihole
+                expose:
+                  - "80"
+            """;
+        var outp = HostingService.PublishExposedPorts(yaml);
+        Assert.Contains("- \"80:80\"", outp);              // app port published to host
+        Assert.DoesNotContain("- \"18889:18889\"", outp);   // dashboard left alone
+        Assert.Contains("http://localhost:80", HostingService.ParseUrls(outp, "localhost"));
+    }
+
+    [Fact]
     public void VolumeNames_reads_top_level_volumes()
     {
         const string yaml = """

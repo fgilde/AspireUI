@@ -12,6 +12,10 @@ public class ProxyService(DeployService deploy, string proxyRoot, string baseDom
     public const string Project = "aspireui-proxy";
     public string BaseDomain => baseDomain;
     private bool LocalDomain => baseDomain is "localhost" || baseDomain.EndsWith(".localhost") || baseDomain == "127.0.0.1";
+    // The managed proxy only runs for a real base domain (a deliberate ingress setup). On the default
+    // "localhost" it's off — apps are reached directly at host:port, and no host-network Caddy is spun
+    // up (which is awkward on Docker Desktop anyway).
+    public bool Enabled => !LocalDomain;
 
     // "Demo Shop" -> "demo-shop"; safe DNS label.
     public static string Slug(string name)
@@ -57,11 +61,18 @@ public class ProxyService(DeployService deploy, string proxyRoot, string baseDom
     {
         try
         {
+            var list = routes.ToList();
             Directory.CreateDirectory(proxyRoot);
-            File.WriteAllText(Path.Combine(proxyRoot, "Caddyfile"), BuildCaddyfile(routes, baseDomain));
             File.WriteAllText(Path.Combine(proxyRoot, "docker-compose.yaml"), ComposeYaml());
+            if (list.Count == 0)
+            {
+                // No apps → an empty Caddyfile makes Caddy exit 1 and crash-loop. Take the proxy down.
+                deploy.DownProject(proxyRoot, Project);
+                return;
+            }
+            File.WriteAllText(Path.Combine(proxyRoot, "Caddyfile"), BuildCaddyfile(list, baseDomain));
             deploy.UpProject(proxyRoot, Project);
-            // Apply the new Caddyfile without downtime.
+            // Apply the new Caddyfile without downtime (ignored if the container isn't up yet).
             deploy.Docker(proxyRoot, $"exec {Project}-caddy-1 caddy reload --config /etc/caddy/Caddyfile");
         }
         catch { /* proxy is best-effort; host:port URLs remain valid */ }
