@@ -3550,5 +3550,143 @@
       ]
     ],
     "website": "https://github.com/aivm23/valorgrid"
+  },
+  {
+    "id": "runtipi",
+    "label": "Runtipi",
+    "group": "Network",
+    "image": "ghcr.io/runtipi/runtipi:v4.10.1",
+    "port": 80,
+    "icon": "runtipi",
+    "description": "Runtipi — self-hosted homeserver / app manager. Ships Postgres + Redis + RabbitMQ companions and mounts the Docker socket to manage its apps. Set ROOT_FOLDER_HOST to the HOST path mapped to /data (matters on real Linux/Proxmox). EXPERIMENTAL: it is itself an orchestrator (its own Traefik on :80).",
+    "env": [
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "TIPI_VERSION",
+        "v4.10.1"
+      ],
+      [
+        "ROOT_FOLDER",
+        "/data"
+      ],
+      [
+        "RUNTIPI_APP_DATA_PATH",
+        "/data"
+      ],
+      [
+        "POSTGRES_HOST",
+        "${db}"
+      ],
+      [
+        "POSTGRES_PORT",
+        "5432"
+      ],
+      [
+        "POSTGRES_DBNAME",
+        "tipi"
+      ],
+      [
+        "POSTGRES_USERNAME",
+        "tipi"
+      ],
+      [
+        "POSTGRES_PASSWORD",
+        "tipi"
+      ],
+      [
+        "REDIS_HOST",
+        "${redis}"
+      ],
+      [
+        "RABBITMQ_HOST",
+        "${queue}"
+      ],
+      [
+        "RABBITMQ_USERNAME",
+        "tipi"
+      ],
+      [
+        "RABBITMQ_PASSWORD",
+        "tipi"
+      ]
+    ],
+    "params": [
+      {
+        "key": "root-folder-host",
+        "env": "ROOT_FOLDER_HOST",
+        "default": "/data"
+      },
+      {
+        "key": "jwt-secret",
+        "env": "JWT_SECRET",
+        "default": "aspireui-runtipi-jwt-change-me-0123456789",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "runtipi-db",
+        "image": "postgres:14",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_USER",
+            "tipi"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "tipi"
+          ],
+          [
+            "POSTGRES_DB",
+            "tipi"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "runtipi-redis",
+        "image": "redis:7",
+        "port": 6379,
+        "role": "redis"
+      },
+      {
+        "key": "queue",
+        "addMethod": "AddContainer",
+        "resourceName": "runtipi-queue",
+        "image": "rabbitmq:3-alpine",
+        "port": 5672,
+        "role": "rabbitmq",
+        "env": [
+          [
+            "RABBITMQ_DEFAULT_USER",
+            "tipi"
+          ],
+          [
+            "RABBITMQ_DEFAULT_PASS",
+            "tipi"
+          ]
+        ]
+      }
+    ],
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://runtipi.io"
   }
 ]
