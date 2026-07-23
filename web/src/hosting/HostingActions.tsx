@@ -28,7 +28,7 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor
         ? <Menu.Item leftSection={<IconPlayerStop size={14} />} onClick={stop}>Stop</Menu.Item>
         : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={start}>Start</Menu.Item>}
       <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
-      <Menu.Item leftSection={<IconFileText size={14} />} onClick={onLogs}>View logs</Menu.Item>
+      <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
       <Menu.Item leftSection={<IconArchive size={14} />} onClick={backup}>Back up volumes</Menu.Item>
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
@@ -115,7 +115,7 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
 // one child.
 export function LogsModal({ d, onClose, service }: { d: Deployment; onClose: () => void; service?: string }) {
   const [lines, setLines] = useState<string[]>([]);
-  const [q, setQ] = useState(service ?? "");
+  const [q, setQ] = useState(typeof service === "string" ? service : "");
   const [full, setFull] = useState(false);
   useEffect(() => {
     const es = new EventSource(api.hostingLogsUrl(d.id));
