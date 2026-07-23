@@ -146,6 +146,18 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return urls.Distinct().ToList();
     }
 
+    // Authoritative URLs from what docker ACTUALLY published (`compose ps` publishers) — catches ports
+    // that our static compose parse misses (e.g. project/package resources whose ports Aspire emits in a
+    // shape ParseUrls doesn't match). Skips the Aspire dashboard.
+    public static List<string> UrlsFromServices(IEnumerable<ServiceStatus> svcs, string host) =>
+        svcs.Where(s => !s.Name.Contains("dashboard") && !s.Service.Contains("dashboard"))
+            .SelectMany(s => s.Ports.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            .Select(p => p.Trim().Split(':')[0])
+            .Where(p => int.TryParse(p, out _))
+            .Distinct()
+            .Select(p => $"http://{host}:{p}")
+            .ToList();
+
     public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost")
     {
         var project = Project(stack.Id);
@@ -169,10 +181,12 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             foreach (var cp in ExposedAppPorts(raw).Distinct()) portMap[cp] = AllocateHostPort(used);
             var processed = PublishExposedPorts(raw, portMap);
             File.WriteAllText(path, processed);
-            var urls = ParseUrls(processed, host);
+            var up = deploy.UpProject(pub.OutputDir, project);
+            // Prefer the ports docker actually published (`compose ps`); fall back to the static parse.
+            var urls = up.Ok ? UrlsFromServices(ParseServices(deploy.Ps(pub.OutputDir, project).Log), host) : new();
+            if (urls.Count == 0) urls = ParseUrls(processed, host);
             // Prepend the friendly proxy URL (…/<slug>.<domain>) when the proxy is active + app has a port.
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
-            var up = deploy.UpProject(pub.OutputDir, project);
             store.Upsert(store.Get(id)! with
             {
                 ComposeDir = pub.OutputDir, Urls = urls,

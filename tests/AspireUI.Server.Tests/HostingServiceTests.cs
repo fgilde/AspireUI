@@ -50,6 +50,19 @@ public class HostingServiceTests
     [Fact]
     public void ParseServices_tolerates_garbage() => Assert.Empty(HostingService.ParseServices("docker: error\n"));
 
+    [Fact]
+    public void UrlsFromServices_uses_published_ports_skips_dashboard()
+    {
+        var svcs = new List<ServiceStatus>
+        {
+            new("p-web-1", "web", "nginx", "running", "Up", "20000:80"),
+            new("p-dashboard-1", "aspireui-dashboard", "dash", "running", "Up", "18888:18888"),
+            new("p-db-1", "db", "postgres", "running", "Up", ""),
+        };
+        var urls = HostingService.UrlsFromServices(svcs, "localhost");
+        Assert.Equal(new[] { "http://localhost:20000" }, urls);   // web only; dashboard + port-less db skipped
+    }
+
 
     private const string Compose = """
         services:

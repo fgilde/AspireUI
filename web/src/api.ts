@@ -163,6 +163,7 @@ export const backupHosting = (id: string): Promise<{ dir: string | null }> =>
   fetch(`${base}/stacks/${id}/hosting/backup`, { method: "POST" }).then(ok);
 export const hostingServices = (depId: string): Promise<import("./model").ServiceStatus[]> =>
   fetch(`${base}/hosting/${depId}/services`).then(ok);
+export const hostingLogsUrl = (depId: string) => `${base}/hosting/${depId}/logs`;
 export const hostingConfig = (stackId: string): Promise<import("./model").NodeConfig[]> =>
   fetch(`${base}/stacks/${stackId}/hosting/config`).then(ok);
 export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>): Promise<import("./model").Deployment> =>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Container, Table, Badge, Anchor, ActionIcon, Menu, Text, Modal, Stack, TextInput, Loader, Divider, Alert, ScrollArea } from "@mantine/core";
-import { IconArrowLeft, IconDots, IconPlayerPlay, IconPlayerStop, IconTrash, IconExternalLink, IconPencil, IconRefresh, IconArchive, IconChevronRight, IconChevronDown, IconAdjustments, IconPlus, IconX, IconAlertTriangle } from "@tabler/icons-react";
+import { IconArrowLeft, IconDots, IconPlayerPlay, IconPlayerStop, IconTrash, IconExternalLink, IconPencil, IconRefresh, IconArchive, IconChevronRight, IconChevronDown, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
 import type { Deployment, ServiceStatus, NodeConfig } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -14,6 +14,7 @@ export function Hosting() {
   useTitle("Hosting");
   const [items, setItems] = useState<Deployment[]>([]);
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
+  const [logsFor, setLogsFor] = useState<Deployment | null>(null);
   const load = () => api.listHosting().then(setItems).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
 
@@ -45,20 +46,22 @@ export function Hosting() {
                   <DeploymentRow key={d.id} d={d}
                     onStop={() => stop(d)} onStart={() => start(d)} onUpdate={() => update(d)}
                     onBackup={() => backup(d)} onUndeploy={() => undeploy(d)}
-                    onConfigure={() => setConfigFor(d)} onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
+                    onConfigure={() => setConfigFor(d)} onOpenEditor={() => nav(`/editor/${d.stackId}`)}
+                    onLogs={() => setLogsFor(d)} />
                 ))}
               </Table.Tbody>
             </Table>)}
         </Container>
       </AppShell.Main>
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={load} />}
+      {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
     </AppShell>
   );
 }
 
-function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onConfigure, onOpenEditor }: {
+function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onConfigure, onOpenEditor, onLogs }: {
   d: Deployment; onStop: () => void; onStart: () => void; onUpdate: () => void;
-  onBackup: () => void; onUndeploy: () => void; onConfigure: () => void; onOpenEditor: () => void;
+  onBackup: () => void; onUndeploy: () => void; onConfigure: () => void; onOpenEditor: () => void; onLogs: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -88,6 +91,7 @@ function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onC
                 ? <Menu.Item leftSection={<IconPlayerStop size={14} />} onClick={onStop}>Stop</Menu.Item>
                 : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={onStart}>Start</Menu.Item>}
               <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
+              <Menu.Item leftSection={<IconFileText size={14} />} onClick={onLogs}>View logs</Menu.Item>
               <Menu.Item leftSection={<IconRefresh size={14} />} onClick={onUpdate}>Update (pull &amp; recreate)</Menu.Item>
               <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackup}>Back up volumes</Menu.Item>
               <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>
@@ -101,20 +105,30 @@ function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onC
         <Table.Tr>
           <Table.Td colSpan={5} p={0}>
             <div style={{ padding: "8px 16px 12px 46px" }}>
+              {d.state === "failed" && d.lastError && (
+                <Alert color="red" icon={<IconAlertTriangle size={14} />} p="xs" mb="xs" title="Deploy failed">
+                  <Text size="xs" style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", maxHeight: 160, overflow: "auto" }}>{d.lastError.trim().split("\n").slice(-12).join("\n")}</Text>
+                  <Anchor size="xs" onClick={onLogs}>Full logs</Anchor>
+                </Alert>
+              )}
               {svcs === null ? <Loader size="xs" />
                 : svcs.length === 0 ? <Text size="xs" c="dimmed">No running containers (start the app to see its resources).</Text>
                 : (
                 <Table withRowBorders={false} verticalSpacing={4} fz="xs">
                   <Table.Tbody>
-                    {svcs.map(s => (
+                    {svcs.map(s => {
+                      const port = s.ports.split(",")[0]?.trim().split(":")[0];
+                      const url = port && /^\d+$/.test(port) && !s.service.includes("dashboard") ? `http://${window.location.hostname}:${port}` : null;
+                      return (
                       <Table.Tr key={s.name}>
                         <Table.Td w={12}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 8, background: `var(--mantine-color-${color(s.state)}-6)` }} /></Table.Td>
                         <Table.Td fw={500}>{s.service || s.name}</Table.Td>
                         <Table.Td c="dimmed">{s.image}</Table.Td>
-                        <Table.Td c="dimmed">{s.ports}</Table.Td>
+                        <Table.Td>{url ? <Anchor href={url} target="_blank">{s.ports} <IconExternalLink size={10} /></Anchor> : <Text c="dimmed" span>{s.ports}</Text>}</Table.Td>
                         <Table.Td c="dimmed">{s.status}</Table.Td>
                       </Table.Tr>
-                    ))}
+                      );
+                    })}
                   </Table.Tbody>
                 </Table>)}
             </div>
@@ -193,6 +207,26 @@ function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose: () => 
           </Group>
         </Stack>
       )}
+    </Modal>
+  );
+}
+
+// Streams `docker compose logs` for the deployment (the server pushes them over SSE).
+function LogsModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
+  const [lines, setLines] = useState<string[]>([]);
+  useEffect(() => {
+    const es = new EventSource(api.hostingLogsUrl(d.id));
+    es.onmessage = e => setLines(l => (l.length > 2000 ? l.slice(-2000) : l).concat(e.data));
+    es.onerror = () => es.close();
+    return () => es.close();
+  }, [d.id]);
+  return (
+    <Modal opened onClose={onClose} size="xl" title={<Title order={5}>Logs · {d.name}</Title>}>
+      <ScrollArea.Autosize mah={520}>
+        <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+          {lines.length ? lines.join("\n") : "…"}
+        </pre>
+      </ScrollArea.Autosize>
     </Modal>
   );
 }
