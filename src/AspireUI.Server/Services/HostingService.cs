@@ -66,13 +66,32 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
+    // Container ports that non-dashboard services `expose` (the ones an app actually serves on),
+    // in appearance order — used to allocate host ports.
+    public static List<int> ExposedAppPorts(string yaml)
+    {
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var result = new List<int>();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
+            if (!svc.Success || svc.Groups[1].Value.Contains("dashboard") || !InServicesSection(lines, i)) continue;
+            for (var j = i + 1; j < lines.Count; j++)
+            {
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;
+                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
+                if (pm.Success) result.Add(int.Parse(pm.Groups[1].Value));
+            }
+        }
+        return result;
+    }
+
     // Aspire's compose publisher only `expose`s container ports (internal), so a hosted app isn't
-    // reachable from the host. For each non-dashboard service that has an `expose:` list, add a
-    // `ports:` block publishing each exposed port to the same host port. Idempotent (skips a service
-    // that already has `ports:`). ponytail: publishes host ports 1:1 → two deployed apps sharing a
-    // port collide; the reverse proxy (Linux) is the real multi-app answer, this makes single/localhost
-    // deploys reachable.
-    public static string PublishExposedPorts(string yaml)
+    // reachable from the host. For each non-dashboard service, add a `ports:` block mapping each
+    // exposed container port to the ALLOCATED host port from `hostByContainer` (so multiple apps that
+    // share a container port, e.g. two :80 apps, get distinct host ports). Skips a service that already
+    // publishes ports.
+    public static string PublishExposedPorts(string yaml, IReadOnlyDictionary<int, int> hostByContainer)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
         var outp = new List<string>();
@@ -81,22 +100,37 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             outp.Add(lines[i]);
             var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
             if (!svc.Success || svc.Groups[1].Value.Contains("dashboard") || !InServicesSection(lines, i)) continue;
-            // Scan this service block for expose ports + whether it already publishes ports.
-            var ports = new List<string>(); var hasPorts = false;
+            var ports = new List<int>(); var hasPorts = false;
             for (var j = i + 1; j < lines.Count; j++)
             {
-                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;      // next service / dedent
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;
                 if (Regex.IsMatch(lines[j], @"^    ports:\s*$")) hasPorts = true;
-                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$"); // an expose entry
-                if (pm.Success) ports.Add(pm.Groups[1].Value);
+                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
+                if (pm.Success) ports.Add(int.Parse(pm.Groups[1].Value));
             }
             if (!hasPorts && ports.Count > 0)
             {
                 outp.Add("    ports:");
-                foreach (var p in ports) outp.Add($"      - \"{p}:{p}\"");
+                foreach (var p in ports)
+                    outp.Add($"      - \"{(hostByContainer.TryGetValue(p, out var h) ? h : p)}:{p}\"");
             }
         }
         return string.Join("\n", outp);
+    }
+
+    // Pick a free host port in 20000..29999 not already claimed (by another deployment or this run) and
+    // not currently bound on the host.
+    public static int AllocateHostPort(ISet<int> used)
+    {
+        for (var p = 20000; p <= 29999; p++)
+        {
+            if (used.Contains(p)) continue;
+            try { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, p); l.Start(); l.Stop(); }
+            catch { continue; }   // in use on the host
+            used.Add(p);
+            return p;
+        }
+        throw new InvalidOperationException("no free host port in 20000-29999");
     }
 
     // Emit http://host:HOSTPORT for each published `- "HOST:CONTAINER"` mapping.
@@ -121,7 +155,15 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose");
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var processed = PublishExposedPorts(AddRestartPolicy(File.ReadAllText(path)));
+            var raw = AddRestartPolicy(File.ReadAllText(path));
+            // Allocate a distinct free host port per exposed container port so multiple apps that share a
+            // container port (e.g. two :80 apps) don't collide on the host. Ports already claimed by other
+            // deployments are off-limits.
+            var used = new HashSet<int>(store.List().Where(x => x.Id != id).SelectMany(x => x.Urls)
+                .Select(u => Regex.Match(u, @"://[^/:]+:(\d+)")).Where(m => m.Success).Select(m => int.Parse(m.Groups[1].Value)));
+            var portMap = new Dictionary<int, int>();
+            foreach (var cp in ExposedAppPorts(raw).Distinct()) portMap[cp] = AllocateHostPort(used);
+            var processed = PublishExposedPorts(raw, portMap);
             File.WriteAllText(path, processed);
             var urls = ParseUrls(processed, host);
             // Prepend the friendly proxy URL (…/<slug>.<domain>) when the proxy is active + app has a port.

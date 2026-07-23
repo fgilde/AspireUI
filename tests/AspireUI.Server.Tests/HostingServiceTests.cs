@@ -55,10 +55,10 @@ public class HostingServiceTests
                 expose:
                   - "80"
             """;
-        var outp = HostingService.PublishExposedPorts(yaml);
-        Assert.Contains("- \"80:80\"", outp);              // app port published to host
-        Assert.DoesNotContain("- \"18889:18889\"", outp);   // dashboard left alone
-        Assert.Contains("http://localhost:80", HostingService.ParseUrls(outp, "localhost"));
+        var outp = HostingService.PublishExposedPorts(yaml, new Dictionary<int, int> { [80] = 20000 });
+        Assert.Contains("- \"20000:80\"", outp);            // app port published to allocated host port
+        Assert.DoesNotContain("- \"18889:18889\"", outp);   // dashboard not published
+        Assert.Contains("http://localhost:20000", HostingService.ParseUrls(outp, "localhost"));
     }
 
     // The real Aspire compose shape: a dashboard service that already has restart:"always", plus a
@@ -95,10 +95,28 @@ public class HostingServiceTests
     [Fact]
     public void FullTransform_publishes_app_port_and_leaves_networks_alone()
     {
-        var outp = HostingService.PublishExposedPorts(HostingService.AddRestartPolicy(AspireShape));
-        Assert.Contains("- \"80:80\"", outp);                 // it-tools reachable on host
+        var outp = HostingService.PublishExposedPorts(HostingService.AddRestartPolicy(AspireShape),
+            new Dictionary<int, int> { [80] = 20005 });
+        Assert.Contains("- \"20005:80\"", outp);              // it-tools reachable on allocated host port
         Assert.DoesNotContain("restart: unless-stopped\ndriver", outp.Replace(" ", "")); // no restart under networks
-        Assert.Contains("http://localhost:80", HostingService.ParseUrls(outp, "localhost"));
+        Assert.Contains("http://localhost:20005", HostingService.ParseUrls(outp, "localhost"));
+    }
+
+    [Fact]
+    public void ExposedAppPorts_lists_non_dashboard_expose_ports()
+    {
+        var ports = HostingService.ExposedAppPorts(AspireShape);
+        Assert.Equal(new[] { 80 }, ports);   // it-tools' 80; dashboard skipped
+    }
+
+    [Fact]
+    public void AllocateHostPort_gives_distinct_ports_avoiding_used()
+    {
+        var used = new HashSet<int> { 20000 };
+        var a = HostingService.AllocateHostPort(used);
+        var b = HostingService.AllocateHostPort(used);
+        Assert.NotEqual(20000, a);
+        Assert.NotEqual(a, b);
     }
 
     [Fact]
