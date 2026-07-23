@@ -49,7 +49,10 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     // Info-dialog metadata: the project's real homepage + a few screenshot image URLs (shown behind the
     // palette "i" button). Optional.
     string? Website = null,
-    List<string>? Screenshots = null);
+    List<string>? Screenshots = null,
+    // Web-UI path appended to the endpoint URL (e.g. Plex "/web", Pi-hole "/admin"). buildPresetNodes
+    // emits WithUrlForEndpoint from it — MUST be here or the server drops it on (de)serialize.
+    string? UrlPath = null);
 public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
