@@ -1169,5 +1169,187 @@
     "port": 8191,
     "icon": "flaresolverr",
     "description": "FlareSolverr — proxy that solves Cloudflare challenges for indexers (Prowlarr/Jackett). HTTP API, no real UI."
+  },
+  {
+    "id": "firefly-iii",
+    "label": "Firefly III",
+    "group": "Tools",
+    "image": "fireflyiii/core:latest",
+    "port": 8080,
+    "icon": "firefly",
+    "description": "Firefly III — self-hosted personal finance manager. Comes with a Postgres companion. APP_KEY must stay exactly 32 chars.",
+    "env": [
+      ["DB_CONNECTION", "pgsql"],
+      ["DB_HOST", "${db}"],
+      ["DB_PORT", "5432"],
+      ["DB_DATABASE", "firefly"],
+      ["DB_USERNAME", "firefly"],
+      ["DB_PASSWORD", "firefly"]
+    ],
+    "params": [
+      { "key": "app-key", "env": "APP_KEY", "default": "0123456789abcdef0123456789abcdef", "secret": true }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "firefly-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_DB", "firefly"], ["POSTGRES_USER", "firefly"], ["POSTGRES_PASSWORD", "firefly"]] }
+    ],
+    "volumes": [["upload", "/var/www/html/storage/upload"]]
+  },
+  {
+    "id": "wikijs",
+    "label": "Wiki.js",
+    "group": "Tools",
+    "image": "ghcr.io/requarks/wiki:2",
+    "port": 3000,
+    "icon": "wikijs",
+    "description": "Wiki.js — modern, powerful wiki. Postgres companion included.",
+    "env": [
+      ["DB_TYPE", "postgres"],
+      ["DB_HOST", "${db}"],
+      ["DB_PORT", "5432"],
+      ["DB_USER", "wikijs"],
+      ["DB_PASS", "wikijs"],
+      ["DB_NAME", "wiki"]
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "wikijs-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_DB", "wiki"], ["POSTGRES_USER", "wikijs"], ["POSTGRES_PASSWORD", "wikijs"]] }
+    ]
+  },
+  {
+    "id": "linkwarden",
+    "label": "Linkwarden",
+    "group": "Tools",
+    "image": "ghcr.io/linkwarden/linkwarden:latest",
+    "port": 3000,
+    "icon": "linkwarden",
+    "description": "Linkwarden — collaborative bookmark & web-archive manager. Postgres companion. Set NEXTAUTH_URL to how you reach it (default localhost:3000).",
+    "env": [
+      ["DATABASE_URL", "postgresql://postgres:linkwarden@${db}:5432/postgres"]
+    ],
+    "params": [
+      { "key": "nextauth-secret", "env": "NEXTAUTH_SECRET", "default": "please-change-me-linkwarden", "secret": true },
+      { "key": "nextauth-url", "env": "NEXTAUTH_URL", "default": "http://localhost:3000" }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "linkwarden-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_PASSWORD", "linkwarden"]] }
+    ]
+  },
+  {
+    "id": "bookstack",
+    "label": "BookStack",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/bookstack:latest",
+    "port": 80,
+    "icon": "bookstack",
+    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion; the image auto-generates APP_KEY. Set APP_URL to how you reach it (default http://localhost).",
+    "env": [
+      ["DB_HOST", "${db}"],
+      ["DB_PORT", "3306"],
+      ["DB_DATABASE", "bookstackapp"],
+      ["DB_USERNAME", "bookstack"],
+      ["DB_PASSWORD", "bookstack"]
+    ],
+    "params": [
+      { "key": "app-url", "env": "APP_URL", "default": "http://localhost" }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "bookstack-db", "image": "lscr.io/linuxserver/mariadb:latest", "role": "mysql",
+        "env": [["MYSQL_ROOT_PASSWORD", "bookstack"], ["MYSQL_DATABASE", "bookstackapp"], ["MYSQL_USER", "bookstack"], ["MYSQL_PASSWORD", "bookstack"]] }
+    ],
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "hedgedoc",
+    "label": "HedgeDoc",
+    "group": "Tools",
+    "image": "quay.io/hedgedoc/hedgedoc:latest",
+    "port": 3000,
+    "icon": "hedgedoc",
+    "description": "HedgeDoc — real-time collaborative markdown notes. Postgres companion. Set CMD_DOMAIN to your host (default localhost) — CMD_URL_ADDPORT keeps the port in links.",
+    "env": [
+      ["CMD_DB_URL", "postgres://hedgedoc:hedgedoc@${db}:5432/hedgedoc"],
+      ["CMD_URL_ADDPORT", "true"],
+      ["CMD_PROTOCOL_USESSL", "false"],
+      ["CMD_ALLOW_ORIGIN", "*"]
+    ],
+    "params": [
+      { "key": "domain", "env": "CMD_DOMAIN", "default": "localhost" }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "hedgedoc-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_DB", "hedgedoc"], ["POSTGRES_USER", "hedgedoc"], ["POSTGRES_PASSWORD", "hedgedoc"]] }
+    ],
+    "volumes": [["uploads", "/hedgedoc/public/uploads"]]
+  },
+  {
+    "id": "tandoor",
+    "label": "Tandoor Recipes",
+    "group": "Tools",
+    "image": "vabene1111/recipes:latest",
+    "port": 8080,
+    "icon": "tandoor",
+    "description": "Tandoor — feature-rich recipe manager & meal planner. Postgres companion.",
+    "env": [
+      ["DB_ENGINE", "django.db.backends.postgresql"],
+      ["POSTGRES_HOST", "${db}"],
+      ["POSTGRES_PORT", "5432"],
+      ["POSTGRES_USER", "tandoor"],
+      ["POSTGRES_PASSWORD", "tandoor"],
+      ["POSTGRES_DB", "tandoor"]
+    ],
+    "params": [
+      { "key": "secret-key", "env": "SECRET_KEY", "default": "please-change-me-tandoor", "secret": true }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "tandoor-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_DB", "tandoor"], ["POSTGRES_USER", "tandoor"], ["POSTGRES_PASSWORD", "tandoor"]] }
+    ],
+    "volumes": [["staticfiles", "/opt/recipes/staticfiles"], ["mediafiles", "/opt/recipes/mediafiles"]]
+  },
+  {
+    "id": "ghost",
+    "label": "Ghost",
+    "group": "Tools",
+    "image": "ghost:5-alpine",
+    "port": 2368,
+    "icon": "ghost",
+    "description": "Ghost — professional publishing / blog platform. MySQL companion (Ghost 5 requires MySQL). Set url to how you reach it (default localhost:2368).",
+    "env": [
+      ["database__client", "mysql"],
+      ["database__connection__host", "${db}"],
+      ["database__connection__user", "ghost"],
+      ["database__connection__password", "ghost"],
+      ["database__connection__database", "ghost"]
+    ],
+    "params": [
+      { "key": "url", "env": "url", "default": "http://localhost:2368" }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "ghost-db", "image": "mysql:8", "role": "mysql",
+        "env": [["MYSQL_ROOT_PASSWORD", "ghost"], ["MYSQL_DATABASE", "ghost"], ["MYSQL_USER", "ghost"], ["MYSQL_PASSWORD", "ghost"]] }
+    ],
+    "volumes": [["content", "/var/lib/ghost/content"]]
+  },
+  {
+    "id": "planka",
+    "label": "Planka",
+    "group": "Tools",
+    "image": "ghcr.io/plankanban/planka:latest",
+    "port": 1337,
+    "icon": "planka",
+    "description": "Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Default login demo@demo.demo / demo.",
+    "env": [
+      ["DATABASE_URL", "postgresql://planka:planka@${db}/planka"]
+    ],
+    "params": [
+      { "key": "base-url", "env": "BASE_URL", "default": "http://localhost:1337" },
+      { "key": "secret-key", "env": "SECRET_KEY", "default": "please-change-me-planka-secret", "secret": true }
+    ],
+    "companions": [
+      { "key": "db", "addMethod": "AddContainer", "resourceName": "planka-db", "image": "postgres:16", "role": "postgres",
+        "env": [["POSTGRES_DB", "planka"], ["POSTGRES_USER", "planka"], ["POSTGRES_PASSWORD", "planka"]] }
+    ]
   }
 ]
