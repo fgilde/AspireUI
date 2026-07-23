@@ -1310,7 +1310,10 @@
     "image": "ghcr.io/go-shiori/shiori:latest",
     "port": 8080,
     "icon": "shiori",
-    "description": "Shiori — simple bookmarks manager (Pocket-like). Default login shiori / gopher (change it).",
+    "description": "Shiori — simple bookmarks manager (Pocket-like). First-run login is shiori / gopher — change it after logging in (Shiori has no env for initial credentials). SHIORI_HTTP_SECRET_KEY seeded as a parameter so sessions survive restarts.",
+    "params": [
+      { "key": "secret-key", "env": "SHIORI_HTTP_SECRET_KEY", "default": "aspireui-shiori-secret-change-me-0123456789", "secret": true }
+    ],
     "args": [
       "serve"
     ],
