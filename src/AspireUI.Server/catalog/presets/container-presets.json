@@ -709,7 +709,7 @@
     "group": "Network",
     "image": "jc21/nginx-proxy-manager:latest",
     "port": 81,
-    "icon": "npm",
+    "icon": "nginx-proxy-manager",
     "description": "Nginx Proxy Manager — reverse proxy + Let's Encrypt with a friendly UI (admin on :81; proxies 80/443). Default login admin@example.com / changeme. Needs /data + /etc/letsencrypt volumes or it refuses to start.",
     "volumes": [
       [
@@ -3026,7 +3026,7 @@
     "group": "Network",
     "image": "azukaar/cosmos-server:latest",
     "port": 80,
-    "icon": "cosmos",
+    "icon": "cosmos-server",
     "description": "Cosmos — self-hosted reverse proxy + app manager with auth/anti-DDOS (:80 / :443). Bind-mounts the Docker socket; complete the setup wizard on first visit. Meant to sit at the network edge.",
     "bindMounts": [
       [

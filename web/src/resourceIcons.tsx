@@ -1,5 +1,6 @@
 import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
+import { useState, type ReactNode } from "react";
 import {
   siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
   siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
@@ -239,8 +240,7 @@ export function resourceVisual(addMethod: string) {
   return { color: v.color === TEXT ? "#8b98a5" : v.color };  // minimap etc. need a concrete color
 }
 
-export function ResourceGlyph({ addMethod, iconKey, size = 16 }: { addMethod: string; iconKey?: string | null; size?: number }) {
-  const v = (iconKey && MAP[iconKey]) || MAP[addMethod] || FALLBACK;
+function renderVisual(v: Visual, size: number) {
   if (v.img) return <img src={v.img} alt="" width={size} height={size} style={{ display: "block", objectFit: "contain" }} />;
   if (v.si) {
     return (
@@ -251,4 +251,27 @@ export function ResourceGlyph({ addMethod, iconKey, size = 16 }: { addMethod: st
   }
   const T = v.tabler ?? IconCube;
   return <T size={size} style={{ color: v.color }} />;
+}
+
+// The real brand logo for a self-hosted app, pulled from the dashboard-icons project (covers ~all of
+// them). Falls back to the local curated glyph on error / offline. Used only for app (preset) icons.
+function CdnIcon({ slug, size, fallback }: { slug: string; size: number; fallback: ReactNode }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{fallback}</>;
+  return (
+    <img src={`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`}
+      alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)}
+      style={{ display: "block", objectFit: "contain" }} />
+  );
+}
+
+export function ResourceGlyph({ addMethod, iconKey, size = 16 }: { addMethod: string; iconKey?: string | null; size?: number }) {
+  const key = iconKey || addMethod;
+  const v = (iconKey && MAP[iconKey]) || MAP[addMethod] || FALLBACK;
+  // Curated brand marks (si/img) win — instant + offline. For app icons that only have a generic tabler
+  // glyph (or none), fetch the real logo from the dashboard-icons CDN. Catalog resource methods (AddX)
+  // keep their curated glyphs and never hit the CDN.
+  if (v.si || v.img) return renderVisual(v, size);
+  if (key && !key.startsWith("Add")) return <CdnIcon slug={key} size={size} fallback={renderVisual(v, size)} />;
+  return renderVisual(v, size);
 }
