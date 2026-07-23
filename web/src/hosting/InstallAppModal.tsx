@@ -14,7 +14,7 @@ interface Item { id: string; label: string; group: string; icon: string; descrip
 
 const presetItem = (p: ContainerPreset): Item => ({
   id: `preset:${p.id}`, label: p.label, group: p.group, icon: p.icon || "", description: p.description, custom: false,
-  install: () => { const { nodes, edges } = buildPresetNodes(p, []); return api.createStack({ name: p.label, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [] }); },
+  install: () => { const { nodes, edges } = buildPresetNodes(p, []); return api.createStack({ name: p.label, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [], hostingUrlPath: p.urlPath ?? null }); },
 });
 const snippetItem = (s: Snippet): Item => ({
   id: `snippet:${s.id}`, label: s.name, group: s.group || "Custom", icon: s.icon || (s.nodes[0]?.icon ?? s.nodes[0]?.addMethod ?? ""), custom: true,

@@ -17,6 +17,7 @@ export interface Stack {
   notes?: StackNote[]; groups?: StackGroup[];
   createdAt?: string | null; createdBy?: string | null;
   deployment?: Deployment | null;   // set by GET /stacks/{id} when the stack is deployed to hosting
+  hostingUrlPath?: string | null;   // appended to the hosting URL (e.g. Plex "/web")
 }
 
 // A stack deployed persistently into the hosting area (a long-lived docker-compose project).
@@ -42,7 +43,7 @@ export interface PresetCompanion { key: string; addMethod: string; resourceName:
 // literal env value. `secret` marks it sensitive (AddParameter secret:true, masked). `default` seeds
 // the value; `name` overrides the generated parameter resource name.
 export interface PresetParam { key: string; env: string; default?: string | null; secret?: boolean; name?: string | null }
-export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; bindMounts?: string[][] | null; files?: ExtraFile[] | null; args?: string[] | null; runtimeArgs?: string[] | null; tags?: string[] | null; gpu?: boolean; hostNetwork?: boolean; fixedPort?: boolean; website?: string | null; screenshots?: string[] | null }
+export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; bindMounts?: string[][] | null; files?: ExtraFile[] | null; args?: string[] | null; runtimeArgs?: string[] | null; tags?: string[] | null; gpu?: boolean; hostNetwork?: boolean; fixedPort?: boolean; website?: string | null; screenshots?: string[] | null; urlPath?: string | null }
 
 // What existing resources satisfy a companion role (reuse), and which Aspire resources can stand in
 // as alternatives to the default container. Drives the "reuse / new container / Aspire alternative"

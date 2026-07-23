@@ -17,7 +17,10 @@ public record StackModel(
     // Creation metadata (set once when a stack is first created; preserved on edits). Shown on the
     // overview cards. Never affects generated code.
     string? CreatedAt = null,
-    string? CreatedBy = null);
+    string? CreatedBy = null,
+    // Optional path appended to this stack's primary hosting URL (e.g. Plex serves its web UI at "/web";
+    // the API root returns XML). Set from a preset's urlPath at install. Never affects generated code.
+    string? HostingUrlPath = null);
 
 public record StackNote(string Id, string Text, double X, double Y);
 public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);

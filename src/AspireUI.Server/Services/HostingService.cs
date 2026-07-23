@@ -223,6 +223,10 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             // Prefer the ports docker actually published (`compose ps`); fall back to the static parse.
             var urls = up.Ok ? UrlsFromServices(ParseServices(deploy.Ps(pub.OutputDir, project).Log), host) : new();
             if (urls.Count == 0) urls = ParseUrls(processed, host);
+            // Append the app's web-UI path (e.g. Plex "/web") to each direct host:port URL so the link
+            // lands on the UI, not the API root.
+            if (!string.IsNullOrWhiteSpace(stack.HostingUrlPath))
+                urls = urls.Select(u => Regex.IsMatch(u, @"://[^/]+:\d+$") ? u + stack.HostingUrlPath : u).ToList();
             // Prepend the friendly proxy URL (…/<slug>.<domain>) when the proxy is active + app has a port.
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
             store.Upsert(store.Get(id)! with
