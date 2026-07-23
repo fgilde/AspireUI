@@ -156,6 +156,7 @@ public class CatalogService
             .ToList();
 
         var result = new List<ResourceType>();
+        var pkgVersions = ResourcePackages().Values; // reverse-lookup a package's version by id
         foreach (var grp in adds.GroupBy(m => m.Name))
         {
             var addOverloads = new List<CatalogOverload>();
@@ -178,13 +179,24 @@ public class CatalogService
                 ? h.EnumerateArray().Select(x => x.GetString()).ToHashSet() : new HashSet<string?>();
             withs = withs.Where(w => !hidden.Contains(w.Method)).ToList();
 
+            // Carry the source assembly (NuGet package) + namespace so the app store can offer package-
+            // backed integrations (AddN8n, AddAdminer, …) as installable apps, and codegen can pull the
+            // right package. Core Aspire.Hosting resources (AddContainer/AddParameter/…) resolve to the
+            // always-referenced core assembly, which the store filters out by name.
+            var decl = grp.First().DeclaringType;
+            var usings = new List<string>();
+            if (decl?.Namespace is { } nsp) usings.Add(nsp);
+            var pkgId = decl?.Assembly.GetName().Name;
+            var pkgVer = pkgId is null ? null : (pkgVersions.FirstOrDefault(p => p.Id == pkgId).Version ?? CodeGenService.AspireVersion);
+
             result.Add(new ResourceType(
                 grp.Key,
                 over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : grp.Key[3..],
                 over?.TryGetProperty("icon", out var i) == true ? i.GetString() : null,
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
                 over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
-                addOverloads, withs, ResourceTypeName: tResource?.Name));
+                addOverloads, withs, Usings: usings, Package: pkgId, PackageVersion: pkgVer,
+                ResourceTypeName: tResource?.Name));
         }
 
         // Composite/macro extensions: AddX(this IDistributedApplicationBuilder, …) that RETURN the
@@ -192,7 +204,6 @@ public class CatalogService
         // AddObservabilityStack). Exposed as statement-nodes. Only overloads whose non-receiver
         // params are all renderable (scalars / enums / resource-references / an options lambda)
         // survive; pure options-object overloads drop out (ReadOverload returns null → no overload).
-        var pkgVersions = ResourcePackages().Values; // reverse-lookup a package's version by id
         var composites = methods
             .Where(m => m.Name.StartsWith("Add"))
             .Where(m => IsAppBuilder(m.ReturnType))

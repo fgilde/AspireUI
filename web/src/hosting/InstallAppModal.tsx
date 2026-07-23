@@ -13,9 +13,11 @@ import { toastOk, toastErr } from "../ui";
 // A handful of crowd-pleasers surfaced in the "Popular" band. Ids that don't exist are simply ignored,
 // so this list can stay generous.
 const FEATURED = new Set([
-  "immich", "nextcloud", "vaultwarden", "jellyfin", "plex", "paperless-ngx", "n8n", "home-assistant",
-  "uptime-kuma", "pihole", "gitea", "grafana", "portainer", "it-tools", "linkwarden", "mealie",
-  "audiobookshelf", "actual", "stirling-pdf", "excalidraw",
+  "immich", "nextcloud", "vaultwarden", "jellyfin", "plex", "emby", "paperless-ngx", "homeassistant",
+  "uptime-kuma", "pihole", "adguard", "gitea", "grafana", "portainer", "it-tools", "linkwarden", "mealie",
+  "audiobookshelf", "actualbudget", "stirling-pdf", "excalidraw", "photoprism", "frigate", "mattermost",
+  "outline", "penpot", "onlyoffice", "nocodb", "metabase", "searxng", "vikunja", "firefly-iii", "bookstack",
+  "wikijs", "homarr", "npm", "nodered", "syncthing", "openwebui", "librechat", "komga", "kavita", "navidrome",
 ]);
 
 // Catalog packages that aren't installable apps (core primitives / cloud bindings) — never shown in the store.
@@ -67,7 +69,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
       (api.getCatalog() as Promise<ResourceType[]>).catch(() => []),
       api.getStoreExclusions().catch(() => []),
     ]).then(([presets, snippets, catalog, ex]) => {
-      const pkgs = catalog.filter(rt => rt.package && !PKG_SKIP.has(rt.addMethod)
+      const pkgs = catalog.filter(rt => rt.package && rt.package !== "Aspire.Hosting" && !PKG_SKIP.has(rt.addMethod)
         && !rt.addMethod.startsWith("AddAzure") && !rt.addMethod.startsWith("AddAws"));
       setItems([...snippets.map(snippetItem), ...presets.map(presetItem), ...pkgs.map(packageItem)]);
       setExcluded(new Set(ex));

@@ -131,24 +131,25 @@ export function LogsModal({ d, onClose, service }: { d: Deployment; onClose: () 
     const a = document.createElement("a"); a.href = url; a.download = `${d.name}-logs.txt`; a.click(); URL.revokeObjectURL(url);
   };
   return (
-    <Modal opened onClose={onClose} fullScreen={full} size="90%"
-      title={<Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
-        <Title order={5} style={{ whiteSpace: "nowrap" }}>Logs · {d.name}</Title>
-        <TextInput size="xs" placeholder="Filter (e.g. a service name)…" value={q} onChange={e => setQ(e.currentTarget.value)}
-          leftSection={<IconSearch size={13} />} style={{ flex: 1, minWidth: 160 }} />
-        <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>{shown.length}/{lines.length}</Text>
-        <CopyButton value={text}>{({ copied, copy }) => (
-          <Tooltip label={copied ? "Copied" : "Copy"} withArrow><ActionIcon variant="subtle" color={copied ? "green" : "gray"} onClick={copy} aria-label="Copy logs">{copied ? <IconCheck size={16} /> : <IconCopy size={16} />}</ActionIcon></Tooltip>)}
-        </CopyButton>
-        <Tooltip label="Download" withArrow><ActionIcon variant="subtle" color="gray" onClick={download} aria-label="Download logs"><IconDownload size={16} /></ActionIcon></Tooltip>
-        <Tooltip label={full ? "Exit fullscreen" : "Fullscreen"} withArrow><ActionIcon variant="subtle" color="gray" onClick={() => setFull(f => !f)} aria-label="Toggle fullscreen">{full ? <IconMinimize size={16} /> : <IconMaximize size={16} />}</ActionIcon></Tooltip>
-      </Group>}
-      styles={{ title: { flex: 1 } }}>
-      <ScrollArea.Autosize mah={full ? "calc(100vh - 120px)" : 560}>
-        <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-          {shown.length ? text : "…"}
-        </pre>
-      </ScrollArea.Autosize>
+    <Modal opened onClose={onClose} fullScreen={full} size={full ? undefined : "80%"}
+      title={<Title order={5}>Logs · {d.name}</Title>}>
+      <Stack gap="xs">
+        <Group gap="xs" wrap="nowrap">
+          <TextInput size="xs" placeholder="Filter (e.g. a service name)…" value={q} onChange={e => setQ(e.currentTarget.value)}
+            leftSection={<IconSearch size={13} />} style={{ flex: 1 }} />
+          <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>{shown.length}/{lines.length}</Text>
+          <CopyButton value={text}>{({ copied, copy }) => (
+            <Tooltip label={copied ? "Copied" : "Copy"} withArrow><ActionIcon variant="subtle" color={copied ? "green" : "gray"} onClick={copy} aria-label="Copy logs">{copied ? <IconCheck size={16} /> : <IconCopy size={16} />}</ActionIcon></Tooltip>)}
+          </CopyButton>
+          <Tooltip label="Download" withArrow><ActionIcon variant="subtle" color="gray" onClick={download} aria-label="Download logs"><IconDownload size={16} /></ActionIcon></Tooltip>
+          <Tooltip label={full ? "Exit fullscreen" : "Fullscreen"} withArrow><ActionIcon variant="subtle" color="gray" onClick={() => setFull(f => !f)} aria-label="Toggle fullscreen">{full ? <IconMinimize size={16} /> : <IconMaximize size={16} />}</ActionIcon></Tooltip>
+        </Group>
+        <ScrollArea.Autosize mah={full ? "calc(100vh - 160px)" : 520} style={{ background: "var(--mantine-color-default)", borderRadius: 6 }}>
+          <pre style={{ margin: 0, padding: 10, fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+            {shown.length ? text : "…"}
+          </pre>
+        </ScrollArea.Autosize>
+      </Stack>
     </Modal>
   );
 }
