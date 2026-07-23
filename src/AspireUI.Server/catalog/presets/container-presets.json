@@ -1657,7 +1657,8 @@
         ]
       }
     ],
-    "website": "https://linkwarden.app"
+    "website": "https://linkwarden.app",
+    "fixedPort": true
   },
   {
     "id": "bookstack",
@@ -1735,7 +1736,8 @@
         "/config"
       ]
     ],
-    "website": "https://www.bookstackapp.com"
+    "website": "https://www.bookstackapp.com",
+    "fixedPort": true
   },
   {
     "id": "hedgedoc",
@@ -1805,14 +1807,15 @@
         "/hedgedoc/public/uploads"
       ]
     ],
-    "website": "https://hedgedoc.org"
+    "website": "https://hedgedoc.org",
+    "fixedPort": true
   },
   {
     "id": "tandoor",
     "label": "Tandoor Recipes",
     "group": "Tools",
     "image": "vabene1111/recipes:latest",
-    "port": 8080,
+    "port": 80,
     "icon": "tandoor",
     "description": "Tandoor — feature-rich recipe manager & meal planner. Postgres companion.",
     "env": [
@@ -1954,7 +1957,8 @@
         "/var/lib/ghost/content"
       ]
     ],
-    "website": "https://ghost.org"
+    "website": "https://ghost.org",
+    "fixedPort": true
   },
   {
     "id": "planka",
@@ -2006,7 +2010,8 @@
         ]
       }
     ],
-    "website": "https://planka.app"
+    "website": "https://planka.app",
+    "fixedPort": true
   },
   {
     "id": "plex",
@@ -2204,7 +2209,8 @@
         "role": "redis"
       }
     ],
-    "website": "https://www.getoutline.com"
+    "website": "https://www.getoutline.com",
+    "fixedPort": true
   },
   {
     "id": "owncloud",
@@ -2307,7 +2313,8 @@
         "/mnt/data"
       ]
     ],
-    "website": "https://owncloud.com"
+    "website": "https://owncloud.com",
+    "fixedPort": true
   },
   {
     "id": "ghostfolio",
@@ -2584,7 +2591,8 @@
         "/opt/data/assets"
       ]
     ],
-    "website": "https://penpot.app"
+    "website": "https://penpot.app",
+    "fixedPort": true
   },
   {
     "id": "homarr",
