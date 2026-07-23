@@ -98,7 +98,9 @@ export function Editor() {
         const zip = await JSZip.loadAsync(blob);
         for (const [path, entry] of Object.entries(zip.files)) {
           if ((entry as { dir: boolean }).dir) continue;
-          const parts = path.split("/"); const fname = parts.pop()!;
+          const parts = path.split("/").filter(Boolean);   // drop empty segments (leading "/", "./")
+          const fname = parts.pop();
+          if (!fname) continue;
           let dir = root;
           for (const p of parts) dir = await dir.getDirectoryHandle(p, { create: true });
           const fh = await dir.getFileHandle(fname, { create: true });

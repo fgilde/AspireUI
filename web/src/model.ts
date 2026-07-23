@@ -547,6 +547,20 @@ export function orphanableDeps(s: Stack, id: string): OrphanDep[] {
     const otherReferrer = s.edges.some(e => e.toNodeId === t && e.fromNodeId !== id && e.fromNodeId !== t);
     if (!otherReferrer) out.push({ node, owned: node.spawnedBy === id });
   }
+  // Parameter nodes are linked by a WithEnvironment(key, <paramVar>) reference, NOT by an edge — so the
+  // edge walk above misses them. Add AddParameter nodes this node references (bare-identifier arg) that
+  // no OTHER node references. Same orphan rule, just via var reference instead of an edge.
+  const self = s.nodes.find(n => n.id === id);
+  if (self) {
+    const bareRefs = new Set<string>();
+    for (const w of self.withCalls) for (const arg of w.args) if (/^[A-Za-z_]\w*$/.test(arg)) bareRefs.add(arg);
+    for (const p of s.nodes) {
+      if (p.id === id || p.addMethod !== "AddParameter" || !bareRefs.has(p.varName)) continue;
+      if (out.some(o => o.node.id === p.id)) continue;
+      const usedElsewhere = s.nodes.some(o => o.id !== id && o.id !== p.id && o.withCalls.some(w => w.args.includes(p.varName)));
+      if (!usedElsewhere) out.push({ node: p, owned: p.spawnedBy === id });
+    }
+  }
   return out;
 }
 // Stack-level run state shown per node (Running/Starting/Failed dot on the

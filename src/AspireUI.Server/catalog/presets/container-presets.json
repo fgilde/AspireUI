@@ -3289,53 +3289,6 @@
     "website": "https://github.com/foldergram/foldergram"
   },
   {
-    "id": "runtipi",
-    "label": "Runtipi",
-    "group": "Network",
-    "image": "ghcr.io/runtipi/runtipi:latest",
-    "port": 80,
-    "icon": "runtipi",
-    "description": "Runtipi — self-hosted homeserver / app manager. EXPERIMENTAL: it is itself a Docker orchestrator (mounts the Docker socket, runs its own Traefik on :80 + Postgres/Redis) and wants to own the host. ROOT_FOLDER_HOST must be the HOST path of its data dir (it passes host paths to the sibling containers it spawns) — on a real Linux host set it to the folder you bind-mount to /data; the /data default just lets it start.",
-    "env": [
-      [
-        "ROOT_FOLDER",
-        "/data"
-      ]
-    ],
-    "params": [
-      {
-        "key": "jwt-secret",
-        "env": "JWT_SECRET",
-        "default": "aspireui-runtipi-jwt-change-me-0123456789",
-        "secret": true
-      },
-      {
-        "key": "postgres-password",
-        "env": "POSTGRES_PASSWORD",
-        "default": "runtipi",
-        "secret": true
-      },
-      {
-        "key": "root-folder-host",
-        "env": "ROOT_FOLDER_HOST",
-        "default": "/data"
-      }
-    ],
-    "bindMounts": [
-      [
-        "/var/run/docker.sock",
-        "/var/run/docker.sock"
-      ]
-    ],
-    "volumes": [
-      [
-        "data",
-        "/data"
-      ]
-    ],
-    "website": "https://runtipi.io"
-  },
-  {
     "id": "umbrel",
     "label": "Umbrel (umbrelOS)",
     "group": "Network",
