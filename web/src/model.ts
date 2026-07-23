@@ -148,7 +148,8 @@ export function buildPresetNodes(
   // <paramVar>) with the varName emitted UNQUOTED so codegen treats it as a builder reference) or a
   // plain literal env value ("value" mode). Default (no choice) = a new parameter.
   interface ParamPlan { param: PresetParam; mode: "value" | "reuse" | "new"; value?: string; varName?: string; targetId?: string; name?: string; }
-  const params = preset.params ?? [];
+  // "none" = just the app: no companions AND no parameter nodes — the user wires everything themselves.
+  const params = choices === "none" ? [] : (preset.params ?? []);
   const paramPlans: ParamPlan[] = params.map(param => {
     const choice = choices && choices !== "none" ? choices[`param:${param.key}`] : undefined;
     if (choice?.mode === "value") return { param, mode: "value", value: choice.value };
