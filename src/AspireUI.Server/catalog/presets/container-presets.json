@@ -26,7 +26,8 @@
         "port": 8080,
         "role": "llm"
       }
-    ]
+    ],
+    "website": "https://github.com/mudler/LocalAGI"
   },
   {
     "id": "localrecall",
@@ -35,7 +36,8 @@
     "image": "quay.io/mudler/localrecall:latest",
     "port": 8080,
     "icon": "localrecall",
-    "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI)."
+    "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI).",
+    "website": "https://github.com/mudler/LocalRecall"
   },
   {
     "id": "openwebui",
@@ -44,7 +46,8 @@
     "image": "ghcr.io/open-webui/open-webui:main",
     "port": 8080,
     "icon": "openwebui",
-    "description": "Open WebUI — chat UI for Ollama / OpenAI-compatible backends. Point OLLAMA_BASE_URL / OPENAI_API_BASE_URL at your model resource."
+    "description": "Open WebUI — chat UI for Ollama / OpenAI-compatible backends. Point OLLAMA_BASE_URL / OPENAI_API_BASE_URL at your model resource.",
+    "website": "https://openwebui.com"
   },
   {
     "id": "comfyui",
@@ -54,7 +57,8 @@
     "port": 8188,
     "icon": "comfyui",
     "description": "ComfyUI — node-based Stable Diffusion image/video pipeline (ai-dock build). GPU recommended.",
-    "gpu": true
+    "gpu": true,
+    "website": "https://github.com/comfyanonymous/ComfyUI"
   },
   {
     "id": "sdnext",
@@ -64,7 +68,8 @@
     "port": 7860,
     "icon": "sdnext",
     "description": "SD.Next — all-in-one WebUI for generative image/video (vladmandic). CUDA image shown; ROCm/IPEX/OpenVINO variants exist. GPU recommended.",
-    "gpu": true
+    "gpu": true,
+    "website": "https://github.com/vladmandic/sdnext"
   },
   {
     "id": "acestep",
@@ -74,7 +79,8 @@
     "port": 7860,
     "icon": "acestep",
     "description": "ACE-Step 1.5 — open music generation (Gradio UI, models baked in ~15GB). GPU recommended.",
-    "gpu": true
+    "gpu": true,
+    "website": "https://github.com/ace-step/ACE-Step"
   },
   {
     "id": "langflow",
@@ -85,12 +91,25 @@
     "icon": "langflow",
     "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
     "env": [
-      ["LANGFLOW_AUTO_LOGIN", "false"]
+      [
+        "LANGFLOW_AUTO_LOGIN",
+        "false"
+      ]
     ],
     "params": [
-      { "key": "superuser", "env": "LANGFLOW_SUPERUSER", "default": "admin" },
-      { "key": "superuser-password", "env": "LANGFLOW_SUPERUSER_PASSWORD", "default": "admin", "secret": true }
-    ]
+      {
+        "key": "superuser",
+        "env": "LANGFLOW_SUPERUSER",
+        "default": "admin"
+      },
+      {
+        "key": "superuser-password",
+        "env": "LANGFLOW_SUPERUSER_PASSWORD",
+        "default": "admin",
+        "secret": true
+      }
+    ],
+    "website": "https://www.langflow.org"
   },
   {
     "id": "flowise",
@@ -99,7 +118,8 @@
     "image": "flowiseai/flowise:latest",
     "port": 3000,
     "icon": "flowise",
-    "description": "Flowise — drag-and-drop LLM app / agent builder."
+    "description": "Flowise — drag-and-drop LLM app / agent builder.",
+    "website": "https://flowiseai.com"
   },
   {
     "id": "whisper-asr",
@@ -108,7 +128,8 @@
     "image": "onerahmet/openai-whisper-asr-webservice:latest",
     "port": 9000,
     "icon": "whisper",
-    "description": "Whisper ASR web service — speech-to-text HTTP API (openai-whisper / faster-whisper)."
+    "description": "Whisper ASR web service — speech-to-text HTTP API (openai-whisper / faster-whisper).",
+    "website": "https://github.com/ahmetoner/whisper-asr-webservice"
   },
   {
     "id": "code-server",
@@ -119,8 +140,14 @@
     "icon": "vscode",
     "description": "code-server — VS Code in the browser. Login password seeded as a parameter (change it); without it code-server generates a random one each start.",
     "params": [
-      { "key": "password", "env": "PASSWORD", "default": "please-change-me", "secret": true }
-    ]
+      {
+        "key": "password",
+        "env": "PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
+    ],
+    "website": "https://github.com/coder/code-server"
   },
   {
     "id": "uptime-kuma",
@@ -129,7 +156,8 @@
     "image": "louislam/uptime-kuma:1",
     "port": 3001,
     "icon": "uptimekuma",
-    "description": "Uptime Kuma — self-hosted uptime/status monitoring."
+    "description": "Uptime Kuma — self-hosted uptime/status monitoring.",
+    "website": "https://github.com/louislam/uptime-kuma"
   },
   {
     "id": "paperclip",
@@ -140,8 +168,14 @@
     "icon": "paperclip",
     "description": "Paperclip (paperclipai) — open platform for orchestrating AI agents. API on 3100; embedded Postgres, no DB setup needed. BETTER_AUTH_SECRET seeded as a parameter (change it).",
     "params": [
-      { "key": "auth-secret", "env": "BETTER_AUTH_SECRET", "default": "paperclip-dev-secret", "secret": true }
-    ]
+      {
+        "key": "auth-secret",
+        "env": "BETTER_AUTH_SECRET",
+        "default": "paperclip-dev-secret",
+        "secret": true
+      }
+    ],
+    "website": "https://github.com/paperclipai/paperclip"
   },
   {
     "id": "paperless-ai",
@@ -150,7 +184,8 @@
     "image": "clusterzx/paperless-ai:latest",
     "port": 3000,
     "icon": "paperless",
-    "description": "Paperless-AI — AI companion for Paperless-ngx: auto tagging/classification + semantic search. Point it at your Paperless instance."
+    "description": "Paperless-AI — AI companion for Paperless-ngx: auto tagging/classification + semantic search. Point it at your Paperless instance.",
+    "website": "https://github.com/clusterzx/paperless-ai"
   },
   {
     "id": "paperless-ngx",
@@ -218,7 +253,8 @@
         "media",
         "/usr/src/paperless/media"
       ]
-    ]
+    ],
+    "website": "https://docs.paperless-ngx.com"
   },
   {
     "id": "nextcloud",
@@ -233,7 +269,8 @@
         "data",
         "/var/www/html"
       ]
-    ]
+    ],
+    "website": "https://nextcloud.com"
   },
   {
     "id": "vaultwarden",
@@ -248,7 +285,8 @@
         "data",
         "/data"
       ]
-    ]
+    ],
+    "website": "https://github.com/dani-garcia/vaultwarden"
   },
   {
     "id": "gitea",
@@ -263,7 +301,8 @@
         "data",
         "/data"
       ]
-    ]
+    ],
+    "website": "https://about.gitea.com"
   },
   {
     "id": "metabase",
@@ -272,7 +311,8 @@
     "image": "metabase/metabase:latest",
     "port": 3000,
     "icon": "metabase",
-    "description": "Metabase — BI dashboards & ad-hoc analytics over your databases."
+    "description": "Metabase — BI dashboards & ad-hoc analytics over your databases.",
+    "website": "https://www.metabase.com"
   },
   {
     "id": "jaeger",
@@ -281,7 +321,8 @@
     "image": "jaegertracing/all-in-one:latest",
     "port": 16686,
     "icon": "jaeger",
-    "description": "Jaeger — distributed tracing UI + collector (OTLP). All-in-one, in-memory storage."
+    "description": "Jaeger — distributed tracing UI + collector (OTLP). All-in-one, in-memory storage.",
+    "website": "https://www.jaegertracing.io"
   },
   {
     "id": "homepage",
@@ -302,7 +343,8 @@
         "config",
         "/app/config"
       ]
-    ]
+    ],
+    "website": "https://gethomepage.dev"
   },
   {
     "id": "onlyoffice",
@@ -311,7 +353,8 @@
     "image": "onlyoffice/documentserver:latest",
     "port": 80,
     "icon": "onlyoffice",
-    "description": "OnlyOffice Document Server — a document-editing BACKEND (API), not a standalone app. The welcome/test page is expected; it's meant to be embedded in Nextcloud/your app, no user UI of its own."
+    "description": "OnlyOffice Document Server — a document-editing BACKEND (API), not a standalone app. The welcome/test page is expected; it's meant to be embedded in Nextcloud/your app, no user UI of its own.",
+    "website": "https://www.onlyoffice.com"
   },
   {
     "id": "gokapi",
@@ -320,7 +363,8 @@
     "image": "f0rc3/gokapi:latest",
     "port": 53842,
     "icon": "gokapi",
-    "description": "Gokapi — lightweight self-hosted file sharing with expiring links."
+    "description": "Gokapi — lightweight self-hosted file sharing with expiring links.",
+    "website": "https://github.com/Forceu/Gokapi"
   },
   {
     "id": "stirling-pdf",
@@ -329,7 +373,8 @@
     "image": "ghcr.io/stirling-tools/stirling-pdf:latest",
     "port": 8080,
     "icon": "stirlingpdf",
-    "description": "Stirling-PDF — local, privacy-friendly PDF toolbox (merge/split/OCR/convert…)."
+    "description": "Stirling-PDF — local, privacy-friendly PDF toolbox (merge/split/OCR/convert…).",
+    "website": "https://www.stirlingpdf.com"
   },
   {
     "id": "actualbudget",
@@ -338,7 +383,8 @@
     "image": "actualbudget/actual-server:latest",
     "port": 5006,
     "icon": "actual",
-    "description": "Actual — fast, local-first personal budgeting/finance."
+    "description": "Actual — fast, local-first personal budgeting/finance.",
+    "website": "https://actualbudget.org"
   },
   {
     "id": "it-tools",
@@ -347,7 +393,8 @@
     "image": "ghcr.io/corentinth/it-tools:latest",
     "port": 80,
     "icon": "ittools",
-    "description": "IT-Tools — a big box of handy dev utilities (encoders, converters, generators…)."
+    "description": "IT-Tools — a big box of handy dev utilities (encoders, converters, generators…).",
+    "website": "https://it-tools.tech"
   },
   {
     "id": "ntfy",
@@ -359,7 +406,8 @@
     "description": "ntfy — simple pub/sub push notifications to your phone/desktop via HTTP. Runs the 'serve' subcommand (bare ntfy just prints help and exits).",
     "args": [
       "serve"
-    ]
+    ],
+    "website": "https://ntfy.sh"
   },
   {
     "id": "freshrss",
@@ -368,7 +416,8 @@
     "image": "freshrss/freshrss:latest",
     "port": 80,
     "icon": "freshrss",
-    "description": "FreshRSS — self-hosted RSS feed aggregator/reader."
+    "description": "FreshRSS — self-hosted RSS feed aggregator/reader.",
+    "website": "https://freshrss.org"
   },
   {
     "id": "immich",
@@ -443,7 +492,8 @@
         "upload",
         "/usr/src/app/upload"
       ]
-    ]
+    ],
+    "website": "https://immich.app"
   },
   {
     "id": "dockge",
@@ -452,7 +502,8 @@
     "image": "louislam/dockge:1",
     "port": 5001,
     "icon": "dockge",
-    "description": "Dockge — a tidy manager for docker-compose stacks (by the Uptime-Kuma author)."
+    "description": "Dockge — a tidy manager for docker-compose stacks (by the Uptime-Kuma author).",
+    "website": "https://github.com/louislam/dockge"
   },
   {
     "id": "dozzle",
@@ -468,7 +519,8 @@
         "/var/run/docker.sock",
         "ro"
       ]
-    ]
+    ],
+    "website": "https://dozzle.dev"
   },
   {
     "id": "jellyfin",
@@ -488,7 +540,8 @@
         "/cache"
       ]
     ],
-    "gpu": true
+    "gpu": true,
+    "website": "https://jellyfin.org"
   },
   {
     "id": "navidrome",
@@ -503,7 +556,8 @@
         "data",
         "/data"
       ]
-    ]
+    ],
+    "website": "https://www.navidrome.org"
   },
   {
     "id": "audiobookshelf",
@@ -522,7 +576,8 @@
         "metadata",
         "/metadata"
       ]
-    ]
+    ],
+    "website": "https://www.audiobookshelf.org"
   },
   {
     "id": "photoprism",
@@ -533,15 +588,25 @@
     "icon": "photoprism",
     "description": "PhotoPrism — AI-powered photo gallery/backup. Login admin / please-change-me (change it).",
     "params": [
-      { "key": "admin-user", "env": "PHOTOPRISM_ADMIN_USER", "default": "admin" },
-      { "key": "admin-password", "env": "PHOTOPRISM_ADMIN_PASSWORD", "default": "please-change-me", "secret": true }
+      {
+        "key": "admin-user",
+        "env": "PHOTOPRISM_ADMIN_USER",
+        "default": "admin"
+      },
+      {
+        "key": "admin-password",
+        "env": "PHOTOPRISM_ADMIN_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
     ],
     "volumes": [
       [
         "storage",
         "/photoprism/storage"
       ]
-    ]
+    ],
+    "website": "https://www.photoprism.app"
   },
   {
     "id": "sonarr",
@@ -550,7 +615,8 @@
     "image": "lscr.io/linuxserver/sonarr:latest",
     "port": 8989,
     "icon": "sonarr",
-    "description": "Sonarr — TV series collection manager (needs a download client + indexer)."
+    "description": "Sonarr — TV series collection manager (needs a download client + indexer).",
+    "website": "https://sonarr.tv"
   },
   {
     "id": "radarr",
@@ -559,7 +625,8 @@
     "image": "lscr.io/linuxserver/radarr:latest",
     "port": 7878,
     "icon": "radarr",
-    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent)."
+    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent).",
+    "website": "https://radarr.video"
   },
   {
     "id": "prowlarr",
@@ -568,7 +635,8 @@
     "image": "lscr.io/linuxserver/prowlarr:latest",
     "port": 9696,
     "icon": "prowlarr",
-    "description": "Prowlarr — indexer manager for the *arr apps."
+    "description": "Prowlarr — indexer manager for the *arr apps.",
+    "website": "https://prowlarr.com"
   },
   {
     "id": "qbittorrent",
@@ -602,7 +670,8 @@
         "name": "qbittorrent/qBittorrent.conf",
         "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nWebUI\\HostHeaderValidation=false\nWebUI\\CSRFProtection=false\nWebUI\\Username=admin\nWebUI\\Password_PBKDF2=\"@ByteArray(ASNFZ4mrze8BI0VniavN7w==:2eudnLCDJryVCeZQf9qr7NAUBmebSO3e9/32HTM945ugU8DM74Jj2MyIr1YSq0sOMwASMCn0emH3SB5ZbeKR4Q==)\"\n"
       }
-    ]
+    ],
+    "website": "https://www.qbittorrent.org"
   },
   {
     "id": "pihole",
@@ -613,9 +682,15 @@
     "icon": "pihole",
     "description": "Pi-hole — network-wide ad/tracker blocking DNS. Admin login password seeded as a parameter (change it). Also binds DNS on :53 (host port conflicts possible).",
     "params": [
-      { "key": "web-password", "env": "FTLCONF_webserver_api_password", "default": "please-change-me", "secret": true }
+      {
+        "key": "web-password",
+        "env": "FTLCONF_webserver_api_password",
+        "default": "please-change-me",
+        "secret": true
+      }
     ],
-    "hostNetwork": true
+    "hostNetwork": true,
+    "website": "https://pi-hole.net"
   },
   {
     "id": "adguard",
@@ -625,7 +700,8 @@
     "port": 3000,
     "icon": "adguard",
     "description": "AdGuard Home — DNS-based ad/tracker blocking (setup UI on :3000, DNS on :53).",
-    "hostNetwork": true
+    "hostNetwork": true,
+    "website": "https://adguard.com/adguard-home/overview.html"
   },
   {
     "id": "npm",
@@ -644,7 +720,8 @@
         "letsencrypt",
         "/etc/letsencrypt"
       ]
-    ]
+    ],
+    "website": "https://nginxproxymanager.com"
   },
   {
     "id": "homeassistant",
@@ -654,7 +731,8 @@
     "port": 8123,
     "icon": "homeassistant",
     "description": "Home Assistant — open-source home automation. Works best on host networking for device discovery.",
-    "hostNetwork": true
+    "hostNetwork": true,
+    "website": "https://www.home-assistant.io"
   },
   {
     "id": "nodered",
@@ -663,7 +741,8 @@
     "image": "nodered/node-red:latest",
     "port": 1880,
     "icon": "nodered",
-    "description": "Node-RED — low-code flow automation / event wiring."
+    "description": "Node-RED — low-code flow automation / event wiring.",
+    "website": "https://nodered.org"
   },
   {
     "id": "vikunja",
@@ -692,7 +771,8 @@
         "db",
         "/db"
       ]
-    ]
+    ],
+    "website": "https://vikunja.io"
   },
   {
     "id": "memos",
@@ -701,7 +781,8 @@
     "image": "neosmemo/memos:stable",
     "port": 5230,
     "icon": "memos",
-    "description": "Memos — lightweight, privacy-first note/memo hub."
+    "description": "Memos — lightweight, privacy-first note/memo hub.",
+    "website": "https://www.usememos.com"
   },
   {
     "id": "excalidraw",
@@ -710,7 +791,8 @@
     "image": "excalidraw/excalidraw:latest",
     "port": 80,
     "icon": "excalidraw",
-    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams."
+    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams.",
+    "website": "https://excalidraw.com"
   },
   {
     "id": "drawio",
@@ -719,7 +801,8 @@
     "image": "jgraph/drawio:latest",
     "port": 8080,
     "icon": "drawio",
-    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted. HTTP 400 'Request header is too large' = too many localhost cookies from other apps on other ports (Tomcat's 8KB limit); open it in a private window or clear localhost cookies."
+    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted. HTTP 400 'Request header is too large' = too many localhost cookies from other apps on other ports (Tomcat's 8KB limit); open it in a private window or clear localhost cookies.",
+    "website": "https://www.drawio.com"
   },
   {
     "id": "anythingllm",
@@ -740,7 +823,8 @@
         "storage",
         "/app/server/storage"
       ]
-    ]
+    ],
+    "website": "https://anythingllm.com"
   },
   {
     "id": "librechat",
@@ -819,7 +903,8 @@
         ],
         "role": "meilisearch"
       }
-    ]
+    ],
+    "website": "https://www.librechat.ai"
   },
   {
     "id": "searxng",
@@ -828,7 +913,8 @@
     "image": "searxng/searxng:latest",
     "port": 8080,
     "icon": "searxng",
-    "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG."
+    "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG.",
+    "website": "https://docs.searxng.org"
   },
   {
     "id": "bazarr",
@@ -838,7 +924,13 @@
     "port": 6767,
     "icon": "bazarr",
     "description": "Bazarr — companion to Sonarr/Radarr that manages & downloads subtitles.",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://www.bazarr.media"
   },
   {
     "id": "jellyseerr",
@@ -848,7 +940,13 @@
     "port": 5055,
     "icon": "jellyseerr",
     "description": "Jellyseerr — media request & discovery frontend for Jellyfin/Emby/Plex.",
-    "volumes": [["config", "/app/config"]]
+    "volumes": [
+      [
+        "config",
+        "/app/config"
+      ]
+    ],
+    "website": "https://github.com/Fallenbagel/jellyseerr"
   },
   {
     "id": "jackett",
@@ -858,7 +956,13 @@
     "port": 9117,
     "icon": "jackett",
     "description": "Jackett — indexer proxy that translates tracker searches for the *arr apps.",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://github.com/Jackett/Jackett"
   },
   {
     "id": "deluge",
@@ -868,7 +972,13 @@
     "port": 8112,
     "icon": "deluge",
     "description": "Deluge — lightweight BitTorrent client with a web UI (default password 'deluge', change it).",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://deluge-torrent.org"
   },
   {
     "id": "komga",
@@ -878,7 +988,13 @@
     "port": 25600,
     "icon": "komga",
     "description": "Komga — self-hosted comics/manga/e-book server.",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://komga.org"
   },
   {
     "id": "kavita",
@@ -888,7 +1004,13 @@
     "port": 5000,
     "icon": "kavita",
     "description": "Kavita — fast, cross-platform reading server (comics, manga, books).",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://www.kavitareader.com"
   },
   {
     "id": "calibre-web",
@@ -898,7 +1020,17 @@
     "port": 8083,
     "icon": "calibreweb",
     "description": "Calibre-Web — clean web UI to browse/read/download your Calibre e-book library (login admin / admin123).",
-    "volumes": [["config", "/config"], ["books", "/books"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "books",
+        "/books"
+      ]
+    ],
+    "website": "https://github.com/janeczku/calibre-web"
   },
   {
     "id": "filebrowser",
@@ -908,7 +1040,17 @@
     "port": 80,
     "icon": "filebrowser",
     "description": "File Browser — a tidy web file manager for a directory (login admin / admin, change it).",
-    "volumes": [["srv", "/srv"], ["database", "/database"]]
+    "volumes": [
+      [
+        "srv",
+        "/srv"
+      ],
+      [
+        "database",
+        "/database"
+      ]
+    ],
+    "website": "https://filebrowser.org"
   },
   {
     "id": "heimdall",
@@ -918,7 +1060,13 @@
     "port": 80,
     "icon": "heimdall",
     "description": "Heimdall — a good-looking application dashboard / start page for your services.",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://heimdall.site"
   },
   {
     "id": "homer",
@@ -928,7 +1076,13 @@
     "port": 8080,
     "icon": "homer",
     "description": "Homer — a dead-simple static homepage/dashboard for your services (edit assets/config.yml).",
-    "volumes": [["assets", "/www/assets"]]
+    "volumes": [
+      [
+        "assets",
+        "/www/assets"
+      ]
+    ],
+    "website": "https://github.com/bastienwirtz/homer"
   },
   {
     "id": "duplicati",
@@ -938,7 +1092,17 @@
     "port": 8200,
     "icon": "duplicati",
     "description": "Duplicati — encrypted, scheduled backups to local/cloud storage.",
-    "volumes": [["config", "/config"], ["backups", "/backups"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "backups",
+        "/backups"
+      ]
+    ],
+    "website": "https://www.duplicati.com"
   },
   {
     "id": "gotify",
@@ -948,7 +1112,13 @@
     "port": 80,
     "icon": "gotify",
     "description": "Gotify — simple self-hosted server for push notifications (login admin / admin, change it).",
-    "volumes": [["data", "/app/data"]]
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://gotify.net"
   },
   {
     "id": "grocy",
@@ -958,7 +1128,13 @@
     "port": 80,
     "icon": "grocy",
     "description": "Grocy — ERP for your fridge: groceries, stock, chores & recipes (login admin / admin).",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://grocy.info"
   },
   {
     "id": "libretranslate",
@@ -968,7 +1144,13 @@
     "port": 5000,
     "icon": "libretranslate",
     "description": "LibreTranslate — self-hosted machine translation API/UI (downloads language models on first start).",
-    "volumes": [["models", "/home/libretranslate/.local"]]
+    "volumes": [
+      [
+        "models",
+        "/home/libretranslate/.local"
+      ]
+    ],
+    "website": "https://libretranslate.com"
   },
   {
     "id": "lobe-chat",
@@ -977,7 +1159,8 @@
     "image": "lobehub/lobe-chat:latest",
     "port": 3210,
     "icon": "lobechat",
-    "description": "LobeChat — polished chat UI for OpenAI/Claude/Ollama and more (enter your API keys in-app)."
+    "description": "LobeChat — polished chat UI for OpenAI/Claude/Ollama and more (enter your API keys in-app).",
+    "website": "https://lobehub.com"
   },
   {
     "id": "grafana",
@@ -987,7 +1170,13 @@
     "port": 3000,
     "icon": "grafana",
     "description": "Grafana — dashboards & visualization over your metrics/logs (login admin / admin).",
-    "volumes": [["data", "/var/lib/grafana"]]
+    "volumes": [
+      [
+        "data",
+        "/var/lib/grafana"
+      ]
+    ],
+    "website": "https://grafana.com"
   },
   {
     "id": "glances",
@@ -997,8 +1186,20 @@
     "port": 61208,
     "icon": "glances",
     "description": "Glances — a cross-platform system monitor with a web UI. Runs in web-server mode; bind-mounts the Docker socket (read-only) to show container stats.",
-    "env": [["GLANCES_OPT", "-w"]],
-    "bindMounts": [["/var/run/docker.sock", "/var/run/docker.sock", "ro"]]
+    "env": [
+      [
+        "GLANCES_OPT",
+        "-w"
+      ]
+    ],
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock",
+        "ro"
+      ]
+    ],
+    "website": "https://nicolargo.github.io/glances/"
   },
   {
     "id": "portainer",
@@ -1008,8 +1209,19 @@
     "port": 9000,
     "icon": "portainer",
     "description": "Portainer — web UI to manage Docker/containers. Bind-mounts the host Docker socket. Set the admin password on first visit.",
-    "volumes": [["data", "/data"]],
-    "bindMounts": [["/var/run/docker.sock", "/var/run/docker.sock"]]
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock"
+      ]
+    ],
+    "website": "https://www.portainer.io"
   },
   {
     "id": "nocodb",
@@ -1019,7 +1231,13 @@
     "port": 8080,
     "icon": "nocodb",
     "description": "NocoDB — turn any database into a smart spreadsheet (Airtable-style). SQLite by default, no DB setup needed.",
-    "volumes": [["data", "/usr/app/data"]]
+    "volumes": [
+      [
+        "data",
+        "/usr/app/data"
+      ]
+    ],
+    "website": "https://nocodb.com"
   },
   {
     "id": "mealie",
@@ -1029,7 +1247,13 @@
     "port": 9000,
     "icon": "mealie",
     "description": "Mealie — self-hosted recipe manager & meal planner (SQLite by default).",
-    "volumes": [["data", "/app/data"]]
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://mealie.io"
   },
   {
     "id": "homebox",
@@ -1038,8 +1262,17 @@
     "image": "ghcr.io/sysadminsmedia/homebox:latest",
     "port": 7745,
     "icon": "homebox",
-    "description": "Homebox — simple home inventory & organization (SQLite).",
-    "volumes": [["data", "/data"]]
+    "description": "Homebox — simple home inventory & organization (SQLite). Needs an API-key pepper (>= 32 bytes) — seeded as a parameter; rotating it invalidates issued API keys.",
+    "params": [
+      { "key": "api-key-pepper", "env": "HBOX_AUTH_API_KEY_PEPPER", "default": "aspireui-homebox-pepper-please-change-me-0123456789", "secret": true }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://homebox.software"
   },
   {
     "id": "linkding",
@@ -1050,10 +1283,25 @@
     "icon": "linkding",
     "description": "linkding — minimal, fast self-hosted bookmark manager. Seeds an admin user (change the password).",
     "params": [
-      { "key": "superuser", "env": "LD_SUPERUSER_NAME", "default": "admin" },
-      { "key": "superuser-password", "env": "LD_SUPERUSER_PASSWORD", "default": "please-change-me", "secret": true }
+      {
+        "key": "superuser",
+        "env": "LD_SUPERUSER_NAME",
+        "default": "admin"
+      },
+      {
+        "key": "superuser-password",
+        "env": "LD_SUPERUSER_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
     ],
-    "volumes": [["data", "/etc/linkding/data"]]
+    "volumes": [
+      [
+        "data",
+        "/etc/linkding/data"
+      ]
+    ],
+    "website": "https://linkding.link"
   },
   {
     "id": "shiori",
@@ -1063,8 +1311,16 @@
     "port": 8080,
     "icon": "shiori",
     "description": "Shiori — simple bookmarks manager (Pocket-like). Default login shiori / gopher (change it).",
-    "args": ["serve"],
-    "volumes": [["data", "/shiori"]]
+    "args": [
+      "serve"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/shiori"
+      ]
+    ],
+    "website": "https://github.com/go-shiori/shiori"
   },
   {
     "id": "changedetection",
@@ -1074,7 +1330,13 @@
     "port": 5000,
     "icon": "changedetection",
     "description": "changedetection.io — watch web pages for changes and get notified. (Add a Playwright/browserless companion later for JS-heavy pages.)",
-    "volumes": [["datastore", "/datastore"]]
+    "volumes": [
+      [
+        "datastore",
+        "/datastore"
+      ]
+    ],
+    "website": "https://changedetection.io"
   },
   {
     "id": "cyberchef",
@@ -1083,7 +1345,8 @@
     "image": "mpepping/cyberchef:latest",
     "port": 8000,
     "icon": "cyberchef",
-    "description": "CyberChef — the 'Cyber Swiss-Army knife' for encoding, encryption and data analysis (static web app)."
+    "description": "CyberChef — the 'Cyber Swiss-Army knife' for encoding, encryption and data analysis (static web app).",
+    "website": "https://gchq.github.io/CyberChef/"
   },
   {
     "id": "dashy",
@@ -1092,7 +1355,8 @@
     "image": "lissy93/dashy:latest",
     "port": 8080,
     "icon": "dashy",
-    "description": "Dashy — a highly configurable, good-looking dashboard for your self-hosted services."
+    "description": "Dashy — a highly configurable, good-looking dashboard for your self-hosted services.",
+    "website": "https://dashy.to"
   },
   {
     "id": "filestash",
@@ -1101,7 +1365,8 @@
     "image": "machines/filestash:latest",
     "port": 8334,
     "icon": "filestash",
-    "description": "Filestash — a web file manager frontend for S3/FTP/SFTP/WebDAV and more."
+    "description": "Filestash — a web file manager frontend for S3/FTP/SFTP/WebDAV and more.",
+    "website": "https://www.filestash.app"
   },
   {
     "id": "syncthing",
@@ -1111,7 +1376,17 @@
     "port": 8384,
     "icon": "syncthing",
     "description": "Syncthing — continuous, peer-to-peer file synchronization (web UI on 8384).",
-    "volumes": [["config", "/config"], ["data", "/data"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://syncthing.net"
   },
   {
     "id": "wallos",
@@ -1121,7 +1396,17 @@
     "port": 80,
     "icon": "wallos",
     "description": "Wallos — self-hosted subscription tracker & budget overview (SQLite).",
-    "volumes": [["db", "/var/www/html/db"], ["logos", "/var/www/html/images/uploads/logos"]]
+    "volumes": [
+      [
+        "db",
+        "/var/www/html/db"
+      ],
+      [
+        "logos",
+        "/var/www/html/images/uploads/logos"
+      ]
+    ],
+    "website": "https://github.com/ellite/Wallos"
   },
   {
     "id": "whoogle",
@@ -1130,7 +1415,8 @@
     "image": "benbusby/whoogle-search:latest",
     "port": 5000,
     "icon": "whoogle",
-    "description": "Whoogle — private, ad-free Google search proxy (no JS, no tracking)."
+    "description": "Whoogle — private, ad-free Google search proxy (no JS, no tracking).",
+    "website": "https://github.com/benbusby/whoogle-search"
   },
   {
     "id": "librespeed",
@@ -1139,7 +1425,8 @@
     "image": "lscr.io/linuxserver/librespeed:latest",
     "port": 80,
     "icon": "librespeed",
-    "description": "LibreSpeed — self-hosted network speed test (no Flash/Java, single container)."
+    "description": "LibreSpeed — self-hosted network speed test (no Flash/Java, single container).",
+    "website": "https://librespeed.org"
   },
   {
     "id": "overseerr",
@@ -1149,7 +1436,13 @@
     "port": 5055,
     "icon": "overseerr",
     "description": "Overseerr — media request & discovery for Plex (Radarr/Sonarr integration).",
-    "volumes": [["config", "/app/config"]]
+    "volumes": [
+      [
+        "config",
+        "/app/config"
+      ]
+    ],
+    "website": "https://overseerr.dev"
   },
   {
     "id": "tautulli",
@@ -1159,7 +1452,13 @@
     "port": 8181,
     "icon": "tautulli",
     "description": "Tautulli — monitoring & analytics for a Plex Media Server.",
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://tautulli.com"
   },
   {
     "id": "flaresolverr",
@@ -1168,7 +1467,8 @@
     "image": "ghcr.io/flaresolverr/flaresolverr:latest",
     "port": 8191,
     "icon": "flaresolverr",
-    "description": "FlareSolverr — proxy that solves Cloudflare challenges for indexers (Prowlarr/Jackett). HTTP API, no real UI."
+    "description": "FlareSolverr — proxy that solves Cloudflare challenges for indexers (Prowlarr/Jackett). HTTP API, no real UI.",
+    "website": "https://github.com/FlareSolverr/FlareSolverr"
   },
   {
     "id": "firefly-iii",
@@ -1179,21 +1479,69 @@
     "icon": "firefly",
     "description": "Firefly III — self-hosted personal finance manager. Comes with a Postgres companion. APP_KEY must stay exactly 32 chars.",
     "env": [
-      ["DB_CONNECTION", "pgsql"],
-      ["DB_HOST", "${db}"],
-      ["DB_PORT", "5432"],
-      ["DB_DATABASE", "firefly"],
-      ["DB_USERNAME", "firefly"],
-      ["DB_PASSWORD", "firefly"]
+      [
+        "DB_CONNECTION",
+        "pgsql"
+      ],
+      [
+        "DB_HOST",
+        "${db}"
+      ],
+      [
+        "DB_PORT",
+        "5432"
+      ],
+      [
+        "DB_DATABASE",
+        "firefly"
+      ],
+      [
+        "DB_USERNAME",
+        "firefly"
+      ],
+      [
+        "DB_PASSWORD",
+        "firefly"
+      ]
     ],
     "params": [
-      { "key": "app-key", "env": "APP_KEY", "default": "0123456789abcdef0123456789abcdef", "secret": true }
+      {
+        "key": "app-key",
+        "env": "APP_KEY",
+        "default": "0123456789abcdef0123456789abcdef",
+        "secret": true
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "firefly-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_DB", "firefly"], ["POSTGRES_USER", "firefly"], ["POSTGRES_PASSWORD", "firefly"]] }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "firefly-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "firefly"
+          ],
+          [
+            "POSTGRES_USER",
+            "firefly"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "firefly"
+          ]
+        ]
+      }
     ],
-    "volumes": [["upload", "/var/www/html/storage/upload"]]
+    "volumes": [
+      [
+        "upload",
+        "/var/www/html/storage/upload"
+      ]
+    ],
+    "website": "https://www.firefly-iii.org"
   },
   {
     "id": "wikijs",
@@ -1204,17 +1552,55 @@
     "icon": "wikijs",
     "description": "Wiki.js — modern, powerful wiki. Postgres companion included.",
     "env": [
-      ["DB_TYPE", "postgres"],
-      ["DB_HOST", "${db}"],
-      ["DB_PORT", "5432"],
-      ["DB_USER", "wikijs"],
-      ["DB_PASS", "wikijs"],
-      ["DB_NAME", "wiki"]
+      [
+        "DB_TYPE",
+        "postgres"
+      ],
+      [
+        "DB_HOST",
+        "${db}"
+      ],
+      [
+        "DB_PORT",
+        "5432"
+      ],
+      [
+        "DB_USER",
+        "wikijs"
+      ],
+      [
+        "DB_PASS",
+        "wikijs"
+      ],
+      [
+        "DB_NAME",
+        "wiki"
+      ]
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "wikijs-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_DB", "wiki"], ["POSTGRES_USER", "wikijs"], ["POSTGRES_PASSWORD", "wikijs"]] }
-    ]
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "wikijs-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "wiki"
+          ],
+          [
+            "POSTGRES_USER",
+            "wikijs"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "wikijs"
+          ]
+        ]
+      }
+    ],
+    "website": "https://js.wiki"
   },
   {
     "id": "linkwarden",
@@ -1225,16 +1611,40 @@
     "icon": "linkwarden",
     "description": "Linkwarden — collaborative bookmark & web-archive manager. Postgres companion. Set NEXTAUTH_URL to how you reach it (default localhost:3000).",
     "env": [
-      ["DATABASE_URL", "postgresql://postgres:linkwarden@${db}:5432/postgres"]
+      [
+        "DATABASE_URL",
+        "postgresql://postgres:linkwarden@${db}:5432/postgres"
+      ]
     ],
     "params": [
-      { "key": "nextauth-secret", "env": "NEXTAUTH_SECRET", "default": "please-change-me-linkwarden", "secret": true },
-      { "key": "nextauth-url", "env": "NEXTAUTH_URL", "default": "http://localhost:3000" }
+      {
+        "key": "nextauth-secret",
+        "env": "NEXTAUTH_SECRET",
+        "default": "please-change-me-linkwarden",
+        "secret": true
+      },
+      {
+        "key": "nextauth-url",
+        "env": "NEXTAUTH_URL",
+        "default": "http://localhost:3000"
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "linkwarden-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_PASSWORD", "linkwarden"]] }
-    ]
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "linkwarden-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_PASSWORD",
+            "linkwarden"
+          ]
+        ]
+      }
+    ],
+    "website": "https://linkwarden.app"
   },
   {
     "id": "bookstack",
@@ -1245,20 +1655,68 @@
     "icon": "bookstack",
     "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion; the image auto-generates APP_KEY. Set APP_URL to how you reach it (default http://localhost).",
     "env": [
-      ["DB_HOST", "${db}"],
-      ["DB_PORT", "3306"],
-      ["DB_DATABASE", "bookstackapp"],
-      ["DB_USERNAME", "bookstack"],
-      ["DB_PASSWORD", "bookstack"]
+      [
+        "DB_HOST",
+        "${db}"
+      ],
+      [
+        "DB_PORT",
+        "3306"
+      ],
+      [
+        "DB_DATABASE",
+        "bookstackapp"
+      ],
+      [
+        "DB_USERNAME",
+        "bookstack"
+      ],
+      [
+        "DB_PASSWORD",
+        "bookstack"
+      ]
     ],
     "params": [
-      { "key": "app-url", "env": "APP_URL", "default": "http://localhost" }
+      {
+        "key": "app-url",
+        "env": "APP_URL",
+        "default": "http://localhost"
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "bookstack-db", "image": "lscr.io/linuxserver/mariadb:latest", "role": "mysql",
-        "env": [["MYSQL_ROOT_PASSWORD", "bookstack"], ["MYSQL_DATABASE", "bookstackapp"], ["MYSQL_USER", "bookstack"], ["MYSQL_PASSWORD", "bookstack"]] }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "bookstack-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "bookstack"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "bookstackapp"
+          ],
+          [
+            "MYSQL_USER",
+            "bookstack"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "bookstack"
+          ]
+        ]
+      }
     ],
-    "volumes": [["config", "/config"]]
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://www.bookstackapp.com"
   },
   {
     "id": "hedgedoc",
@@ -1269,19 +1727,60 @@
     "icon": "hedgedoc",
     "description": "HedgeDoc — real-time collaborative markdown notes. Postgres companion. Set CMD_DOMAIN to your host (default localhost) — CMD_URL_ADDPORT keeps the port in links.",
     "env": [
-      ["CMD_DB_URL", "postgres://hedgedoc:hedgedoc@${db}:5432/hedgedoc"],
-      ["CMD_URL_ADDPORT", "true"],
-      ["CMD_PROTOCOL_USESSL", "false"],
-      ["CMD_ALLOW_ORIGIN", "*"]
+      [
+        "CMD_DB_URL",
+        "postgres://hedgedoc:hedgedoc@${db}:5432/hedgedoc"
+      ],
+      [
+        "CMD_URL_ADDPORT",
+        "true"
+      ],
+      [
+        "CMD_PROTOCOL_USESSL",
+        "false"
+      ],
+      [
+        "CMD_ALLOW_ORIGIN",
+        "*"
+      ]
     ],
     "params": [
-      { "key": "domain", "env": "CMD_DOMAIN", "default": "localhost" }
+      {
+        "key": "domain",
+        "env": "CMD_DOMAIN",
+        "default": "localhost"
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "hedgedoc-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_DB", "hedgedoc"], ["POSTGRES_USER", "hedgedoc"], ["POSTGRES_PASSWORD", "hedgedoc"]] }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "hedgedoc-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "hedgedoc"
+          ],
+          [
+            "POSTGRES_USER",
+            "hedgedoc"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "hedgedoc"
+          ]
+        ]
+      }
     ],
-    "volumes": [["uploads", "/hedgedoc/public/uploads"]]
+    "volumes": [
+      [
+        "uploads",
+        "/hedgedoc/public/uploads"
+      ]
+    ],
+    "website": "https://hedgedoc.org"
   },
   {
     "id": "tandoor",
@@ -1292,21 +1791,73 @@
     "icon": "tandoor",
     "description": "Tandoor — feature-rich recipe manager & meal planner. Postgres companion.",
     "env": [
-      ["DB_ENGINE", "django.db.backends.postgresql"],
-      ["POSTGRES_HOST", "${db}"],
-      ["POSTGRES_PORT", "5432"],
-      ["POSTGRES_USER", "tandoor"],
-      ["POSTGRES_PASSWORD", "tandoor"],
-      ["POSTGRES_DB", "tandoor"]
+      [
+        "DB_ENGINE",
+        "django.db.backends.postgresql"
+      ],
+      [
+        "POSTGRES_HOST",
+        "${db}"
+      ],
+      [
+        "POSTGRES_PORT",
+        "5432"
+      ],
+      [
+        "POSTGRES_USER",
+        "tandoor"
+      ],
+      [
+        "POSTGRES_PASSWORD",
+        "tandoor"
+      ],
+      [
+        "POSTGRES_DB",
+        "tandoor"
+      ]
     ],
     "params": [
-      { "key": "secret-key", "env": "SECRET_KEY", "default": "please-change-me-tandoor", "secret": true }
+      {
+        "key": "secret-key",
+        "env": "SECRET_KEY",
+        "default": "please-change-me-tandoor",
+        "secret": true
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "tandoor-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_DB", "tandoor"], ["POSTGRES_USER", "tandoor"], ["POSTGRES_PASSWORD", "tandoor"]] }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "tandoor-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "tandoor"
+          ],
+          [
+            "POSTGRES_USER",
+            "tandoor"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "tandoor"
+          ]
+        ]
+      }
     ],
-    "volumes": [["staticfiles", "/opt/recipes/staticfiles"], ["mediafiles", "/opt/recipes/mediafiles"]]
+    "volumes": [
+      [
+        "staticfiles",
+        "/opt/recipes/staticfiles"
+      ],
+      [
+        "mediafiles",
+        "/opt/recipes/mediafiles"
+      ]
+    ],
+    "website": "https://tandoor.dev"
   },
   {
     "id": "ghost",
@@ -1317,20 +1868,68 @@
     "icon": "ghost",
     "description": "Ghost — professional publishing / blog platform. MySQL companion (Ghost 5 requires MySQL). Set url to how you reach it (default localhost:2368).",
     "env": [
-      ["database__client", "mysql"],
-      ["database__connection__host", "${db}"],
-      ["database__connection__user", "ghost"],
-      ["database__connection__password", "ghost"],
-      ["database__connection__database", "ghost"]
+      [
+        "database__client",
+        "mysql"
+      ],
+      [
+        "database__connection__host",
+        "${db}"
+      ],
+      [
+        "database__connection__user",
+        "ghost"
+      ],
+      [
+        "database__connection__password",
+        "ghost"
+      ],
+      [
+        "database__connection__database",
+        "ghost"
+      ]
     ],
     "params": [
-      { "key": "url", "env": "url", "default": "http://localhost:2368" }
+      {
+        "key": "url",
+        "env": "url",
+        "default": "http://localhost:2368"
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "ghost-db", "image": "mysql:8", "role": "mysql",
-        "env": [["MYSQL_ROOT_PASSWORD", "ghost"], ["MYSQL_DATABASE", "ghost"], ["MYSQL_USER", "ghost"], ["MYSQL_PASSWORD", "ghost"]] }
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "ghost-db",
+        "image": "mysql:8",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "ghost"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "ghost"
+          ],
+          [
+            "MYSQL_USER",
+            "ghost"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "ghost"
+          ]
+        ]
+      }
     ],
-    "volumes": [["content", "/var/lib/ghost/content"]]
+    "volumes": [
+      [
+        "content",
+        "/var/lib/ghost/content"
+      ]
+    ],
+    "website": "https://ghost.org"
   },
   {
     "id": "planka",
@@ -1341,15 +1940,47 @@
     "icon": "planka",
     "description": "Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Default login demo@demo.demo / demo.",
     "env": [
-      ["DATABASE_URL", "postgresql://planka:planka@${db}/planka"]
+      [
+        "DATABASE_URL",
+        "postgresql://planka:planka@${db}/planka"
+      ]
     ],
     "params": [
-      { "key": "base-url", "env": "BASE_URL", "default": "http://localhost:1337" },
-      { "key": "secret-key", "env": "SECRET_KEY", "default": "please-change-me-planka-secret", "secret": true }
+      {
+        "key": "base-url",
+        "env": "BASE_URL",
+        "default": "http://localhost:1337"
+      },
+      {
+        "key": "secret-key",
+        "env": "SECRET_KEY",
+        "default": "please-change-me-planka-secret",
+        "secret": true
+      }
     ],
     "companions": [
-      { "key": "db", "addMethod": "AddContainer", "resourceName": "planka-db", "image": "postgres:16", "role": "postgres",
-        "env": [["POSTGRES_DB", "planka"], ["POSTGRES_USER", "planka"], ["POSTGRES_PASSWORD", "planka"]] }
-    ]
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "planka-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "planka"
+          ],
+          [
+            "POSTGRES_USER",
+            "planka"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "planka"
+          ]
+        ]
+      }
+    ],
+    "website": "https://planka.app"
   }
 ]

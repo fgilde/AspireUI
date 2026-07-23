@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark } from "@tabler/icons-react";
+import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon, Image, Anchor, SimpleGrid } from "@mantine/core";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark, IconInfoCircle, IconExternalLink } from "@tabler/icons-react";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
 import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -34,9 +34,10 @@ function sortTags(tags: string[]): string[] {
   });
 }
 
-// One compact palette tile: colored icon box + label + a small caption, hover-highlighted.
-function Tile({ iconKey, label, caption, badge, onClick, tooltip, highlight }: {
-  iconKey: string; label: string; caption?: string; badge?: string; onClick: () => void; tooltip?: string; highlight?: string;
+// One compact palette tile: colored icon box + label + a small caption, hover-highlighted. `onInfo`
+// (presets) adds an "i" button that opens the details dialog without dropping the node.
+function Tile({ iconKey, label, caption, badge, onClick, onInfo, tooltip, highlight }: {
+  iconKey: string; label: string; caption?: string; badge?: string; onClick: () => void; onInfo?: () => void; tooltip?: string; highlight?: string;
 }) {
   const color = resourceVisual(iconKey).color;
   return (
@@ -54,8 +55,49 @@ function Tile({ iconKey, label, caption, badge, onClick, tooltip, highlight }: {
           {caption && <Text size="10px" c="dimmed" truncate lh={1.2}>{caption}</Text>}
         </div>
         {badge && <Badge size="xs" variant="light" color="grape" style={{ flexShrink: 0 }}>{badge}</Badge>}
+        {onInfo && (
+          <Tooltip label="Details" withArrow>
+            <ActionIcon component="div" variant="subtle" color="gray" size="sm" style={{ flexShrink: 0 }}
+              onClick={e => { e.stopPropagation(); onInfo(); }} aria-label={`Details for ${label}`}>
+              <IconInfoCircle size={15} />
+            </ActionIcon>
+          </Tooltip>
+        )}
       </UnstyledButton>
     </Tooltip>
+  );
+}
+
+// Details dialog behind a preset's "i" button: icon, description, real website link + screenshots.
+function AppInfoModal({ preset, onClose, onInstall }: { preset: ContainerPreset; onClose: () => void; onInstall: () => void }) {
+  return (
+    <Modal opened onClose={onClose} size="lg" centered title={
+      <Group gap={10}>
+        <div style={{ width: 30, height: 30, borderRadius: 7, display: "grid", placeItems: "center", background: "var(--mantine-color-default)" }}>
+          <ResourceGlyph addMethod={preset.icon || ""} iconKey={preset.icon} size={18} />
+        </div>
+        <Text fw={600}>{preset.label}</Text>
+        <Badge size="xs" variant="light">{preset.group}</Badge>
+      </Group>}>
+      <MStack gap="sm">
+        {preset.description && <Text size="sm">{preset.description}</Text>}
+        <Group gap="xs">
+          {preset.website && <Anchor href={preset.website} target="_blank" size="sm">{preset.website.replace(/^https?:\/\//, "")} <IconExternalLink size={12} /></Anchor>}
+        </Group>
+        <Text size="xs" c="dimmed">Image: <Text span ff="monospace" size="xs">{preset.image}</Text> · Port {preset.port}</Text>
+        {preset.screenshots && preset.screenshots.length > 0 && (
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            {preset.screenshots.map(src => (
+              <Image key={src} src={src} radius="sm" fit="contain" fallbackSrc="" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+            ))}
+          </SimpleGrid>
+        )}
+        <Group justify="flex-end" mt="xs">
+          <Button variant="default" onClick={onClose}>Close</Button>
+          <Button onClick={() => { onInstall(); onClose(); }}>Add to canvas</Button>
+        </Group>
+      </MStack>
+    </Modal>
   );
 }
 
@@ -75,6 +117,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   });
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [presetPick, setPresetPick] = useState<ContainerPreset | null>(null);
+  const [infoPreset, setInfoPreset] = useState<ContainerPreset | null>(null);
   const [tab, setTab] = useState<string>("catalog");
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -241,7 +284,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
                     {items.presets.map(p => (
                       <Tile key={p.id} iconKey={p.icon || ""} label={p.label} highlight={q}
                         caption={[`:${p.port}`, p.gpu ? "GPU" : null, p.hostNetwork ? "host-net" : null, p.volumes?.length ? `${p.volumes.length} vol` : null].filter(Boolean).join(" · ")}
-                        badge="app" tooltip={p.description || p.image} onClick={() => createPreset(p)} />
+                        badge="app" tooltip={p.description || p.image} onClick={() => createPreset(p)} onInfo={() => setInfoPreset(p)} />
                     ))}
                   </MStack>
                 </Accordion.Panel>
@@ -294,6 +337,9 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
         <CompanionPickerModal preset={presetPick} stackNodes={stack.nodes}
           onCancel={() => setPresetPick(null)}
           onConfirm={choices => { dropPreset(presetPick, choices); setPresetPick(null); }} />
+      )}
+      {infoPreset && (
+        <AppInfoModal preset={infoPreset} onClose={() => setInfoPreset(null)} onInstall={() => createPreset(infoPreset)} />
       )}
       {autoOpen && (
         <AutoAddModal onClose={() => setAutoOpen(false)}
