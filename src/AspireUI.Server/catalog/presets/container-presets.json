@@ -2700,34 +2700,6 @@
     "website": "https://min.io"
   },
   {
-    "id": "mosquitto",
-    "label": "Eclipse Mosquitto",
-    "group": "Smart Home",
-    "image": "eclipse-mosquitto:2",
-    "port": 1883,
-    "icon": "mosquitto",
-    "description": "Eclipse Mosquitto — MQTT broker on :1883. NO web UI (it is a message broker, not a website) — point an MQTT client / Home Assistant / ESPHome at host:1883. Ships a mosquitto.conf (allow_anonymous true — DEV only; lock it down before real use). The HTTP probe on :1883 logs a harmless \"protocol error\".",
-    "bindMounts": [
-      [
-        "mosquitto/mosquitto.conf",
-        "/mosquitto/config/mosquitto.conf"
-      ]
-    ],
-    "volumes": [
-      [
-        "data",
-        "/mosquitto/data"
-      ]
-    ],
-    "files": [
-      {
-        "name": "mosquitto/mosquitto.conf",
-        "content": "listener 1883\nallow_anonymous true\npersistence true\npersistence_location /mosquitto/data/\n"
-      }
-    ],
-    "website": "https://mosquitto.org"
-  },
-  {
     "id": "etherpad",
     "label": "Etherpad",
     "group": "Tools",
