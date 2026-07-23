@@ -1668,7 +1668,7 @@
     "image": "lscr.io/linuxserver/bookstack:latest",
     "port": 80,
     "icon": "bookstack",
-    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion. APP_KEY is required (base64:<32 bytes>) — seeded as a parameter. Set APP_URL to how you reach it (default http://localhost). Login admin@admin.com / password.",
+    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion. APP_KEY seeded (base64). Set APP_URL to how you reach it (default http://localhost). Built-in first login: admin@admin.com / password (change it).",
     "env": [
       [
         "DB_HOST",
@@ -1812,83 +1812,6 @@
     "fixedPort": true
   },
   {
-    "id": "tandoor",
-    "label": "Tandoor Recipes",
-    "group": "Tools",
-    "image": "vabene1111/recipes:latest",
-    "port": 80,
-    "icon": "tandoor",
-    "description": "Tandoor — feature-rich recipe manager & meal planner. Postgres companion.",
-    "env": [
-      [
-        "DB_ENGINE",
-        "django.db.backends.postgresql"
-      ],
-      [
-        "POSTGRES_HOST",
-        "${db}"
-      ],
-      [
-        "POSTGRES_PORT",
-        "5432"
-      ],
-      [
-        "POSTGRES_USER",
-        "tandoor"
-      ],
-      [
-        "POSTGRES_PASSWORD",
-        "tandoor"
-      ],
-      [
-        "POSTGRES_DB",
-        "tandoor"
-      ]
-    ],
-    "params": [
-      {
-        "key": "secret-key",
-        "env": "SECRET_KEY",
-        "default": "please-change-me-tandoor",
-        "secret": true
-      }
-    ],
-    "companions": [
-      {
-        "key": "db",
-        "addMethod": "AddContainer",
-        "resourceName": "tandoor-db",
-        "image": "postgres:16",
-        "role": "postgres",
-        "env": [
-          [
-            "POSTGRES_DB",
-            "tandoor"
-          ],
-          [
-            "POSTGRES_USER",
-            "tandoor"
-          ],
-          [
-            "POSTGRES_PASSWORD",
-            "tandoor"
-          ]
-        ]
-      }
-    ],
-    "volumes": [
-      [
-        "staticfiles",
-        "/opt/recipes/staticfiles"
-      ],
-      [
-        "mediafiles",
-        "/opt/recipes/mediafiles"
-      ]
-    ],
-    "website": "https://tandoor.dev"
-  },
-  {
     "id": "ghost",
     "label": "Ghost",
     "group": "Tools",
@@ -1968,11 +1891,19 @@
     "image": "ghcr.io/plankanban/planka:latest",
     "port": 1337,
     "icon": "planka",
-    "description": "Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Default login demo@demo.demo / demo.",
+    "description": "Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Login = the seeded admin email / password (default admin@aspireui.local / please-change-me).",
     "env": [
       [
         "DATABASE_URL",
         "postgresql://planka:planka@${db}/planka"
+      ],
+      [
+        "DEFAULT_ADMIN_NAME",
+        "Admin"
+      ],
+      [
+        "DEFAULT_ADMIN_USERNAME",
+        "admin"
       ]
     ],
     "params": [
@@ -1985,6 +1916,17 @@
         "key": "secret-key",
         "env": "SECRET_KEY",
         "default": "please-change-me-planka-secret",
+        "secret": true
+      },
+      {
+        "key": "admin-email",
+        "env": "DEFAULT_ADMIN_EMAIL",
+        "default": "admin@aspireui.local"
+      },
+      {
+        "key": "admin-password",
+        "env": "DEFAULT_ADMIN_PASSWORD",
+        "default": "please-change-me",
         "secret": true
       }
     ],

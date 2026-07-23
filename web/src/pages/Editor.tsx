@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge, LoadingOverlay } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket, IconPuzzle, IconFolderDown } from "@tabler/icons-react";
+import JSZip from "jszip";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
@@ -78,6 +79,39 @@ export function Editor() {
   const saveAsTemplate = () => promptText("Save as template", "Template name", stack?.name ?? "").then(name => {
     if (name) api.saveTemplate(id, name, "").then(() => toastOk(`Saved template "${name}"`)).catch(toastErr);
   });
+  // Save the whole stack as a reusable palette snippet (shows up in the Palette "Custom" tab + app store).
+  const saveAsSnippet = () => promptText("Save stack as snippet", "Snippet name", stack?.name ?? "").then(name => {
+    if (!name || !stack) return;
+    api.saveSnippet({ id: "", name, group: "Custom", icon: stack.nodes[0]?.icon ?? stack.nodes[0]?.addMethod ?? null,
+      nodes: stack.nodes, edges: stack.edges, files: stack.extraFiles ?? [] })
+      .then(() => { toastOk(`Saved snippet "${name}"`); window.dispatchEvent(new Event("aspireui:snippets-changed")); }).catch(toastErr);
+  });
+  // Download the generated AppHost project. Prefer the File System Access API to write the full folder
+  // content into a folder the user picks; fall back to a .zip download where it's unavailable.
+  const exportProject = async () => {
+    if (!stack) return;
+    try {
+      const blob = await api.exportStackZip(stack.id);
+      const pick = (window as unknown as { showDirectoryPicker?: (o?: unknown) => Promise<any> }).showDirectoryPicker;
+      if (pick) {
+        const root = await pick({ mode: "readwrite" });
+        const zip = await JSZip.loadAsync(blob);
+        for (const [path, entry] of Object.entries(zip.files)) {
+          if ((entry as { dir: boolean }).dir) continue;
+          const parts = path.split("/"); const fname = parts.pop()!;
+          let dir = root;
+          for (const p of parts) dir = await dir.getDirectoryHandle(p, { create: true });
+          const fh = await dir.getFileHandle(fname, { create: true });
+          const w = await fh.createWritable(); await w.write(await (entry as any).async("blob")); await w.close();
+        }
+        toastOk("Project written to folder");
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = `${stack.name || "stack"}.zip`; a.click();
+        URL.revokeObjectURL(url); toastOk("Project downloaded");
+      }
+    } catch (e) { if ((e as { name?: string })?.name !== "AbortError") toastErr(e, "Export failed"); }
+  };
 
   useEffect(() => { api.getStack(id).then(setStack); }, [id]);
 
@@ -198,13 +232,21 @@ export function Editor() {
                   ))}
                 </Menu.Dropdown>
               </Menu>
+              <Menu position="bottom-end" withArrow width={240}>
+                <Menu.Target>
+                  <Button variant="default" size="xs" leftSection={<IconDeviceFloppy size={14} />}>Save</Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconBookmark size={14} />} onClick={saveAsTemplate}>As template…</Menu.Item>
+                  <Menu.Item leftSection={<IconPuzzle size={14} />} onClick={saveAsSnippet}>As snippet…</Menu.Item>
+                  <Menu.Item leftSection={<IconFolderDown size={14} />} onClick={exportProject}>As project (download / folder)…</Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <Menu position="bottom-end" withArrow onOpen={refreshLayouts} width={220}>
                 <Menu.Target>
                   <Button variant="default" size="xs" leftSection={<IconLayoutGrid size={14} />}>Layout</Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item leftSection={<IconBookmark size={14} />} onClick={saveAsTemplate}>Save stack as template…</Menu.Item>
-                  <Menu.Divider />
                   <Menu.Item leftSection={<IconDeviceFloppy size={14} />} onClick={saveLayout}>Save current layout…</Menu.Item>
                   <Menu.Item leftSection={<IconRestore size={14} />} onClick={() => dockRef.current?.resetLayout()}>Reset to default</Menu.Item>
                   {savedLayouts.length > 0 && <Menu.Label>Saved layouts</Menu.Label>}

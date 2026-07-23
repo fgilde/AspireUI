@@ -73,6 +73,7 @@ export const addEdge = (id: string, edge: Partial<Edge>): Promise<Stack> =>
   fetch(`${base}/stacks/${id}/edges`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(edge) }).then(ok);
 
 export const previewStack = (id: string): Promise<string> => fetch(`${base}/stacks/${id}/preview`).then(r => r.text());
+export const exportStackZip = (id: string): Promise<Blob> => fetch(`${base}/stacks/${id}/export`).then(r => r.blob());
 export const deleteStack = (id: string): Promise<void> => fetch(`${base}/stacks/${id}`, { method: "DELETE" }).then(() => undefined);
 export const duplicateStack = (id: string): Promise<Stack> => fetch(`${base}/stacks/${id}/duplicate`, { method: "POST" }).then(ok);
 export const openInIde = (id: string, ide: "vscode" | "rider" | "vs"): Promise<{ ok: boolean; error?: string }> =>
