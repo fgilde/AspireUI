@@ -5,9 +5,11 @@ name: Publish Docker image
 # without building locally. Pushes :latest for master, a version tag for git tags, and a
 # short-sha tag for every build.
 #
-# amd64 and arm64 are each built on a NATIVE runner (no QEMU): the .NET SDK segfaults
-# ("qemu: uncaught target signal 11") when cross-built under emulation, so each arch builds on
-# its own machine, pushes by digest, and a final job stitches the two into one multi-arch manifest.
+# amd64 only. arm64 is currently blocked: the arm64 `protoc` bundled with Grpc.Tools 2.80.0
+# segfaults (exit 139) while compiling the Aspire dashboard proto — under QEMU emulation AND
+# natively on ubuntu-24.04-arm. Our deploy target (Proxmox) is x86_64, so amd64 is what matters.
+# To restore arm64 later: bump Grpc.Tools (test that the dashboard proto still compiles), then add
+# a native-arm64 matrix leg that pushes by digest + a merge job for the multi-arch manifest.
 on:
   push:
     branches: [master]
@@ -18,77 +20,11 @@ permissions:
   contents: read
   packages: write
 
-env:
-  IMAGE: ghcr.io/fgilde/aspireui
-
 jobs:
-  build:
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    steps:
-      - name: Prepare platform tag
-        run: echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
-        env:
-          platform: ${{ matrix.platform }}
-
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Image labels
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE }}
-
-      - name: Build and push by digest
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ env.PLATFORM_PAIR }}
-          cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_PAIR }}
-          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Export digest
-        run: |
-          mkdir -p "${{ runner.temp }}/digests"
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@v4
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  merge:
+  build-push:
     runs-on: ubuntu-latest
-    needs: build
     steps:
-      - name: Download digests
-        uses: actions/download-artifact@v4
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digests-*
-          merge-multiple: true
+      - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
@@ -99,21 +35,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Image tags
+      - name: Image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE }}
+          images: ghcr.io/fgilde/aspireui
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
             type=sha,format=short
 
-      - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.IMAGE }}@sha256:%s ' *)
-
-      - name: Inspect
-        run: docker buildx imagetools inspect ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
