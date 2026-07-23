@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert } from "@mantine/core";
-import { IconArrowLeft, IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
+import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert } from "@mantine/core";
+import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
+import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
 import { canOpenEditor } from "../model";
 import { useAuth } from "../auth/AuthContext";
@@ -24,15 +25,7 @@ export function Hosting() {
   useEffect(() => { api.getDashboardSettings().then(s => setDashToken(s.dashboardToken)).catch(() => {}); }, []);
 
   return (
-    <AppShell header={{ height: 56 }} padding="lg">
-      <AppShell.Header>
-        <Group h="100%" px="md">
-          <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
-          <Title order={4}>Hosting</Title>
-        </Group>
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size="lg">
+    <PageShell title="Hosting" container="lg">
           {items.length === 0
             ? <Text c="dimmed" size="sm">No stacks deployed to hosting yet. Open a stack and choose <b>Deploy to hosting</b>.</Text>
             : (
@@ -47,11 +40,9 @@ export function Hosting() {
                 ))}
               </Table.Tbody>
             </Table>)}
-        </Container>
-      </AppShell.Main>
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={load} />}
       {logsFor && <LogsModal d={logsFor} service={logsService} onClose={() => setLogsFor(null)} />}
-    </AppShell>
+    </PageShell>
   );
 }
 

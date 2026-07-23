@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, PasswordInput, Stack as MStack, Text, Alert, Avatar, Badge, Divider, Paper } from "@mantine/core";
-import { IconArrowLeft, IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { Group, Button, PasswordInput, Stack as MStack, Text, Alert, Avatar, Badge, Divider, Paper } from "@mantine/core";
+import { IconCheck, IconAlertCircle } from "@tabler/icons-react";
+import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 
 export function Profile() {
-  const nav = useNavigate();
   useTitle("Profile");
   const { status, refresh } = useAuth();
   const user = status?.user;
@@ -35,15 +34,7 @@ export function Profile() {
   };
 
   return (
-    <AppShell header={{ height: 56 }} padding="lg">
-      <AppShell.Header>
-        <Group h="100%" px="md">
-          <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
-          <Title order={4}>Profile</Title>
-        </Group>
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size="sm">
+    <PageShell title="Profile" container="sm">
           <Paper withBorder p="md" radius="md" mb="lg">
             <Group>
               <Avatar radius="xl" size={56} color="indigo">{(user?.username ?? "?").slice(0, 2).toUpperCase()}</Avatar>
@@ -75,8 +66,6 @@ export function Profile() {
               <Button onClick={change} loading={busy} disabled={!oldPassword || !newPassword}>Change password</Button>
             </Group>
           </MStack>
-        </Container>
-      </AppShell.Main>
-    </AppShell>
+    </PageShell>
   );
 }

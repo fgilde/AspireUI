@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch } from "@mantine/core";
-import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard } from "@tabler/icons-react";
+import { Group, Button, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch } from "@mantine/core";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard } from "@tabler/icons-react";
+import { PageShell } from "../components/PageShell";
 import type { AppSettings, EnvHealth } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
@@ -67,7 +67,6 @@ function EnvTab() {
 const EMPTY: AppSettings = { aiBaseUrl: "", aiApiKey: "", aiModel: "", aiProviderLabel: "" };
 
 export function Settings() {
-  const nav = useNavigate();
   useTitle("Settings");
   const [settings, setSettings] = useState<AppSettings>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -122,16 +121,7 @@ export function Settings() {
   };
 
   return (
-    <AppShell header={{ height: 56 }} padding="lg">
-      <AppShell.Header>
-        <Group h="100%" px="md">
-          <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
-          <Title order={4}>Settings</Title>
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Main>
-        <Container size="md">
+    <PageShell title="Settings" container="md">
           <Tabs defaultValue="ai" orientation="vertical" variant="pills">
             <Tabs.List mr="lg">
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
@@ -221,8 +211,6 @@ export function Settings() {
               <EnvTab />
             </Tabs.Panel>
           </Tabs>
-        </Container>
-      </AppShell.Main>
-    </AppShell>
+    </PageShell>
   );
 }

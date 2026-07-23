@@ -3,23 +3,20 @@ import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
-  AppShell, Group, Title, Text, Button, SimpleGrid, Card, ActionIcon, Anchor,
-  Modal, TextInput, Badge, Container, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select,
+  Group, Title, Text, Button, SimpleGrid, Card, ActionIcon,
+  Modal, TextInput, Badge, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select,
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload,
-  IconBrandGithub, IconHelp,
 } from "@tabler/icons-react";
-import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
+import { pickAppHost, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
-import logo from "../assets/logo.svg";
-import wordmark from "../assets/wordmark.svg";
 import type { TemplateInfo, BundleFile } from "../api";
-import { UserMenu } from "../auth/UserMenu";
+import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, hostingColor } from "../hosting/HostingActions";
 import { InstallAppModal } from "../hosting/InstallAppModal";
@@ -172,15 +169,8 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     }
   };
 
-  return (
-    <AppShell header={{ height: 64 }} footer={{ height: 36 }} padding="lg">
-      <AppShell.Header withBorder>
-        <Container size="xl" h="100%">
-          <Group h="100%" justify="space-between">
-            <Group gap="sm">
-              <img src={wordmark} alt="AspireUI" height={38} style={{ display: "block" }} />
-            </Group>
-            <Group gap="sm">
+  const headerActions = (
+    <>
               {simple && <Button leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install app</Button>}
               {!simple && <>
               <Button.Group>
@@ -253,15 +243,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
               <input ref={composeInputRef} type="file" accept=".yml,.yaml" hidden onChange={onComposePicked} />
               </>}
+    </>
+  );
 
-              <UserMenu />
-            </Group>
-          </Group>
-        </Container>
-      </AppShell.Header>
-
-      <AppShell.Main>
-        <Container size="xl">
+  return (
+    <PageShell back={false} actions={headerActions}>
           <Group justify="space-between" mb="lg">
             <div>
               <Title order={2} fw={600}>{simple ? "My apps" : "Stacks"}</Title>
@@ -469,30 +455,6 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
               })}
             </SimpleGrid>
           )}
-        </Container>
-      </AppShell.Main>
-
-      <AppShell.Footer>
-        <Container size="xl" h="100%">
-          <Group h="100%" justify="center" gap={8}>
-            <img src={logo} alt="" height={18} style={{ display: "block" }} />
-            <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text></Tooltip>
-            <Text size="xs" c="dimmed">·</Text>
-            <Tooltip label="GitHub" withArrow>
-              <ActionIcon component="a" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="GitHub">
-                <IconBrandGithub size={15} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Documentation" withArrow>
-              <ActionIcon component="a" href="https://github.com/fgilde/AspireUI/tree/master/docs" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="Documentation">
-                <IconHelp size={15} />
-              </ActionIcon>
-            </Tooltip>
-            <Text size="xs" c="dimmed">·</Text>
-            <Anchor size="xs" c="dimmed" href="https://www.gilde.org" target="_blank" rel="noreferrer">by gilde.org</Anchor>
-          </Group>
-        </Container>
-      </AppShell.Footer>
 
       <Modal opened={open} onClose={() => setOpen(false)} title="New Stack" centered>
         <TextInput
@@ -512,6 +474,6 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={loadDeps} />}
       {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
       {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => { load(); loadDeps(); }} />}
-    </AppShell>
+    </PageShell>
   );
 }

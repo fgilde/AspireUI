@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
-  ActionIcon, Alert, AppShell, Badge, Button, Container, Group, PasswordInput,
-  Stack as MStack, Switch, Table, TextInput, Title, Menu, Modal, Checkbox, Text,
+  ActionIcon, Alert, Badge, Button, Group, PasswordInput,
+  Stack as MStack, Switch, Table, TextInput, Menu, Modal, Checkbox, Text,
 } from "@mantine/core";
-import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid } from "@tabler/icons-react";
+import { IconAlertCircle, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid } from "@tabler/icons-react";
+import { PageShell } from "../components/PageShell";
 import type { UserDto } from "../model";
 import { canOpenEditor, PERM_OPEN_EDITOR } from "../model";
 import * as api from "../api";
@@ -24,7 +24,6 @@ function errorMessage(e: unknown, fallback: string): string {
 }
 
 export function Users() {
-  const nav = useNavigate();
   useTitle("Users");
   const [users, setUsers] = useState<UserDto[]>([]);
   const [username, setUsername] = useState("");
@@ -114,19 +113,8 @@ export function Users() {
   };
 
   return (
-    <AppShell header={{ height: 56 }} padding="lg">
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
-          <Group>
-            <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
-            <Title order={4}>Users</Title>
-          </Group>
-          <Button leftSection={<IconPlus size={16} />} onClick={() => { setError(null); setAddOpen(true); }}>Add user</Button>
-        </Group>
-      </AppShell.Header>
-
-      <AppShell.Main>
-        <Container size="sm">
+    <PageShell title="Users" container="sm"
+      actions={<Button leftSection={<IconPlus size={16} />} onClick={() => { setError(null); setAddOpen(true); }}>Add user</Button>}>
           {error && (
             <Alert color="red" icon={<IconAlertCircle size={16} />} mb="md" withCloseButton onClose={() => setError(null)}>
               {error}
@@ -213,8 +201,6 @@ export function Users() {
               </Group>
             </MStack>
           </Modal>
-        </Container>
-      </AppShell.Main>
-    </AppShell>
+    </PageShell>
   );
 }

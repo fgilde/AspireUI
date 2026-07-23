@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, Radio, Anchor, LoadingOverlay, ThemeIcon, useMantineColorScheme } from "@mantine/core";
-import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink } from "@tabler/icons-react";
+import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, UnstyledButton, Anchor, LoadingOverlay, ThemeIcon, useMantineColorScheme } from "@mantine/core";
+import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink, IconDeviceDesktop, IconWorld, IconStack2, IconCheck } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
 import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
@@ -42,9 +42,9 @@ function langFor(name: string | null): string {
 // Where a hosting deployment runs. Only "local" works today; the rest are placeholders so the picker
 // already shows the intended shape (remote hosts / clusters come later).
 const DEPLOY_TARGETS = [
-  { id: "local", label: "This machine", hint: "Deploy with Docker on the machine AspireUI runs on.", enabled: true },
-  { id: "remote", label: "Remote host (SSH)", hint: "A Docker host over SSH — coming soon.", enabled: false },
-  { id: "swarm", label: "Cluster / Swarm", hint: "A multi-node cluster — coming soon.", enabled: false },
+  { id: "local", label: "This machine", hint: "Docker on the machine AspireUI runs on.", enabled: true, icon: IconDeviceDesktop },
+  { id: "remote", label: "Remote host", hint: "A Docker host over SSH.", enabled: false, icon: IconWorld },
+  { id: "swarm", label: "Cluster / Swarm", hint: "A multi-node cluster.", enabled: false, icon: IconStack2 },
 ];
 
 export function PublishPanel() {
@@ -87,15 +87,18 @@ export function PublishPanel() {
     <ScrollArea style={{ height: "100%" }} px="sm" py="xs">
       <MStack gap="sm">
         {/* Hosting: the appliance path — deploy this stack as a tracked, persistent deployment. */}
-        <Card withBorder padding="sm" radius="md" pos="relative">
+        <Card withBorder p={0} radius="md" pos="relative" style={{ overflow: "hidden" }}>
           <LoadingOverlay visible={hostingBusy} overlayProps={{ blur: 1 }} loaderProps={{ children: <Text size="sm">Deploying…</Text> }} />
-          <Group justify="space-between" mb={dep ? 6 : 0}>
-            <Group gap={6}><IconServer size={16} /><Text fw={600} size="sm">Hosting</Text></Group>
+          {/* accent header strip */}
+          <Group justify="space-between" px="sm" py={8}
+            style={{ background: "light-dark(var(--mantine-color-teal-0), rgba(12,166,120,.10))", borderBottom: "1px solid light-dark(var(--mantine-color-teal-2), rgba(12,166,120,.25))" }}>
+            <Group gap={8}><ThemeIcon size={22} radius="sm" variant="light" color="teal"><IconServer size={14} /></ThemeIcon><Text fw={700} size="sm">Hosting</Text></Group>
             {dep && <Badge color={depColor} variant="light" size="sm">{dep.state}</Badge>}
           </Group>
 
+          <Box p="sm">
           {dep ? (
-            <MStack gap={6}>
+            <MStack gap={8}>
               {dep.urls.length > 0 && (
                 <Group gap={8}>{dep.urls.map(u => <Anchor key={u} href={u} target="_blank" size="xs">{u} <IconExternalLink size={10} /></Anchor>)}</Group>
               )}
@@ -111,31 +114,45 @@ export function PublishPanel() {
               </Group>
             </MStack>
           ) : pickTarget ? (
-            <Box>
-              <Text size="xs" c="dimmed" mb={6}>Choose a deployment target:</Text>
-              <Radio.Group value={deployTarget} onChange={setDeployTarget}>
-                <MStack gap={6}>
-                  {DEPLOY_TARGETS.map(t => (
-                    <Radio key={t.id} value={t.id} disabled={!t.enabled}
-                      label={<span>{t.label}{!t.enabled && <Badge size="xs" variant="light" color="gray" ml={6}>soon</Badge>}<Text size="10px" c="dimmed">{t.hint}</Text></span>} />
-                  ))}
-                </MStack>
-              </Radio.Group>
-              <Group gap="xs" mt="sm">
-                <Button size="xs" color="teal" leftSection={<IconRocket size={14} />}
-                  onClick={() => { setPickTarget(false); void deployToHosting(); }}>Deploy</Button>
-                <Button size="xs" variant="default" onClick={() => setPickTarget(false)}>Cancel</Button>
+            <MStack gap="xs">
+              <Text size="xs" c="dimmed">Choose where to deploy:</Text>
+              <Group gap={8} grow>
+                {DEPLOY_TARGETS.map(t => {
+                  const sel = deployTarget === t.id;
+                  return (
+                    <UnstyledButton key={t.id} disabled={!t.enabled} onClick={() => t.enabled && setDeployTarget(t.id)}
+                      style={{
+                        position: "relative", padding: "10px 8px", borderRadius: 8, textAlign: "center",
+                        border: `1.5px solid ${sel ? "var(--mantine-color-teal-5)" : "var(--mantine-color-default-border)"}`,
+                        background: sel ? "light-dark(var(--mantine-color-teal-0), rgba(12,166,120,.12))" : "transparent",
+                        opacity: t.enabled ? 1 : .45, cursor: t.enabled ? "pointer" : "not-allowed",
+                        transition: "border-color .15s, background .15s, transform .1s",
+                      }}>
+                      {sel && <ThemeIcon size={16} radius="xl" color="teal" style={{ position: "absolute", top: 6, right: 6 }}><IconCheck size={10} /></ThemeIcon>}
+                      <t.icon size={22} style={{ color: sel ? "var(--mantine-color-teal-6)" : "var(--mantine-color-dimmed)" }} />
+                      <Text size="xs" fw={600} mt={4}>{t.label}</Text>
+                      {!t.enabled && <Badge size="xs" variant="light" color="gray" mt={4}>soon</Badge>}
+                    </UnstyledButton>
+                  );
+                })}
               </Group>
-            </Box>
+              <Text size="10px" c="dimmed">{DEPLOY_TARGETS.find(t => t.id === deployTarget)?.hint}</Text>
+              <Group gap="xs" mt={2}>
+                <Button size="xs" color="teal" leftSection={<IconRocket size={14} />}
+                  onClick={() => { setPickTarget(false); void deployToHosting(); }}>Deploy now</Button>
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setPickTarget(false)}>Cancel</Button>
+              </Group>
+            </MStack>
           ) : (
-            <Group gap="sm" wrap="nowrap" align="flex-start">
-              <ThemeIcon size={38} radius="md" variant="light" color="teal"><IconRocket size={20} /></ThemeIcon>
+            <Group gap="sm" wrap="nowrap" align="center">
+              <ThemeIcon size={40} radius="md" variant="light" color="teal"><IconRocket size={22} /></ThemeIcon>
               <Box style={{ flex: 1 }}>
-                <Text size="xs" c="dimmed" mb={8}>Deploy this stack as a persistent, tracked app (install &amp; forget). It gets a URL and can be started/stopped from Hosting.</Text>
-                <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => setPickTarget(true)}>Deploy to hosting</Button>
+                <Text size="xs" c="dimmed">Deploy this stack as a persistent, tracked app — it gets a URL and can be started/stopped from Hosting.</Text>
               </Box>
+              <Button size="sm" color="teal" leftSection={<IconRocket size={16} />} onClick={() => setPickTarget(true)}>Deploy</Button>
             </Group>
           )}
+          </Box>
         </Card>
 
         <Text size="xs" c="dimmed" fw={600} mt={4}>Or export / publish artifacts</Text>
