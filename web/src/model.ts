@@ -190,10 +190,11 @@ export function buildPresetNodes(
     nodes.push({
       // AddParameter has no 2-arg overload — only (name, bool secret) and
       // (name, string value, bool publishValueAsDefault, bool secret). Emit the 3-arg form positionally
-      // → AddParameter("name", "value", false, <secret>) so the grid's arity-3 overload renders the
-      // value field + both switches and round-trips (2 args would mis-match the 1-arg [secret] overload).
+      // → AddParameter("name", "value", true, <secret>). publishValueAsDefault MUST be true so that
+      // `aspire publish` bakes the value into the compose .env — otherwise a hosted app's param env
+      // (e.g. homebox's HBOX_AUTH_API_KEY_PEPPER, passwords) arrives EMPTY and the container panics.
       id: p.targetId!, varName: p.varName!, resourceName: p.name!, addMethod: "AddParameter",
-      addArgs: [JSON.stringify(p.param.default ?? ""), "false", p.param.secret ? "true" : "false"],
+      addArgs: [JSON.stringify(p.param.default ?? ""), "true", p.param.secret ? "true" : "false"],
       withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
     });
   });
