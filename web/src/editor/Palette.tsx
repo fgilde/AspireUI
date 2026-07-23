@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon, Image, Anchor, SimpleGrid } from "@mantine/core";
-import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark, IconInfoCircle, IconExternalLink } from "@tabler/icons-react";
+import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
+import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark, IconInfoCircle } from "@tabler/icons-react";
+import { AppInfoModal } from "../components/AppInfoModal";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
 import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -65,39 +66,6 @@ function Tile({ iconKey, label, caption, badge, onClick, onInfo, tooltip, highli
         )}
       </UnstyledButton>
     </Tooltip>
-  );
-}
-
-// Details dialog behind a preset's "i" button: icon, description, real website link + screenshots.
-function AppInfoModal({ preset, onClose, onInstall }: { preset: ContainerPreset; onClose: () => void; onInstall: () => void }) {
-  return (
-    <Modal opened onClose={onClose} size="lg" centered title={
-      <Group gap={10}>
-        <div style={{ width: 30, height: 30, borderRadius: 7, display: "grid", placeItems: "center", background: "var(--mantine-color-default)" }}>
-          <ResourceGlyph addMethod={preset.icon || ""} iconKey={preset.icon} size={18} />
-        </div>
-        <Text fw={600}>{preset.label}</Text>
-        <Badge size="xs" variant="light">{preset.group}</Badge>
-      </Group>}>
-      <MStack gap="sm">
-        {preset.description && <Text size="sm">{preset.description}</Text>}
-        <Group gap="xs">
-          {preset.website && <Anchor href={preset.website} target="_blank" size="sm">{preset.website.replace(/^https?:\/\//, "")} <IconExternalLink size={12} /></Anchor>}
-        </Group>
-        <Text size="xs" c="dimmed">Image: <Text span ff="monospace" size="xs">{preset.image}</Text> · Port {preset.port}</Text>
-        {preset.screenshots && preset.screenshots.length > 0 && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }}>
-            {preset.screenshots.map(src => (
-              <Image key={src} src={src} radius="sm" fit="contain" fallbackSrc="" style={{ border: "1px solid var(--mantine-color-default-border)" }} />
-            ))}
-          </SimpleGrid>
-        )}
-        <Group justify="flex-end" mt="xs">
-          <Button variant="default" onClick={onClose}>Close</Button>
-          <Button onClick={() => { onInstall(); onClose(); }}>Add to canvas</Button>
-        </Group>
-      </MStack>
-    </Modal>
   );
 }
 
@@ -339,7 +307,12 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           onConfirm={choices => { dropPreset(presetPick, choices); setPresetPick(null); }} />
       )}
       {infoPreset && (
-        <AppInfoModal preset={infoPreset} onClose={() => setInfoPreset(null)} onInstall={() => createPreset(infoPreset)} />
+        <AppInfoModal
+          info={{ label: infoPreset.label, group: infoPreset.group, icon: infoPreset.icon, description: infoPreset.description,
+            website: infoPreset.website, image: infoPreset.image, port: infoPreset.port, screenshots: infoPreset.screenshots, tags: infoPreset.tags }}
+          onClose={() => setInfoPreset(null)}
+          onAction={() => { createPreset(infoPreset); setInfoPreset(null); }}
+          actionLabel="Add to canvas" actionIcon={<IconPlus size={14} />} />
       )}
       {autoOpen && (
         <AutoAddModal onClose={() => setAutoOpen(false)}
