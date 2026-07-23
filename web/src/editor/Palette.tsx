@@ -73,6 +73,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const [cat, setCat] = useState<ResourceType[]>([]);
   const [presets, setPresets] = useState<ContainerPreset[]>([]);
   const [q, setQ] = useState("");
+  const [snippetQ, setSnippetQ] = useState("");
   const [selectedRt, setSelectedRt] = useState<ResourceType | null>(null);
   // Groups the user explicitly collapsed (everything else stays expanded — incl. groups that appear later).
   const [collapsed, setCollapsed] = useState<string[]>([]);
@@ -192,7 +193,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           <Tabs.Tab value="custom">Custom</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="catalog" pt="xs" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-      <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} />
+      <TextInput placeholder="Search…" value={q} onChange={e => setQ(e.currentTarget.value)} mb="xs" />
       {allTags.length > 0 && (
         <Group gap={5}>
           {(tagsExpanded ? allTags : allTags.slice(0, TAG_COLLAPSE)).map(t => {
@@ -219,7 +220,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
           )}
         </Group>
       )}
-      <Group justify="flex-end" gap={4}>
+      <Group justify="flex-end" gap={4} my="xs">
         <Tooltip label={allOpen ? "Collapse all" : "Expand all"} withArrow>
           <UnstyledButton onClick={() => setCollapsed(allOpen ? groupKeys : [])}
             style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--mantine-color-dimmed)" }}>
@@ -271,11 +272,18 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
             Your saved snippets — drop them like any palette item. Save one from a node's Properties panel
             (bookmark icon) or a multi-selection.
           </Text>
+          {snippets.length > 0 && (
+            <TextInput placeholder="Search snippets…" value={snippetQ} onChange={e => setSnippetQ(e.currentTarget.value)} mb="xs" size="xs" />
+          )}
           <ScrollArea style={{ flex: 1 }} offsetScrollbars scrollbarSize={8}>
             {snippets.length === 0
               ? <Text size="sm" c="dimmed" p="sm">No snippets yet.</Text>
-              : <MStack gap={1}>
-                  {snippets.map(s => (
+              : (() => {
+                const shown = snippets.filter(s => s.name.toLowerCase().includes(snippetQ.toLowerCase()));
+                return shown.length === 0
+                  ? <Text size="sm" c="dimmed" p="sm">No snippets match “{snippetQ}”.</Text>
+                  : <MStack gap={1}>
+                  {shown.map(s => (
                     <Group key={s.id} gap={4} wrap="nowrap" align="center">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Tile iconKey={s.icon || ""} label={s.name}
@@ -287,7 +295,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
                       </Tooltip>
                     </Group>
                   ))}
-                </MStack>}
+                </MStack>;
+              })()}
           </ScrollArea>
         </Tabs.Panel>
       </Tabs>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton } from "@mantine/core";
-import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps } from "@tabler/icons-react";
+import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, Stack as MStack } from "@mantine/core";
+import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX } from "@tabler/icons-react";
 import type { ContainerPreset, Snippet, ResourceType, Node, Edge } from "../model";
 import { buildPresetNodes, instantiateSnippet } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
@@ -57,7 +57,13 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   const [items, setItems] = useState<Item[] | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
-  const [cat, setCat] = useState<string>("popular");        // "popular" | "all" | <group>
+  // Tri-state filters (like the palette): a tag is "in" (must match one), "ex" (must match none), or absent.
+  const [tagState, setTagState] = useState<Record<string, "in" | "ex">>({});
+  const cycleTag = (t: string) => setTagState(s => {
+    const next = { ...s };
+    if (!s[t]) next[t] = "in"; else if (s[t] === "in") next[t] = "ex"; else delete next[t];
+    return next;
+  });
   const [installing, setInstalling] = useState<string | null>(null);
   const [infoItem, setInfoItem] = useState<Item | null>(null);
   const [pkgItem, setPkgItem] = useState<Item | null>(null);    // package awaiting the add dialog
@@ -116,22 +122,22 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   const groups = useMemo(() =>
     [...new Set(visible.map(i => i.group))].sort((a, b) => a === "Custom" ? 1 : b === "Custom" ? -1 : a.localeCompare(b)),
     [visible]);
+  const kinds = useMemo(() => (["app", "package", "snippet"] as Kind[]).filter(k => visible.some(i => i.kind === k)), [visible]);
   const featuredCount = visible.filter(i => i.featured).length;
 
   const ql = q.toLowerCase();
   const matchesQ = (it: Item) => !ql || it.label.toLowerCase().includes(ql) || it.group.toLowerCase().includes(ql) || (it.description ?? "").toLowerCase().includes(ql);
+  // Tags an item carries for the tri-state filters: its kind, its group, and "popular" when featured.
+  const itemTags = (it: Item) => [it.kind, it.group, ...(it.featured ? ["popular"] : [])];
 
-  // What to render: search overrides the category; "popular" → featured; a group → that group; "all" → sections.
-  const searching = ql.length > 0;
-  const effCat = searching ? "all" : cat;
-  const filtered = visible.filter(matchesQ)
-    .filter(it => effCat === "all" ? true : effCat === "popular" ? it.featured : it.group === effCat);
+  const inc = Object.keys(tagState).filter(t => tagState[t] === "in");
+  const exc = Object.keys(tagState).filter(t => tagState[t] === "ex");
+  const passTags = (it: Item) => { const t = itemTags(it); return (inc.length === 0 || inc.some(x => t.includes(x))) && !exc.some(x => t.includes(x)); };
 
-  const chips: { key: string; label: string; icon?: ReactNode }[] = [
-    ...(featuredCount ? [{ key: "popular", label: "Popular", icon: <IconFlame size={13} /> }] : []),
-    { key: "all", label: "All", icon: <IconApps size={13} /> },
-    ...groups.map(g => ({ key: g, label: g })),
-  ];
+  const searched = visible.filter(matchesQ);                       // for stable filter counts
+  const filtered = searched.filter(passTags);
+  const groupsWithItems = groups.filter(g => filtered.some(i => i.group === g));
+  const tagCount = (t: string) => searched.filter(i => itemTags(i).includes(t)).length;
 
   const renderCard = (it: Item) => {
     const hidden = excluded.has(it.id);
@@ -177,45 +183,40 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   };
 
   return (
-    <Modal opened onClose={onClose} size="80%" title={<Group gap={8}><IconApps size={18} /><Title order={5}>App store</Title></Group>}
-      styles={{ body: { display: "flex", flexDirection: "column", minHeight: "60vh" } }}>
-      <TextInput mb="sm" placeholder="Search apps, packages, snippets…" value={q} onChange={e => setQ(e.currentTarget.value)}
+    <Modal opened onClose={onClose} size="85%" title={<Group gap={8}><IconApps size={18} /><Title order={5}>App store</Title></Group>}
+      styles={{ body: { display: "flex", flexDirection: "column", minHeight: "68vh" } }}>
+      <TextInput mb="md" placeholder="Search apps, packages, snippets…" value={q} onChange={e => setQ(e.currentTarget.value)}
         leftSection={<IconSearch size={14} />} autoFocus />
 
-      {/* Category chips */}
-      <ScrollArea type="never" mb="md">
-        <Group gap={6} wrap="nowrap">
-          {chips.map(c => {
-            const active = !searching && effCat === c.key;
-            return (
-              <UnstyledButton key={c.key} onClick={() => { setCat(c.key); }} disabled={searching}
-                style={{
-                  display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 999, whiteSpace: "nowrap",
-                  fontSize: 13, fontWeight: active ? 600 : 500, transition: "all .18s ease",
-                  background: active ? "var(--mantine-primary-color-filled)" : "var(--mantine-color-default)",
-                  color: active ? "var(--mantine-color-white)" : "var(--mantine-color-dimmed)",
-                  border: `1px solid ${active ? "transparent" : "var(--mantine-color-default-border)"}`,
-                  opacity: searching ? 0.5 : 1, cursor: searching ? "default" : "pointer",
-                }}>
-                {c.icon}{c.label}
+      <Group align="stretch" wrap="nowrap" gap={0} style={{ flex: 1, minHeight: 0 }}>
+        {/* Left filter column — tri-state (click: include → exclude → clear) */}
+        <ScrollArea w={196} style={{ flexShrink: 0, borderRight: "1px solid var(--mantine-color-default-border)" }} type="hover">
+          <MStack gap={1} pr="md">
+            {featuredCount > 0 && <FilterRow label="Popular" icon={<IconFlame size={13} />} count={tagCount("popular")} state={tagState["popular"]} onClick={() => cycleTag("popular")} />}
+            {kinds.length > 1 && <>
+              <FilterHeading>Type</FilterHeading>
+              {kinds.map(k => <FilterRow key={k} label={KIND_LABEL[k]} count={tagCount(k)} state={tagState[k]} onClick={() => cycleTag(k)} />)}
+            </>}
+            <FilterHeading>Category</FilterHeading>
+            {groups.map(g => <FilterRow key={g} label={g} count={tagCount(g)} state={tagState[g]} onClick={() => cycleTag(g)} />)}
+            {(inc.length > 0 || exc.length > 0) && (
+              <UnstyledButton onClick={() => setTagState({})} mt="xs"
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 8px", fontSize: 12, color: "var(--mantine-color-dimmed)" }}>
+                <IconX size={12} /> Clear filters
               </UnstyledButton>
-            );
-          })}
-        </Group>
-      </ScrollArea>
+            )}
+          </MStack>
+        </ScrollArea>
 
-      <ScrollArea style={{ flex: 1 }} offsetScrollbars>
-        {items === null ? <Loader size="sm" /> : filtered.length === 0 ? (
-          <Text c="dimmed" size="sm">No matches{q ? ` for “${q}”` : ""}.</Text>
-        ) : (effCat === "all" && !searching) ? (
-          // Sectioned view: one grid per group.
-          <MStackSections groups={groups} items={filtered} renderCard={renderCard} />
-        ) : (
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="sm" className="store-grid">
-            {filtered.map(renderCard)}
-          </SimpleGrid>
-        )}
-      </ScrollArea>
+        {/* Results */}
+        <ScrollArea style={{ flex: 1 }} offsetScrollbars pl="md">
+          {items === null ? <Loader size="sm" /> : filtered.length === 0 ? (
+            <Text c="dimmed" size="sm">No matches{q ? ` for “${q}”` : ""}.</Text>
+          ) : (
+            <MStackSections groups={groupsWithItems} items={filtered} renderCard={renderCard} />
+          )}
+        </ScrollArea>
+      </Group>
 
       {infoItem && (
         <AppInfoModal info={infoItem.info} onClose={() => setInfoItem(null)}
@@ -232,8 +233,31 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
         .store-card:hover{transform:translateY(-3px);box-shadow:var(--mantine-shadow-md);border-color:var(--mantine-primary-color-filled)}
         .store-grid>*{animation:storeIn .28s ease both}
         @keyframes storeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+        .store-filter:hover{background:var(--mantine-color-default-hover)}
       `}</style>
     </Modal>
+  );
+}
+
+const FilterHeading = ({ children }: { children: ReactNode }) =>
+  <Text fw={700} size="10px" tt="uppercase" c="dimmed" mt="sm" mb={2} style={{ letterSpacing: 0.5 }}>{children}</Text>;
+
+// One tri-state filter row in the left column: include (primary) → exclude (red, struck) → off.
+function FilterRow({ label, icon, count, state, onClick }: {
+  label: string; icon?: ReactNode; count: number; state?: "in" | "ex"; onClick: () => void;
+}) {
+  const bg = state === "in" ? "var(--mantine-primary-color-light)" : state === "ex" ? "var(--mantine-color-red-light)" : "transparent";
+  const col = state === "in" ? "var(--mantine-primary-color-light-color)" : state === "ex" ? "var(--mantine-color-red-light-color)" : "var(--mantine-color-text)";
+  return (
+    <UnstyledButton onClick={onClick} className="store-filter"
+      title={state === "in" ? "Included — click to exclude" : state === "ex" ? "Excluded — click to clear" : "Click to include"}
+      style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "5px 8px", borderRadius: 6, fontSize: 13, background: bg, color: col, transition: "background .15s, color .15s" }}>
+      <span style={{ width: 14, display: "grid", placeItems: "center", flexShrink: 0 }}>
+        {state === "ex" ? <IconMinus size={12} /> : state === "in" ? <IconCheck size={12} /> : icon}
+      </span>
+      <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: state === "ex" ? "line-through" : undefined }}>{label}</span>
+      <Text component="span" size="10px" c="dimmed">{count}</Text>
+    </UnstyledButton>
   );
 }
 
