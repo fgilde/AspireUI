@@ -51,6 +51,28 @@ public class HostingServiceTests
     public void ParseServices_tolerates_garbage() => Assert.Empty(HostingService.ParseServices("docker: error\n"));
 
     [Fact]
+    public void FillParameterEnv_fills_known_value_and_generates_for_unknown()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-env-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(dir);
+        var envPath = Path.Combine(dir, ".env");
+        File.WriteAllText(envPath, "# Parameter runtipi-root-folder-host\nRUNTIPI_ROOT_FOLDER_HOST=\n\n# Parameter n8n-pg-password\nN8N_PG_PASSWORD=\n");
+        // Stack has an AddParameter node for the runtipi one (value "/data"); n8n's is NOT in the model.
+        var pnode = new NodeModel("p1", "runtipirootfolderhost", "AddParameter", "runtipi-root-folder-host",
+            new(), 0, 0, new() { "\"/data\"", "true", "false" });
+        var stack = Stack(pnode);
+        try
+        {
+            HostingService.FillParameterEnv(stack, envPath);
+            var txt = File.ReadAllText(envPath);
+            Assert.Contains("RUNTIPI_ROOT_FOLDER_HOST=/data", txt);          // known value used
+            Assert.Matches(@"N8N_PG_PASSWORD=aspireui-[0-9a-f]{24}", txt);    // unknown → deterministic secret
+            Assert.DoesNotContain("N8N_PG_PASSWORD=\n", txt);                 // no longer empty
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void UrlsFromServices_uses_published_ports_skips_dashboard()
     {
         var svcs = new List<ServiceStatus>

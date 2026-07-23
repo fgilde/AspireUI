@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using AspireUI.Server.Models;
@@ -137,6 +139,36 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         throw new InvalidOperationException("no free host port in 20000-29999");
     }
 
+    // `aspire publish` writes each parameter into the compose .env by NAME but with an EMPTY value
+    // (parameters aren't baked into the artifact), so hosted apps get blank passwords/keys/paths and fail
+    // (runtipi ROOT_FOLDER_HOST missing, n8n-pg no password, …). Fill each empty .env entry: from the
+    // stack's AddParameter node value when we have it, else a deterministic generated secret (stable
+    // across redeploys so a DB volume initialized with it keeps matching). Env key = the parameter's
+    // resource name upper-cased with non-alphanumerics → '_' (Aspire's normalization).
+    public static void FillParameterEnv(StackModel stack, string envPath)
+    {
+        if (!File.Exists(envPath)) return;
+        var known = new Dictionary<string, string>();
+        foreach (var n in stack.Nodes.Where(n => n.AddMethod == "AddParameter" && n.AddArgs.Count > 0))
+        {
+            var key = Regex.Replace(n.ResourceName.ToUpperInvariant(), "[^A-Z0-9]", "_");
+            var val = Unquote(n.AddArgs[0]);
+            if (!string.IsNullOrEmpty(val)) known[key] = val;
+        }
+        var lines = File.ReadAllLines(envPath);
+        var changed = false;
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var m = Regex.Match(lines[i], @"^([A-Za-z0-9_]+)=\s*$");
+            if (!m.Success) continue;
+            var key = m.Groups[1].Value;
+            var val = known.TryGetValue(key, out var v) ? v
+                : "aspireui-" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..24].ToLowerInvariant();
+            lines[i] = $"{key}={val}"; changed = true;
+        }
+        if (changed) File.WriteAllText(envPath, string.Join("\n", lines));
+    }
+
     // Emit http://host:HOSTPORT for each published `- "HOST:CONTAINER"` mapping.
     public static List<string> ParseUrls(string yaml, string host)
     {
@@ -219,6 +251,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             foreach (var cp in ExposedAppPorts(raw).Distinct()) portMap[cp] = AllocateHostPort(used);
             var processed = PublishExposedPorts(raw, portMap);
             File.WriteAllText(path, processed);
+            // `aspire publish` leaves parameter values blank in .env — fill them or hosted apps get empty
+            // passwords/keys/paths and fail.
+            FillParameterEnv(stack, Path.Combine(pub.OutputDir, ".env"));
             var up = deploy.UpProject(pub.OutputDir, project);
             // Prefer the ports docker actually published (`compose ps`); fall back to the static parse.
             var urls = up.Ok ? UrlsFromServices(ParseServices(deploy.Ps(pub.OutputDir, project).Log), host) : new();
