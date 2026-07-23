@@ -1,56 +1,67 @@
 import { useEffect, useState } from "react";
-import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Button, Loader } from "@mantine/core";
+import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Button, Loader, Badge } from "@mantine/core";
 import { IconSearch, IconDownload } from "@tabler/icons-react";
-import type { ContainerPreset } from "../model";
-import { buildPresetNodes } from "../model";
+import type { ContainerPreset, Snippet } from "../model";
+import { buildPresetNodes, instantiateSnippet } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
 
-// The app-store, as a modal. Installing = create a stack from the preset + deploy it to hosting.
+// A store entry — a curated preset OR a user's saved snippet. Both install the same way: create a stack
+// from it, then deploy that stack to hosting.
+interface Item { id: string; label: string; group: string; icon: string; description?: string | null; custom: boolean; install: () => Promise<{ id: string }> }
+
+const presetItem = (p: ContainerPreset): Item => ({
+  id: `preset:${p.id}`, label: p.label, group: p.group, icon: p.icon || "", description: p.description, custom: false,
+  install: () => { const { nodes, edges } = buildPresetNodes(p, []); return api.createStack({ name: p.label, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [] }); },
+});
+const snippetItem = (s: Snippet): Item => ({
+  id: `snippet:${s.id}`, label: s.name, group: s.group || "Custom", icon: s.icon || (s.nodes[0]?.icon ?? s.nodes[0]?.addMethod ?? ""), custom: true,
+  install: () => { const { nodes, edges } = instantiateSnippet(s, [], 0, 0); return api.createStack({ name: s.name, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: s.files ?? [], extraPackages: [] }); },
+});
+
 export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void; onInstalled: () => void }) {
-  const [presets, setPresets] = useState<ContainerPreset[]>([]);
+  const [items, setItems] = useState<Item[] | null>(null);
   const [q, setQ] = useState("");
   const [installing, setInstalling] = useState<string | null>(null);
-  useEffect(() => { api.getPresets().then(setPresets).catch(() => setPresets([])); }, []);
+  useEffect(() => {
+    Promise.all([api.getPresets().catch(() => []), api.getSnippets().catch(() => [])])
+      .then(([presets, snippets]) => setItems([...snippets.map(snippetItem), ...presets.map(presetItem)]));
+  }, []);
 
-  const install = async (p: ContainerPreset) => {
-    setInstalling(p.id);
+  const install = async (it: Item) => {
+    setInstalling(it.id);
     try {
-      const { nodes, edges } = buildPresetNodes(p, []);
-      const stack = await api.createStack({
-        name: p.label, targetFramework: "net10.0",
-        nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [],
-      });
+      const stack = await it.install();
       await api.hostingDeploy(stack.id);
-      toastOk(`Installing ${p.label}…`);
+      toastOk(`Installing ${it.label}…`);
       onInstalled(); onClose();
     } catch (e) { toastErr(e, "Install failed"); }
     finally { setInstalling(null); }
   };
 
   const ql = q.toLowerCase();
-  const shown = presets.filter(p => !ql || p.label.toLowerCase().includes(ql) || (p.group ?? "").toLowerCase().includes(ql));
+  const shown = (items ?? []).filter(it => !ql || it.label.toLowerCase().includes(ql) || it.group.toLowerCase().includes(ql));
 
   return (
     <Modal opened onClose={onClose} size="xl" title={<Title order={5}>App store</Title>}>
       <TextInput mb="md" placeholder="Search apps…" value={q} onChange={e => setQ(e.currentTarget.value)} leftSection={<IconSearch size={14} />} autoFocus />
-      {presets.length === 0 ? <Loader size="sm" /> : (
+      {items === null ? <Loader size="sm" /> : (
         <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
-          {shown.map(p => (
-            <Card key={p.id} withBorder padding="md" radius="md">
+          {shown.map(it => (
+            <Card key={it.id} withBorder padding="md" radius="md">
               <Group gap={10} wrap="nowrap" align="flex-start">
                 <div style={{ width: 34, height: 34, borderRadius: 8, display: "grid", placeItems: "center", background: "var(--mantine-color-default)" }}>
-                  <ResourceGlyph addMethod={p.icon || ""} size={20} />
+                  <ResourceGlyph addMethod={it.icon} iconKey={it.icon} size={20} />
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <Text fw={600} size="sm" truncate>{p.label}</Text>
-                  <Text size="10px" c="dimmed">{p.group}</Text>
+                  <Group gap={6} wrap="nowrap"><Text fw={600} size="sm" truncate>{it.label}</Text>{it.custom && <Badge size="xs" variant="light" color="grape">Custom</Badge>}</Group>
+                  <Text size="10px" c="dimmed">{it.group}</Text>
                 </div>
               </Group>
-              {p.description && <Text size="xs" c="dimmed" mt={8} lineClamp={2}>{p.description}</Text>}
+              {it.description && <Text size="xs" c="dimmed" mt={8} lineClamp={2}>{it.description}</Text>}
               <Button fullWidth mt="sm" size="xs" leftSection={<IconDownload size={14} />}
-                loading={installing === p.id} onClick={() => install(p)}>Install</Button>
+                loading={installing === it.id} onClick={() => install(it)}>Install</Button>
             </Card>
           ))}
           {shown.length === 0 && <Text c="dimmed" size="sm">No apps match “{q}”.</Text>}
