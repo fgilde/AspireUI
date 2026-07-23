@@ -29,7 +29,7 @@ public class DeployService
     public DeployResult UpProject(string dir, string project) => Run(dir, $"compose -p {project} up -d");
     public DeployResult StopProject(string dir, string project) => Run(dir, $"compose -p {project} stop");
     public DeployResult StartProject(string dir, string project) => Run(dir, $"compose -p {project} start");
-    public DeployResult DownProject(string dir, string project) => Run(dir, $"compose -p {project} down");
+    public DeployResult DownProject(string dir, string project, bool volumes = false) => Run(dir, $"compose -p {project} down{(volumes ? " -v" : "")}");
     public DeployResult Ps(string dir, string project) => Run(dir, $"compose -p {project} ps --format json");
     public DeployResult PullProject(string dir, string project) => Run(dir, $"compose -p {project} pull");
     public DeployResult Logs(string dir, string project, int tail = 200) => Run(dir, $"compose -p {project} logs --tail {tail}");

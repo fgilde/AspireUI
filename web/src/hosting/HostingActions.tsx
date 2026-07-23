@@ -18,8 +18,10 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor
   const start = () => api.startHosting(d.stackId).then(onChanged).catch(toastErr);
   const update = () => { toastOk(`Updating ${d.name}…`); api.updateHosting(d.stackId).then(onChanged).then(() => toastOk("Updated")).catch(toastErr); };
   const backup = () => { toastOk(`Backing up ${d.name}…`); api.backupHosting(d.stackId).then(r => toastOk(r.dir ? "Backup written" : "Nothing to back up")).catch(toastErr); };
-  const undeploy = () => confirmDelete(`"${d.name}"`, "This runs docker compose down (named volumes are kept).")
+  const undeploy = () => confirmDelete(`"${d.name}"`, "This runs docker compose down (named volumes are KEPT — data survives).")
     .then(okd => { if (okd) api.undeployHosting(d.stackId).then(onChanged).then(() => toastOk("Undeployed")).catch(toastErr); });
+  const wipe = () => confirmDelete(`"${d.name}" AND its data`, "This runs docker compose down -v — the app's named volumes (database, files) are DELETED. Use this to cleanly reinstall an app that got stuck half-initialized. Cannot be undone.")
+    .then(okd => { if (okd) api.undeployHosting(d.stackId, true).then(onChanged).then(() => toastOk("Undeployed + data wiped")).catch(toastErr); });
   return (
     <>
       {d.state === "running"
@@ -32,6 +34,7 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       <Menu.Divider />
       <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={undeploy}>Undeploy</Menu.Item>
+      <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={wipe}>Undeploy + delete data</Menu.Item>
     </>
   );
 }

@@ -394,7 +394,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // `up -d` (not `compose start`) so Start also (re)creates containers when a prior deploy failed or
     // was pruned — plain `start` only resumes existing stopped containers and silently no-ops otherwise.
     public void Start(string id) { if (store.Get(id) is { } d) { var r = deploy.UpProject(d.ComposeDir, d.Project); store.SetState(id, r.Ok ? "running" : "failed", r.Ok ? null : r.Log); SyncProxy(); } }
-    public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); SyncProxy(); } }
+    // wipe=true also removes the named volumes (compose down -v) — a clean reset for an app whose data
+    // dir got into a half-initialized state (e.g. a DB app that failed mid-setup).
+    public void Undeploy(string id, bool wipe = false) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project, wipe); store.Delete(id); SyncProxy(); } }
 
     // Best-effort reconcile from `docker compose ps` (exit!=0 or no running container → stopped).
     public Deployment? Refresh(string id)

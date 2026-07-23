@@ -2333,7 +2333,7 @@
     "env": [
       [
         "DATABASE_URL",
-        "postgresql://ghostfolio:ghostfolio@${db}:5432/ghostfolio?sslmode=prefer"
+        "postgresql://ghostfolio:ghostfolio@${db}:5432/ghostfolio?sslmode=disable"
       ],
       [
         "REDIS_HOST",

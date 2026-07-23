@@ -568,10 +568,10 @@ public static class StackEndpoints
             hosting.Start(d.Id);
             return Results.Ok(deployments.Get(d.Id));
         });
-        app2.MapPost("/stacks/{id}/hosting/undeploy", (string id) =>
+        app2.MapPost("/stacks/{id}/hosting/undeploy", (string id, bool? wipe) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
-            hosting.Undeploy(d.Id);
+            hosting.Undeploy(d.Id, wipe == true);
             return Results.NoContent();
         });
         app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
