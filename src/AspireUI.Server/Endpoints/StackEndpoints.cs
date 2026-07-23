@@ -567,6 +567,23 @@ public static class StackEndpoints
             deployments.GetByStack(id) is { } d
                 ? Results.Ok(new { dir = hosting.Backup(d.Id, Path.Combine(wsRoot, "_backups")) })
                 : Results.NotFound());
+        // Resource tree: live per-service status from `docker compose ps`.
+        app2.MapGet("/hosting/{id}/services", (string id) => Results.Ok(hosting.Services(id)));
+        // Per-resource editable config (name + image + literal env) for the configure dialog.
+        app2.MapGet("/stacks/{id}/hosting/config", (string id) =>
+            store.Get(id) is { } s ? Results.Ok(HostingService.NodeConfigs(s)) : Results.NotFound());
+        // Apply env edits to the stack and redeploy. Manages the edit-lock itself: stop → patch → deploy
+        // (so it works even though the stack is locked while the deployment runs).
+        app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            hosting.Stop(d.Id);
+            var updated = HostingService.ApplyEnvUpdates(s, body.Env ?? new());
+            store.Save(updated);
+            gen.Materialize(updated, Dir(id));
+            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), ctx.Request.Host.Host));
+        });
         app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
@@ -646,5 +663,6 @@ public static class StackEndpoints
     public record AssistRequest(string Prompt);
     public record AutoPresetRequest(string Url);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
+    public record ReconfigureRequest(Dictionary<string, List<string[]>> Env);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

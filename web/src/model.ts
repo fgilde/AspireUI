@@ -26,6 +26,11 @@ export interface Deployment {
   urls: string[]; createdAt: string; updatedAt: string; lastError?: string | null;
 }
 
+// One container of a running deployment (from `docker compose ps`) — for the hosting resource tree.
+export interface ServiceStatus { name: string; service: string; image: string; state: string; status: string; ports: string }
+// Per-resource editable config for the hosting configure dialog. env = [[key, value], …] (literal only).
+export interface NodeConfig { nodeId: string; name: string; addMethod: string; image: string; env: string[][] }
+
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }

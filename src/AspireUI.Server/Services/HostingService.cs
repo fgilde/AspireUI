@@ -1,7 +1,11 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
+
+// One service (container) of a deployed compose project, as reported by `docker compose ps`.
+public record ServiceStatus(string Name, string Service, string Image, string State, string Status, string Ports);
 
 // Turns a stack into a tracked, persistent compose deployment (install & forget), separate from the
 // ephemeral dev Run path. Deploy = publish → post-process compose (restart policy) → up -d.
@@ -191,6 +195,98 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         store.SetState(id, up.Ok ? "running" : "failed", up.Ok ? null : $"{pull.Log}\n{up.Log}");
         if (up.Ok) SyncProxy();
         return store.Get(id);
+    }
+
+    // The per-service status of a deployment, from `docker compose ps` — used for the resource tree.
+    public List<ServiceStatus> Services(string id)
+        => store.Get(id) is { } d ? ParseServices(deploy.Ps(d.ComposeDir, d.Project).Log) : new();
+
+    // Parse `docker compose ps --format json` — tolerates both a JSON array and newline-delimited
+    // objects (the format changed across compose versions).
+    public static List<ServiceStatus> ParseServices(string psJson)
+    {
+        var list = new List<ServiceStatus>();
+        var text = psJson.Trim();
+        if (text.Length == 0) return list;
+        var elements = new List<JsonElement>();
+        try
+        {
+            if (text.StartsWith("["))
+                using (var doc = JsonDocument.Parse(text))
+                    elements.AddRange(doc.RootElement.EnumerateArray().Select(e => e.Clone()));
+            else
+                foreach (var line in text.Split('\n'))
+                    if (line.Trim().StartsWith("{"))
+                        using (var doc = JsonDocument.Parse(line.Trim()))
+                            elements.Add(doc.RootElement.Clone());
+        }
+        catch { return list; }   // unparseable (e.g. docker error text) → empty tree, not a crash
+        foreach (var e in elements)
+        {
+            string S(string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
+            var ports = "";
+            if (e.TryGetProperty("Publishers", out var pubs) && pubs.ValueKind == JsonValueKind.Array)
+                ports = string.Join(", ", pubs.EnumerateArray()
+                    .Select(p => ((p.TryGetProperty("PublishedPort", out var pp) ? pp.GetInt32() : 0),
+                                  (p.TryGetProperty("TargetPort", out var tp) ? tp.GetInt32() : 0)))
+                    .Where(x => x.Item1 > 0).Select(x => $"{x.Item1}:{x.Item2}").Distinct());
+            list.Add(new ServiceStatus(S("Name"), S("Service"), S("Image"), S("State"), S("Status"), ports));
+        }
+        return list;
+    }
+
+    // Replace each named node's LITERAL environment variables with `env[nodeId]` (a list of [key,value]
+    // pairs), keeping parameter-backed env (value is a bare varName, not a quoted string) and every other
+    // WithCall. Used by the hosting "configure" dialog (stop → apply → redeploy).
+    public static StackModel ApplyEnvUpdates(StackModel stack, IReadOnlyDictionary<string, List<string[]>> env)
+    {
+        var nodes = stack.Nodes.Select(n =>
+            env.TryGetValue(n.Id, out var pairs) ? n with { WithCalls = ReplaceLiteralEnv(n.WithCalls, pairs) } : n).ToList();
+        return stack with { Nodes = nodes };
+    }
+
+    private static bool IsLiteralEnv(WithCall w) =>
+        w.Method == "WithEnvironment" && w.Args.Count == 2 && w.Args[1].StartsWith("\"");
+
+    private static List<WithCall> ReplaceLiteralEnv(List<WithCall> calls, List<string[]> pairs)
+    {
+        var kept = calls.Where(w => !IsLiteralEnv(w)).ToList();
+        foreach (var p in pairs.Where(p => p.Length == 2 && !string.IsNullOrWhiteSpace(p[0])))
+            kept.Add(new WithCall("WithEnvironment", new() { JsonSerializer.Serialize(p[0]), JsonSerializer.Serialize(p[1]) }));
+        return kept;
+    }
+
+    // Per-resource config the hosting "configure" dialog edits: name, image, and current literal env.
+    // Skips parameter/connection-string nodes (nothing to configure there).
+    public record NodeConfig(string NodeId, string Name, string AddMethod, string Image, List<string[]> Env);
+    public static List<NodeConfig> NodeConfigs(StackModel stack)
+    {
+        var env = ReadLiteralEnv(stack);
+        return stack.Nodes
+            .Where(n => !n.AddMethod.StartsWith("AddParameter") && !n.AddMethod.StartsWith("AddConnectionString"))
+            .Select(n => new NodeConfig(n.Id, n.ResourceName, n.AddMethod,
+                n.AddArgs.FirstOrDefault() is { } a && a.StartsWith("\"") ? Unquote(a) : "",
+                env.TryGetValue(n.Id, out var e) ? e : new()))
+            .ToList();
+    }
+
+    // The current LITERAL env vars per node (nodeId → [[key,value]…]) — what the configure dialog shows.
+    public static Dictionary<string, List<string[]>> ReadLiteralEnv(StackModel stack)
+    {
+        var result = new Dictionary<string, List<string[]>>();
+        foreach (var n in stack.Nodes)
+        {
+            var pairs = n.WithCalls.Where(IsLiteralEnv)
+                .Select(w => new[] { Unquote(w.Args[0]), Unquote(w.Args[1]) }).ToList();
+            if (pairs.Count > 0) result[n.Id] = pairs;
+        }
+        return result;
+    }
+
+    private static string Unquote(string literal)
+    {
+        try { return JsonSerializer.Deserialize<string>(literal) ?? literal; }
+        catch { return literal.Trim('"'); }
     }
 
     // Top-level `volumes:` keys → compose v2 names them `<project>_<key>`.

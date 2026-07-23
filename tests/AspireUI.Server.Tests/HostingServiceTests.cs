@@ -1,7 +1,56 @@
 using AspireUI.Server.Services;
+using AspireUI.Server.Models;
 
 public class HostingServiceTests
 {
+    private static NodeModel Node(string id, params WithCall[] calls) =>
+        new(id, id, "AddContainer", id, calls.ToList(), 0, 0, new() { "\"nginx\"" });
+    private static StackModel Stack(params NodeModel[] nodes) =>
+        new("s1", "S1", "net10.0", nodes.ToList(), new(), new(), new(), new());
+
+    [Fact]
+    public void ApplyEnvUpdates_replaces_literal_env_keeps_param_and_other_calls()
+    {
+        var stack = Stack(Node("n1",
+            new WithCall("WithEnvironment", new() { "\"OLD\"", "\"x\"" }),         // literal → dropped
+            new WithCall("WithEnvironment", new() { "\"SECRET\"", "pw" }),         // param ref → kept
+            new WithCall("WithHttpEndpoint", new() { "targetPort: 80" })));        // other → kept
+        var outp = HostingService.ApplyEnvUpdates(stack,
+            new Dictionary<string, List<string[]>> { ["n1"] = new() { new[] { "NEW", "y" } } });
+        var calls = outp.Nodes[0].WithCalls;
+        Assert.DoesNotContain(calls, c => c.Args.Contains("\"OLD\""));
+        Assert.Contains(calls, c => c.Method == "WithEnvironment" && c.Args[0] == "\"NEW\"" && c.Args[1] == "\"y\"");
+        Assert.Contains(calls, c => c.Method == "WithEnvironment" && c.Args[1] == "pw");   // param kept
+        Assert.Contains(calls, c => c.Method == "WithHttpEndpoint");                        // other kept
+    }
+
+    [Fact]
+    public void ReadLiteralEnv_returns_only_literal_pairs_unquoted()
+    {
+        var stack = Stack(Node("n1",
+            new WithCall("WithEnvironment", new() { "\"KEY\"", "\"val\"" }),
+            new WithCall("WithEnvironment", new() { "\"REF\"", "pw" })));
+        var env = HostingService.ReadLiteralEnv(stack);
+        Assert.Equal(new[] { "KEY", "val" }, env["n1"].Single());   // only the literal, unquoted
+    }
+
+    [Fact]
+    public void ParseServices_reads_ndjson_and_publishers()
+    {
+        const string ps = """
+            {"Name":"proj-web-1","Service":"web","Image":"nginx","State":"running","Status":"Up 2m","Publishers":[{"PublishedPort":20000,"TargetPort":80}]}
+            {"Name":"proj-db-1","Service":"db","Image":"postgres","State":"running","Status":"Up 2m","Publishers":[]}
+            """;
+        var svcs = HostingService.ParseServices(ps);
+        Assert.Equal(2, svcs.Count);
+        Assert.Equal("20000:80", svcs[0].Ports);
+        Assert.Equal("", svcs[1].Ports);
+    }
+
+    [Fact]
+    public void ParseServices_tolerates_garbage() => Assert.Empty(HostingService.ParseServices("docker: error\n"));
+
+
     private const string Compose = """
         services:
           web:
