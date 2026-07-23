@@ -335,7 +335,11 @@ export interface AppSettings {
   aiCliTool?: string | null;    // when aiKind==="cli": one of the whitelisted CLI tools
 }
 
-export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[] }
+export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[]; permissions?: string[] }
+// Permission tokens (seed of a future roles/rights system).
+export const PERM_OPEN_EDITOR = "open-editor";
+// Whether a user may open the builder/editor. Admins always may; others need the grant (absent list = permissive default).
+export const canOpenEditor = (u?: UserDto | null): boolean => !!u && (u.isAdmin || !u.permissions || u.permissions.includes(PERM_OPEN_EDITOR));
 export interface AuthStatus { needsSetup: boolean; authenticated: boolean; user: UserDto | null }
 export interface EnvHealth {
   dotnet: { ok: boolean; version: string };

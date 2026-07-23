@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Container, Table, Badge, Anchor, ActionIcon, Menu, Text, Modal, Stack, TextInput, Loader, Divider, Alert, ScrollArea } from "@mantine/core";
 import { IconArrowLeft, IconDots, IconPlayerPlay, IconPlayerStop, IconTrash, IconExternalLink, IconPencil, IconRefresh, IconArchive, IconChevronRight, IconChevronDown, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
 import type { Deployment, ServiceStatus, NodeConfig } from "../model";
+import { canOpenEditor } from "../model";
+import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -11,6 +13,8 @@ const color = (s: string) => s === "running" ? "green" : s === "failed" ? "red" 
 
 export function Hosting() {
   const nav = useNavigate();
+  const { status } = useAuth();
+  const canEdit = canOpenEditor(status?.user);
   useTitle("Hosting");
   const [items, setItems] = useState<Deployment[]>([]);
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
@@ -46,7 +50,7 @@ export function Hosting() {
                   <DeploymentRow key={d.id} d={d}
                     onStop={() => stop(d)} onStart={() => start(d)} onUpdate={() => update(d)}
                     onBackup={() => backup(d)} onUndeploy={() => undeploy(d)}
-                    onConfigure={() => setConfigFor(d)} onOpenEditor={() => nav(`/editor/${d.stackId}`)}
+                    onConfigure={() => setConfigFor(d)} onOpenEditor={canEdit ? () => nav(`/editor/${d.stackId}`) : undefined}
                     onLogs={() => setLogsFor(d)} />
                 ))}
               </Table.Tbody>
@@ -61,7 +65,7 @@ export function Hosting() {
 
 function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onConfigure, onOpenEditor, onLogs }: {
   d: Deployment; onStop: () => void; onStart: () => void; onUpdate: () => void;
-  onBackup: () => void; onUndeploy: () => void; onConfigure: () => void; onOpenEditor: () => void; onLogs: () => void;
+  onBackup: () => void; onUndeploy: () => void; onConfigure: () => void; onOpenEditor?: () => void; onLogs: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -94,7 +98,7 @@ function DeploymentRow({ d, onStop, onStart, onUpdate, onBackup, onUndeploy, onC
               <Menu.Item leftSection={<IconFileText size={14} />} onClick={onLogs}>View logs</Menu.Item>
               <Menu.Item leftSection={<IconRefresh size={14} />} onClick={onUpdate}>Update (pull &amp; recreate)</Menu.Item>
               <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackup}>Back up volumes</Menu.Item>
-              <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>
+              {onOpenEditor && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
               <Menu.Divider />
               <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={onUndeploy}>Undeploy</Menu.Item>
             </Menu.Dropdown>

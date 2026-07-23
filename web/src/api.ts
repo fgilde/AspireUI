@@ -47,6 +47,8 @@ export const adminSetAdmin = (id: string, isAdmin: boolean): Promise<void> =>
   fetch(`${base}/users/${id}/admin`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ isAdmin }) }).then(okVoid);
 export const adminSetViewModes = (id: string, modes: string[]): Promise<void> =>
   fetch(`${base}/users/${id}/view-modes`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ modes }) }).then(okVoid);
+export const adminSetPermissions = (id: string, permissions: string[]): Promise<void> =>
+  fetch(`${base}/users/${id}/permissions`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ permissions }) }).then(okVoid);
 export const adminSetDisabled = (id: string, disabled: boolean): Promise<void> =>
   fetch(`${base}/users/${id}/disabled`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ disabled }) }).then(okVoid);
 export const changePassword = (oldPassword: string, newPassword: string): Promise<void> =>

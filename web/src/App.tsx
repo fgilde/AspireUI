@@ -12,6 +12,7 @@ import { LoginPage } from "./auth/LoginPage";
 import { SetupWizard } from "./auth/SetupWizard";
 import { useAuth } from "./auth/AuthContext";
 import { useViewMode } from "./viewMode";
+import { canOpenEditor } from "./model";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelp } from "./ShortcutsHelp";
 
@@ -42,6 +43,12 @@ function AdminOnly({ children }: { children: ReactNode }) {
   return status?.user?.isAdmin ? children : <Navigate to="/" replace />;
 }
 
+// A user without the open-editor permission (simple/appliance user) may never reach the builder.
+function EditorGate({ children }: { children: ReactNode }) {
+  const { status } = useAuth();
+  return canOpenEditor(status?.user) ? children : <Navigate to="/hosting" replace />;
+}
+
 export default function App() {
   return (
     <AuthGate>
@@ -50,7 +57,7 @@ export default function App() {
         <Route path="/setup" element={<SetupWizard />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Home />} />
-        <Route path="/editor/:id" element={<Editor />} />
+        <Route path="/editor/:id" element={<EditorGate><Editor /></EditorGate>} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/hosting" element={<Hosting />} />

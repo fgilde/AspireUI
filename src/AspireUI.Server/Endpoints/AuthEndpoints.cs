@@ -27,7 +27,10 @@ public static class AuthEndpoints
         var api = app.MapGroup("/api");
 
         static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword,
-            u.ViewModes ?? new() { "full", "simple" });
+            u.ViewModes ?? new() { "full", "simple" },
+            // admins have every permission; others get their explicit grant list, or all perms if never
+            // configured (null → permissive default).
+            u.IsAdmin ? Perm.All.ToList() : u.Permissions ?? Perm.All.ToList());
 
         static async Task SignInUserAsync(HttpContext ctx, User user)
         {
@@ -159,6 +162,14 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
+        // Admin: set a user's granted permission tokens (open-editor, …). Unknown tokens ignored.
+        users.MapPut("/{id}/permissions", (string id, SetPermissionsRequest body) =>
+        {
+            if (store.Get(id) is null) return Results.NotFound();
+            store.SetPermissions(id, (body.Permissions ?? new()).Where(Perm.All.Contains).Distinct().ToList());
+            return Results.NoContent();
+        });
+
         // Admin: promote/demote another account. Guard the last admin (can't demote the only one).
         users.MapPut("/{id}/admin", (string id, SetAdminRequest body) =>
         {
@@ -189,4 +200,5 @@ public static class AuthEndpoints
     public record SetDisabledRequest(bool Disabled);
     public record SetAdminRequest(bool IsAdmin);
     public record SetViewModesRequest(List<string>? Modes);
+    public record SetPermissionsRequest(List<string>? Permissions);
 }
