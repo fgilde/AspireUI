@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ActionIcon, Alert, AppShell, Badge, Button, Container, Group, PasswordInput,
-  Stack as MStack, Switch, Table, TextInput, Title, Menu, Modal,
+  Stack as MStack, Switch, Table, TextInput, Title, Menu, Modal, Checkbox, Text,
 } from "@mantine/core";
-import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff } from "@tabler/icons-react";
+import { IconAlertCircle, IconArrowLeft, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid } from "@tabler/icons-react";
 import type { UserDto } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -59,6 +59,21 @@ export function Users() {
     setError(null);
     try { await api.adminSetAdmin(u.id, !u.isAdmin); await refresh(); }
     catch (e) { setError(errorMessage(e, "Failed to update role.")); }
+  };
+
+  // View-modes dialog state (which UI modes a user may use).
+  const [vmTarget, setVmTarget] = useState<UserDto | null>(null);
+  const [vmFull, setVmFull] = useState(true);
+  const [vmSimple, setVmSimple] = useState(true);
+  const openViewModes = (u: UserDto) => {
+    const m = u.viewModes ?? ["full", "simple"];
+    setVmFull(m.includes("full")); setVmSimple(m.includes("simple")); setVmTarget(u);
+  };
+  const submitViewModes = async () => {
+    if (!vmTarget) return;
+    const modes = [vmFull && "full", vmSimple && "simple"].filter(Boolean) as string[];
+    try { await api.adminSetViewModes(vmTarget.id, modes); setVmTarget(null); await refresh(); }
+    catch (e) { setError(errorMessage(e, "Failed to set view modes.")); }
   };
 
   const removeUser = async (id: string) => {
@@ -142,6 +157,7 @@ export function Users() {
                           <Menu.Item leftSection={u.isAdmin ? <IconShieldOff size={14} /> : <IconShield size={14} />}
                             disabled={u.isAdmin && lastAdmin}
                             onClick={() => toggleAdmin(u)}>{u.isAdmin ? "Remove admin" : "Make admin"}</Menu.Item>
+                          <Menu.Item leftSection={<IconLayoutGrid size={14} />} onClick={() => openViewModes(u)}>View modes…</Menu.Item>
                           <Menu.Item leftSection={u.disabled ? <IconLockOpen size={14} /> : <IconLock size={14} />}
                             disabled={!u.disabled && lastAdmin}
                             onClick={() => toggleDisabled(u)}>{u.disabled ? "Enable" : "Disable"}</Menu.Item>
@@ -156,6 +172,15 @@ export function Users() {
               })}
             </Table.Tbody>
           </Table>
+
+          <Modal opened={!!vmTarget} onClose={() => setVmTarget(null)} title={`View modes — ${vmTarget?.username}`} centered>
+            <MStack gap="md">
+              <Text size="sm" c="dimmed">Which UI modes may this user use? Both = they get an in-app toggle.</Text>
+              <Checkbox label="Full (builder / canvas)" checked={vmFull} onChange={e => setVmFull(e.currentTarget.checked)} />
+              <Checkbox label="Simple (app store)" checked={vmSimple} onChange={e => setVmSimple(e.currentTarget.checked)} />
+              <Group justify="flex-end"><Button onClick={submitViewModes} disabled={!vmFull && !vmSimple}>Save</Button></Group>
+            </MStack>
+          </Modal>
 
           <Modal opened={!!pwTarget} onClose={() => setPwTarget(null)} title={`Set password — ${pwTarget?.username}`} centered>
             <MStack gap="md">

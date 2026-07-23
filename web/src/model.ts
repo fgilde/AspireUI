@@ -330,7 +330,7 @@ export interface AppSettings {
   aiCliTool?: string | null;    // when aiKind==="cli": one of the whitelisted CLI tools
 }
 
-export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean }
+export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[] }
 export interface AuthStatus { needsSetup: boolean; authenticated: boolean; user: UserDto | null }
 export interface EnvHealth {
   dotnet: { ok: boolean; version: string };

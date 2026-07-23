@@ -8,6 +8,8 @@ import { useAppTheme } from "../ThemeProvider";
 import { HelpModal } from "../HelpButton";
 import { ThemeDrawer } from "../ThemeDrawer";
 import { REPO_URL } from "../GitHubLink";
+import { useViewMode } from "../viewMode";
+import { IconLayoutGrid, IconLayoutDashboard } from "@tabler/icons-react";
 
 // One consolidated account menu for the header — folds in theme, GitHub, help/docs, admin Users,
 // Settings and Logout so the toolbar stays tidy.
@@ -15,10 +17,12 @@ export function UserMenu() {
   const nav = useNavigate();
   const { status, refresh } = useAuth();
   const { current } = useAppTheme();
+  const { mode, canToggle, setMode } = useViewMode();
   const [help, setHelp] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const user = status?.user;
   if (!user) return null;
+  const gotoMode = (m: "full" | "simple") => { setMode(m); nav("/"); };
 
   const doLogout = async () => { await api.logout(); await refresh(); nav("/login"); };
   const initials = user.username.slice(0, 2).toUpperCase();
@@ -38,6 +42,9 @@ export function UserMenu() {
               {user.isAdmin && <Badge size="xs" variant="light" color="grape">admin</Badge>}
             </Group>
           </Menu.Label>
+          {canToggle && (mode === "simple"
+            ? <Menu.Item leftSection={<IconLayoutDashboard size={14} />} onClick={() => gotoMode("full")}>Switch to Builder</Menu.Item>
+            : <Menu.Item leftSection={<IconLayoutGrid size={14} />} onClick={() => gotoMode("simple")}>Switch to Simple (app store)</Menu.Item>)}
           <Menu.Item leftSection={<IconUser size={14} />} onClick={() => nav("/profile")}>Profile</Menu.Item>
           {user.isAdmin && <Menu.Item leftSection={<IconUsers size={14} />} onClick={() => nav("/users")}>Users</Menu.Item>}
           <Menu.Item leftSection={<IconServer size={14} />} onClick={() => nav("/hosting")}>Hosting</Menu.Item>

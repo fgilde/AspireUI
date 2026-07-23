@@ -28,7 +28,7 @@ public class UserStore
                                "is_admin INTEGER, created_at TEXT)";
             cmd.ExecuteNonQuery();
             // Migrations: add columns for accounts added after v1 (ignore "duplicate column" on re-run).
-            foreach (var col in new[] { "disabled INTEGER DEFAULT 0", "must_change_password INTEGER DEFAULT 0" })
+            foreach (var col in new[] { "disabled INTEGER DEFAULT 0", "must_change_password INTEGER DEFAULT 0", "view_modes TEXT" })
                 try { using var alter = conn.CreateCommand(); alter.CommandText = $"ALTER TABLE users ADD COLUMN {col}"; alter.ExecuteNonQuery(); }
                 catch { /* column already exists */ }
         });
@@ -42,10 +42,13 @@ public class UserStore
         action(conn);
     }
 
-    private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password";
+    private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password, view_modes";
     private static User Read(SqliteDataReader r) => new(
         r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0, r.GetString(4),
-        !r.IsDBNull(5) && r.GetInt64(5) != 0, !r.IsDBNull(6) && r.GetInt64(6) != 0);
+        !r.IsDBNull(5) && r.GetInt64(5) != 0, !r.IsDBNull(6) && r.GetInt64(6) != 0,
+        r.IsDBNull(7) || string.IsNullOrWhiteSpace(r.GetString(7))
+            ? null
+            : r.GetString(7).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList());
 
     public int Count()
     {
@@ -137,6 +140,15 @@ public class UserStore
         cmd.CommandText = "UPDATE users SET password_hash=$h, must_change_password=$m WHERE id=$i";
         cmd.Parameters.AddWithValue("$h", passwordHash);
         cmd.Parameters.AddWithValue("$m", mustChange ? 1 : 0);
+        cmd.Parameters.AddWithValue("$i", id);
+        cmd.ExecuteNonQuery();
+    });
+
+    public void SetViewModes(string id, List<string> modes) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE users SET view_modes=$v WHERE id=$i";
+        cmd.Parameters.AddWithValue("$v", string.Join(",", modes));
         cmd.Parameters.AddWithValue("$i", id);
         cmd.ExecuteNonQuery();
     });

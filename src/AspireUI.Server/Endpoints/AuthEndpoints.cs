@@ -26,7 +26,8 @@ public static class AuthEndpoints
         var envHealth = new EnvHealth();
         var api = app.MapGroup("/api");
 
-        static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword);
+        static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword,
+            u.ViewModes ?? new() { "full", "simple" });
 
         static async Task SignInUserAsync(HttpContext ctx, User user)
         {
@@ -148,6 +149,16 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
+        // Admin: set which UI modes a user may use (full/simple). Empty → both.
+        users.MapPut("/{id}/view-modes", (string id, SetViewModesRequest body) =>
+        {
+            if (store.Get(id) is null) return Results.NotFound();
+            var modes = (body.Modes ?? new()).Where(m => m is "full" or "simple").Distinct().ToList();
+            if (modes.Count == 0) modes = new() { "full", "simple" };
+            store.SetViewModes(id, modes);
+            return Results.NoContent();
+        });
+
         // Admin: promote/demote another account. Guard the last admin (can't demote the only one).
         users.MapPut("/{id}/admin", (string id, SetAdminRequest body) =>
         {
@@ -177,4 +188,5 @@ public static class AuthEndpoints
     public record SetPasswordRequest(string Password, bool MustChange);
     public record SetDisabledRequest(bool Disabled);
     public record SetAdminRequest(bool IsAdmin);
+    public record SetViewModesRequest(List<string>? Modes);
 }
