@@ -11,13 +11,15 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
 } from "@tabler/icons-react";
-import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, type Stack, type RunStatus } from "../model";
+import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import logo from "../assets/logo.svg";
 import type { TemplateInfo, BundleFile } from "../api";
 import { UserMenu } from "../auth/UserMenu";
+import { useAuth } from "../auth/AuthContext";
+import { HostingMenuItems, ConfigureModal, LogsModal, hostingColor } from "../hosting/HostingActions";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
@@ -38,8 +40,14 @@ async function walkDirectory(dir: any, prefix = ""): Promise<BundleFile[]> {
 
 export function StacksOverview() {
   const nav = useNavigate();
+  const { status } = useAuth();
+  const canEdit = canOpenEditor(status?.user);
   useTitle("Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
+  const [deps, setDeps] = useState<Record<string, Deployment>>({});
+  const [configFor, setConfigFor] = useState<Deployment | null>(null);
+  const [logsFor, setLogsFor] = useState<Deployment | null>(null);
+  const loadDeps = () => api.listHosting().then(list => setDeps(Object.fromEntries(list.map(d => [d.stackId, d])))).catch(() => {});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -49,7 +57,8 @@ export function StacksOverview() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, RunStatus>>({});
 
-  // Poll run status for every stack so the cards show a live traffic light + controls.
+  // Poll run status for every stack + the hosting deployments so cards show a live traffic light,
+  // controls, and hosting badge.
   useEffect(() => {
     if (stacks.length === 0) return;
     let cancelled = false;
@@ -57,6 +66,7 @@ export function StacksOverview() {
       const entries = await Promise.all(stacks.map(async s =>
         [s.id, await api.statusStack(s.id).catch(() => ({ state: "NotRunning", log: [] } as RunStatus))] as const));
       if (!cancelled) setStatuses(Object.fromEntries(entries));
+      loadDeps();
     };
     poll();
     const t = window.setInterval(poll, 4000);
@@ -307,9 +317,14 @@ export function StacksOverview() {
               }).map(s => {
                 const st = statuses[s.id];
                 const state = st?.state ?? "NotRunning";
-                const dot = runStateColor(state) ?? "gray";
-                const failDetail = state === "Failed" ? (st!.log.slice(-6).join("\n") || "Run failed") : null;
-                const active = state === "Running" || state === "Starting";
+                const dep = deps[s.id];
+                // A hosted stack's card reflects its HOSTING state (border + chip + dot + controls);
+                // otherwise it reflects the ephemeral dev-run state.
+                const dot = dep ? `var(--mantine-color-${hostingColor(dep.state)}-6)` : (runStateColor(state) ?? "gray");
+                const failDetail = dep?.state === "failed" ? (dep.lastError?.trim().split("\n").slice(-6).join("\n") || "Deploy failed")
+                  : state === "Failed" ? (st!.log.slice(-6).join("\n") || "Run failed") : null;
+                const active = dep ? dep.state === "running" : (state === "Running" || state === "Starting");
+                const hostUrl = dep?.state === "running" ? dep.urls[0] : undefined;
                 return (
                 <Card
                   key={s.id}
@@ -317,40 +332,55 @@ export function StacksOverview() {
                   shadow="sm"
                   padding="lg"
                   className="stack-card"
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", borderColor: dep ? dot : undefined, borderWidth: dep ? 2 : undefined }}
                   onClick={() => nav(`/editor/${s.id}`)}
                 >
                   <Group justify="space-between" wrap="nowrap" align="flex-start">
                     <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
-                      <Tooltip label={failDetail ?? state} withArrow multiline maw={360}
+                      <Tooltip label={failDetail ?? (dep?.state ?? state)} withArrow multiline maw={360}
                         styles={failDetail ? { tooltip: { whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 11, textAlign: "left" } } : undefined}>
                         <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0,
                           boxShadow: active ? `0 0 6px ${dot}` : undefined }} />
                       </Tooltip>
                       <Text fw={600} lineClamp={1}>{s.name}</Text>
                     </Group>
-                    <Menu position="bottom-end" withArrow>
-                      <Menu.Target>
-                        <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
-                          onClick={e => e.stopPropagation()}>
-                          <IconDots size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown onClick={e => e.stopPropagation()}>
-                        <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
-                        <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
-                        <Menu.Item leftSection={<IconServer size={14} />}
-                          onClick={() => { toastOk(`Deploying "${s.name}" to hosting…`); api.hostingDeploy(s.id).then(() => nav("/hosting")).catch(toastErr); }}>
-                          Deploy to hosting
-                        </Menu.Item>
-                        <Menu.Divider />
-                        <Menu.Item color="red" leftSection={<IconTrash size={14} />}
-                          onClick={async () => {
-                            if (!(await confirmDelete(`stack "${s.name}"`))) return;
-                            await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
-                          }}>Delete</Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+                    <Group gap={6} wrap="nowrap">
+                      {dep && <Badge size="xs" variant="light" color={hostingColor(dep.state)}>Hosting</Badge>}
+                      <Menu position="bottom-end" withArrow>
+                        <Menu.Target>
+                          <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
+                            onClick={e => e.stopPropagation()}>
+                            <IconDots size={16} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown onClick={e => e.stopPropagation()}>
+                          {dep ? (
+                            <>
+                              <HostingMenuItems d={dep} canEdit={canEdit} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
+                                onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
+                              <Menu.Divider />
+                              <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
+                              <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                            </>
+                          ) : (
+                            <>
+                              <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
+                              <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                              <Menu.Item leftSection={<IconServer size={14} />}
+                                onClick={() => { toastOk(`Deploying "${s.name}" to hosting…`); api.hostingDeploy(s.id).then(() => { loadDeps(); nav("/hosting"); }).catch(toastErr); }}>
+                                Deploy to hosting
+                              </Menu.Item>
+                              <Menu.Divider />
+                              <Menu.Item color="red" leftSection={<IconTrash size={14} />}
+                                onClick={async () => {
+                                  if (!(await confirmDelete(`stack "${s.name}"`))) return;
+                                  await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
+                                }}>Delete</Menu.Item>
+                            </>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
                   </Group>
                   {s.nodes.length > 0 && (
                     <Group gap={5} mt="sm" wrap="nowrap">
@@ -358,8 +388,11 @@ export function StacksOverview() {
                         const key = n.icon || n.addMethod;
                         const names = s.nodes.filter(m => (m.icon || m.addMethod) === key).map(m => m.resourceName);
                         return (
-                          <Tooltip key={key} label={names.join(", ")} withArrow>
-                            <span style={{ display: "flex" }}><ResourceGlyph addMethod={n.addMethod} iconKey={n.icon} size={17} /></span>
+                          <Tooltip key={key} label={hostUrl ? `Open ${s.name}` : names.join(", ")} withArrow>
+                            <span style={{ display: "flex", cursor: hostUrl ? "pointer" : undefined }}
+                              onClick={hostUrl ? e => { e.stopPropagation(); window.open(hostUrl, "_blank"); } : undefined}>
+                              <ResourceGlyph addMethod={n.addMethod} iconKey={n.icon} size={17} />
+                            </span>
                           </Tooltip>
                         );
                       })}
@@ -373,16 +406,32 @@ export function StacksOverview() {
                       <Badge variant="outline" color="gray">{s.targetFramework}</Badge>
                     </Group>
                     <Group gap={4} onClick={e => e.stopPropagation()}>
-                      {active ? (
-                        <Tooltip label="Stop" withArrow><ActionIcon size="sm" variant="subtle" color="red"
-                          onClick={() => api.stopStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e))}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                      {dep ? (
+                        <>
+                          {active
+                            ? <Tooltip label="Stop (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="red"
+                                onClick={() => api.stopHosting(s.id).then(loadDeps).catch(toastErr)}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                            : <Tooltip label="Start (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="green"
+                                onClick={() => api.startHosting(s.id).then(loadDeps).catch(toastErr)}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
+                          {hostUrl && (
+                            <Tooltip label="Open app" withArrow><ActionIcon size="sm" variant="subtle" component="a"
+                              href={hostUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
+                          )}
+                        </>
                       ) : (
-                        <Tooltip label="Start" withArrow><ActionIcon size="sm" variant="subtle" color="green"
-                          onClick={() => api.runStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e, "Could not start"))}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>
-                      )}
-                      {state === "Running" && st?.dashboardUrl && (
-                        <Tooltip label="Open dashboard" withArrow><ActionIcon size="sm" variant="subtle" component="a"
-                          href={st.dashboardUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
+                        <>
+                          {active ? (
+                            <Tooltip label="Stop" withArrow><ActionIcon size="sm" variant="subtle" color="red"
+                              onClick={() => api.stopStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e))}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                          ) : (
+                            <Tooltip label="Start" withArrow><ActionIcon size="sm" variant="subtle" color="green"
+                              onClick={() => api.runStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e, "Could not start"))}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>
+                          )}
+                          {state === "Running" && st?.dashboardUrl && (
+                            <Tooltip label="Open dashboard" withArrow><ActionIcon size="sm" variant="subtle" component="a"
+                              href={st.dashboardUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
+                          )}
+                        </>
                       )}
                     </Group>
                   </Group>
@@ -425,6 +474,9 @@ export function StacksOverview() {
           <Button onClick={create}>Create</Button>
         </Group>
       </Modal>
+
+      {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={loadDeps} />}
+      {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
     </AppShell>
   );
 }
