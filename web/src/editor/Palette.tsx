@@ -423,9 +423,13 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
   const companions = preset.companions ?? [];
   const params = preset.params ?? [];
   const initial: Record<string, string> = {};
+  // Databases carry app-specific credentials/db-name baked into the app's connection env, so sharing one
+  // across apps fails auth. Default those to a fresh own container (reuse stays selectable); non-DB roles
+  // (llm, redis, …) still default to reusing a matching resource when one exists.
+  const DB_ROLES = new Set(["postgres", "mysql", "mariadb", "mongo"]);
   for (const c of companions) {
     const reuse = reuseCandidates(stackNodes, c.role)[0];
-    initial[c.key] = reuse ? `reuse:${reuse.id}` : "new";
+    initial[c.key] = reuse && !(c.role && DB_ROLES.has(c.role)) ? `reuse:${reuse.id}` : "new";
   }
   for (const p of params) initial[`param:${p.key}`] = "new"; // default: a fresh parameter resource
   const [sel, setSel] = useState<Record<string, string>>(initial);

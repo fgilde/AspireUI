@@ -1656,7 +1656,7 @@
     "image": "lscr.io/linuxserver/bookstack:latest",
     "port": 80,
     "icon": "bookstack",
-    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion; the image auto-generates APP_KEY. Set APP_URL to how you reach it (default http://localhost).",
+    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion. APP_KEY is required (base64:<32 bytes>) — seeded as a parameter. Set APP_URL to how you reach it (default http://localhost). Login admin@admin.com / password.",
     "env": [
       [
         "DB_HOST",
@@ -1684,6 +1684,12 @@
         "key": "app-url",
         "env": "APP_URL",
         "default": "http://localhost"
+      },
+      {
+        "key": "app-key",
+        "env": "APP_KEY",
+        "default": "base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        "secret": true
       }
     ],
     "companions": [
@@ -1752,6 +1758,12 @@
         "key": "domain",
         "env": "CMD_DOMAIN",
         "default": "localhost"
+      },
+      {
+        "key": "session-secret",
+        "env": "CMD_SESSION_SECRET",
+        "default": "aspireui-hedgedoc-session-change-me",
+        "secret": true
       }
     ],
     "companions": [
