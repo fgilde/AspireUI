@@ -164,6 +164,42 @@ public class HostingServiceTests
         Assert.Contains("http://localhost:20005", HostingService.ParseUrls(outp, "localhost"));
     }
 
+    private const string DashShape = """
+        services:
+          aspireui-dashboard:
+            image: "dash"
+            environment:
+              - "ASPNETCORE_ENVIRONMENT=Production"
+            ports:
+              - "18888:18888"
+            networks:
+              - "aspire"
+          web:
+            image: "nginx"
+            expose:
+              - "80"
+        networks:
+          aspire:
+            driver: "bridge"
+        """;
+
+    [Fact]
+    public void ConfigureDashboard_unpublishes_when_not_hosted()
+    {
+        var outp = HostingService.ConfigureDashboard(DashShape, host: false, token: null);
+        Assert.DoesNotContain("18888:18888", outp);       // dashboard port dropped
+        Assert.Contains("80", HostingService.ExposedAppPorts(outp).Select(p => p.ToString())); // app untouched
+        Assert.Contains("driver: \"bridge\"", outp);       // networks intact
+    }
+
+    [Fact]
+    public void ConfigureDashboard_injects_browser_token_when_hosted()
+    {
+        var outp = HostingService.ConfigureDashboard(DashShape, host: true, token: "s3cret");
+        Assert.Contains("Dashboard__Frontend__BrowserToken=s3cret", outp);
+        Assert.Contains("18888:18888", outp);              // still published
+    }
+
     [Fact]
     public void ExposedAppPorts_lists_non_dashboard_expose_ports()
     {

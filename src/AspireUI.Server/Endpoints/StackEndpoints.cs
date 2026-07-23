@@ -546,11 +546,15 @@ public static class StackEndpoints
                 : Results.Conflict(new { message = "nothing deployed" }));
 
         // --- Hosting (persistent compose deploy, tracked, separate from dev Run) ---
+        // Admin-controlled: host the Aspire dashboard with each deployment? + a browser token so AspireUI
+        // can hand out a one-click login link.
+        (bool Host, string? Token) DashCfg() => ((settings.GetValue("HostDashboard") ?? "true") == "true", settings.GetValue("DashboardToken"));
         app2.MapPost("/stacks/{id}/hosting/deploy", (string id, HttpContext ctx) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
-            return Results.Ok(hosting.Deploy(s, PublishRoot(id), ctx.Request.Host.Host));
+            var dc = DashCfg();
+            return Results.Ok(hosting.Deploy(s, PublishRoot(id), ctx.Request.Host.Host, dc.Host, dc.Token));
         });
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
@@ -591,8 +595,21 @@ public static class StackEndpoints
             var updated = HostingService.ApplyEnvUpdates(s, body.Env ?? new());
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
-            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), ctx.Request.Host.Host));
+            var dc = DashCfg();
+            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), ctx.Request.Host.Host, dc.Host, dc.Token));
         });
+        // Dashboard hosting settings (token visible to any authed user — they can reach the dashboard anyway).
+        app2.MapGet("/hosting/dashboard-settings", () => Results.Ok(new
+        {
+            hostDashboard = (settings.GetValue("HostDashboard") ?? "true") == "true",
+            dashboardToken = settings.GetValue("DashboardToken") ?? "",
+        }));
+        app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
+        {
+            settings.SetValue("HostDashboard", b.HostDashboard ? "true" : "false");
+            settings.SetValue("DashboardToken", b.DashboardToken ?? "");
+            return Results.NoContent();
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
@@ -674,5 +691,6 @@ public static class StackEndpoints
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env);
     public record StoreExclusionsRequest(List<string>? Ids);
+    public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

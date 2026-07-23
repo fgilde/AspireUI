@@ -1,11 +1,37 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader } from "@mantine/core";
-import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2 } from "@tabler/icons-react";
+import { AppShell, Group, Title, Button, Container, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch } from "@mantine/core";
+import { IconArrowLeft, IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard } from "@tabler/icons-react";
 import type { AppSettings, EnvHealth } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
+import { useAuth } from "../auth/AuthContext";
+
+// Admin: control whether the Aspire dashboard ships with hosting deployments, and set a browser token so
+// AspireUI can hand out a one-click login link (works everywhere — no reverse proxy needed).
+function HostingTab() {
+  const [host, setHost] = useState(true);
+  const [token, setToken] = useState("");
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { api.getDashboardSettings().then(s => { setHost(s.hostDashboard); setToken(s.dashboardToken); }).catch(() => {}); }, []);
+  const save = async () => { await api.setDashboardSettings(host, token.trim()); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  return (
+    <MStack gap="md" maw={520}>
+      <Text fw={600}>Aspire dashboard</Text>
+      <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
+        label="Include the Aspire dashboard in hosting deployments"
+        description="Off = the dashboard container isn't published (deployed apps still run; you see resources/logs here in AspireUI)." />
+      <TextInput label="Dashboard browser token" value={token} onChange={e => setToken(e.currentTarget.value)}
+        placeholder="leave empty for Aspire's random per-start token"
+        description="Set a fixed token and AspireUI shows a one-click dashboard login link. Anyone with this token can open the dashboard — treat it like a password." />
+      <Group>
+        <Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button>
+      </Group>
+      <Text size="xs" c="dimmed">Changes apply on the next deploy/re-deploy of a stack.</Text>
+    </MStack>
+  );
+}
 
 // Environment/about tab — server-side health of the tools a run needs, plus the build version.
 function EnvTab() {
@@ -53,6 +79,8 @@ export function Settings() {
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
   const kind = settings.aiKind === "cli" ? "cli" : "http";
+  const { status } = useAuth();
+  const isAdmin = !!status?.user?.isAdmin;
 
   useEffect(() => { api.getSettings().then(setSettings); api.getAiCliTools().then(setCliTools).catch(() => {}); }, []);
 
@@ -107,6 +135,7 @@ export function Settings() {
           <Tabs defaultValue="ai" orientation="vertical" variant="pills">
             <Tabs.List mr="lg">
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
+              {isAdmin && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="ai" style={{ flex: 1 }}>
@@ -183,6 +212,11 @@ export function Settings() {
             </Group>
           </MStack>
             </Tabs.Panel>
+            {isAdmin && (
+              <Tabs.Panel value="hosting" style={{ flex: 1 }}>
+                <HostingTab />
+              </Tabs.Panel>
+            )}
             <Tabs.Panel value="env" style={{ flex: 1 }}>
               <EnvTab />
             </Tabs.Panel>

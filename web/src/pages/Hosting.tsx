@@ -17,8 +17,10 @@ export function Hosting() {
   const [items, setItems] = useState<Deployment[]>([]);
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
   const [logsFor, setLogsFor] = useState<Deployment | null>(null);
+  const [dashToken, setDashToken] = useState("");
   const load = () => api.listHosting().then(setItems).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
+  useEffect(() => { api.getDashboardSettings().then(s => setDashToken(s.dashboardToken)).catch(() => {}); }, []);
 
   return (
     <AppShell header={{ height: 56 }} padding="lg">
@@ -38,7 +40,7 @@ export function Hosting() {
                 <Table.Th w={30} /><Table.Th>App</Table.Th><Table.Th>Status</Table.Th><Table.Th>URLs</Table.Th><Table.Th /></Table.Tr></Table.Thead>
               <Table.Tbody>
                 {items.map(d => (
-                  <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load}
+                  <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken}
                     onConfigure={() => setConfigFor(d)} onLogs={() => setLogsFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
@@ -52,8 +54,8 @@ export function Hosting() {
   );
 }
 
-function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onOpenEditor: () => void; onChanged: () => void;
+function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged, dashToken }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -100,7 +102,11 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChange
                   <Table.Tbody>
                     {svcs.map(s => {
                       const port = s.ports.split(",")[0]?.trim().split(":")[0];
-                      const url = port && /^\d+$/.test(port) && !s.service.includes("dashboard") ? `http://${window.location.hostname}:${port}` : null;
+                      const isDash = s.service.includes("dashboard") || s.name.includes("dashboard");
+                      const url = port && /^\d+$/.test(port)
+                        ? (isDash ? `http://${window.location.hostname}:${port}/login${dashToken ? `?t=${encodeURIComponent(dashToken)}` : ""}`
+                                  : `http://${window.location.hostname}:${port}`)
+                        : null;
                       return (
                       <Table.Tr key={s.name}>
                         <Table.Td w={12}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 8, background: `var(--mantine-color-${hostingColor(s.state)}-6)` }} /></Table.Td>

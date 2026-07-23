@@ -158,7 +158,45 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             .Select(p => $"http://{host}:{p}")
             .ToList();
 
-    public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost")
+    // Configure the Aspire dashboard service in a hosting compose: when the admin doesn't host it, drop
+    // its published `ports:` so it's not reachable; when a browser token is set, inject it so AspireUI can
+    // hand out a one-click login link (works everywhere — no reverse proxy needed).
+    public static string ConfigureDashboard(string yaml, bool host, string? token)
+    {
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var hdr = -1;
+        for (var i = 0; i < lines.Count; i++)
+            if (Regex.IsMatch(lines[i], @"^  \S*dashboard\S*:\s*$") && InServicesSection(lines, i)) { hdr = i; break; }
+        if (hdr < 0) return yaml;
+        var end = lines.Count;
+        for (var i = hdr + 1; i < lines.Count; i++) if (Regex.IsMatch(lines[i], @"^ {0,2}\S")) { end = i; break; }
+        var block = lines.GetRange(hdr, end - hdr);
+        if (!host)
+        {
+            var outb = new List<string>();
+            for (var i = 0; i < block.Count; i++)
+            {
+                if (Regex.IsMatch(block[i], @"^    ports:\s*$")) { i++; while (i < block.Count && Regex.IsMatch(block[i], @"^      ")) i++; i--; continue; }
+                outb.Add(block[i]);
+            }
+            block = outb;
+        }
+        else if (!string.IsNullOrWhiteSpace(token))
+        {
+            var entry = $"      - \"Dashboard__Frontend__BrowserToken={token}\"";
+            var envIdx = block.FindIndex(l => Regex.IsMatch(l, @"^    environment:\s*$"));
+            if (envIdx >= 0) block.Insert(envIdx + 1, entry);
+            else { block.Insert(1, "    environment:"); block.Insert(2, entry); }
+        }
+        var result = new List<string>();
+        result.AddRange(lines.GetRange(0, hdr));
+        result.AddRange(block);
+        result.AddRange(lines.GetRange(end, lines.Count - end));
+        return string.Join("\n", result);
+    }
+
+    public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost",
+        bool hostDashboard = true, string? dashboardToken = null)
     {
         var project = Project(stack.Id);
         var now = DateTime.UtcNow.ToString("O");
@@ -171,7 +209,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose");
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var raw = AddRestartPolicy(File.ReadAllText(path));
+            var raw = ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken);
             // Allocate a distinct free host port per exposed container port so multiple apps that share a
             // container port (e.g. two :80 apps) don't collide on the host. Ports already claimed by other
             // deployments are off-limits.
