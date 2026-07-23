@@ -26,10 +26,18 @@ public static class StackEndpoints
         var templates = new TemplateService();
         var userTemplates = new UserTemplateStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var snippets = new SnippetStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
+        var deployments = new DeploymentStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var run = app.Services.GetRequiredService<RunService>();
         var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
         var deploy = new DeployService();
+        var hosting = new HostingService(deployments, publish, deploy);
+
+        // A stack is locked for editing while its hosting deployment is deploying/running.
+        bool Locked(string stackId) => deployments.GetByStack(stackId) is { State: "running" or "deploying" };
+        IResult? LockGuard(string stackId) => Locked(stackId)
+            ? Results.Json(new { message = "stack is running in hosting — stop it to edit", deployment = deployments.GetByStack(stackId) }, statusCode: StatusCodes.Status409Conflict)
+            : null;
         var lsp = new RoslynLspService();
         // Real client by default (shared HttpClient); tests register a fake IChatClient in the
         // DI container before Build(), which this picks up instead.
@@ -177,7 +185,11 @@ public static class StackEndpoints
             userTemplates.Delete(id) ? Results.NoContent() : Results.NotFound());
         app2.MapGet("/stacks", () => store.List());
         app2.MapGet("/stacks/{id}", (string id) =>
-            store.Get(id) is { } s ? Results.Ok(s) : Results.NotFound());
+            store.Get(id) is { } s
+                ? Results.Ok(new { s.Id, s.Name, s.TargetFramework, s.Nodes, s.Edges, s.RawStatements,
+                    s.ExtraFiles, s.ExtraPackages, s.Notes, s.Groups, s.CreatedAt, s.CreatedBy,
+                    deployment = deployments.GetByStack(id) })
+                : Results.NotFound());
 
         app2.MapPost("/stacks", (StackModel body, HttpContext ctx) => Persist(New(body, ctx)));
 
@@ -196,10 +208,11 @@ public static class StackEndpoints
         });
 
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
-            store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }));
+            LockGuard(id) ?? (store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id })));
 
         app2.MapDelete("/stacks/{id}", (string id) =>
         {
+            if (LockGuard(id) is { } r) return r;
             run.Stop(id);
             store.Delete(id);
             if (Directory.Exists(Dir(id))) Directory.Delete(Dir(id), true);
@@ -208,6 +221,7 @@ public static class StackEndpoints
 
         app2.MapPatch("/stacks/{id}/nodes/{nodeId}", (string id, string nodeId, NodeModel patch) =>
         {
+            if (LockGuard(id) is { } r) return r;
             if (store.Get(id) is not { } s) return Results.NotFound();
             var idx = s.Nodes.FindIndex(n => n.Id == nodeId);
             if (idx < 0) return Results.NotFound();
@@ -217,6 +231,7 @@ public static class StackEndpoints
 
         app2.MapPost("/stacks/{id}/edges", (string id, EdgeModel edge) =>
         {
+            if (LockGuard(id) is { } r) return r;
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.Add(edge with { Id = "e" + Guid.NewGuid().ToString("n")[..8] });
             return Persist(s);
@@ -224,6 +239,7 @@ public static class StackEndpoints
 
         app2.MapDelete("/stacks/{id}/edges/{edgeId}", (string id, string edgeId) =>
         {
+            if (LockGuard(id) is { } r) return r;
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.RemoveAll(e => e.Id == edgeId);
             return Persist(s);
@@ -368,6 +384,7 @@ public static class StackEndpoints
 
         app2.MapPost("/stacks/{id}/run", (string id) =>
         {
+            if (LockGuard(id) is { } r) return r;
             // Re-materialize fresh so the run reflects the current model and a clean single-csproj dir
             // (stale csproj from an earlier stack name would otherwise make `dotnet run` ambiguous).
             if (store.Get(id) is not { } s) return Results.NotFound();
@@ -502,16 +519,55 @@ public static class StackEndpoints
             store.Get(id) is { } s ? Results.Ok(lsp.Diagnostics(gen.GenerateProgram(s))) : Results.NotFound());
 
         app2.MapPost("/stacks/{id}/code/save", (string id, CodeSaveRequest r) =>
-            store.Get(id) is not { } cur ? Results.NotFound()
-                // Import only reconstructs nodes/edges/raws from the code; carry over the parts the code
-                // model can't represent (bundle-imported extra files + package refs) so a save doesn't wipe them.
-                : Persist(import.Import(id, r.Name, r.Code, "")
-                    with { ExtraFiles = cur.ExtraFiles, ExtraPackages = cur.ExtraPackages }));
+        {
+            if (LockGuard(id) is { } lg) return lg;
+            if (store.Get(id) is not { } cur) return Results.NotFound();
+            // Import only reconstructs nodes/edges/raws from the code; carry over the parts the code
+            // model can't represent (bundle-imported extra files + package refs) so a save doesn't wipe them.
+            return Persist(import.Import(id, r.Name, r.Code, "")
+                with { ExtraFiles = cur.ExtraFiles, ExtraPackages = cur.ExtraPackages });
+        });
 
         app2.MapPost("/stacks/{id}/deploy/down", (string id) =>
             Directory.Exists(PublishOut(id))
                 ? Results.Ok(deploy.Down(PublishOut(id)))
                 : Results.Conflict(new { message = "nothing deployed" }));
+
+        // --- Hosting (persistent compose deploy, tracked, separate from dev Run) ---
+        app2.MapPost("/stacks/{id}/hosting/deploy", (string id, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            gen.Materialize(s, Dir(id));
+            return Results.Ok(hosting.Deploy(s, PublishRoot(id), ctx.Request.Host.Host));
+        });
+        app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            hosting.Stop(d.Id);
+            return Results.Ok(deployments.Get(d.Id));
+        });
+        app2.MapPost("/stacks/{id}/hosting/start", (string id) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            hosting.Start(d.Id);
+            return Results.Ok(deployments.Get(d.Id));
+        });
+        app2.MapPost("/stacks/{id}/hosting/undeploy", (string id) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            hosting.Undeploy(d.Id);
+            return Results.NoContent();
+        });
+        app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
+        app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
+        {
+            if (deployments.Get(id) is not { } d) { ctx.Response.StatusCode = 404; return; }
+            ctx.Response.Headers.Append("Content-Type", "text/event-stream");
+            var logs = deploy.Logs(d.ComposeDir, d.Project);
+            foreach (var line in logs.Log.Split('\n'))
+                await ctx.Response.WriteAsync($"data: {line}\n\n");
+            await ctx.Response.Body.FlushAsync();
+        });
     }
 
     private static readonly HttpClient Web = CreateWebClient();
