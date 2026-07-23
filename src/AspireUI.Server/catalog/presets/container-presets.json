@@ -3494,5 +3494,310 @@
       ]
     ],
     "website": "https://github.com/foldergram/foldergram"
+  },
+  {
+    "id": "runtipi",
+    "label": "Runtipi",
+    "group": "Network",
+    "image": "ghcr.io/runtipi/runtipi:latest",
+    "port": 80,
+    "icon": "runtipi",
+    "description": "Runtipi — self-hosted homeserver / app manager. EXPERIMENTAL here: it is itself a Docker orchestrator (mounts the Docker socket, runs its own Traefik on :80 + bundled Postgres/Redis) and normally installs via its own setup script — running it inside AspireUI stacks two managers on one Docker daemon. It wants to own the box.",
+    "env": [
+      [
+        "ROOT_FOLDER",
+        "/data"
+      ]
+    ],
+    "params": [
+      {
+        "key": "jwt-secret",
+        "env": "JWT_SECRET",
+        "default": "aspireui-runtipi-jwt-change-me-0123456789",
+        "secret": true
+      },
+      {
+        "key": "postgres-password",
+        "env": "POSTGRES_PASSWORD",
+        "default": "runtipi",
+        "secret": true
+      }
+    ],
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://runtipi.io"
+  },
+  {
+    "id": "umbrel",
+    "label": "Umbrel (umbrelOS)",
+    "group": "Network",
+    "image": "dockurr/umbrel:latest",
+    "port": 80,
+    "icon": "umbrel",
+    "description": "umbrelOS via the community dockurr/umbrel wrapper — there is NO official Umbrel container image (official install is a script onto Debian/Ubuntu/RaspberryPiOS). EXPERIMENTAL: umbrelOS is itself an orchestrator, so nesting it stacks two managers on one Docker daemon. Needs the Docker socket + host PID.",
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock"
+      ]
+    ],
+    "runtimeArgs": [
+      "--pid=host"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://umbrel.com"
+  },
+  {
+    "id": "hermes-agent",
+    "label": "Hermes Agent",
+    "group": "AI Apps",
+    "image": "ghcr.io/getumbrel/hermes-agent-umbrel:v2026.7.20",
+    "port": 18789,
+    "icon": "hermes-agent",
+    "description": "Hermes Agent (Nous Research) — AI agent gateway with a dashboard. Standalone the app-proxy auth is OFF (HERMES_UMBREL_APP_PROXY_AUTH=0) so the dashboard is UNAUTHENTICATED — put it behind your own auth / a trusted network. Supply model API keys in-app.",
+    "env": [
+      [
+        "HERMES_DASHBOARD",
+        "1"
+      ],
+      [
+        "HERMES_DASHBOARD_PORT",
+        "18789"
+      ],
+      [
+        "HERMES_UMBREL_APP_PROXY_AUTH",
+        "0"
+      ]
+    ],
+    "args": [
+      "gateway",
+      "run"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/opt/data"
+      ]
+    ],
+    "website": "https://nousresearch.com"
+  },
+  {
+    "id": "openclaw",
+    "label": "OpenClaw",
+    "group": "AI Apps",
+    "image": "ghcr.io/getumbrel/openclaw-umbrel:2026.7.1-1",
+    "port": 18789,
+    "icon": "openclaw",
+    "description": "OpenClaw — AI 'does-things' agent with a bundled headless browser + control UI. APP_SEED (identity/encryption) seeded as a parameter — keep it stable or state is lost. Model provider key set in-app.",
+    "params": [
+      {
+        "key": "app-seed",
+        "env": "APP_SEED",
+        "default": "aspireui-openclaw-seed-change-me-0123456789",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ],
+      [
+        "linuxbrew",
+        "/home/linuxbrew"
+      ]
+    ],
+    "website": "https://github.com/getumbrel/openclaw-umbrel"
+  },
+  {
+    "id": "joinstr",
+    "label": "Joinstr",
+    "group": "Bitcoin",
+    "image": "ghcr.io/1440000bytes/joinstr-web:0.1.1",
+    "port": 5000,
+    "icon": "joinstr",
+    "description": "Joinstr — Nostr-based coinjoin wallet UI. Requires an external Bitcoin Core node over RPC (set the RPC params) — useless without a node.",
+    "env": [
+      [
+        "JOINSTR_MANAGED",
+        "1"
+      ],
+      [
+        "JOINSTR_WALLET",
+        "joinstr"
+      ],
+      [
+        "JOINSTR_DATA_DIR",
+        "/app/data"
+      ]
+    ],
+    "params": [
+      {
+        "key": "rpc-host",
+        "env": "BITCOIN_RPC_HOST",
+        "default": "bitcoind"
+      },
+      {
+        "key": "rpc-port",
+        "env": "BITCOIN_RPC_PORT",
+        "default": "8332"
+      },
+      {
+        "key": "rpc-user",
+        "env": "BITCOIN_RPC_USER",
+        "default": "bitcoin"
+      },
+      {
+        "key": "rpc-pass",
+        "env": "BITCOIN_RPC_PASS",
+        "default": "changeme",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://github.com/1440000bytes/joinstr"
+  },
+  {
+    "id": "pearcircle-seeder",
+    "label": "PearCircle Seeder",
+    "group": "Tools",
+    "image": "ghcr.io/peerloomllc/pearcircle-seeder:1.0.23",
+    "port": 8730,
+    "icon": "pearcircle-seeder",
+    "description": "PearCircle Seeder — always-on seeder companion for the PearCircle phone app (P2P sharing). Dashboard on :8730; only useful once you enroll a circle from the phone app. SEEDER_NO_AUTH=1 = no login (put behind your own auth).",
+    "env": [
+      [
+        "SEEDER_HOST",
+        "0.0.0.0"
+      ],
+      [
+        "SEEDER_PORT",
+        "8730"
+      ],
+      [
+        "SEEDER_NO_AUTH",
+        "1"
+      ],
+      [
+        "SEEDER_NO_UPDATE_CHECK",
+        "1"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/peerloomllc/pearcircle-seeder"
+  },
+  {
+    "id": "seedtool",
+    "label": "Bitcoin Seed Tool",
+    "group": "Bitcoin",
+    "image": "dennysubke/seedtool:2.3.0",
+    "port": 8080,
+    "icon": "seedtool",
+    "description": "Bitcoin Seed Tool — offline BIP39 seed / education tool. Fully standalone. WARNING: educational only — never use it for seeds protecting real funds.",
+    "website": "https://github.com/dennysubke/seedtool-web"
+  },
+  {
+    "id": "skybro",
+    "label": "SkyBro",
+    "group": "Tools",
+    "image": "xdeekay/skybro-dashboard:1.5.7",
+    "port": 5000,
+    "icon": "skybro",
+    "description": "SkyBro — overhead flight tracker with alerts (uses OpenSky/Open-Meteo, no API key). Ships a tracker companion; both share /data on Umbrel — our companion can't share the volume yet, so the dashboard may show empty until that's wired. Home coords + Pushover/Discord set in-app.",
+    "companions": [
+      {
+        "key": "tracker",
+        "addMethod": "AddContainer",
+        "resourceName": "skybro-tracker",
+        "image": "xdeekay/skybro-tracker:1.5.7",
+        "role": "tracker",
+        "env": []
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/xdeekay/skybro"
+  },
+  {
+    "id": "valorgrid",
+    "label": "ValorGrid",
+    "group": "Tools",
+    "image": "ghcr.io/aivm23/valorgrid:v3.33.1",
+    "port": 1325,
+    "icon": "valorgrid",
+    "description": "ValorGrid — local-first SQLite portfolio tracker. Set an auth password (params); add an Alpha Vantage API key for live market prices.",
+    "env": [
+      [
+        "HOST",
+        "0.0.0.0"
+      ],
+      [
+        "PORT",
+        "1325"
+      ],
+      [
+        "PORTFOLIO_DB_PATH",
+        "/data/portfolio.sqlite"
+      ],
+      [
+        "VALORGRID_BACKUP_DIR",
+        "/data/backups"
+      ]
+    ],
+    "params": [
+      {
+        "key": "auth-user",
+        "env": "VALORGRID_AUTH_USER",
+        "default": "admin"
+      },
+      {
+        "key": "auth-password",
+        "env": "VALORGRID_AUTH_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      },
+      {
+        "key": "alpha-vantage-key",
+        "env": "VALORGRID_ALPHA_VANTAGE_API_KEY",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/aivm23/valorgrid"
   }
 ]
