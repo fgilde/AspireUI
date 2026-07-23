@@ -3295,7 +3295,7 @@
     "image": "ghcr.io/runtipi/runtipi:latest",
     "port": 80,
     "icon": "runtipi",
-    "description": "Runtipi — self-hosted homeserver / app manager. EXPERIMENTAL here: it is itself a Docker orchestrator (mounts the Docker socket, runs its own Traefik on :80 + bundled Postgres/Redis) and normally installs via its own setup script — running it inside AspireUI stacks two managers on one Docker daemon. It wants to own the box.",
+    "description": "Runtipi — self-hosted homeserver / app manager. EXPERIMENTAL: it is itself a Docker orchestrator (mounts the Docker socket, runs its own Traefik on :80 + Postgres/Redis) and wants to own the host. ROOT_FOLDER_HOST must be the HOST path of its data dir (it passes host paths to the sibling containers it spawns) — on a real Linux host set it to the folder you bind-mount to /data; the /data default just lets it start.",
     "env": [
       [
         "ROOT_FOLDER",
@@ -3314,6 +3314,11 @@
         "env": "POSTGRES_PASSWORD",
         "default": "runtipi",
         "secret": true
+      },
+      {
+        "key": "root-folder-host",
+        "env": "ROOT_FOLDER_HOST",
+        "default": "/data"
       }
     ],
     "bindMounts": [
