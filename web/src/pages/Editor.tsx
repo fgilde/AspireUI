@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark } from "@tabler/icons-react";
+import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge } from "@mantine/core";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
 import * as api from "../api";
@@ -119,11 +119,21 @@ export function Editor() {
 
   // Edit-lock: a stack running/deploying in hosting is read-only in the editor (the server also 409s).
   const locked = stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying";
-  const deployToHosting = () => stack && api.hostingDeploy(stack.id)
-    .then(() => api.getStack(stack.id)).then(setStackState)
-    .then(() => toastOk("Deployed to hosting")).catch(toastErr);
-  const stopHosting = () => stack && api.stopHosting(stack.id)
-    .then(() => api.getStack(stack.id)).then(setStackState).catch(toastErr);
+  const [hostingBusy, setHostingBusy] = useState(false);
+  const deployToHosting = useCallback(async () => {
+    if (!stack) return;
+    setHostingBusy(true);
+    try { await api.hostingDeploy(stack.id); setStackState(await api.getStack(stack.id)); toastOk("Deployed to hosting"); }
+    catch (e) { toastErr(e); }
+    finally { setHostingBusy(false); }
+  }, [stack?.id]);
+  const stopHosting = useCallback(async () => {
+    if (!stack) return;
+    setHostingBusy(true);
+    try { await api.stopHosting(stack.id); setStackState(await api.getStack(stack.id)); }
+    catch (e) { toastErr(e); }
+    finally { setHostingBusy(false); }
+  }, [stack?.id]);
   const guardedSetStack = useCallback((next: Stack) => {
     if (stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying") {
       toastErr("Stop the hosting deployment to edit this stack."); return;
@@ -135,9 +145,9 @@ export function Editor() {
   // dock panel each tick — only when the data a panel actually reads changes.
   const ctx = useMemo(
     () => ({ stack: stack!, setStack: guardedSetStack, selected: sel, setSelected: setSel, selectedIds: selIds, setSelectedIds: setSelIds,
-      runStatus, setRunStatus, diagnostics, showPanel, flashSignal }),
+      runStatus, setRunStatus, diagnostics, showPanel, flashSignal, deployToHosting, stopHosting, hostingBusy }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stack, sel, selIds, runStatus, diagnostics, flashSignal, locked]);
+    [stack, sel, selIds, runStatus, diagnostics, flashSignal, locked, hostingBusy, deployToHosting, stopHosting]);
 
   if (!stack) return null;
 
@@ -149,9 +159,13 @@ export function Editor() {
             <Group>
               <Button variant="subtle" leftSection={<IconArrowLeft size={16} />} onClick={() => nav("/")}>Stacks</Button>
               <Title order={4}>{stack.name}</Title>
+              {locked
+                ? <Badge color="green" variant="light" leftSection={<IconServer size={12} />} style={{ cursor: "pointer" }} onClick={() => showPanel("publish")}>Hosting</Badge>
+                : <Tooltip label="Deploy this stack to hosting" withArrow>
+                    <Button size="xs" variant="light" color="teal" leftSection={<IconRocket size={14} />} onClick={() => showPanel("publish")}>Deploy</Button>
+                  </Tooltip>}
             </Group>
             <Group>
-              {!locked && <Button variant="default" size="sm" onClick={deployToHosting}>Deploy to hosting</Button>}
               <ValidateBadge />
               <RunToolbar />
               <Tooltip label="Undo (Ctrl+Z)" withArrow>

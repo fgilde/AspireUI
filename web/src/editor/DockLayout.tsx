@@ -37,6 +37,10 @@ export interface EditorState {
   // action — validation badge, dashboard links, "Edit properties", etc.
   showPanel: (id: string) => void;
   flashSignal: { id: string; n: number };  // last-flashed panel id + a bump counter (drives usePanelFlash)
+  // Hosting (owned by Editor so it can refresh the stack + apply the edit-lock after deploy).
+  deployToHosting: () => Promise<void>;
+  stopHosting: () => Promise<void>;
+  hostingBusy: boolean;
 }
 
 // Border-glow highlight a panel briefly wears when activated via showPanel. usePanelFlash returns true

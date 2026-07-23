@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, useMantineColorScheme } from "@mantine/core";
-import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown } from "@tabler/icons-react";
+import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, Radio, Anchor, LoadingOverlay, useMantineColorScheme } from "@mantine/core";
+import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
 import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
@@ -39,13 +39,25 @@ function langFor(name: string | null): string {
   return "yaml";
 }
 
+// Where a hosting deployment runs. Only "local" works today; the rest are placeholders so the picker
+// already shows the intended shape (remote hosts / clusters come later).
+const DEPLOY_TARGETS = [
+  { id: "local", label: "This machine", hint: "Deploy with Docker on the machine AspireUI runs on.", enabled: true },
+  { id: "remote", label: "Remote host (SSH)", hint: "A Docker host over SSH — coming soon.", enabled: false },
+  { id: "swarm", label: "Cluster / Swarm", hint: "A multi-node cluster — coming soon.", enabled: false },
+];
+
 export function PublishPanel() {
-  const { stack } = useEditor();
+  const { stack, deployToHosting, stopHosting, hostingBusy } = useEditor();
   const { colorScheme } = useMantineColorScheme();
   const [result, setResult] = useState<PublishResult | null>(null);
   const [deploy, setDeploy] = useState<DeployResult | null>(null);
   const [busy, setBusy] = useState<null | "publish" | "up" | "down">(null);
   const [target, setTarget] = useState<PublishTarget>("compose");
+  const [pickTarget, setPickTarget] = useState(false);   // hosting target-picker overlay open?
+  const [deployTarget, setDeployTarget] = useState("local");
+  const dep = stack.deployment;
+  const depColor = dep?.state === "running" ? "green" : dep?.state === "failed" ? "red" : dep?.state === "deploying" ? "yellow" : "gray";
 
   const publish = async (t: PublishTarget) => {
     setTarget(t); setBusy("publish"); setDeploy(null);
@@ -74,6 +86,56 @@ export function PublishPanel() {
   return (
     <ScrollArea style={{ height: "100%" }} px="sm" py="xs">
       <MStack gap="sm">
+        {/* Hosting: the appliance path — deploy this stack as a tracked, persistent deployment. */}
+        <Card withBorder padding="sm" radius="md" pos="relative">
+          <LoadingOverlay visible={hostingBusy} overlayProps={{ blur: 1 }} loaderProps={{ children: <Text size="sm">Deploying…</Text> }} />
+          <Group justify="space-between" mb={dep ? 6 : 0}>
+            <Group gap={6}><IconServer size={16} /><Text fw={600} size="sm">Hosting</Text></Group>
+            {dep && <Badge color={depColor} variant="light" size="sm">{dep.state}</Badge>}
+          </Group>
+
+          {dep ? (
+            <MStack gap={6}>
+              {dep.urls.length > 0 && (
+                <Group gap={8}>{dep.urls.map(u => <Anchor key={u} href={u} target="_blank" size="xs">{u} <IconExternalLink size={10} /></Anchor>)}</Group>
+              )}
+              {dep.state === "failed" && dep.lastError && (
+                <Alert color="red" p="xs" icon={<IconInfoCircle size={14} />}>
+                  <Code block style={{ whiteSpace: "pre-wrap", fontSize: 11, maxHeight: 160, overflow: "auto" }}>{dep.lastError.trim().split("\n").slice(-12).join("\n")}</Code>
+                </Alert>
+              )}
+              <Group gap="xs">
+                {dep.state === "running" || dep.state === "deploying"
+                  ? <Button size="xs" color="orange" variant="light" leftSection={<IconPlayerStop size={14} />} onClick={() => void stopHosting()}>Stop</Button>
+                  : <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => void deployToHosting()}>Re-deploy</Button>}
+              </Group>
+            </MStack>
+          ) : pickTarget ? (
+            <Box>
+              <Text size="xs" c="dimmed" mb={6}>Choose a deployment target:</Text>
+              <Radio.Group value={deployTarget} onChange={setDeployTarget}>
+                <MStack gap={6}>
+                  {DEPLOY_TARGETS.map(t => (
+                    <Radio key={t.id} value={t.id} disabled={!t.enabled}
+                      label={<span>{t.label}{!t.enabled && <Badge size="xs" variant="light" color="gray" ml={6}>soon</Badge>}<Text size="10px" c="dimmed">{t.hint}</Text></span>} />
+                  ))}
+                </MStack>
+              </Radio.Group>
+              <Group gap="xs" mt="sm">
+                <Button size="xs" color="teal" leftSection={<IconRocket size={14} />}
+                  onClick={() => { setPickTarget(false); void deployToHosting(); }}>Deploy</Button>
+                <Button size="xs" variant="default" onClick={() => setPickTarget(false)}>Cancel</Button>
+              </Group>
+            </Box>
+          ) : (
+            <>
+              <Text size="xs" c="dimmed" mb={6}>Deploy this stack as a persistent, tracked app (install &amp; forget). It gets a URL and can be started/stopped from Hosting.</Text>
+              <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => setPickTarget(true)}>Deploy to hosting</Button>
+            </>
+          )}
+        </Card>
+
+        <Text size="xs" c="dimmed" fw={600} mt={4}>Or export / publish artifacts</Text>
         <Group gap={0} wrap="nowrap">
           <Button size="xs" leftSection={<IconPackageExport size={14} />} loading={busy === "publish"} disabled={busy !== null}
             onClick={() => void publish(target)} style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
