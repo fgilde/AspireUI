@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, Radio, Anchor, LoadingOverlay, useMantineColorScheme } from "@mantine/core";
+import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, Radio, Anchor, LoadingOverlay, ThemeIcon, useMantineColorScheme } from "@mantine/core";
 import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
@@ -128,10 +128,13 @@ export function PublishPanel() {
               </Group>
             </Box>
           ) : (
-            <>
-              <Text size="xs" c="dimmed" mb={6}>Deploy this stack as a persistent, tracked app (install &amp; forget). It gets a URL and can be started/stopped from Hosting.</Text>
-              <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => setPickTarget(true)}>Deploy to hosting</Button>
-            </>
+            <Group gap="sm" wrap="nowrap" align="flex-start">
+              <ThemeIcon size={38} radius="md" variant="light" color="teal"><IconRocket size={20} /></ThemeIcon>
+              <Box style={{ flex: 1 }}>
+                <Text size="xs" c="dimmed" mb={8}>Deploy this stack as a persistent, tracked app (install &amp; forget). It gets a URL and can be started/stopped from Hosting.</Text>
+                <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => setPickTarget(true)}>Deploy to hosting</Button>
+              </Box>
+            </Group>
           )}
         </Card>
 

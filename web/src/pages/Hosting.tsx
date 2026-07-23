@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Container, Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert } from "@mantine/core";
-import { IconArrowLeft, IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle } from "@tabler/icons-react";
+import { IconArrowLeft, IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
 import type { Deployment, ServiceStatus } from "../model";
 import { canOpenEditor } from "../model";
 import { useAuth } from "../auth/AuthContext";
@@ -17,6 +17,7 @@ export function Hosting() {
   const [items, setItems] = useState<Deployment[]>([]);
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
   const [logsFor, setLogsFor] = useState<Deployment | null>(null);
+  const [logsService, setLogsService] = useState<string | undefined>(undefined);
   const [dashToken, setDashToken] = useState("");
   const load = () => api.listHosting().then(setItems).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
@@ -41,7 +42,7 @@ export function Hosting() {
               <Table.Tbody>
                 {items.map(d => (
                   <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken}
-                    onConfigure={() => setConfigFor(d)} onLogs={() => setLogsFor(d)}
+                    onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
               </Table.Tbody>
@@ -49,13 +50,13 @@ export function Hosting() {
         </Container>
       </AppShell.Main>
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={load} />}
-      {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
+      {logsFor && <LogsModal d={logsFor} service={logsService} onClose={() => setLogsFor(null)} />}
     </AppShell>
   );
 }
 
 function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged, dashToken }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -92,7 +93,7 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChange
               {d.state === "failed" && d.lastError && (
                 <Alert color="red" icon={<IconAlertTriangle size={14} />} p="xs" mb="xs" title="Deploy failed">
                   <Text size="xs" style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", maxHeight: 160, overflow: "auto" }}>{d.lastError.trim().split("\n").slice(-12).join("\n")}</Text>
-                  <Anchor size="xs" onClick={onLogs}>Full logs</Anchor>
+                  <Anchor size="xs" onClick={() => onLogs()}>Full logs</Anchor>
                 </Alert>
               )}
               {svcs === null ? <Loader size="xs" />
@@ -114,6 +115,10 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChange
                         <Table.Td c="dimmed">{s.image}</Table.Td>
                         <Table.Td>{url ? <Anchor href={url} target="_blank">{s.ports} <IconExternalLink size={10} /></Anchor> : <Text c="dimmed" span>{s.ports}</Text>}</Table.Td>
                         <Table.Td c="dimmed">{s.status}</Table.Td>
+                        <Table.Td w={28}>
+                          <ActionIcon variant="subtle" color="gray" size="xs" aria-label={`Logs for ${s.service || s.name}`}
+                            onClick={() => onLogs(s.service || s.name)}><IconFileText size={13} /></ActionIcon>
+                        </Table.Td>
                       </Table.Tr>
                       );
                     })}

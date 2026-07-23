@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Menu, Modal, Title, Stack, TextInput, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
+import { Menu, Modal, Title, Stack, TextInput, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconCopy, IconCheck, IconMaximize, IconMinimize } from "@tabler/icons-react";
 import type { Deployment, NodeConfig } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -110,20 +110,43 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   );
 }
 
-// Streams `docker compose logs` for the deployment (the server pushes them over SSE).
-export function LogsModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
+// Streams `docker compose logs` for the deployment (all services / children, prefixed with the service
+// name) over SSE. Searchable, copyable, downloadable, and can go fullscreen. `service` pre-filters to
+// one child.
+export function LogsModal({ d, onClose, service }: { d: Deployment; onClose: () => void; service?: string }) {
   const [lines, setLines] = useState<string[]>([]);
+  const [q, setQ] = useState(service ?? "");
+  const [full, setFull] = useState(false);
   useEffect(() => {
     const es = new EventSource(api.hostingLogsUrl(d.id));
-    es.onmessage = e => setLines(l => (l.length > 2000 ? l.slice(-2000) : l).concat(e.data));
+    es.onmessage = e => setLines(l => (l.length > 5000 ? l.slice(-5000) : l).concat(e.data));
     es.onerror = () => es.close();
     return () => es.close();
   }, [d.id]);
+  const ql = q.toLowerCase();
+  const shown = useMemo(() => ql ? lines.filter(l => l.toLowerCase().includes(ql)) : lines, [lines, ql]);
+  const text = shown.join("\n");
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a"); a.href = url; a.download = `${d.name}-logs.txt`; a.click(); URL.revokeObjectURL(url);
+  };
   return (
-    <Modal opened onClose={onClose} size="xl" title={<Title order={5}>Logs · {d.name}</Title>}>
-      <ScrollArea.Autosize mah={520}>
+    <Modal opened onClose={onClose} fullScreen={full} size="90%"
+      title={<Group gap="xs" wrap="nowrap" style={{ flex: 1 }}>
+        <Title order={5} style={{ whiteSpace: "nowrap" }}>Logs · {d.name}</Title>
+        <TextInput size="xs" placeholder="Filter (e.g. a service name)…" value={q} onChange={e => setQ(e.currentTarget.value)}
+          leftSection={<IconSearch size={13} />} style={{ flex: 1, minWidth: 160 }} />
+        <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>{shown.length}/{lines.length}</Text>
+        <CopyButton value={text}>{({ copied, copy }) => (
+          <Tooltip label={copied ? "Copied" : "Copy"} withArrow><ActionIcon variant="subtle" color={copied ? "green" : "gray"} onClick={copy} aria-label="Copy logs">{copied ? <IconCheck size={16} /> : <IconCopy size={16} />}</ActionIcon></Tooltip>)}
+        </CopyButton>
+        <Tooltip label="Download" withArrow><ActionIcon variant="subtle" color="gray" onClick={download} aria-label="Download logs"><IconDownload size={16} /></ActionIcon></Tooltip>
+        <Tooltip label={full ? "Exit fullscreen" : "Fullscreen"} withArrow><ActionIcon variant="subtle" color="gray" onClick={() => setFull(f => !f)} aria-label="Toggle fullscreen">{full ? <IconMinimize size={16} /> : <IconMaximize size={16} />}</ActionIcon></Tooltip>
+      </Group>}
+      styles={{ title: { flex: 1 } }}>
+      <ScrollArea.Autosize mah={full ? "calc(100vh - 120px)" : 560}>
         <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-          {lines.length ? lines.join("\n") : "…"}
+          {shown.length ? text : "…"}
         </pre>
       </ScrollArea.Autosize>
     </Modal>

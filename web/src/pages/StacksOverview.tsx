@@ -10,12 +10,14 @@ import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload,
+  IconBrandGithub, IconHelp,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import logo from "../assets/logo.svg";
+import wordmark from "../assets/wordmark.svg";
 import type { TemplateInfo, BundleFile } from "../api";
 import { UserMenu } from "../auth/UserMenu";
 import { useAuth } from "../auth/AuthContext";
@@ -176,7 +178,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
         <Container size="xl" h="100%">
           <Group h="100%" justify="space-between">
             <Group gap="sm">
-              <img src={logo} alt="AspireUI" height={60} style={{ display: "block" }} />
+              <img src={wordmark} alt="AspireUI" height={38} style={{ display: "block" }} />
             </Group>
             <Group gap="sm">
               {simple && <Button leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install app</Button>}
@@ -472,8 +474,20 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
 
       <AppShell.Footer>
         <Container size="xl" h="100%">
-          <Group h="100%" justify="center" gap={6}>
+          <Group h="100%" justify="center" gap={8}>
+            <img src={logo} alt="" height={18} style={{ display: "block" }} />
             <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text></Tooltip>
+            <Text size="xs" c="dimmed">·</Text>
+            <Tooltip label="GitHub" withArrow>
+              <ActionIcon component="a" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="GitHub">
+                <IconBrandGithub size={15} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Documentation" withArrow>
+              <ActionIcon component="a" href="https://github.com/fgilde/AspireUI/tree/master/docs" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="Documentation">
+                <IconHelp size={15} />
+              </ActionIcon>
+            </Tooltip>
             <Text size="xs" c="dimmed">·</Text>
             <Anchor size="xs" c="dimmed" href="https://www.gilde.org" target="_blank" rel="noreferrer">by gilde.org</Anchor>
           </Group>
