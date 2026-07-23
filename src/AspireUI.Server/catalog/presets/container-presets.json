@@ -2884,25 +2884,6 @@
     "website": "https://linkstack.org"
   },
   {
-    "id": "kiwix-serve",
-    "label": "Kiwix Serve",
-    "group": "Tools",
-    "image": "ghcr.io/kiwix/kiwix-serve:latest",
-    "port": 8080,
-    "icon": "kiwix",
-    "description": "Kiwix Serve — read offline ZIM archives (Wikipedia, StackExchange…) in the browser. Runs 'kiwix-serve *.zim' over /data — drop at least one .zim (from library.kiwix.org) or it exits.",
-    "args": [
-      "*.zim"
-    ],
-    "volumes": [
-      [
-        "data",
-        "/data"
-      ]
-    ],
-    "website": "https://kiwix.org"
-  },
-  {
     "id": "myspeed",
     "label": "MySpeed",
     "group": "Observability Apps",
