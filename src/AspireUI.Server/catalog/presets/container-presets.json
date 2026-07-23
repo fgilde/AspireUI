@@ -829,5 +829,175 @@
     "port": 8080,
     "icon": "searxng",
     "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG."
+  },
+  {
+    "id": "bazarr",
+    "label": "Bazarr",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/bazarr:latest",
+    "port": 6767,
+    "icon": "bazarr",
+    "description": "Bazarr — companion to Sonarr/Radarr that manages & downloads subtitles.",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "jellyseerr",
+    "label": "Jellyseerr",
+    "group": "Media",
+    "image": "fallenbagel/jellyseerr:latest",
+    "port": 5055,
+    "icon": "jellyseerr",
+    "description": "Jellyseerr — media request & discovery frontend for Jellyfin/Emby/Plex.",
+    "volumes": [["config", "/app/config"]]
+  },
+  {
+    "id": "jackett",
+    "label": "Jackett",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/jackett:latest",
+    "port": 9117,
+    "icon": "jackett",
+    "description": "Jackett — indexer proxy that translates tracker searches for the *arr apps.",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "deluge",
+    "label": "Deluge",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/deluge:latest",
+    "port": 8112,
+    "icon": "deluge",
+    "description": "Deluge — lightweight BitTorrent client with a web UI (default password 'deluge', change it).",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "komga",
+    "label": "Komga",
+    "group": "Media",
+    "image": "gotson/komga:latest",
+    "port": 25600,
+    "icon": "komga",
+    "description": "Komga — self-hosted comics/manga/e-book server.",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "kavita",
+    "label": "Kavita",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/kavita:latest",
+    "port": 5000,
+    "icon": "kavita",
+    "description": "Kavita — fast, cross-platform reading server (comics, manga, books).",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "calibre-web",
+    "label": "Calibre-Web",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/calibre-web:latest",
+    "port": 8083,
+    "icon": "calibreweb",
+    "description": "Calibre-Web — clean web UI to browse/read/download your Calibre e-book library (login admin / admin123).",
+    "volumes": [["config", "/config"], ["books", "/books"]]
+  },
+  {
+    "id": "filebrowser",
+    "label": "File Browser",
+    "group": "Tools",
+    "image": "filebrowser/filebrowser:latest",
+    "port": 80,
+    "icon": "filebrowser",
+    "description": "File Browser — a tidy web file manager for a directory (login admin / admin, change it).",
+    "volumes": [["srv", "/srv"], ["database", "/database"]]
+  },
+  {
+    "id": "heimdall",
+    "label": "Heimdall",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/heimdall:latest",
+    "port": 80,
+    "icon": "heimdall",
+    "description": "Heimdall — a good-looking application dashboard / start page for your services.",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "homer",
+    "label": "Homer",
+    "group": "Tools",
+    "image": "b4bz/homer:latest",
+    "port": 8080,
+    "icon": "homer",
+    "description": "Homer — a dead-simple static homepage/dashboard for your services (edit assets/config.yml).",
+    "volumes": [["assets", "/www/assets"]]
+  },
+  {
+    "id": "duplicati",
+    "label": "Duplicati",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/duplicati:latest",
+    "port": 8200,
+    "icon": "duplicati",
+    "description": "Duplicati — encrypted, scheduled backups to local/cloud storage.",
+    "volumes": [["config", "/config"], ["backups", "/backups"]]
+  },
+  {
+    "id": "gotify",
+    "label": "Gotify",
+    "group": "Tools",
+    "image": "gotify/server:latest",
+    "port": 80,
+    "icon": "gotify",
+    "description": "Gotify — simple self-hosted server for push notifications (login admin / admin, change it).",
+    "volumes": [["data", "/app/data"]]
+  },
+  {
+    "id": "grocy",
+    "label": "Grocy",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/grocy:latest",
+    "port": 80,
+    "icon": "grocy",
+    "description": "Grocy — ERP for your fridge: groceries, stock, chores & recipes (login admin / admin).",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "libretranslate",
+    "label": "LibreTranslate",
+    "group": "AI Apps",
+    "image": "libretranslate/libretranslate:latest",
+    "port": 5000,
+    "icon": "libretranslate",
+    "description": "LibreTranslate — self-hosted machine translation API/UI (downloads language models on first start).",
+    "volumes": [["models", "/home/libretranslate/.local"]]
+  },
+  {
+    "id": "lobe-chat",
+    "label": "LobeChat",
+    "group": "AI Apps",
+    "image": "lobehub/lobe-chat:latest",
+    "port": 3210,
+    "icon": "lobechat",
+    "description": "LobeChat — polished chat UI for OpenAI/Claude/Ollama and more (enter your API keys in-app)."
+  },
+  {
+    "id": "grafana",
+    "label": "Grafana",
+    "group": "Observability Apps",
+    "image": "grafana/grafana:latest",
+    "port": 3000,
+    "icon": "grafana",
+    "description": "Grafana — dashboards & visualization over your metrics/logs (login admin / admin).",
+    "volumes": [["data", "/var/lib/grafana"]]
+  },
+  {
+    "id": "glances",
+    "label": "Glances",
+    "group": "Observability Apps",
+    "image": "nicolargo/glances:latest-full",
+    "port": 61208,
+    "icon": "glances",
+    "description": "Glances — a cross-platform system monitor with a web UI. Runs in web-server mode; bind-mounts the Docker socket (read-only) to show container stats.",
+    "env": [["GLANCES_OPT", "-w"]],
+    "bindMounts": [["/var/run/docker.sock", "/var/run/docker.sock", "ro"]]
   }
 ]
