@@ -999,5 +999,175 @@
     "description": "Glances — a cross-platform system monitor with a web UI. Runs in web-server mode; bind-mounts the Docker socket (read-only) to show container stats.",
     "env": [["GLANCES_OPT", "-w"]],
     "bindMounts": [["/var/run/docker.sock", "/var/run/docker.sock", "ro"]]
+  },
+  {
+    "id": "portainer",
+    "label": "Portainer",
+    "group": "Tools",
+    "image": "portainer/portainer-ce:latest",
+    "port": 9000,
+    "icon": "portainer",
+    "description": "Portainer — web UI to manage Docker/containers. Bind-mounts the host Docker socket. Set the admin password on first visit.",
+    "volumes": [["data", "/data"]],
+    "bindMounts": [["/var/run/docker.sock", "/var/run/docker.sock"]]
+  },
+  {
+    "id": "nocodb",
+    "label": "NocoDB",
+    "group": "Tools",
+    "image": "nocodb/nocodb:latest",
+    "port": 8080,
+    "icon": "nocodb",
+    "description": "NocoDB — turn any database into a smart spreadsheet (Airtable-style). SQLite by default, no DB setup needed.",
+    "volumes": [["data", "/usr/app/data"]]
+  },
+  {
+    "id": "mealie",
+    "label": "Mealie",
+    "group": "Tools",
+    "image": "ghcr.io/mealie-recipes/mealie:latest",
+    "port": 9000,
+    "icon": "mealie",
+    "description": "Mealie — self-hosted recipe manager & meal planner (SQLite by default).",
+    "volumes": [["data", "/app/data"]]
+  },
+  {
+    "id": "homebox",
+    "label": "Homebox",
+    "group": "Tools",
+    "image": "ghcr.io/sysadminsmedia/homebox:latest",
+    "port": 7745,
+    "icon": "homebox",
+    "description": "Homebox — simple home inventory & organization (SQLite).",
+    "volumes": [["data", "/data"]]
+  },
+  {
+    "id": "linkding",
+    "label": "linkding",
+    "group": "Tools",
+    "image": "sissbruecker/linkding:latest",
+    "port": 9090,
+    "icon": "linkding",
+    "description": "linkding — minimal, fast self-hosted bookmark manager. Seeds an admin user (change the password).",
+    "params": [
+      { "key": "superuser", "env": "LD_SUPERUSER_NAME", "default": "admin" },
+      { "key": "superuser-password", "env": "LD_SUPERUSER_PASSWORD", "default": "please-change-me", "secret": true }
+    ],
+    "volumes": [["data", "/etc/linkding/data"]]
+  },
+  {
+    "id": "shiori",
+    "label": "Shiori",
+    "group": "Tools",
+    "image": "ghcr.io/go-shiori/shiori:latest",
+    "port": 8080,
+    "icon": "shiori",
+    "description": "Shiori — simple bookmarks manager (Pocket-like). Default login shiori / gopher (change it).",
+    "args": ["serve"],
+    "volumes": [["data", "/shiori"]]
+  },
+  {
+    "id": "changedetection",
+    "label": "changedetection.io",
+    "group": "Tools",
+    "image": "ghcr.io/dgtlmoon/changedetection.io:latest",
+    "port": 5000,
+    "icon": "changedetection",
+    "description": "changedetection.io — watch web pages for changes and get notified. (Add a Playwright/browserless companion later for JS-heavy pages.)",
+    "volumes": [["datastore", "/datastore"]]
+  },
+  {
+    "id": "cyberchef",
+    "label": "CyberChef",
+    "group": "Tools",
+    "image": "mpepping/cyberchef:latest",
+    "port": 8000,
+    "icon": "cyberchef",
+    "description": "CyberChef — the 'Cyber Swiss-Army knife' for encoding, encryption and data analysis (static web app)."
+  },
+  {
+    "id": "dashy",
+    "label": "Dashy",
+    "group": "Tools",
+    "image": "lissy93/dashy:latest",
+    "port": 8080,
+    "icon": "dashy",
+    "description": "Dashy — a highly configurable, good-looking dashboard for your self-hosted services."
+  },
+  {
+    "id": "filestash",
+    "label": "Filestash",
+    "group": "Tools",
+    "image": "machines/filestash:latest",
+    "port": 8334,
+    "icon": "filestash",
+    "description": "Filestash — a web file manager frontend for S3/FTP/SFTP/WebDAV and more."
+  },
+  {
+    "id": "syncthing",
+    "label": "Syncthing",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/syncthing:latest",
+    "port": 8384,
+    "icon": "syncthing",
+    "description": "Syncthing — continuous, peer-to-peer file synchronization (web UI on 8384).",
+    "volumes": [["config", "/config"], ["data", "/data"]]
+  },
+  {
+    "id": "wallos",
+    "label": "Wallos",
+    "group": "Tools",
+    "image": "bellamy/wallos:latest",
+    "port": 80,
+    "icon": "wallos",
+    "description": "Wallos — self-hosted subscription tracker & budget overview (SQLite).",
+    "volumes": [["db", "/var/www/html/db"], ["logos", "/var/www/html/images/uploads/logos"]]
+  },
+  {
+    "id": "whoogle",
+    "label": "Whoogle",
+    "group": "Tools",
+    "image": "benbusby/whoogle-search:latest",
+    "port": 5000,
+    "icon": "whoogle",
+    "description": "Whoogle — private, ad-free Google search proxy (no JS, no tracking)."
+  },
+  {
+    "id": "librespeed",
+    "label": "LibreSpeed",
+    "group": "Tools",
+    "image": "lscr.io/linuxserver/librespeed:latest",
+    "port": 80,
+    "icon": "librespeed",
+    "description": "LibreSpeed — self-hosted network speed test (no Flash/Java, single container)."
+  },
+  {
+    "id": "overseerr",
+    "label": "Overseerr",
+    "group": "Media",
+    "image": "sctx/overseerr:latest",
+    "port": 5055,
+    "icon": "overseerr",
+    "description": "Overseerr — media request & discovery for Plex (Radarr/Sonarr integration).",
+    "volumes": [["config", "/app/config"]]
+  },
+  {
+    "id": "tautulli",
+    "label": "Tautulli",
+    "group": "Media",
+    "image": "ghcr.io/tautulli/tautulli:latest",
+    "port": 8181,
+    "icon": "tautulli",
+    "description": "Tautulli — monitoring & analytics for a Plex Media Server.",
+    "volumes": [["config", "/config"]]
+  },
+  {
+    "id": "flaresolverr",
+    "label": "FlareSolverr",
+    "group": "Media",
+    "image": "ghcr.io/flaresolverr/flaresolverr:latest",
+    "port": 8191,
+    "icon": "flaresolverr",
+    "description": "FlareSolverr — proxy that solves Cloudflare challenges for indexers (Prowlarr/Jackett). HTTP API, no real UI."
   }
 ]
