@@ -191,11 +191,14 @@ export function buildPresetNodes(
     nodes.push({
       // AddParameter has no 2-arg overload — only (name, bool secret) and
       // (name, string value, bool publishValueAsDefault, bool secret). Emit the 3-arg form positionally
-      // → AddParameter("name", "value", true, <secret>). publishValueAsDefault MUST be true so that
-      // `aspire publish` bakes the value into the compose .env — otherwise a hosted app's param env
-      // (e.g. homebox's HBOX_AUTH_API_KEY_PEPPER, passwords) arrives EMPTY and the container panics.
+      // → AddParameter("name", "value", true, false). BOTH matter for hosting:
+      //  - publishValueAsDefault=true → `aspire publish` bakes the value into the compose .env.
+      //  - secret=false → a SECRET parameter is published as an EMPTY placeholder (Aspire keeps secrets
+      //    out of the artifact), so the hosted app's env would arrive blank (e.g. ownCloud's admin
+      //    password → install skipped → "oc_appconfig doesn't exist"; homebox pepper → panic). We want the
+      //    seeded default present, so it's a normal (non-secret) parameter.
       id: p.targetId!, varName: p.varName!, resourceName: p.name!, addMethod: "AddParameter",
-      addArgs: [JSON.stringify(p.param.default ?? ""), "true", p.param.secret ? "true" : "false"],
+      addArgs: [JSON.stringify(p.param.default ?? ""), "true", "false"],
       withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
     });
   });
