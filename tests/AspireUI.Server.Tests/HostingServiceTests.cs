@@ -61,6 +61,46 @@ public class HostingServiceTests
         Assert.Contains("http://localhost:80", HostingService.ParseUrls(outp, "localhost"));
     }
 
+    // The real Aspire compose shape: a dashboard service that already has restart:"always", plus a
+    // top-level networks: section whose `aspire:` key must NOT be mistaken for a service.
+    private const string AspireShape = """
+        services:
+          aspireui-dashboard:
+            image: "dash"
+            ports:
+              - "18888"
+            networks:
+              - "aspire"
+            restart: "always"
+          it-tools:
+            image: "ghcr.io/corentinth/it-tools:latest"
+            expose:
+              - "80"
+            networks:
+              - "aspire"
+        networks:
+          aspire:
+            driver: "bridge"
+        """;
+
+    [Fact]
+    public void AddRestartPolicy_no_duplicate_and_skips_networks()
+    {
+        var outp = HostingService.AddRestartPolicy(AspireShape);
+        // dashboard already has restart:"always" (kept, not doubled); it-tools gets one; networks none.
+        var restarts = outp.Split('\n').Count(l => l.Trim().StartsWith("restart:"));
+        Assert.Equal(2, restarts);
+    }
+
+    [Fact]
+    public void FullTransform_publishes_app_port_and_leaves_networks_alone()
+    {
+        var outp = HostingService.PublishExposedPorts(HostingService.AddRestartPolicy(AspireShape));
+        Assert.Contains("- \"80:80\"", outp);                 // it-tools reachable on host
+        Assert.DoesNotContain("restart: unless-stopped\ndriver", outp.Replace(" ", "")); // no restart under networks
+        Assert.Contains("http://localhost:80", HostingService.ParseUrls(outp, "localhost"));
+    }
+
     [Fact]
     public void VolumeNames_reads_top_level_volumes()
     {

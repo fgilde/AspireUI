@@ -33,8 +33,20 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         proxy.Reload(routes);
     }
 
-    // Add `restart: unless-stopped` under each service (2-space service indent → 4-space property).
-    // Idempotent: skips a service that already has a restart line.
+    // Whether line i (a 2-space `name:` header) sits inside the top-level `services:` section — so we
+    // never treat `networks:`/`volumes:` sub-keys as services. Returns the service-block end index too.
+    private static bool InServicesSection(IReadOnlyList<string> lines, int headerIndex)
+    {
+        for (var k = headerIndex - 1; k >= 0; k--)
+        {
+            if (Regex.IsMatch(lines[k], @"^services:\s*$")) return true;
+            if (Regex.IsMatch(lines[k], @"^\S")) return false;   // hit another top-level key first
+        }
+        return false;
+    }
+
+    // Add `restart: unless-stopped` to each *service* (skips a service that already declares any
+    // `restart:`, e.g. Aspire's `restart: "always"` on the dashboard). Only within `services:`.
     public static string AddRestartPolicy(string yaml)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
@@ -42,13 +54,12 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         for (var i = 0; i < lines.Count; i++)
         {
             outp.Add(lines[i]);
-            var m = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");   // a service header: `  web:`
-            if (!m.Success) continue;
+            if (!Regex.IsMatch(lines[i], @"^  (\S[^:]*):\s*$") || !InServicesSection(lines, i)) continue;
             var hasRestart = false;
             for (var j = i + 1; j < lines.Count; j++)
             {
-                if (Regex.IsMatch(lines[j], @"^  \S")) break;      // next service / dedent
-                if (lines[j].Trim() == "restart: unless-stopped") { hasRestart = true; break; }
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;          // next service / dedent
+                if (Regex.IsMatch(lines[j], @"^\s+restart:\s")) { hasRestart = true; break; }
             }
             if (!hasRestart) outp.Add("    restart: unless-stopped");
         }
@@ -69,12 +80,12 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         {
             outp.Add(lines[i]);
             var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
-            if (!svc.Success || svc.Groups[1].Value.Contains("dashboard")) continue;
+            if (!svc.Success || svc.Groups[1].Value.Contains("dashboard") || !InServicesSection(lines, i)) continue;
             // Scan this service block for expose ports + whether it already publishes ports.
             var ports = new List<string>(); var hasPorts = false;
             for (var j = i + 1; j < lines.Count; j++)
             {
-                if (Regex.IsMatch(lines[j], @"^  \S")) break;          // next service / dedent
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;      // next service / dedent
                 if (Regex.IsMatch(lines[j], @"^    ports:\s*$")) hasPorts = true;
                 var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$"); // an expose entry
                 if (pm.Success) ports.Add(pm.Groups[1].Value);
