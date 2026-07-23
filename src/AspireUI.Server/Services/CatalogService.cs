@@ -43,7 +43,9 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     List<string>? Args = null,
     // Extra `docker run` flags (WithContainerRuntimeArgs) — e.g. "--user","0:0" for non-root images
     // that must write to a root-owned image dir.
-    List<string>? RuntimeArgs = null);
+    List<string>? RuntimeArgs = null,
+    // Free-form tags for finer palette filtering (beyond the group), e.g. "media","selfhosted".
+    List<string>? Tags = null);
 public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives
@@ -58,16 +60,30 @@ public class CatalogService
     private readonly Assembly[] _assemblies;
     private readonly Dictionary<string, JsonElement> _overlay;
 
+    // Merge every *.json in the built-in presets folder plus an optional external EXTRA_PRESETS_DIR,
+    // keyed by preset id (later file wins) — so extra/community app catalogs are just JSON files you
+    // drop in, no rebuild.
     public IReadOnlyList<ContainerPreset> GetPresets()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "catalog", "presets", "container-presets.json");
-        if (!File.Exists(path)) return [];
-        try
+        var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var byId = new Dictionary<string, ContainerPreset>(StringComparer.OrdinalIgnoreCase);
+        void Load(string file)
         {
-            return JsonSerializer.Deserialize<List<ContainerPreset>>(
-                File.ReadAllText(path), new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
+            try
+            {
+                foreach (var p in JsonSerializer.Deserialize<List<ContainerPreset>>(File.ReadAllText(file), opts) ?? [])
+                    if (!string.IsNullOrWhiteSpace(p.Id)) byId[p.Id] = p;
+            }
+            catch { /* skip a malformed catalog file rather than dropping all presets */ }
         }
-        catch { return []; }
+        void LoadDir(string? dir)
+        {
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return;
+            foreach (var f in Directory.GetFiles(dir, "*.json").OrderBy(x => x, StringComparer.Ordinal)) Load(f);
+        }
+        LoadDir(Path.Combine(AppContext.BaseDirectory, "catalog", "presets"));
+        LoadDir(Environment.GetEnvironmentVariable("EXTRA_PRESETS_DIR"));
+        return byId.Values.ToList();
     }
 
     public CatalogService(params Assembly[] assemblies)

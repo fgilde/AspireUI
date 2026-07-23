@@ -16,6 +16,7 @@ function presetTags(p: ContainerPreset): string[] {
   const t = ["app"];
   if (p.group) t.push(p.group);
   if (GPU_PRESETS.has(p.id)) t.push("gpu");
+  if (p.tags) t.push(...p.tags);
   return t;
 }
 function rtTags(rt: ResourceType): string[] {
