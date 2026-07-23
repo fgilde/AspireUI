@@ -95,6 +95,67 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return store.Get(id)!;
     }
 
+    // Pull newer images + recreate (in place). Keeps the same project/volumes/URLs.
+    public Deployment? Update(string id)
+    {
+        if (store.Get(id) is not { } d) return null;
+        store.SetState(id, "deploying");
+        var pull = deploy.PullProject(d.ComposeDir, d.Project);
+        var up = deploy.UpProject(d.ComposeDir, d.Project);
+        store.SetState(id, up.Ok ? "running" : "failed", up.Ok ? null : $"{pull.Log}\n{up.Log}");
+        if (up.Ok) SyncProxy();
+        return store.Get(id);
+    }
+
+    // Top-level `volumes:` keys → compose v2 names them `<project>_<key>`.
+    public static List<string> VolumeNames(string yaml)
+    {
+        var names = new List<string>();
+        var lines = yaml.Replace("\r\n", "\n").Split('\n');
+        var inVolumes = false;
+        foreach (var line in lines)
+        {
+            if (Regex.IsMatch(line, @"^volumes:\s*$")) { inVolumes = true; continue; }
+            if (inVolumes)
+            {
+                if (Regex.IsMatch(line, @"^\S")) break;             // dedent → section ended
+                var m = Regex.Match(line, @"^  (\S[^:]*):");
+                if (m.Success) names.Add(m.Groups[1].Value.Trim());
+            }
+        }
+        return names;
+    }
+
+    // Snapshot each named volume to a tgz in backupsRoot/<stackId>/<timestamp>/. Best-effort (docker).
+    public string? Backup(string id, string backupsRoot)
+    {
+        if (store.Get(id) is not { } d) return null;
+        var composePath = Path.Combine(d.ComposeDir, "docker-compose.yaml");
+        if (!File.Exists(composePath)) return null;
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        var dir = Path.Combine(backupsRoot, d.StackId, stamp);
+        Directory.CreateDirectory(dir);
+        foreach (var vol in VolumeNames(File.ReadAllText(composePath)))
+        {
+            var full = $"{d.Project}_{vol}";
+            deploy.Docker(dir, $"run --rm -v {full}:/data -v \"{Path.GetFullPath(dir)}\":/backup alpine tar czf /backup/{vol}.tgz -C /data .");
+        }
+        return dir;
+    }
+
+    // On host/AppHost start, bring back everything that was "running" (compose restart policy handles
+    // container-level restarts, but the AppHost process must re-issue `up -d` after its own restart).
+    public void ReconcileOnStartup()
+    {
+        var any = false;
+        foreach (var d in store.List().Where(x => x.State == "running"))
+        {
+            try { if (File.Exists(Path.Combine(d.ComposeDir, "docker-compose.yaml"))) { deploy.UpProject(d.ComposeDir, d.Project); any = true; } }
+            catch { /* best-effort */ }
+        }
+        if (any) SyncProxy();
+    }
+
     public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); SyncProxy(); } }
     public void Start(string id) { if (store.Get(id) is { } d) { deploy.StartProject(d.ComposeDir, d.Project); store.SetState(id, "running"); SyncProxy(); } }
     public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); SyncProxy(); } }

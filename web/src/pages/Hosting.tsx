@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Container, Table, Badge, Anchor, ActionIcon, Menu, Text } from "@mantine/core";
-import { IconArrowLeft, IconDots, IconPlayerPlay, IconPlayerStop, IconTrash, IconExternalLink, IconPencil } from "@tabler/icons-react";
+import { IconArrowLeft, IconDots, IconPlayerPlay, IconPlayerStop, IconTrash, IconExternalLink, IconPencil, IconRefresh, IconArchive } from "@tabler/icons-react";
 import type { Deployment } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -18,6 +18,8 @@ export function Hosting() {
 
   const stop = (d: Deployment) => api.stopHosting(d.stackId).then(load).catch(toastErr);
   const start = (d: Deployment) => api.startHosting(d.stackId).then(load).catch(toastErr);
+  const update = (d: Deployment) => { toastOk(`Updating ${d.name}…`); api.updateHosting(d.stackId).then(load).then(() => toastOk("Updated")).catch(toastErr); };
+  const backup = (d: Deployment) => { toastOk(`Backing up ${d.name}…`); api.backupHosting(d.stackId).then(r => toastOk(r.dir ? "Backup written" : "Nothing to back up")).catch(toastErr); };
   const undeploy = (d: Deployment) => confirmDelete(`"${d.name}"`, "This runs docker compose down (named volumes are kept).")
     .then(okd => { if (okd) api.undeployHosting(d.stackId).then(load).then(() => toastOk("Undeployed")).catch(toastErr); });
 
@@ -50,6 +52,8 @@ export function Hosting() {
                           {d.state === "running"
                             ? <Menu.Item leftSection={<IconPlayerStop size={14} />} onClick={() => stop(d)}>Stop</Menu.Item>
                             : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={() => start(d)}>Start</Menu.Item>}
+                          <Menu.Item leftSection={<IconRefresh size={14} />} onClick={() => update(d)}>Update (pull &amp; recreate)</Menu.Item>
+                          <Menu.Item leftSection={<IconArchive size={14} />} onClick={() => backup(d)}>Back up volumes</Menu.Item>
                           <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => nav(`/editor/${d.stackId}`)}>Open in editor</Menu.Item>
                           <Menu.Divider />
                           <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={() => undeploy(d)}>Undeploy</Menu.Item>

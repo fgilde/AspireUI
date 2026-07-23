@@ -157,3 +157,7 @@ export const startHosting = (id: string): Promise<import("./model").Deployment> 
   fetch(`${base}/stacks/${id}/hosting/start`, { method: "POST" }).then(ok);
 export const undeployHosting = (id: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/hosting/undeploy`, { method: "POST" }).then(() => undefined);
+export const updateHosting = (id: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${id}/hosting/update`, { method: "POST" }).then(ok);
+export const backupHosting = (id: string): Promise<{ dir: string | null }> =>
+  fetch(`${base}/stacks/${id}/hosting/backup`, { method: "POST" }).then(ok);

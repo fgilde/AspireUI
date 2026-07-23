@@ -38,4 +38,23 @@ public class HostingServiceTests
         Assert.Contains("http://localhost:8096", urls);
         Assert.Contains("http://localhost:5000", urls);
     }
+
+    [Fact]
+    public void VolumeNames_reads_top_level_volumes()
+    {
+        const string yaml = """
+            services:
+              db:
+                image: postgres
+                volumes:
+                  - data:/var/lib/postgresql/data
+            volumes:
+              data:
+              cache:
+            """;
+        var vols = HostingService.VolumeNames(yaml);
+        Assert.Contains("data", vols);
+        Assert.Contains("cache", vols);
+        Assert.Equal(2, vols.Count);   // the service-level `volumes:` mapping is not a top-level volume
+    }
 }

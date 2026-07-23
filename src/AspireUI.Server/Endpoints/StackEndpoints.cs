@@ -46,6 +46,8 @@ public static class StackEndpoints
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
         var proxy = new ProxyService(deploy, Path.Combine(wsRoot, "_proxy"), Environment.GetEnvironmentVariable("HOSTING_BASE_DOMAIN") ?? "localhost");
         var hosting = new HostingService(deployments, publish, deploy, proxy);
+        // Bring hosted stacks back after an AppHost/host restart (fire-and-forget so startup isn't blocked).
+        _ = Task.Run(hosting.ReconcileOnStartup);
 
         // All app endpoints below require an authenticated session (cookie auth wired in
         // Program.cs). Anonymous endpoints (/auth/*, /env/health, SPA static files) are mapped
@@ -559,6 +561,12 @@ public static class StackEndpoints
             hosting.Undeploy(d.Id);
             return Results.NoContent();
         });
+        app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
+            deployments.GetByStack(id) is { } d ? Results.Ok(hosting.Update(d.Id)) : Results.NotFound());
+        app2.MapPost("/stacks/{id}/hosting/backup", (string id) =>
+            deployments.GetByStack(id) is { } d
+                ? Results.Ok(new { dir = hosting.Backup(d.Id, Path.Combine(wsRoot, "_backups")) })
+                : Results.NotFound());
         app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
