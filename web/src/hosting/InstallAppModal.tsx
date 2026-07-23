@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, Stack as MStack } from "@mantine/core";
+import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, Stack as MStack } from "@mantine/core";
 import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX } from "@tabler/icons-react";
 import type { ContainerPreset, Snippet, ResourceType, Node, Edge } from "../model";
 import { buildPresetNodes, instantiateSnippet } from "../model";
@@ -151,7 +151,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
             <ResourceGlyph addMethod={it.icon} iconKey={it.icon} size={22} />
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <Text fw={600} size="sm" truncate>{it.label}</Text>
+            <Highlight component={Text} highlight={q} fw={600} size="sm" truncate>{it.label}</Highlight>
             <Group gap={5} mt={2}>
               <Badge size="xs" variant="light" color={KIND_COLOR[it.kind]}>{KIND_LABEL[it.kind]}</Badge>
               <Text size="10px" c="dimmed" truncate>{it.group}</Text>

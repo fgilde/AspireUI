@@ -286,7 +286,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
                   {shown.map(s => (
                     <Group key={s.id} gap={4} wrap="nowrap" align="center">
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <Tile iconKey={s.icon || ""} label={s.name}
+                        <Tile iconKey={s.icon || ""} label={s.name} highlight={snippetQ}
                           caption={`${s.nodes.length} resource${s.nodes.length === 1 ? "" : "s"}`}
                           badge="snippet" onClick={() => dropSnippet(s)} />
                       </div>
