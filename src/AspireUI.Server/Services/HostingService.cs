@@ -215,16 +215,95 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         }
         else if (!string.IsNullOrWhiteSpace(token))
         {
-            var entry = $"      - \"Dashboard__Frontend__BrowserToken={token}\"";
+            // Frontend: require the browser token to view the dashboard. OTLP: require the same token as
+            // an API key so the telemetry endpoint isn't left unauthenticated ("OTLP server is unsecured").
+            var entries = new[]
+            {
+                $"      - \"Dashboard__Frontend__BrowserToken={token}\"",
+                "      - \"Dashboard__Otlp__AuthMode=ApiKey\"",
+                $"      - \"Dashboard__Otlp__PrimaryApiKey={token}\"",
+            };
             var envIdx = block.FindIndex(l => Regex.IsMatch(l, @"^    environment:\s*$"));
-            if (envIdx >= 0) block.Insert(envIdx + 1, entry);
-            else { block.Insert(1, "    environment:"); block.Insert(2, entry); }
+            if (envIdx >= 0) block.InsertRange(envIdx + 1, entries);
+            else { block.Insert(1, "    environment:"); block.InsertRange(2, entries); }
         }
         var result = new List<string>();
         result.AddRange(lines.GetRange(0, hdr));
         result.AddRange(block);
         result.AddRange(lines.GetRange(end, lines.Count - end));
         return string.Join("\n", result);
+    }
+
+    // `aspire publish` → compose does NOT create the logical databases an integration declares via
+    // AddDatabase — there's no AppHost orchestrator to run CREATE DATABASE like `run` mode does. A
+    // postgres/mysql companion therefore boots with only its default DB and the app crash-loops
+    // ("database <x> does not exist", e.g. n8n). Bridge the gap: when an app points at a companion DB
+    // by name, set POSTGRES_DB / MYSQL_DATABASE on that companion so the image creates it on first boot.
+    // Never overrides a service that already sets it (curated presets do), so presets are untouched.
+    public static string EnsureCompanionDatabases(string yaml)
+    {
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var dbByHost = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var b in ServiceBlocks(lines))
+        {
+            var text = string.Join("\n", lines.GetRange(b.Start, b.End - b.Start));
+            foreach (Match m in Regex.Matches(text, @"Host=(?<h>[A-Za-z0-9_.-]+)[^""\n]*?Database=(?<d>[A-Za-z0-9_]+)", RegexOptions.IgnoreCase))
+                Register(dbByHost, m.Groups["h"].Value, m.Groups["d"].Value);
+            foreach (Match m in Regex.Matches(text, @"Database=(?<d>[A-Za-z0-9_]+)[^""\n]*?Host=(?<h>[A-Za-z0-9_.-]+)", RegexOptions.IgnoreCase))
+                Register(dbByHost, m.Groups["h"].Value, m.Groups["d"].Value);
+            // Discrete env keys: pair a *HOST* value with a *DATABASE* / *_DB* value in the same service.
+            var host = Regex.Match(text, @"^\s*-?\s*""?[A-Z0-9_]*HOST[A-Z0-9_]*""?\s*[:=]\s*""?(?<v>[A-Za-z0-9_.-]+)""?\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            var db = Regex.Match(text, @"^\s*-?\s*""?[A-Z0-9_]*(DATABASE|_DB)""?\s*[:=]\s*""?(?<v>[A-Za-z0-9_]+)""?\s*$", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            if (host.Success && db.Success) Register(dbByHost, host.Groups["v"].Value, db.Groups["v"].Value);
+        }
+        if (dbByHost.Count == 0) return yaml;
+
+        foreach (var name in ServiceBlocks(lines).Where(b => dbByHost.ContainsKey(b.Name)).Select(b => b.Name).ToList())
+        {
+            var b = ServiceBlocks(lines).First(x => x.Name == name);   // re-find: earlier inserts shift indices
+            var text = string.Join("\n", lines.GetRange(b.Start, b.End - b.Start));
+            var image = Regex.Match(text, @"image:\s*""?(?<i>[^""\n]+)", RegexOptions.IgnoreCase).Groups["i"].Value.ToLowerInvariant();
+            var key = image.Contains("postgres") ? "POSTGRES_DB"
+                : image.Contains("mysql") || image.Contains("mariadb") ? "MYSQL_DATABASE" : null;
+            if (key is null || Regex.IsMatch(text, $@"\b{key}\b")) continue;   // not a DB image, or app already set it
+            InsertEnvPair(lines, b, key, dbByHost[name]);
+        }
+        return string.Join("\n", lines);
+    }
+
+    private static void Register(Dictionary<string, string> map, string host, string db)
+    {
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(db)) return;
+        if (db is "postgres" or "mysql" or "root") return;                    // default DBs already exist
+        if (!map.ContainsKey(host)) map[host] = db;
+    }
+
+    // Ordered service blocks under the top-level `services:` key: (name, first line, one-past-last line).
+    private static List<(string Name, int Start, int End)> ServiceBlocks(List<string> lines)
+    {
+        var res = new List<(string, int, int)>();
+        var svc = lines.FindIndex(l => Regex.IsMatch(l, @"^services:\s*$"));
+        if (svc < 0) return res;
+        for (var i = svc + 1; i < lines.Count; i++)
+        {
+            if (Regex.IsMatch(lines[i], @"^\S")) break;                       // next top-level section
+            var m = Regex.Match(lines[i], @"^  (?<n>[A-Za-z0-9_.-]+):\s*$");
+            if (!m.Success) continue;
+            var end = lines.Count;
+            for (var j = i + 1; j < lines.Count; j++)
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) { end = j; break; }
+            res.Add((m.Groups["n"].Value, i, end));
+        }
+        return res;
+    }
+
+    private static void InsertEnvPair(List<string> lines, (string Name, int Start, int End) b, string key, string val)
+    {
+        var envIdx = -1;
+        for (var i = b.Start + 1; i < b.End; i++) if (Regex.IsMatch(lines[i], @"^    environment:\s*$")) { envIdx = i; break; }
+        if (envIdx < 0) { lines.InsertRange(b.Start + 1, new[] { "    environment:", $"      {key}: \"{val}\"" }); return; }
+        var list = envIdx + 1 < b.End && Regex.IsMatch(lines[envIdx + 1], @"^      - ");   // list vs mapping style
+        lines.Insert(envIdx + 1, list ? $"      - \"{key}={val}\"" : $"      {key}: \"{val}\"");
     }
 
     public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost",
@@ -241,7 +320,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose");
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var raw = ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken);
+            var raw = EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken));
             // Allocate a distinct free host port per exposed container port so multiple apps that share a
             // container port (e.g. two :80 apps) don't collide on the host. Ports already claimed by other
             // deployments are off-limits.

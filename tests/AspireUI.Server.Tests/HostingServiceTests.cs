@@ -223,6 +223,68 @@ public class HostingServiceTests
     }
 
     [Fact]
+    public void ConfigureDashboard_secures_otlp_endpoint_when_hosted()
+    {
+        var outp = HostingService.ConfigureDashboard(DashShape, host: true, token: "s3cret");
+        Assert.Contains("Dashboard__Otlp__AuthMode=ApiKey", outp);      // OTLP no longer unauthenticated
+        Assert.Contains("Dashboard__Otlp__PrimaryApiKey=s3cret", outp);
+    }
+
+    // n8n-shaped compose: a postgres companion with no POSTGRES_DB + an app that expects DB "n8n".
+    private const string N8nShape = """
+        services:
+          n8n-pg:
+            image: "docker.io/library/postgres:18.3"
+            environment:
+              POSTGRES_USER: "postgres"
+              POSTGRES_PASSWORD: "pw"
+          n8n:
+            image: "n8nio/n8n:1.110.1"
+            environment:
+              DB_TYPE: "postgresdb"
+              DB_POSTGRESDB_HOST: "n8n-pg"
+              DB_POSTGRESDB_DATABASE: "n8n"
+        networks:
+          aspire:
+            driver: "bridge"
+        """;
+
+    [Fact]
+    public void EnsureCompanionDatabases_creates_expected_db_on_postgres_companion()
+    {
+        var outp = HostingService.EnsureCompanionDatabases(N8nShape);
+        Assert.Contains("POSTGRES_DB: \"n8n\"", outp);                  // companion now creates the DB
+        Assert.Contains("POSTGRES_USER: \"postgres\"", outp);          // existing env preserved
+    }
+
+    [Fact]
+    public void EnsureCompanionDatabases_does_not_override_existing_or_touch_non_db_services()
+    {
+        var alreadySet = N8nShape.Replace("POSTGRES_USER: \"postgres\"", "POSTGRES_DB: \"custom\"\n      POSTGRES_USER: \"postgres\"");
+        var outp = HostingService.EnsureCompanionDatabases(alreadySet);
+        Assert.Contains("POSTGRES_DB: \"custom\"", outp);              // app-set value kept
+        Assert.DoesNotContain("POSTGRES_DB: \"n8n\"", outp);           // not double-injected
+    }
+
+    [Fact]
+    public void EnsureCompanionDatabases_parses_connection_strings()
+    {
+        const string yaml = """
+            services:
+              db:
+                image: "postgres:16"
+                environment:
+                  POSTGRES_PASSWORD: "pw"
+              app:
+                image: "acme/app"
+                environment:
+                  ConnectionStrings__app: "Host=db;Port=5432;Database=appdb;Username=postgres;Password=pw"
+            """;
+        var outp = HostingService.EnsureCompanionDatabases(yaml);
+        Assert.Contains("POSTGRES_DB: \"appdb\"", outp);
+    }
+
+    [Fact]
     public void ExposedAppPorts_lists_non_dashboard_expose_ports()
     {
         var ports = HostingService.ExposedAppPorts(AspireShape);
