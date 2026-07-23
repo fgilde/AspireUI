@@ -1,0 +1,86 @@
+using System.Text.RegularExpressions;
+using AspireUI.Server.Models;
+
+namespace AspireUI.Server.Services;
+
+// Turns a stack into a tracked, persistent compose deployment (install & forget), separate from the
+// ephemeral dev Run path. Deploy = publish → post-process compose (restart policy) → up -d.
+public class HostingService(DeploymentStore store, PublishService publish, DeployService deploy)
+{
+    public static string Project(string stackId) => "aspireui-" + stackId[..Math.Min(8, stackId.Length)];
+
+    // Add `restart: unless-stopped` under each service (2-space service indent → 4-space property).
+    // Idempotent: skips a service that already has a restart line.
+    public static string AddRestartPolicy(string yaml)
+    {
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var outp = new List<string>();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            outp.Add(lines[i]);
+            var m = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");   // a service header: `  web:`
+            if (!m.Success) continue;
+            var hasRestart = false;
+            for (var j = i + 1; j < lines.Count; j++)
+            {
+                if (Regex.IsMatch(lines[j], @"^  \S")) break;      // next service / dedent
+                if (lines[j].Trim() == "restart: unless-stopped") { hasRestart = true; break; }
+            }
+            if (!hasRestart) outp.Add("    restart: unless-stopped");
+        }
+        return string.Join("\n", outp);
+    }
+
+    // Emit http://host:HOSTPORT for each published `- "HOST:CONTAINER"` mapping.
+    public static List<string> ParseUrls(string yaml, string host)
+    {
+        var urls = new List<string>();
+        foreach (Match m in Regex.Matches(yaml, @"-\s*""?(\d+):\d+""?"))
+            urls.Add($"http://{host}:{m.Groups[1].Value}");
+        return urls.Distinct().ToList();
+    }
+
+    public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost")
+    {
+        var project = Project(stack.Id);
+        var now = DateTime.UtcNow.ToString("O");
+        var existing = store.GetByStack(stack.Id);
+        var id = existing?.Id ?? "dep" + Guid.NewGuid().ToString("n")[..8];
+        store.Upsert(new Deployment(id, stack.Id, stack.Name, existing?.ComposeDir ?? "", project, "deploying",
+            existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null));
+        try
+        {
+            var pub = publish.Publish(stack, publishRoot, "compose");
+            if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
+            var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
+            var yaml = File.ReadAllText(path);
+            File.WriteAllText(path, AddRestartPolicy(yaml));
+            var urls = ParseUrls(yaml, host);
+            var up = deploy.UpProject(pub.OutputDir, project);
+            store.Upsert(store.Get(id)! with
+            {
+                ComposeDir = pub.OutputDir, Urls = urls,
+                State = up.Ok ? "running" : "failed", LastError = up.Ok ? null : up.Log,
+                UpdatedAt = DateTime.UtcNow.ToString("O"),
+            });
+        }
+        catch (Exception ex) { store.SetState(id, "failed", ex.Message); }
+        return store.Get(id)!;
+    }
+
+    public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); } }
+    public void Start(string id) { if (store.Get(id) is { } d) { deploy.StartProject(d.ComposeDir, d.Project); store.SetState(id, "running"); } }
+    public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); } }
+
+    // Best-effort reconcile from `docker compose ps` (exit!=0 or no running container → stopped).
+    public Deployment? Refresh(string id)
+    {
+        if (store.Get(id) is not { } d) return null;
+        if (d.State is "deploying" or "failed") return d;
+        var ps = deploy.Ps(d.ComposeDir, d.Project);
+        var running = ps.Ok && ps.Log.Contains("\"State\":\"running\"", StringComparison.OrdinalIgnoreCase);
+        var next = running ? "running" : "stopped";
+        if (next != d.State) store.SetState(id, next);
+        return store.Get(id);
+    }
+}
