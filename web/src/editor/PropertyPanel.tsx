@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon, Button, Stack as MStack, Badge } from "@mantine/core";
 import { IconTrash, IconCopy, IconBookmark } from "@tabler/icons-react";
-import type { Stack, ResourceType, OrphanDep } from "../model";
-import { removeNode, orphanableDeps, sanitizeIdentifier, collectSubgraph } from "../model";
+import type { Stack, ResourceType } from "../model";
+import { sanitizeIdentifier, collectSubgraph } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
-import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
+import { toastOk, toastErr, promptText } from "../ui";
 import * as api from "../api";
 import { PropertyGrid } from "./PropertyGrid";
-import { SmartDeleteModal } from "./Canvas";
+import { useResourceDelete } from "./useResourceDelete";
 import { PANEL_FLASH_STYLE } from "./DockLayout";
 
 export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, setStack, onDeleted }:
@@ -18,25 +18,10 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
 
   const node = stack.nodes.find(n => n.id === nodeId) ?? null;
   const rt = node ? catalog.find(r => r.addMethod === node.addMethod) : undefined;
-  const [del, setDel] = useState<{ node: NonNullable<typeof node>; deps: OrphanDep[] } | null>(null);
 
-  // Same smart-delete flow as the canvas: if the node has deps that would be orphaned, offer to remove
-  // them too; otherwise a plain confirm.
-  const onDelete = () => {
-    if (!nodeId || !node) return;
-    const deps = orphanableDeps(stack, nodeId);
-    if (deps.length > 0) { setDel({ node, deps }); return; }
-    confirmDelete(`"${node.resourceName}"`, "This also removes its connections and any code that references it.").then(ok => {
-      if (!ok) return;
-      api.saveStack(removeNode(stack, nodeId)).then(s => { setStack(s); onDeleted(); toastOk("Resource deleted"); }).catch(toastErr);
-    });
-  };
-  const applyDelete = (alsoRemove: string[]) => {
-    if (!nodeId) return;
-    let next = removeNode(stack, nodeId);
-    for (const d of alsoRemove) next = removeNode(next, d);
-    api.saveStack(next).then(s => { setStack(s); onDeleted(); setDel(null); toastOk("Deleted"); }).catch(toastErr);
-  };
+  // THE shared delete path — identical to the canvas + context menu (CCD).
+  const { deleteOne, deleteMany, dialog: deleteDialog } = useResourceDelete(stack, setStack, onDeleted);
+  const onDelete = () => { if (nodeId) deleteOne(nodeId); };
 
   const others = useMemo(() => stack.nodes.filter(n => n.id !== nodeId), [stack.nodes, nodeId]);
   const refEdges = useMemo(() => stack.edges.filter(e => e.fromNodeId === nodeId), [stack.edges, nodeId]);
@@ -72,14 +57,6 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
 
   // Batch actions on a multi-selection (2+ nodes) — surfaced here instead of a canvas overlay button.
   const multi = selectedIds.filter(id => stack.nodes.some(n => n.id === id));
-  const deleteMany = () => {
-    confirmDelete(`${multi.length} resources`, "This also removes their connections and any code that references them.")
-      .then(ok => {
-        if (!ok) return;
-        const next = multi.reduce((s, id) => removeNode(s, id), stack);
-        api.saveStack(next).then(s => { setStack(s); onDeleted(); toastOk(`Deleted ${multi.length}`); }).catch(toastErr);
-      });
-  };
   const duplicateMany = () => {
     const taken = new Set(stack.nodes.map(n => n.resourceName));
     const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
@@ -100,7 +77,7 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
           <Button variant="light" leftSection={<IconCopy size={15} />} onClick={duplicateMany}>Duplicate</Button>
           <Button variant="light" leftSection={<IconBookmark size={15} />}
             onClick={() => saveAsSnippet(multi, "my-snippet")}>Save as snippet</Button>
-          <Button color="red" variant="light" leftSection={<IconTrash size={15} />} onClick={deleteMany}>Delete</Button>
+          <Button color="red" variant="light" leftSection={<IconTrash size={15} />} onClick={() => deleteMany(multi)}>Delete</Button>
         </Group>
       </MStack>
     );
@@ -155,8 +132,7 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
           </Tabs.Panel>
         </ScrollArea>
       </Tabs>
-      {del && <SmartDeleteModal node={del.node} deps={del.deps}
-        onCancel={() => setDel(null)} onConfirm={applyDelete} />}
+      {deleteDialog}
     </div>
   );
 }
