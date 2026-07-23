@@ -3320,7 +3320,7 @@
     "image": "ghcr.io/getumbrel/hermes-agent-umbrel:v2026.7.20",
     "port": 18789,
     "icon": "hermes-agent",
-    "description": "Hermes Agent (Nous Research) — AI agent gateway with a dashboard. Standalone the app-proxy auth is OFF (HERMES_UMBREL_APP_PROXY_AUTH=0) so the dashboard is UNAUTHENTICATED — put it behind your own auth / a trusted network. Supply model API keys in-app.",
+    "description": "Hermes Agent (Nous Research) — AI agent gateway + dashboard. Runs standalone with the auth gate off (HERMES_UMBREL_APP_PROXY_AUTH=1) so the dashboard is UNAUTHENTICATED — only expose on a trusted LAN, not publicly. Supply model API keys in-app.",
     "env": [
       [
         "HERMES_DASHBOARD",
@@ -3332,7 +3332,7 @@
       ],
       [
         "HERMES_UMBREL_APP_PROXY_AUTH",
-        "0"
+        "1"
       ]
     ],
     "args": [
@@ -3558,7 +3558,7 @@
     "image": "ghcr.io/runtipi/runtipi:v4.10.1",
     "port": 80,
     "icon": "runtipi",
-    "description": "Runtipi — self-hosted homeserver / app manager. Ships Postgres + Redis + RabbitMQ companions and mounts the Docker socket to manage its apps. Set ROOT_FOLDER_HOST to the HOST path mapped to /data (matters on real Linux/Proxmox). EXPERIMENTAL: it is itself an orchestrator (its own Traefik on :80).",
+    "description": "Runtipi — self-hosted homeserver / app manager. Postgres + RabbitMQ companions; a local SQLite cache lives at /cache (own volume). Mounts the Docker socket to manage apps. Set ROOT_FOLDER_HOST to the HOST path mapped to /data on real Linux/Proxmox. EXPERIMENTAL orchestrator (own Traefik on :80).",
     "env": [
       [
         "NODE_ENV",
@@ -3594,11 +3594,7 @@
       ],
       [
         "POSTGRES_PASSWORD",
-        "tipi"
-      ],
-      [
-        "REDIS_HOST",
-        "${redis}"
+        "postgres"
       ],
       [
         "RABBITMQ_HOST",
@@ -3639,28 +3635,20 @@
             "tipi"
           ],
           [
-            "POSTGRES_PASSWORD",
+            "POSTGRES_DB",
             "tipi"
           ],
           [
-            "POSTGRES_DB",
-            "tipi"
+            "POSTGRES_PASSWORD",
+            "postgres"
           ]
         ]
-      },
-      {
-        "key": "redis",
-        "addMethod": "AddContainer",
-        "resourceName": "runtipi-redis",
-        "image": "redis:7",
-        "port": 6379,
-        "role": "redis"
       },
       {
         "key": "queue",
         "addMethod": "AddContainer",
         "resourceName": "runtipi-queue",
-        "image": "rabbitmq:3-alpine",
+        "image": "rabbitmq:4-alpine",
         "port": 5672,
         "role": "rabbitmq",
         "env": [
@@ -3685,6 +3673,14 @@
       [
         "data",
         "/data"
+      ],
+      [
+        "cache",
+        "/cache"
+      ],
+      [
+        "app-data",
+        "/app-data"
       ]
     ],
     "website": "https://runtipi.io"
