@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge } from "@mantine/core";
+import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge, LoadingOverlay } from "@mantine/core";
 import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket } from "@tabler/icons-react";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
@@ -244,7 +244,11 @@ export function Editor() {
               </Button>
             </Group>
           )}
-          <div style={{ flex: 1, minHeight: 0 }}><DockLayout ref={dockRef} /></div>
+          <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+            <LoadingOverlay visible={hostingBusy} zIndex={400} overlayProps={{ blur: 2 }}
+              loaderProps={{ children: <Text fw={600}>Deploying to hosting…</Text> }} />
+            <DockLayout ref={dockRef} />
+          </div>
         </AppShell.Main>
       </AppShell>
     </EditorContext.Provider>

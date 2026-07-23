@@ -79,8 +79,8 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
                   <Text size="10px" c="dimmed">{it.group}</Text>
                 </div>
                 {isAdmin && (
-                  <Tooltip label={hidden ? "Show in store" : "Hide from store"} withArrow>
-                    <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => toggleExclude(it.id)} aria-label="Toggle store visibility">
+                  <Tooltip label={hidden ? "Hidden from the store for all other users — click to show it again" : "Hide from the store — other users won't see or be able to install this (you still see it here, dimmed)"} withArrow multiline w={240}>
+                    <ActionIcon variant="subtle" color={hidden ? "orange" : "gray"} size="sm" onClick={() => toggleExclude(it.id)} aria-label="Toggle store visibility">
                       {hidden ? <IconEyeOff size={15} /> : <IconEye size={15} />}
                     </ActionIcon>
                   </Tooltip>

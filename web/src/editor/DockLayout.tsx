@@ -98,7 +98,16 @@ function LogsPanelTab() {
   return <LogsPanel runStatus={runStatus} />;
 }
 
-const components: Record<string, FunctionComponent<IDockviewPanelProps>> = {
+// Wrap a panel so it wears the orange border-glow whenever showPanel(id) flashes it. One place, so
+// EVERY panel activated via showPanel glows — no per-panel wiring.
+function flashWrap(id: string, Inner: FunctionComponent<IDockviewPanelProps>): FunctionComponent<IDockviewPanelProps> {
+  return function Flashable(props) {
+    const on = usePanelFlash(id);
+    return <div style={{ height: "100%", ...(on ? PANEL_FLASH_STYLE : { transition: "box-shadow .2s" }) }}><Inner {...props} /></div>;
+  };
+}
+
+const baseComponents: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   palette: PalettePanel,
   canvas: CanvasPanel,
   properties: PropertiesPanel,
@@ -111,6 +120,8 @@ const components: Record<string, FunctionComponent<IDockviewPanelProps>> = {
   dashboard: DashboardPanel,
   validation: ValidationPanel,
 };
+const components: Record<string, FunctionComponent<IDockviewPanelProps>> =
+  Object.fromEntries(Object.entries(baseComponents).map(([id, C]) => [id, flashWrap(id, C)]));
 
 // All panels the editor knows about, with their titles + where a reopened one should dock.
 // "side" panels flank the canvas; the rest join the bottom tab group.
