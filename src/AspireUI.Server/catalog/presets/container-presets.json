@@ -3556,9 +3556,9 @@
     "label": "Runtipi",
     "group": "Network",
     "image": "ghcr.io/runtipi/runtipi:v4.10.1",
-    "port": 80,
+    "port": 3000,
     "icon": "runtipi",
-    "description": "Runtipi — self-hosted homeserver / app manager. Postgres + RabbitMQ companions; a local SQLite cache lives at /cache (own volume). Mounts the Docker socket to manage apps. Set ROOT_FOLDER_HOST to the HOST path mapped to /data on real Linux/Proxmox. EXPERIMENTAL orchestrator (own Traefik on :80).",
+    "description": "Runtipi — self-hosted homeserver / app manager. Postgres + RabbitMQ companions; local SQLite cache at /cache. Backend/dashboard served on :3000 (we publish that directly, bypassing runtipi’s own Traefik). Mounts the Docker socket to manage apps (works on Linux; skipped on Docker Desktop, so app-management is Linux/Proxmox-only). EXPERIMENTAL orchestrator.",
     "env": [
       [
         "NODE_ENV",
