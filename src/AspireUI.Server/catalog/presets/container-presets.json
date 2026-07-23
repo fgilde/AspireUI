@@ -1264,7 +1264,12 @@
     "icon": "homebox",
     "description": "Homebox — simple home inventory & organization (SQLite). Needs an API-key pepper (>= 32 bytes) — seeded as a parameter; rotating it invalidates issued API keys.",
     "params": [
-      { "key": "api-key-pepper", "env": "HBOX_AUTH_API_KEY_PEPPER", "default": "aspireui-homebox-pepper-please-change-me-0123456789", "secret": true }
+      {
+        "key": "api-key-pepper",
+        "env": "HBOX_AUTH_API_KEY_PEPPER",
+        "default": "aspireui-homebox-pepper-please-change-me-0123456789",
+        "secret": true
+      }
     ],
     "volumes": [
       [
@@ -1312,7 +1317,12 @@
     "icon": "shiori",
     "description": "Shiori — simple bookmarks manager (Pocket-like). First-run login is shiori / gopher — change it after logging in (Shiori has no env for initial credentials). SHIORI_HTTP_SECRET_KEY seeded as a parameter so sessions survive restarts.",
     "params": [
-      { "key": "secret-key", "env": "SHIORI_HTTP_SECRET_KEY", "default": "aspireui-shiori-secret-change-me-0123456789", "secret": true }
+      {
+        "key": "secret-key",
+        "env": "SHIORI_HTTP_SECRET_KEY",
+        "default": "aspireui-shiori-secret-change-me-0123456789",
+        "secret": true
+      }
     ],
     "args": [
       "serve"
@@ -1997,5 +2007,1478 @@
       }
     ],
     "website": "https://planka.app"
+  },
+  {
+    "id": "plex",
+    "label": "Plex",
+    "group": "Media",
+    "image": "plexinc/pms-docker:latest",
+    "port": 32400,
+    "icon": "plex",
+    "description": "Plex Media Server — movies/TV/music (web UI at /web). Host networking for DLNA/GDM discovery. Optional PLEX_CLAIM token (from plex.tv/claim, ~4 min) links your account; else claim in the UI. GPU for transcoding.",
+    "params": [
+      {
+        "key": "claim",
+        "env": "PLEX_CLAIM",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "gpu": true,
+    "hostNetwork": true,
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "transcode",
+        "/transcode"
+      ]
+    ],
+    "website": "https://www.plex.tv"
+  },
+  {
+    "id": "emby",
+    "label": "Emby",
+    "group": "Media",
+    "image": "emby/embyserver:latest",
+    "port": 8096,
+    "icon": "emby",
+    "description": "Emby Media Server — movies/TV/music. Create the admin account via the first-run wizard. Mount your media; GPU for transcoding.",
+    "gpu": true,
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://emby.media"
+  },
+  {
+    "id": "lidarr",
+    "label": "Lidarr",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/lidarr:latest",
+    "port": 8686,
+    "icon": "lidarr",
+    "description": "Lidarr — music collection manager for the *arr stack (pairs with Prowlarr + a download client).",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://lidarr.audio"
+  },
+  {
+    "id": "mattermost",
+    "label": "Mattermost",
+    "group": "Tools",
+    "image": "mattermost/mattermost-team-edition:latest",
+    "port": 8065,
+    "icon": "mattermost",
+    "description": "Mattermost — self-hosted team chat (Slack alternative). Postgres companion. Create the admin account on first run.",
+    "env": [
+      [
+        "MM_SQLSETTINGS_DRIVERNAME",
+        "postgres"
+      ],
+      [
+        "MM_SQLSETTINGS_DATASOURCE",
+        "postgres://mmuser:mmuser@${db}:5432/mattermost?sslmode=disable&connect_timeout=10"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "mattermost-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "mattermost"
+          ],
+          [
+            "POSTGRES_USER",
+            "mmuser"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "mmuser"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "config",
+        "/mattermost/config"
+      ],
+      [
+        "data",
+        "/mattermost/data"
+      ]
+    ],
+    "website": "https://mattermost.com"
+  },
+  {
+    "id": "outline",
+    "label": "Outline",
+    "group": "Tools",
+    "image": "docker.getoutline.com/outlinewiki/outline:latest",
+    "port": 3000,
+    "icon": "outline",
+    "description": "Outline — team wiki/knowledge base. Postgres + Redis companions. GOTCHA: needs an auth provider (OIDC/Google/Slack env) to sign in — no built-in local login. Set URL to how you reach it.",
+    "env": [
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "DATABASE_URL",
+        "postgres://outline:outline@${db}:5432/outline"
+      ],
+      [
+        "PGSSLMODE",
+        "disable"
+      ],
+      [
+        "REDIS_URL",
+        "redis://${redis}:6379"
+      ],
+      [
+        "FORCE_HTTPS",
+        "false"
+      ]
+    ],
+    "params": [
+      {
+        "key": "url",
+        "env": "URL",
+        "default": "http://localhost:3000"
+      },
+      {
+        "key": "secret-key",
+        "env": "SECRET_KEY",
+        "default": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "secret": true
+      },
+      {
+        "key": "utils-secret",
+        "env": "UTILS_SECRET",
+        "default": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "outline-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "outline"
+          ],
+          [
+            "POSTGRES_USER",
+            "outline"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "outline"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "outline-redis",
+        "image": "redis:7",
+        "port": 6379,
+        "role": "redis"
+      }
+    ],
+    "website": "https://www.getoutline.com"
+  },
+  {
+    "id": "owncloud",
+    "label": "ownCloud",
+    "group": "Tools",
+    "image": "owncloud/server:latest",
+    "port": 8080,
+    "icon": "owncloud",
+    "description": "ownCloud Server — self-hosted files & sharing. MariaDB + Redis companions. Set OWNCLOUD_DOMAIN to how you reach it or links/uploads break. Login admin / please-change-me (params).",
+    "env": [
+      [
+        "OWNCLOUD_DB_TYPE",
+        "mysql"
+      ],
+      [
+        "OWNCLOUD_DB_NAME",
+        "owncloud"
+      ],
+      [
+        "OWNCLOUD_DB_USERNAME",
+        "owncloud"
+      ],
+      [
+        "OWNCLOUD_DB_PASSWORD",
+        "owncloud"
+      ],
+      [
+        "OWNCLOUD_DB_HOST",
+        "${db}"
+      ],
+      [
+        "OWNCLOUD_MYSQL_UTF8MB4",
+        "true"
+      ],
+      [
+        "OWNCLOUD_REDIS_ENABLED",
+        "true"
+      ],
+      [
+        "OWNCLOUD_REDIS_HOST",
+        "${redis}"
+      ]
+    ],
+    "params": [
+      {
+        "key": "domain",
+        "env": "OWNCLOUD_DOMAIN",
+        "default": "localhost:8080"
+      },
+      {
+        "key": "admin-user",
+        "env": "OWNCLOUD_ADMIN_USERNAME",
+        "default": "admin"
+      },
+      {
+        "key": "admin-password",
+        "env": "OWNCLOUD_ADMIN_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "owncloud-db",
+        "image": "mariadb:10.11",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "owncloud"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "owncloud"
+          ],
+          [
+            "MYSQL_USER",
+            "owncloud"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "owncloud"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "owncloud-redis",
+        "image": "redis:7",
+        "port": 6379,
+        "role": "redis"
+      }
+    ],
+    "volumes": [
+      [
+        "files",
+        "/mnt/data"
+      ]
+    ],
+    "website": "https://owncloud.com"
+  },
+  {
+    "id": "ghostfolio",
+    "label": "Ghostfolio",
+    "group": "Tools",
+    "image": "ghostfolio/ghostfolio:latest",
+    "port": 3333,
+    "icon": "ghostfolio",
+    "description": "Ghostfolio — open-source wealth/portfolio tracker. Postgres + Redis companions. Create your account in-app. ACCESS_TOKEN_SALT & JWT_SECRET_KEY seeded as params (change them).",
+    "env": [
+      [
+        "DATABASE_URL",
+        "postgresql://ghostfolio:ghostfolio@${db}:5432/ghostfolio?sslmode=prefer"
+      ],
+      [
+        "REDIS_HOST",
+        "${redis}"
+      ],
+      [
+        "REDIS_PORT",
+        "6379"
+      ],
+      [
+        "NODE_ENV",
+        "production"
+      ]
+    ],
+    "params": [
+      {
+        "key": "access-token-salt",
+        "env": "ACCESS_TOKEN_SALT",
+        "default": "aspireui-ghostfolio-salt-change-me",
+        "secret": true
+      },
+      {
+        "key": "jwt-secret",
+        "env": "JWT_SECRET_KEY",
+        "default": "aspireui-ghostfolio-jwt-change-me",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "ghostfolio-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "ghostfolio"
+          ],
+          [
+            "POSTGRES_USER",
+            "ghostfolio"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "ghostfolio"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "ghostfolio-redis",
+        "image": "redis:7",
+        "port": 6379,
+        "role": "redis"
+      }
+    ],
+    "website": "https://ghostfol.io"
+  },
+  {
+    "id": "librephotos",
+    "label": "LibrePhotos",
+    "group": "Media",
+    "image": "reallibrephotos/librephotos-unified:latest",
+    "port": 8001,
+    "icon": "librephotos",
+    "description": "LibrePhotos — self-hosted photo management with AI tagging & face recognition (unified build, SQLite). Heavy first-run indexing, ~4GB RAM. Admin from params (admin / please-change-me).",
+    "env": [
+      [
+        "SERVE_FRONTEND",
+        "true"
+      ],
+      [
+        "DB_BACKEND",
+        "sqlite"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-email",
+        "env": "ADMIN_EMAIL",
+        "default": "admin@example.com"
+      },
+      {
+        "key": "admin-user",
+        "env": "ADMIN_USERNAME",
+        "default": "admin"
+      },
+      {
+        "key": "admin-password",
+        "env": "ADMIN_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      },
+      {
+        "key": "secret-key",
+        "env": "SECRET_KEY",
+        "default": "aspireui-librephotos-secret-change-me-0123456789",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ],
+      [
+        "protected-media",
+        "/protected_media"
+      ],
+      [
+        "logs",
+        "/logs"
+      ]
+    ],
+    "website": "https://www.librephotos.com"
+  },
+  {
+    "id": "docuseal",
+    "label": "DocuSeal",
+    "group": "Tools",
+    "image": "docuseal/docuseal:latest",
+    "port": 3000,
+    "icon": "docuseal",
+    "description": "DocuSeal — open-source document signing (DocuSign alternative). SQLite by default (set DATABASE_URL for Postgres/MySQL). Create the admin account on first visit.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://www.docuseal.com"
+  },
+  {
+    "id": "penpot",
+    "label": "Penpot",
+    "group": "Tools",
+    "image": "penpotapp/frontend:latest",
+    "port": 8080,
+    "icon": "penpot",
+    "description": "Penpot — open-source design & prototyping (Figma alternative). Frontend + backend + exporter + Postgres + Redis. Register the first account in-app. Set PENPOT_PUBLIC_URI to how you reach it.",
+    "env": [
+      [
+        "PENPOT_FLAGS",
+        "enable-registration enable-login-with-password disable-email-verification disable-secure-session-cookies"
+      ],
+      [
+        "PENPOT_BACKEND_URI",
+        "http://${backend}:6060"
+      ],
+      [
+        "PENPOT_EXPORTER_URI",
+        "http://${exporter}:6061"
+      ]
+    ],
+    "params": [
+      {
+        "key": "public-uri",
+        "env": "PENPOT_PUBLIC_URI",
+        "default": "http://localhost:8080"
+      }
+    ],
+    "companions": [
+      {
+        "key": "backend",
+        "addMethod": "AddContainer",
+        "resourceName": "penpot-backend",
+        "image": "penpotapp/backend:latest",
+        "port": 6060,
+        "env": [
+          [
+            "PENPOT_FLAGS",
+            "enable-registration enable-login-with-password disable-email-verification disable-secure-session-cookies"
+          ],
+          [
+            "PENPOT_PUBLIC_URI",
+            "http://localhost:8080"
+          ],
+          [
+            "PENPOT_DATABASE_URI",
+            "postgresql://${db}:5432/penpot"
+          ],
+          [
+            "PENPOT_DATABASE_USERNAME",
+            "penpot"
+          ],
+          [
+            "PENPOT_DATABASE_PASSWORD",
+            "penpot"
+          ],
+          [
+            "PENPOT_REDIS_URI",
+            "redis://${redis}:6379/0"
+          ],
+          [
+            "PENPOT_SECRET_KEY",
+            "aspireui-penpot-secret-change-me-0123456789"
+          ],
+          [
+            "PENPOT_OBJECTS_STORAGE_BACKEND",
+            "fs"
+          ]
+        ]
+      },
+      {
+        "key": "exporter",
+        "addMethod": "AddContainer",
+        "resourceName": "penpot-exporter",
+        "image": "penpotapp/exporter:latest",
+        "port": 6061,
+        "env": [
+          [
+            "PENPOT_PUBLIC_URI",
+            "http://localhost:8080"
+          ],
+          [
+            "PENPOT_REDIS_URI",
+            "redis://${redis}:6379/0"
+          ],
+          [
+            "PENPOT_SECRET_KEY",
+            "aspireui-penpot-secret-change-me-0123456789"
+          ]
+        ]
+      },
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "penpot-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "penpot"
+          ],
+          [
+            "POSTGRES_USER",
+            "penpot"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "penpot"
+          ]
+        ]
+      },
+      {
+        "key": "redis",
+        "addMethod": "AddContainer",
+        "resourceName": "penpot-redis",
+        "image": "redis:7",
+        "port": 6379,
+        "role": "redis"
+      }
+    ],
+    "volumes": [
+      [
+        "assets",
+        "/opt/data/assets"
+      ]
+    ],
+    "website": "https://penpot.app"
+  },
+  {
+    "id": "homarr",
+    "label": "Homarr",
+    "group": "Tools",
+    "image": "ghcr.io/homarr-labs/homarr:latest",
+    "port": 7575,
+    "icon": "homarr",
+    "description": "Homarr — modern, customizable dashboard for your services. Requires SECRET_ENCRYPTION_KEY (64 hex) or it exits — seeded as a parameter (rotating it invalidates stored integration secrets).",
+    "params": [
+      {
+        "key": "encryption-key",
+        "env": "SECRET_ENCRYPTION_KEY",
+        "default": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "appdata",
+        "/appdata"
+      ]
+    ],
+    "website": "https://homarr.dev"
+  },
+  {
+    "id": "homebridge",
+    "label": "Homebridge",
+    "group": "Smart Home",
+    "image": "homebridge/homebridge:latest",
+    "port": 8581,
+    "icon": "homebridge",
+    "description": "Homebridge — bridge non-HomeKit devices into Apple HomeKit; config UI on :8581 (create admin on first visit). Host networking for HomeKit discovery (won't work under Docker Desktop).",
+    "hostNetwork": true,
+    "volumes": [
+      [
+        "homebridge",
+        "/homebridge"
+      ]
+    ],
+    "website": "https://homebridge.io"
+  },
+  {
+    "id": "octoprint",
+    "label": "OctoPrint",
+    "group": "Smart Home",
+    "image": "octoprint/octoprint:latest",
+    "port": 80,
+    "icon": "octoprint",
+    "description": "OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device.",
+    "volumes": [
+      [
+        "octoprint",
+        "/octoprint"
+      ]
+    ],
+    "website": "https://octoprint.org"
+  },
+  {
+    "id": "esphome",
+    "label": "ESPHome",
+    "group": "Smart Home",
+    "image": "ghcr.io/esphome/esphome:latest",
+    "port": 6052,
+    "icon": "esphome",
+    "description": "ESPHome — build & flash firmware for ESP32/ESP8266 from a web dashboard. Host networking helps mDNS/OTA; USB flashing needs the device passed in.",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://esphome.io"
+  },
+  {
+    "id": "frigate",
+    "label": "Frigate NVR",
+    "group": "Smart Home",
+    "image": "ghcr.io/blakeblackshear/frigate:stable",
+    "port": 8971,
+    "icon": "frigate",
+    "description": "Frigate — NVR with realtime object detection. Ships a minimal config.yml (no cameras, auth/tls off) so it starts; add cameras + a detector (Coral/GPU). Raise /dev/shm for multiple cameras.",
+    "bindMounts": [
+      [
+        "frigate/config.yml",
+        "/config/config.yml"
+      ]
+    ],
+    "volumes": [
+      [
+        "media",
+        "/media/frigate"
+      ]
+    ],
+    "files": [
+      {
+        "name": "frigate/config.yml",
+        "content": "mqtt:\n  enabled: false\nauth:\n  enabled: false\ntls:\n  enabled: false\n"
+      }
+    ],
+    "website": "https://frigate.video"
+  },
+  {
+    "id": "metube",
+    "label": "MeTube",
+    "group": "Media",
+    "image": "ghcr.io/alexta69/metube:latest",
+    "port": 8081,
+    "icon": "metube",
+    "description": "MeTube — self-hosted web UI for yt-dlp; download video/audio from YouTube and hundreds of sites.",
+    "volumes": [
+      [
+        "downloads",
+        "/downloads"
+      ]
+    ],
+    "website": "https://github.com/alexta69/metube"
+  },
+  {
+    "id": "influxdb",
+    "label": "InfluxDB v2",
+    "group": "Observability Apps",
+    "image": "influxdb:2",
+    "port": 8086,
+    "icon": "influxdb",
+    "description": "InfluxDB 2 — time-series DB + UI. Auto first-time setup (org aspireui, bucket default); admin user/password + admin API token seeded as params (password >= 8 chars).",
+    "env": [
+      [
+        "DOCKER_INFLUXDB_INIT_MODE",
+        "setup"
+      ],
+      [
+        "DOCKER_INFLUXDB_INIT_ORG",
+        "aspireui"
+      ],
+      [
+        "DOCKER_INFLUXDB_INIT_BUCKET",
+        "default"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-user",
+        "env": "DOCKER_INFLUXDB_INIT_USERNAME",
+        "default": "admin"
+      },
+      {
+        "key": "admin-password",
+        "env": "DOCKER_INFLUXDB_INIT_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      },
+      {
+        "key": "admin-token",
+        "env": "DOCKER_INFLUXDB_INIT_ADMIN_TOKEN",
+        "default": "aspireui-influxdb-admin-token-please-change-me",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/var/lib/influxdb2"
+      ]
+    ],
+    "website": "https://www.influxdata.com"
+  },
+  {
+    "id": "minio",
+    "label": "MinIO",
+    "group": "Tools",
+    "image": "minio/minio:RELEASE.2025-04-22T22-12-26Z",
+    "port": 9001,
+    "icon": "minio",
+    "description": "MinIO — S3-compatible object storage; console on :9001 (S3 API :9000). Pinned to the last release with a full browser console. Root user/password seeded as params (>= 8 chars).",
+    "args": [
+      "server",
+      "/data",
+      "--console-address",
+      ":9001"
+    ],
+    "params": [
+      {
+        "key": "root-user",
+        "env": "MINIO_ROOT_USER",
+        "default": "minioadmin"
+      },
+      {
+        "key": "root-password",
+        "env": "MINIO_ROOT_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://min.io"
+  },
+  {
+    "id": "mosquitto",
+    "label": "Eclipse Mosquitto",
+    "group": "Smart Home",
+    "image": "eclipse-mosquitto:2",
+    "port": 1883,
+    "icon": "mosquitto",
+    "description": "Eclipse Mosquitto — MQTT broker on :1883. Ships a mosquitto.conf (listener 1883, allow_anonymous true — DEV only). Lock down anonymous access before real use.",
+    "bindMounts": [
+      [
+        "mosquitto/mosquitto.conf",
+        "/mosquitto/config/mosquitto.conf"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/mosquitto/data"
+      ]
+    ],
+    "files": [
+      {
+        "name": "mosquitto/mosquitto.conf",
+        "content": "listener 1883\nallow_anonymous true\npersistence true\npersistence_location /mosquitto/data/\n"
+      }
+    ],
+    "website": "https://mosquitto.org"
+  },
+  {
+    "id": "etherpad",
+    "label": "Etherpad",
+    "group": "Tools",
+    "image": "etherpad/etherpad:latest",
+    "port": 9001,
+    "icon": "etherpad",
+    "description": "Etherpad — real-time collaborative document editor (built-in dirtyDB; add a DB for scale). Admin UI (/admin) login admin + the seeded ADMIN_PASSWORD.",
+    "params": [
+      {
+        "key": "admin-password",
+        "env": "ADMIN_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      }
+    ],
+    "website": "https://etherpad.org"
+  },
+  {
+    "id": "jupyterlab",
+    "label": "JupyterLab",
+    "group": "Tools",
+    "image": "quay.io/jupyter/base-notebook:latest",
+    "port": 8888,
+    "icon": "jupyter",
+    "description": "JupyterLab — notebooks for data science / Python. Access needs the token (?token=...), seeded as a parameter. Use scipy/datascience image variants for more libs.",
+    "params": [
+      {
+        "key": "token",
+        "env": "JUPYTER_TOKEN",
+        "default": "aspireui-jupyter-token-change-me",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "work",
+        "/home/jovyan/work"
+      ]
+    ],
+    "website": "https://jupyter.org"
+  },
+  {
+    "id": "archivebox",
+    "label": "ArchiveBox",
+    "group": "Tools",
+    "image": "archivebox/archivebox:latest",
+    "port": 8000,
+    "icon": "archivebox",
+    "description": "ArchiveBox — self-hosted web archive/bookmarking (HTML, PDF, screenshots). Create an admin login with 'archivebox manage createsuperuser' in the container.",
+    "args": [
+      "server",
+      "--quick-init",
+      "0.0.0.0:8000"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://archivebox.io"
+  },
+  {
+    "id": "autobrr",
+    "label": "autobrr",
+    "group": "Media",
+    "image": "ghcr.io/autobrr/autobrr:latest",
+    "port": 7474,
+    "icon": "autobrr",
+    "description": "autobrr — real-time download automation from IRC announce + RSS into the *arr apps / download clients. Create the account on first visit.",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://autobrr.com"
+  },
+  {
+    "id": "baikal",
+    "label": "Baikal",
+    "group": "Tools",
+    "image": "ckulka/baikal:nginx",
+    "port": 80,
+    "icon": "baikal",
+    "description": "Baikal — lightweight CalDAV + CardDAV server (calendars & contacts). Finish setup (admin + SQLite/MySQL) via the web installer on first visit.",
+    "volumes": [
+      [
+        "config",
+        "/var/www/baikal/config"
+      ],
+      [
+        "specific",
+        "/var/www/baikal/Specific"
+      ]
+    ],
+    "website": "https://sabre.io/baikal/"
+  },
+  {
+    "id": "flatnotes",
+    "label": "flatnotes",
+    "group": "Tools",
+    "image": "dullage/flatnotes:latest",
+    "port": 8080,
+    "icon": "flatnotes",
+    "description": "flatnotes — database-less markdown notes over a flat folder. Username/password + session secret seeded as params.",
+    "env": [
+      [
+        "FLATNOTES_AUTH_TYPE",
+        "password"
+      ]
+    ],
+    "params": [
+      {
+        "key": "username",
+        "env": "FLATNOTES_USERNAME",
+        "default": "admin"
+      },
+      {
+        "key": "password",
+        "env": "FLATNOTES_PASSWORD",
+        "default": "please-change-me",
+        "secret": true
+      },
+      {
+        "key": "secret-key",
+        "env": "FLATNOTES_SECRET_KEY",
+        "default": "aspireui-flatnotes-secret-change-me-0123456789",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/dullage/flatnotes"
+  },
+  {
+    "id": "linkstack",
+    "label": "LinkStack",
+    "group": "Tools",
+    "image": "linkstackorg/linkstack:latest",
+    "port": 80,
+    "icon": "linkstack",
+    "description": "LinkStack — self-hosted 'link in bio' page. Complete admin + setup via the web wizard on first run.",
+    "volumes": [
+      [
+        "htdocs",
+        "/htdocs"
+      ]
+    ],
+    "website": "https://linkstack.org"
+  },
+  {
+    "id": "kiwix-serve",
+    "label": "Kiwix Serve",
+    "group": "Tools",
+    "image": "ghcr.io/kiwix/kiwix-serve:latest",
+    "port": 8080,
+    "icon": "kiwix",
+    "description": "Kiwix Serve — read offline ZIM archives (Wikipedia, StackExchange…) in the browser. Runs 'kiwix-serve *.zim' over /data — drop at least one .zim (from library.kiwix.org) or it exits.",
+    "args": [
+      "*.zim"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://kiwix.org"
+  },
+  {
+    "id": "myspeed",
+    "label": "MySpeed",
+    "group": "Observability Apps",
+    "image": "germannewsmaker/myspeed:latest",
+    "port": 5216,
+    "icon": "myspeed",
+    "description": "MySpeed — scheduled internet speed-test monitoring with history/graphs. Set an access password in the UI after first launch.",
+    "volumes": [
+      [
+        "data",
+        "/myspeed/data"
+      ]
+    ],
+    "website": "https://myspeed.dev"
+  },
+  {
+    "id": "cosmos-server",
+    "label": "Cosmos Server",
+    "group": "Network",
+    "image": "azukaar/cosmos-server:latest",
+    "port": 80,
+    "icon": "cosmos",
+    "description": "Cosmos — self-hosted reverse proxy + app manager with auth/anti-DDOS (:80 / :443). Bind-mounts the Docker socket; complete the setup wizard on first visit. Meant to sit at the network edge.",
+    "bindMounts": [
+      [
+        "/var/run/docker.sock",
+        "/var/run/docker.sock"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "website": "https://cosmos-cloud.io"
+  },
+  {
+    "id": "electrs",
+    "label": "electrs",
+    "group": "Bitcoin",
+    "image": "getumbrel/electrs:v0.11.0",
+    "port": 50001,
+    "icon": "electrs",
+    "description": "Rust Electrum server (romanz/electrs). Needs a local Bitcoin Core node with txindex — reads the blocks dir + points at its RPC.",
+    "env": [
+      [
+        "ELECTRS_ELECTRUM_RPC_ADDR",
+        "0.0.0.0:50001"
+      ]
+    ],
+    "params": [
+      {
+        "key": "daemon-rpc",
+        "env": "ELECTRS_DAEMON_RPC_ADDR",
+        "default": "bitcoind:8332"
+      },
+      {
+        "key": "daemon-p2p",
+        "env": "ELECTRS_DAEMON_P2P_ADDR",
+        "default": "bitcoind:8333"
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/romanz/electrs"
+  },
+  {
+    "id": "fulcrum",
+    "label": "Fulcrum",
+    "group": "Bitcoin",
+    "image": "cculianu/fulcrum:latest",
+    "port": 50001,
+    "icon": "fulcrum",
+    "description": "Fulcrum — fast SPV/Electrum server for BTC/BCH/LTC. Requires an external Bitcoin Core node with RPC + txindex; configure via a mounted fulcrum.conf. SSL on 50002.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/cculianu/Fulcrum"
+  },
+  {
+    "id": "electrumx",
+    "label": "ElectrumX",
+    "group": "Bitcoin",
+    "image": "lukechilds/electrumx:latest",
+    "port": 50001,
+    "icon": "electrumx",
+    "description": "ElectrumX server (env-configurable). Requires an external Bitcoin Core node with txindex; set DAEMON_URL to its RPC.",
+    "env": [
+      [
+        "COIN",
+        "Bitcoin"
+      ],
+      [
+        "NET",
+        "mainnet"
+      ],
+      [
+        "SERVICES",
+        "tcp://0.0.0.0:50001"
+      ]
+    ],
+    "params": [
+      {
+        "key": "daemon-url",
+        "env": "DAEMON_URL",
+        "default": "http://user:pass@bitcoind:8332"
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://github.com/lukechilds/docker-electrumx"
+  },
+  {
+    "id": "btc-rpc-explorer",
+    "label": "BTC RPC Explorer",
+    "group": "Bitcoin",
+    "image": "getumbrel/btc-rpc-explorer:v3.5.1",
+    "port": 3002,
+    "icon": "btc-rpc-explorer",
+    "description": "Self-hosted Bitcoin block explorer (janoside). Needs a Bitcoin Core RPC; an Electrum server (electrs/Fulcrum) is optional for address balances.",
+    "env": [
+      [
+        "BTCEXP_HOST",
+        "0.0.0.0"
+      ],
+      [
+        "BTCEXP_PORT",
+        "3002"
+      ],
+      [
+        "BTCEXP_BITCOIND_PORT",
+        "8332"
+      ]
+    ],
+    "params": [
+      {
+        "key": "bitcoind-host",
+        "env": "BTCEXP_BITCOIND_HOST",
+        "default": "bitcoind"
+      },
+      {
+        "key": "bitcoind-user",
+        "env": "BTCEXP_BITCOIND_USER",
+        "default": "bitcoin"
+      },
+      {
+        "key": "bitcoind-pass",
+        "env": "BTCEXP_BITCOIND_PASS",
+        "default": "changeme",
+        "secret": true
+      }
+    ],
+    "website": "https://github.com/janoside/btc-rpc-explorer"
+  },
+  {
+    "id": "mempool",
+    "label": "mempool",
+    "group": "Bitcoin",
+    "image": "mempool/frontend:latest",
+    "port": 8080,
+    "icon": "mempool",
+    "description": "mempool.space self-hosted explorer/visualizer. Frontend + backend + MariaDB. Point the backend at an external Bitcoin Core (CORE_RPC_*) and Electrum server (ELECTRUM_HOST).",
+    "env": [
+      [
+        "FRONTEND_HTTP_PORT",
+        "8080"
+      ],
+      [
+        "BACKEND_MAINNET_HTTP_HOST",
+        "${backend}"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "backend",
+        "addMethod": "AddContainer",
+        "resourceName": "mempool-backend",
+        "image": "mempool/backend:latest",
+        "port": 8999,
+        "role": "backend",
+        "env": [
+          [
+            "MEMPOOL_BACKEND",
+            "electrum"
+          ],
+          [
+            "ELECTRUM_HOST",
+            "electrs"
+          ],
+          [
+            "ELECTRUM_PORT",
+            "50001"
+          ],
+          [
+            "CORE_RPC_HOST",
+            "bitcoind"
+          ],
+          [
+            "CORE_RPC_PORT",
+            "8332"
+          ],
+          [
+            "CORE_RPC_USERNAME",
+            "bitcoin"
+          ],
+          [
+            "CORE_RPC_PASSWORD",
+            "changeme"
+          ],
+          [
+            "DATABASE_ENABLED",
+            "true"
+          ],
+          [
+            "DATABASE_HOST",
+            "${db}"
+          ],
+          [
+            "DATABASE_DATABASE",
+            "mempool"
+          ],
+          [
+            "DATABASE_USERNAME",
+            "mempool"
+          ],
+          [
+            "DATABASE_PASSWORD",
+            "mempool"
+          ]
+        ]
+      },
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "mempool-db",
+        "image": "mariadb:10.11",
+        "port": 3306,
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_DATABASE",
+            "mempool"
+          ],
+          [
+            "MYSQL_USER",
+            "mempool"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "mempool"
+          ],
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "admin"
+          ]
+        ]
+      }
+    ],
+    "website": "https://github.com/mempool/mempool"
+  },
+  {
+    "id": "lnbits",
+    "label": "LNbits",
+    "group": "Lightning",
+    "image": "lnbits/lnbits:latest",
+    "port": 5000,
+    "icon": "lnbits",
+    "description": "LNbits — Lightning wallet/accounts system with extensions. Starts on a VoidWallet (demo); switch LNBITS_BACKEND_WALLET_CLASS to LND/CLN and add its env to go live.",
+    "env": [
+      [
+        "LNBITS_DATA_FOLDER",
+        "/app/data"
+      ],
+      [
+        "LNBITS_BACKEND_WALLET_CLASS",
+        "VoidWallet"
+      ],
+      [
+        "HOST",
+        "0.0.0.0"
+      ],
+      [
+        "PORT",
+        "5000"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://lnbits.com"
+  },
+  {
+    "id": "core-lightning",
+    "label": "Core Lightning",
+    "group": "Lightning",
+    "image": "elementsproject/lightningd:latest",
+    "port": 9735,
+    "icon": "core-lightning",
+    "description": "Core Lightning (CLN) node daemon. Requires a Bitcoin Core backend — set --bitcoin-rpc* flags or mount a config; no UI of its own.",
+    "params": [
+      {
+        "key": "network",
+        "env": "LIGHTNINGD_NETWORK",
+        "default": "bitcoin"
+      }
+    ],
+    "volumes": [
+      [
+        "lightning",
+        "/root/.lightning"
+      ]
+    ],
+    "website": "https://github.com/ElementsProject/lightning"
+  },
+  {
+    "id": "rtl",
+    "label": "Ride The Lightning",
+    "group": "Lightning",
+    "image": "shahanafarooqui/rtl:latest",
+    "port": 3000,
+    "icon": "rtl",
+    "description": "RTL — web UI for LND / Core Lightning / Eclair nodes. Needs an existing LN node: mount its macaroon + point RTLConfig at the node.",
+    "env": [
+      [
+        "RTL_CONFIG_PATH",
+        "/RTLConfig"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/RTLConfig"
+      ],
+      [
+        "db",
+        "/RTL/database"
+      ]
+    ],
+    "website": "https://github.com/Ride-The-Lightning/RTL"
+  },
+  {
+    "id": "bitcoin-knots",
+    "label": "Bitcoin Knots",
+    "group": "Bitcoin",
+    "image": "bitcoinknots/bitcoin:latest",
+    "port": 8332,
+    "icon": "bitcoin-knots",
+    "description": "Bitcoin Knots full node (drop-in for Bitcoin Core). Runs standalone and starts IBD; RPC on 8332, P2P on 8333.",
+    "params": [
+      {
+        "key": "rpc-user",
+        "env": "BITCOIN_RPCUSER",
+        "default": "bitcoin"
+      },
+      {
+        "key": "rpc-pass",
+        "env": "BITCOIN_RPCPASSWORD",
+        "default": "changeme",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data/.bitcoin"
+      ]
+    ],
+    "website": "https://bitcoinknots.org"
+  },
+  {
+    "id": "bitcoin-cash-node",
+    "label": "Bitcoin Cash Node",
+    "group": "Bitcoin",
+    "image": "zquestz/bitcoin-cash-node:latest",
+    "port": 8332,
+    "icon": "bitcoin-cash-node",
+    "description": "Bitcoin Cash (BCHN) full node. Runs standalone as a daemon and starts IBD; RPC on 8332, P2P on 8333.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://bitcoincashnode.org"
+  },
+  {
+    "id": "leafwiki",
+    "label": "LeafWiki",
+    "group": "Tools",
+    "image": "ghcr.io/perber/leafwiki:latest",
+    "port": 8080,
+    "icon": "leafwiki",
+    "description": "LeafWiki — lightweight self-hosted wiki (single Go binary + SQLite, Markdown on disk). Set ALLOW_INSECURE=true for plain HTTP.",
+    "env": [
+      [
+        "LEAFWIKI_ALLOW_INSECURE",
+        "true"
+      ]
+    ],
+    "params": [
+      {
+        "key": "jwt-secret",
+        "env": "LEAFWIKI_JWT_SECRET",
+        "default": "aspireui-leafwiki-secret-change-me",
+        "secret": true
+      },
+      {
+        "key": "admin-password",
+        "env": "LEAFWIKI_ADMIN_PASSWORD",
+        "default": "changeme",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://leafwiki.com"
+  },
+  {
+    "id": "transmute",
+    "label": "Transmute",
+    "group": "Tools",
+    "image": "ghcr.io/transmute-app/transmute:latest",
+    "port": 3313,
+    "icon": "transmute",
+    "description": "Transmute — self-hosted file converter/compressor (images, video, audio, docs). Runs entirely locally.",
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://transmute.sh"
+  },
+  {
+    "id": "foldergram",
+    "label": "Foldergram",
+    "group": "Media",
+    "image": "ghcr.io/foldergram/foldergram:latest",
+    "port": 4141,
+    "icon": "foldergram",
+    "description": "Foldergram — self-hosted folder-based photo/video gallery. Point volumes at your media.",
+    "env": [
+      [
+        "IMAGE_DETAIL_SOURCE",
+        "preview"
+      ],
+      [
+        "DERIVATIVE_MODE",
+        "eager"
+      ]
+    ],
+    "volumes": [
+      [
+        "gallery",
+        "/app/data/gallery"
+      ],
+      [
+        "db",
+        "/app/data/db"
+      ],
+      [
+        "thumbnails",
+        "/app/data/thumbnails"
+      ],
+      [
+        "previews",
+        "/app/data/previews"
+      ]
+    ],
+    "website": "https://github.com/foldergram/foldergram"
   }
 ]
