@@ -31,7 +31,6 @@ public static class StackEndpoints
         var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
         var deploy = new DeployService();
-        var hosting = new HostingService(deployments, publish, deploy);
 
         // A stack is locked for editing while its hosting deployment is deploying/running.
         bool Locked(string stackId) => deployments.GetByStack(stackId) is { State: "running" or "deploying" };
@@ -45,6 +44,8 @@ public static class StackEndpoints
             ?? new RoutingChatClient(new HttpChatClient(new HttpClient()), new CliChatClient());
         var assist = new AssistService(chatClient, catalog);
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
+        var proxy = new ProxyService(deploy, Path.Combine(wsRoot, "_proxy"), Environment.GetEnvironmentVariable("HOSTING_BASE_DOMAIN") ?? "localhost");
+        var hosting = new HostingService(deployments, publish, deploy, proxy);
 
         // All app endpoints below require an authenticated session (cookie auth wired in
         // Program.cs). Anonymous endpoints (/auth/*, /env/health, SPA static files) are mapped

@@ -32,6 +32,8 @@ public class DeployService
     public DeployResult DownProject(string dir, string project) => Run(dir, $"compose -p {project} down");
     public DeployResult Ps(string dir, string project) => Run(dir, $"compose -p {project} ps --format json");
     public DeployResult Logs(string dir, string project, int tail = 200) => Run(dir, $"compose -p {project} logs --tail {tail}");
+    // Escape hatch for the proxy: run an arbitrary `docker <args>` in a workdir (e.g. exec caddy reload).
+    public DeployResult Docker(string dir, string args) => Run(dir, args);
 
     private DeployResult Run(string workdir, string args)
     {

@@ -5,9 +5,33 @@ namespace AspireUI.Server.Services;
 
 // Turns a stack into a tracked, persistent compose deployment (install & forget), separate from the
 // ephemeral dev Run path. Deploy = publish → post-process compose (restart policy) → up -d.
-public class HostingService(DeploymentStore store, PublishService publish, DeployService deploy)
+public class HostingService(DeploymentStore store, PublishService publish, DeployService deploy, ProxyService? proxy = null)
 {
     public static string Project(string stackId) => "aspireui-" + stackId[..Math.Min(8, stackId.Length)];
+
+    // First EXPLICIT host port in the urls (ignores proxy-style urls like http://app.localhost which
+    // carry no ":port"), so proxy routing picks the real published port.
+    private static int? FirstPort(IEnumerable<string> urls)
+    {
+        foreach (var u in urls)
+        {
+            var m = Regex.Match(u, @"://[^/:]+:(\d+)");
+            if (m.Success) return int.Parse(m.Groups[1].Value);
+        }
+        return null;
+    }
+
+    // Rebuild the reverse-proxy config from every running deployment that publishes a port.
+    private void SyncProxy()
+    {
+        if (proxy is null) return;
+        var routes = store.List()
+            .Where(d => d.State == "running")
+            .Select(d => (Slug: ProxyService.Slug(d.Name), Port: FirstPort(d.Urls)))
+            .Where(r => r.Port is > 0)
+            .Select(r => (r.Slug, r.Port!.Value));
+        proxy.Reload(routes);
+    }
 
     // Add `restart: unless-stopped` under each service (2-space service indent → 4-space property).
     // Idempotent: skips a service that already has a restart line.
@@ -56,6 +80,8 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var yaml = File.ReadAllText(path);
             File.WriteAllText(path, AddRestartPolicy(yaml));
             var urls = ParseUrls(yaml, host);
+            // Prepend the friendly proxy URL (…/<slug>.<domain>) when a proxy is configured + app has a port.
+            if (proxy is not null && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
             var up = deploy.UpProject(pub.OutputDir, project);
             store.Upsert(store.Get(id)! with
             {
@@ -63,14 +89,15 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
                 State = up.Ok ? "running" : "failed", LastError = up.Ok ? null : up.Log,
                 UpdatedAt = DateTime.UtcNow.ToString("O"),
             });
+            if (up.Ok) SyncProxy();
         }
         catch (Exception ex) { store.SetState(id, "failed", ex.Message); }
         return store.Get(id)!;
     }
 
-    public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); } }
-    public void Start(string id) { if (store.Get(id) is { } d) { deploy.StartProject(d.ComposeDir, d.Project); store.SetState(id, "running"); } }
-    public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); } }
+    public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); SyncProxy(); } }
+    public void Start(string id) { if (store.Get(id) is { } d) { deploy.StartProject(d.ComposeDir, d.Project); store.SetState(id, "running"); SyncProxy(); } }
+    public void Undeploy(string id) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project); store.Delete(id); SyncProxy(); } }
 
     // Best-effort reconcile from `docker compose ps` (exit!=0 or no running container → stopped).
     public Deployment? Refresh(string id)
