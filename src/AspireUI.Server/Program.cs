@@ -37,12 +37,22 @@ var app = builder.Build();
 Seeder.Run();
 
 app.UseDefaultFiles();
-app.UseStaticFiles();       // serves built SPA from wwwroot (Task 10 copies it here)
+// Serve the built SPA. Content-hashed assets (index-<hash>.js) may cache forever, but index.html must
+// NOT be cached — otherwise the browser keeps loading the OLD hashed bundle after a redeploy and never
+// picks up new code. So: long cache for /assets, no-cache for index.html.
+Action<Microsoft.AspNetCore.StaticFiles.StaticFileResponseContext> cacheHeaders = ctx =>
+{
+    if (ctx.File.Name.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+        ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+    else if (ctx.Context.Request.Path.StartsWithSegments("/assets"))
+        ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+};
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = cacheHeaders });
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();     // /auth/*, /env/health — anonymous
 app.MapStackEndpoints();    // app endpoints — require auth (gated inside)
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });
 
 app.Run();
 
