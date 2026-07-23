@@ -58,6 +58,31 @@ public class SettingsStore
             values.GetValueOrDefault("AiCliTool"));
     }
 
+    // Generic key/value access for settings outside the fixed AppSettings shape (e.g. the app-store
+    // exclusion list), so saving AI settings never clobbers them.
+    public string? GetValue(string key)
+    {
+        string? val = null;
+        UsingConnection(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT value FROM settings WHERE key=$k";
+            cmd.Parameters.AddWithValue("$k", key);
+            var r = cmd.ExecuteScalar();
+            val = r is DBNull or null ? null : (string)r;
+        });
+        return val;
+    }
+
+    public void SetValue(string key, string? value) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "INSERT INTO settings (key,value) VALUES ($k,$v) ON CONFLICT(key) DO UPDATE SET value=$v";
+        cmd.Parameters.AddWithValue("$k", key);
+        cmd.Parameters.AddWithValue("$v", (object?)value ?? DBNull.Value);
+        cmd.ExecuteNonQuery();
+    });
+
     public void Save(AppSettings s) => UsingConnection(conn =>
     {
         void Upsert(string key, string? value)

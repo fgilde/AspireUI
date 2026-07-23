@@ -137,6 +137,9 @@ export const getAiCliTools = (): Promise<string[]> => fetch(`${base}/settings/ai
 export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; error?: string | null }> =>
   fetch(`${base}/settings/ai-models`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
 
+export const getStoreExclusions = (): Promise<string[]> => fetch(`${base}/store/exclusions`).then(ok);
+export const setStoreExclusions = (ids: string[]): Promise<void> =>
+  fetch(`${base}/store/exclusions`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).then(okVoid);
 export const getSnippets = (): Promise<import("./model").Snippet[]> => fetch(`${base}/snippets`).then(ok);
 export const saveSnippet = (s: import("./model").Snippet): Promise<{ id: string }> =>
   fetch(`${base}/snippets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);

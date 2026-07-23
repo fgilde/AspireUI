@@ -172,6 +172,15 @@ public static class StackEndpoints
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
+
+        // App-store exclusions: item ids (preset:<id> / snippet:<id>) an admin has hidden from the store.
+        app2.MapGet("/store/exclusions", () => Results.Ok(
+            (settings.GetValue("StoreExclusions") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)));
+        app2.MapPut("/store/exclusions", (StoreExclusionsRequest body) =>
+        {
+            settings.SetValue("StoreExclusions", string.Join(",", (body.Ids ?? new()).Distinct()));
+            return Results.NoContent();
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
         // Built-in demo templates + the user's own saved templates (prefixed "user:" so ids never clash).
         app2.MapGet("/templates", () => templates.List()
             .Concat(userTemplates.List().Select(t => new TemplateInfo("user:" + t.Id, t.Name, t.Description)))
@@ -664,5 +673,6 @@ public static class StackEndpoints
     public record AutoPresetRequest(string Url);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env);
+    public record StoreExclusionsRequest(List<string>? Ids);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }
