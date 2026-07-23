@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { StacksOverview } from "./pages/StacksOverview";
-import { SimpleHome } from "./pages/SimpleHome";
 import { Editor } from "./pages/Editor";
 import { Settings } from "./pages/Settings";
 import { Users } from "./pages/Users";
@@ -26,7 +25,7 @@ function Home() {
     window.addEventListener("aspireui:mode-changed", h);
     return () => window.removeEventListener("aspireui:mode-changed", h);
   }, []);
-  return mode === "simple" ? <SimpleHome /> : <StacksOverview />;
+  return <StacksOverview simple={mode === "simple"} />;
 }
 
 // Global helpers active once authenticated (need the router + a session).

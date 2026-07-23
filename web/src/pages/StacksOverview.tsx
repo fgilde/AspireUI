@@ -9,7 +9,7 @@ import {
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload,
 } from "@tabler/icons-react";
 import { pickAppHost, APP_VERSION, BUILD_INFO, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
@@ -20,6 +20,7 @@ import type { TemplateInfo, BundleFile } from "../api";
 import { UserMenu } from "../auth/UserMenu";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, hostingColor } from "../hosting/HostingActions";
+import { InstallAppModal } from "../hosting/InstallAppModal";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
@@ -38,15 +39,20 @@ async function walkDirectory(dir: any, prefix = ""): Promise<BundleFile[]> {
   return files;
 }
 
-export function StacksOverview() {
+export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const nav = useNavigate();
   const { status } = useAuth();
   const canEdit = canOpenEditor(status?.user);
-  useTitle("Stacks");
+  useTitle(simple ? "Apps" : "Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [deps, setDeps] = useState<Record<string, Deployment>>({});
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
   const [logsFor, setLogsFor] = useState<Deployment | null>(null);
+  const [installOpen, setInstallOpen] = useState(false);
+  // In simple/appliance mode the overview IS the app list: only hosted stacks, click = manage, and the
+  // header offers "Install app" instead of New/Import.
+  const openStack = (s: Stack) => nav(simple ? "/hosting" : `/editor/${s.id}`);
+  const hostedCount = stacks.filter(s => deps[s.id]).length;
   const loadDeps = () => api.listHosting().then(list => setDeps(Object.fromEntries(list.map(d => [d.stackId, d])))).catch(() => {});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -173,6 +179,8 @@ export function StacksOverview() {
               <img src={logo} alt="AspireUI" height={60} style={{ display: "block" }} />
             </Group>
             <Group gap="sm">
+              {simple && <Button leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install app</Button>}
+              {!simple && <>
               <Button.Group>
                 <Tooltip label="Create a new empty stack" withArrow>
                   <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
@@ -242,6 +250,7 @@ export function StacksOverview() {
               <input ref={zipInputRef} type="file" accept=".zip" hidden onChange={onZipPicked} />
               <input ref={folderInputRef} type="file" multiple hidden onChange={onFolderFallbackPicked} />
               <input ref={composeInputRef} type="file" accept=".yml,.yaml" hidden onChange={onComposePicked} />
+              </>}
 
               <UserMenu />
             </Group>
@@ -253,8 +262,8 @@ export function StacksOverview() {
         <Container size="xl">
           <Group justify="space-between" mb="lg">
             <div>
-              <Title order={2} fw={600}>Stacks</Title>
-              <Text c="dimmed" size="sm">Your Aspire hosting projects, ready to open or run.</Text>
+              <Title order={2} fw={600}>{simple ? "My apps" : "Stacks"}</Title>
+              <Text c="dimmed" size="sm">{simple ? "Your installed apps — click to manage." : "Your Aspire hosting projects, ready to open or run."}</Text>
             </div>
             {stacks.length > 0 && (
               <Group gap="xs">
@@ -274,38 +283,49 @@ export function StacksOverview() {
             <Center py={80}>
               <Loader color="indigo" />
             </Center>
-          ) : stacks.length === 0 ? (
+          ) : (simple ? hostedCount === 0 : stacks.length === 0) ? (
             <Center py={80}>
               <MStack align="center" gap="xs">
                 <ThemeIcon variant="light" size={48} radius="xl" color="gray">
                   <IconLayoutGrid size={24} />
                 </ThemeIcon>
-                <Text fw={500}>No stacks yet</Text>
-                <Text c="dimmed" size="sm" ta="center" maw={320}>
-                  Create your first stack to start composing Aspire resources visually.
-                </Text>
-                <Button mt="sm" leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
-                  New Stack
-                </Button>
-                {templates.length > 0 && (
+                {simple ? (
                   <>
-                    <Text c="dimmed" size="xs" mt="lg">…or start from a template</Text>
-                    <Group justify="center" gap="xs" maw={460} mt={4}>
-                      {templates.map(t => (
-                        <Tooltip key={t.id} label={t.description} withArrow multiline w={260}>
-                          <Button size="xs" variant="light" leftSection={<IconSparkles size={13} />}
-                            onClick={() => createDemo(t.id)}>{t.name}</Button>
-                        </Tooltip>
-                      ))}
-                    </Group>
+                    <Text fw={500}>No apps yet</Text>
+                    <Text c="dimmed" size="sm" ta="center" maw={320}>Install an app from the store to get started.</Text>
+                    <Button mt="sm" leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Browse app store</Button>
+                  </>
+                ) : (
+                  <>
+                    <Text fw={500}>No stacks yet</Text>
+                    <Text c="dimmed" size="sm" ta="center" maw={320}>
+                      Create your first stack to start composing Aspire resources visually.
+                    </Text>
+                    <Button mt="sm" leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
+                      New Stack
+                    </Button>
+                    {templates.length > 0 && (
+                      <>
+                        <Text c="dimmed" size="xs" mt="lg">…or start from a template</Text>
+                        <Group justify="center" gap="xs" maw={460} mt={4}>
+                          {templates.map(t => (
+                            <Tooltip key={t.id} label={t.description} withArrow multiline w={260}>
+                              <Button size="xs" variant="light" leftSection={<IconSparkles size={13} />}
+                                onClick={() => createDemo(t.id)}>{t.name}</Button>
+                            </Tooltip>
+                          ))}
+                        </Group>
+                      </>
+                    )}
+                    <Text c="dimmed" size="xs" mt="md">Tip: press <b>Ctrl/⌘ + K</b> anywhere for the command palette, or <b>?</b> for shortcuts.</Text>
                   </>
                 )}
-                <Text c="dimmed" size="xs" mt="md">Tip: press <b>Ctrl/⌘ + K</b> anywhere for the command palette, or <b>?</b> for shortcuts.</Text>
               </MStack>
             </Center>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
               {stacks.filter(s => {
+                if (simple && !deps[s.id]) return false;   // appliance view shows only installed (hosted) apps
                 if (!s.name.toLowerCase().includes(query.trim().toLowerCase())) return false;
                 if (creatorFilter && s.createdBy !== creatorFilter) return false;
                 if (statusFilter) {
@@ -333,7 +353,7 @@ export function StacksOverview() {
                   padding="lg"
                   className="stack-card"
                   style={{ cursor: "pointer", borderColor: dep ? dot : undefined, borderWidth: dep ? 2 : undefined }}
-                  onClick={() => nav(`/editor/${s.id}`)}
+                  onClick={() => openStack(s)}
                 >
                   <Group justify="space-between" wrap="nowrap" align="flex-start">
                     <Group gap={8} wrap="nowrap" style={{ minWidth: 0 }}>
@@ -477,6 +497,7 @@ export function StacksOverview() {
 
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={loadDeps} />}
       {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
+      {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => { load(); loadDeps(); }} />}
     </AppShell>
   );
 }
