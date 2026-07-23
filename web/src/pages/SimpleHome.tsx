@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppShell, Container, Group, Title, Text, SimpleGrid, Card, Button, Badge, TextInput, Anchor, Loader } from "@mantine/core";
-import { IconSearch, IconExternalLink, IconDownload } from "@tabler/icons-react";
+import { AppShell, Container, Group, Title, Text, SimpleGrid, Card, Button, Badge, TextInput, Anchor, Loader, Modal, Stack, Center, ThemeIcon } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import { IconSearch, IconExternalLink, IconDownload, IconApps, IconPlus } from "@tabler/icons-react";
 import type { ContainerPreset, Deployment } from "../model";
 import { buildPresetNodes } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
@@ -11,8 +12,8 @@ import { UserMenu } from "../auth/UserMenu";
 import { useTitle } from "../useTitle";
 import { toastOk, toastErr } from "../ui";
 
-// Appliance / "app-store" home: browse curated apps, one-click install (= create a stack from the
-// preset + deploy it to hosting), and see what's already running.
+// Appliance / "app-store" home: the main view is what's already running; the store lives behind an
+// "Install app" button (a modal), so day-to-day the page is just your apps.
 export function SimpleHome() {
   const nav = useNavigate();
   useTitle("Apps");
@@ -20,6 +21,7 @@ export function SimpleHome() {
   const [hosted, setHosted] = useState<Deployment[]>([]);
   const [q, setQ] = useState("");
   const [installing, setInstalling] = useState<string | null>(null);
+  const [storeOpen, store] = useDisclosure(false);
 
   const loadHosted = () => api.listHosting().then(setHosted).catch(() => {});
   useEffect(() => { api.getPresets().then(setPresets).catch(() => {}); loadHosted(); const t = setInterval(loadHosted, 4000); return () => clearInterval(t); }, []);
@@ -34,6 +36,7 @@ export function SimpleHome() {
       });
       await api.hostingDeploy(stack.id);
       toastOk(`Installing ${p.label}…`);
+      store.close();
       loadHosted();
     } catch (e) { toastErr(e, "Install failed"); }
     finally { setInstalling(null); }
@@ -49,7 +52,7 @@ export function SimpleHome() {
           <Group h="100%" justify="space-between">
             <img src={logo} alt="AspireUI" height={40} />
             <Group>
-              <Button variant="light" onClick={() => nav("/hosting")}>My apps</Button>
+              <Button leftSection={<IconPlus size={16} />} onClick={store.open}>Install app</Button>
               <UserMenu />
             </Group>
           </Group>
@@ -57,52 +60,58 @@ export function SimpleHome() {
       </AppShell.Header>
       <AppShell.Main>
         <Container size="xl">
-          {hosted.length > 0 && (
-            <>
-              <Title order={5} mb="xs">Running</Title>
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} mb="xl">
-                {hosted.map(d => (
-                  <Card key={d.id} withBorder padding="sm" radius="md">
-                    <Group justify="space-between">
-                      <Text fw={600} size="sm" truncate>{d.name}</Text>
-                      <Badge size="xs" variant="light" color={d.state === "running" ? "green" : d.state === "failed" ? "red" : "gray"}>{d.state}</Badge>
-                    </Group>
-                    <Group gap={6} mt={6}>
-                      {d.urls[0] && <Anchor href={d.urls[0]} target="_blank" size="xs">Open <IconExternalLink size={11} /></Anchor>}
-                      <Anchor size="xs" onClick={() => nav("/hosting")}>Manage</Anchor>
-                    </Group>
-                  </Card>
-                ))}
-              </SimpleGrid>
-            </>
-          )}
-
-          <Group justify="space-between" mb="xs">
-            <Title order={5}>App store</Title>
-            <TextInput w={240} size="xs" placeholder="Search apps…" value={q} onChange={e => setQ(e.currentTarget.value)} leftSection={<IconSearch size={13} />} />
-          </Group>
-          {presets.length === 0 ? <Loader size="sm" /> : (
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }}>
-              {shown.map(p => (
-                <Card key={p.id} withBorder padding="md" radius="md">
-                  <Group gap={10} wrap="nowrap" align="flex-start">
-                    <div style={{ width: 34, height: 34, borderRadius: 8, display: "grid", placeItems: "center", background: "var(--mantine-color-default)" }}>
-                      <ResourceGlyph addMethod={p.icon || ""} size={20} />
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text fw={600} size="sm" truncate>{p.label}</Text>
-                      <Text size="10px" c="dimmed">{p.group}</Text>
-                    </div>
+          <Title order={4} mb="md">My apps</Title>
+          {hosted.length === 0 ? (
+            <Center mih={320}>
+              <Stack align="center" gap="sm">
+                <ThemeIcon size={64} radius="xl" variant="light"><IconApps size={34} /></ThemeIcon>
+                <Text c="dimmed">No apps yet.</Text>
+                <Button leftSection={<IconDownload size={16} />} onClick={store.open}>Browse app store</Button>
+              </Stack>
+            </Center>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
+              {hosted.map(d => (
+                <Card key={d.id} withBorder padding="md" radius="md">
+                  <Group justify="space-between">
+                    <Text fw={600} truncate>{d.name}</Text>
+                    <Badge size="xs" variant="light" color={d.state === "running" ? "green" : d.state === "failed" ? "red" : "gray"}>{d.state}</Badge>
                   </Group>
-                  {p.description && <Text size="xs" c="dimmed" mt={8} lineClamp={2}>{p.description}</Text>}
-                  <Button fullWidth mt="sm" size="xs" leftSection={<IconDownload size={14} />}
-                    loading={installing === p.id} onClick={() => install(p)}>Install</Button>
+                  <Group gap={10} mt="sm">
+                    {d.urls[0] && <Anchor href={d.urls[0]} target="_blank" size="sm">Open <IconExternalLink size={12} /></Anchor>}
+                    <Anchor size="sm" onClick={() => nav("/hosting")}>Manage</Anchor>
+                  </Group>
                 </Card>
               ))}
             </SimpleGrid>
           )}
         </Container>
       </AppShell.Main>
+
+      <Modal opened={storeOpen} onClose={store.close} size="xl" title={<Title order={5}>App store</Title>}>
+        <TextInput mb="md" placeholder="Search apps…" value={q} onChange={e => setQ(e.currentTarget.value)} leftSection={<IconSearch size={14} />} autoFocus />
+        {presets.length === 0 ? <Loader size="sm" /> : (
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
+            {shown.map(p => (
+              <Card key={p.id} withBorder padding="md" radius="md">
+                <Group gap={10} wrap="nowrap" align="flex-start">
+                  <div style={{ width: 34, height: 34, borderRadius: 8, display: "grid", placeItems: "center", background: "var(--mantine-color-default)" }}>
+                    <ResourceGlyph addMethod={p.icon || ""} size={20} />
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Text fw={600} size="sm" truncate>{p.label}</Text>
+                    <Text size="10px" c="dimmed">{p.group}</Text>
+                  </div>
+                </Group>
+                {p.description && <Text size="xs" c="dimmed" mt={8} lineClamp={2}>{p.description}</Text>}
+                <Button fullWidth mt="sm" size="xs" leftSection={<IconDownload size={14} />}
+                  loading={installing === p.id} onClick={() => install(p)}>Install</Button>
+              </Card>
+            ))}
+            {shown.length === 0 && <Text c="dimmed" size="sm">No apps match “{q}”.</Text>}
+          </SimpleGrid>
+        )}
+      </Modal>
     </AppShell>
   );
 }
