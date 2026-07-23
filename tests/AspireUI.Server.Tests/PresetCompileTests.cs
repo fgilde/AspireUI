@@ -17,6 +17,8 @@ public class PresetCompileTests
                 new WithCall("WithHttpEndpoint", ["targetPort: 2283"]),
                 new WithCall("WithEnvironment", ["\"DB_HOSTNAME\"", "\"immich-db\""]),   // companion resource name, quoted
                 new WithCall("WithEnvironment", ["\"REDIS_HOSTNAME\"", "\"immich-redis\""]),
+                // urlPath: proves the WithUrlForEndpoint call buildPresetNodes emits actually compiles.
+                new WithCall("WithUrlForEndpoint", ["\"http\"", "url => url.Url = \"/web\""]),
             ], 60, 60, ["\"ghcr.io/immich-app/immich-server:release\""]);
         var db = new NodeModel("n2", "immichdb", "AddContainer", "immich-db",
             [new WithCall("WithEnvironment", ["\"POSTGRES_PASSWORD\"", "\"immich\""])], 380, 40,
@@ -32,6 +34,7 @@ public class PresetCompileTests
         Assert.Contains("builder.AddContainer(\"immich\", \"ghcr.io/immich-app/immich-server:release\")", code);
         Assert.Contains("immich.WithEnvironment(\"DB_HOSTNAME\", \"immich-db\")", code);
         Assert.Contains("immich.WaitFor(", code);
+        Assert.Contains(".WithUrlForEndpoint(\"http\", url => url.Url = \"/web\")", code);
         Assert.DoesNotContain(".WithReference(", code); // plain containers must not be WithReference'd
 
         var dir = Path.Combine(Path.GetTempPath(), "aspireui-preset-" + Guid.NewGuid());

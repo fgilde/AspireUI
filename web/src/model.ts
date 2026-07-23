@@ -176,12 +176,15 @@ export function buildPresetNodes(
   const runtimeArgsCalls = preset.runtimeArgs?.length ? [{ method: "WithContainerRuntimeArgs", args: preset.runtimeArgs.map(a => JSON.stringify(a)) }] : [];
   // Container command args (e.g. ntfy needs the `serve` subcommand or it just prints help and exits).
   const argsCalls = preset.args?.length ? [{ method: "WithArgs", args: preset.args.map(a => JSON.stringify(a)) }] : [];
+  // Web-UI path (e.g. Plex "/web", Pi-hole "/admin"): tell Aspire the endpoint's URL so the dashboard +
+  // live graph link to the UI, not the API root. `url.Url = "/path"` is resolved relative to the endpoint.
+  const urlCalls = preset.urlPath ? [{ method: "WithUrlForEndpoint", args: ['"http"', `url => url.Url = ${JSON.stringify(preset.urlPath)}`] }] : [];
   const main: Node = {
     id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
     // fixedPort pins the published host port to the container port (port: == targetPort:) — needed for
     // apps whose WebUI rejects a mismatched host port (qBittorrent's CSRF/host-header check → "Unauthorized").
-    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...gpuCalls, ...runtimeArgsCalls, ...argsCalls, ...volumeCalls, ...bindCalls, ...expandEnv(preset.env), ...paramEnvCalls],
+    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...urlCalls, ...gpuCalls, ...runtimeArgsCalls, ...argsCalls, ...volumeCalls, ...bindCalls, ...expandEnv(preset.env), ...paramEnvCalls],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];

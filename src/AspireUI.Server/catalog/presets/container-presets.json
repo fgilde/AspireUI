@@ -690,7 +690,8 @@
       }
     ],
     "hostNetwork": true,
-    "website": "https://pi-hole.net"
+    "website": "https://pi-hole.net",
+    "urlPath": "/admin"
   },
   {
     "id": "adguard",
