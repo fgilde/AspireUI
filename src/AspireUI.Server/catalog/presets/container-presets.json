@@ -2706,7 +2706,7 @@
     "image": "eclipse-mosquitto:2",
     "port": 1883,
     "icon": "mosquitto",
-    "description": "Eclipse Mosquitto — MQTT broker on :1883. Ships a mosquitto.conf (listener 1883, allow_anonymous true — DEV only). Lock down anonymous access before real use.",
+    "description": "Eclipse Mosquitto — MQTT broker on :1883. NO web UI (it is a message broker, not a website) — point an MQTT client / Home Assistant / ESPHome at host:1883. Ships a mosquitto.conf (allow_anonymous true — DEV only; lock it down before real use). The HTTP probe on :1883 logs a harmless \"protocol error\".",
     "bindMounts": [
       [
         "mosquitto/mosquitto.conf",
