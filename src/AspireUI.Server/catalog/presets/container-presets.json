@@ -2020,7 +2020,7 @@
     "image": "plexinc/pms-docker:latest",
     "port": 32400,
     "icon": "plex",
-    "description": "Plex Media Server — movies/TV/music (web UI at /web). Host networking for DLNA/GDM discovery. Optional PLEX_CLAIM token (from plex.tv/claim, ~4 min) links your account; else claim in the UI. GPU for transcoding.",
+    "description": "Plex Media Server — movies/TV/music. Open the UI at http://<host>:32400/web (the bare URL returns \"Bad Request\"). Published on fixed port 32400. Optional PLEX_CLAIM (from plex.tv/claim, ~4 min) links your account. ALLOWED_NETWORKS lets your LAN in; GPU for transcoding.",
     "params": [
       {
         "key": "claim",
@@ -2030,7 +2030,6 @@
       }
     ],
     "gpu": true,
-    "hostNetwork": true,
     "volumes": [
       [
         "config",
@@ -2041,7 +2040,14 @@
         "/transcode"
       ]
     ],
-    "website": "https://www.plex.tv"
+    "website": "https://www.plex.tv",
+    "fixedPort": true,
+    "env": [
+      [
+        "ALLOWED_NETWORKS",
+        "192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
+      ]
+    ]
   },
   {
     "id": "emby",
