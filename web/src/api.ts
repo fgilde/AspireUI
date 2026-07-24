@@ -138,10 +138,10 @@ export const getAiCliTools = (): Promise<string[]> => fetch(`${base}/settings/ai
 export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; error?: string | null }> =>
   fetch(`${base}/settings/ai-models`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
 
-export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string }> =>
+export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
-export const setDashboardSettings = (hostDashboard: boolean, dashboardToken: string): Promise<void> =>
-  fetch(`${base}/hosting/dashboard-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostDashboard, dashboardToken }) }).then(okVoid);
+export const setDashboardSettings = (hostDashboard: boolean, dashboardToken: string, publicHost?: string): Promise<void> =>
+  fetch(`${base}/hosting/dashboard-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostDashboard, dashboardToken, publicHost }) }).then(okVoid);
 export const getStoreExclusions = (): Promise<string[]> => fetch(`${base}/store/exclusions`).then(ok);
 export const setStoreExclusions = (ids: string[]): Promise<void> =>
   fetch(`${base}/store/exclusions`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).then(okVoid);

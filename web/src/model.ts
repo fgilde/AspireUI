@@ -41,7 +41,7 @@ export interface BackupInfo { stamp: string; createdAt: string; volumes: BackupV
 export interface ApiToken { id: string; userId: string; name: string; prefix: string; createdAt: string; lastUsed?: string | null }
 export interface DockerImage { id: string; repository: string; tag: string; size: string; created: string }
 export interface DockerVolume { name: string; driver: string; protected: boolean }
-export interface DockerContainer { id: string; name: string; image: string; state: string; status: string; protected: boolean }
+export interface DockerContainer { id: string; name: string; image: string; state: string; status: string; ports: string; protected: boolean }
 export interface NpmSettings { enabled: boolean; baseUrl: string; email: string; forwardHost: string; hasPassword: boolean; detectedHost?: string | null }
 export interface NpmProxyHost { id: number; domainNames: string[]; forwardScheme: string; forwardHost: string; forwardPort: number; websockets: boolean }
 export interface DomainInfo {

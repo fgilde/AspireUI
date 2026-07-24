@@ -15,4 +15,11 @@ public static partial class HostUrls
         string.IsNullOrWhiteSpace(host) || string.IsNullOrEmpty(url) ? url : Loopback().Replace(url, $"://{host}");
 
     public static bool IsIpLiteral(string host) => Regex.IsMatch(host, @"^\d{1,3}(\.\d{1,3}){3}$");
+
+    // Force the host of a URL to `host`, but ONLY when a :port follows (so a port-based direct link like
+    // http://172.17.0.2:20000 becomes http://<host>:20000, while a port-less proxy URL like
+    // https://app.example.com is left alone). Preserves the port + path.
+    public static string ForceHost(string url, string? host) =>
+        string.IsNullOrWhiteSpace(host) || string.IsNullOrEmpty(url)
+            ? url : Regex.Replace(url, @"^(\w+://)[^/:]+(?=:\d)", $"$1{host}");
 }

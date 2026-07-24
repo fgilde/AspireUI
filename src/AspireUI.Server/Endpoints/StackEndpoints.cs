@@ -419,15 +419,14 @@ public static class StackEndpoints
             return Results.Ok(new { ok = false, error = $"Could not launch {r.Ide}. Make sure it's installed and on PATH, and that AspireUI runs on your machine." });
         });
 
-        // The address to show in run/resource links instead of loopback: a PublicHost setting wins, else
-        // the request IP if you browsed by IP, else the server's LAN IP (never localhost — AspireUI may
-        // run on another machine). Central so a future setting/UI has one place to hook in.
+        // The address to show in run/resource/hosting links instead of loopback. A "PublicHost" setting
+        // wins (set it to the box's LAN IP when you reach AspireUI via a domain); otherwise the host the
+        // request came in on — so localhost stays localhost locally, and an IP stays that IP. NOT
+        // auto-detected: inside a container the "LAN IP" is the useless docker-bridge IP (172.17.x).
         string PublicHost(HttpContext ctx)
         {
             var cfg = settings.GetValue("PublicHost");
-            if (!string.IsNullOrWhiteSpace(cfg)) return cfg!;
-            var h = ctx.Request.Host.Host;
-            return HostUrls.IsIpLiteral(h) ? h : (NpmService.LocalIPv4() ?? h);
+            return !string.IsNullOrWhiteSpace(cfg) ? cfg! : ctx.Request.Host.Host;
         }
         RunStatus WithHost(RunStatus s, HttpContext ctx) =>
             s.DashboardUrl is null ? s : s with { DashboardUrl = HostUrls.Rewrite(s.DashboardUrl, PublicHost(ctx)) };
@@ -679,14 +678,17 @@ public static class StackEndpoints
         {
             hostDashboard = (settings.GetValue("HostDashboard") ?? "true") == "true",
             dashboardToken = settings.GetValue("DashboardToken") ?? "",
-            // The host the UI should use for direct port links (proxies only forward :443/:8080, not
-            // arbitrary app ports) — a PublicHost setting, else the request IP, else the LAN IP.
+            // Resolved host for direct port links (setting else request host); the raw setting for the
+            // field; the request host as a placeholder hint.
             publicHost = PublicHost(ctx),
+            publicHostSetting = settings.GetValue("PublicHost") ?? "",
+            requestHost = ctx.Request.Host.Host,
         }));
         app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
         {
             settings.SetValue("HostDashboard", b.HostDashboard ? "true" : "false");
             settings.SetValue("DashboardToken", b.DashboardToken ?? "");
+            settings.SetValue("PublicHost", b.PublicHost?.Trim() ?? "");
             return Results.NoContent();
         }).RequireAuthorization(p => p.RequireRole("Admin"));
 
@@ -723,13 +725,9 @@ public static class StackEndpoints
             var c = NpmCfg();
             if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
             var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-            var reqHost = ctx.Request.Host.Host;
-            var reqIsLocal = reqHost is "localhost" or "::1" || reqHost.StartsWith("127.");
-            // Prefer the configured forward host; else the request host if it's already a real address;
-            // else the machine's detected LAN IP (never "localhost" — NPM can't reach that remotely).
-            var fwdHost = !string.IsNullOrWhiteSpace(c.ForwardHost) ? c.ForwardHost
-                : !reqIsLocal ? reqHost
-                : NpmService.LocalIPv4() ?? reqHost;
+            // Forward host NPM uses to reach the app: NPM's own forward-host setting wins, else the
+            // PublicHost (the LAN IP you set for direct links) — never the domain you browsed with.
+            var fwdHost = !string.IsNullOrWhiteSpace(c.ForwardHost) ? c.ForwardHost : PublicHost(ctx);
             NpmProxyHost? existing = null; string? error = null;
             try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
             catch (Exception e) { error = e.Message; }
@@ -749,7 +747,12 @@ public static class StackEndpoints
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
 
-        app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
+        app2.MapGet("/hosting", (HttpContext ctx) =>
+        {
+            var host = PublicHost(ctx);
+            return Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)
+                .Select(d => d with { Urls = d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList() }));
+        });
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
             if (deployments.Get(id) is not { } d) { ctx.Response.StatusCode = 404; return; }
@@ -830,7 +833,7 @@ public static class StackEndpoints
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
     public record StoreExclusionsRequest(List<string>? Ids);
-    public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
+    public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken, string? PublicHost = null);
     public record CreateTokenRequest(string? Name);
     public record PruneRequest(string? Kind);
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);

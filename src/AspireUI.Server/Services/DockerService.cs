@@ -4,7 +4,7 @@ namespace AspireUI.Server.Services;
 
 public record DockerImage(string Id, string Repository, string Tag, string Size, string Created);
 public record DockerVolume(string Name, string Driver, bool Protected);
-public record DockerContainer(string Id, string Name, string Image, string State, string Status, bool Protected);
+public record DockerContainer(string Id, string Name, string Image, string State, string Status, string Ports, bool Protected);
 
 // Read + housekeep the Docker artifacts AspireUI creates through the mounted socket (dev-run + hosting
 // pull images and create containers/volumes). Lets the user see and prune them. Protects AspireUI's own
@@ -41,7 +41,7 @@ public class DockerService(DeployService deploy)
 
     public List<DockerContainer> Containers() => Json("ps -a --format \"{{json .}}\"")
         .Select(e => new DockerContainer(S(e, "ID"), S(e, "Names"), S(e, "Image"), S(e, "State"), S(e, "Status"),
-            IsProtectedContainer(S(e, "ID"), S(e, "Names"))))
+            S(e, "Ports"), IsProtectedContainer(S(e, "ID"), S(e, "Names"))))
         .ToList();
 
     public (bool ok, string log) RemoveImage(string id) { var r = deploy.Docker(".", $"rmi {Sanitize(id)}"); return (r.Ok, r.Log); }

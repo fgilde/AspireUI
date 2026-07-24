@@ -14,13 +14,19 @@ import { useAuth } from "../auth/AuthContext";
 function HostingTab() {
   const [host, setHost] = useState(true);
   const [token, setToken] = useState("");
+  const [publicHost, setPublicHost] = useState("");
+  const [reqHost, setReqHost] = useState("");
   const [saved, setSaved] = useState(false);
-  useEffect(() => { api.getDashboardSettings().then(s => { setHost(s.hostDashboard); setToken(s.dashboardToken); }).catch(() => {}); }, []);
-  const save = async () => { await api.setDashboardSettings(host, token.trim()); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  useEffect(() => { api.getDashboardSettings().then(s => { setHost(s.hostDashboard); setToken(s.dashboardToken); setPublicHost(s.publicHostSetting ?? ""); setReqHost(s.requestHost ?? ""); }).catch(() => {}); }, []);
+  const save = async () => { await api.setDashboardSettings(host, token.trim(), publicHost.trim()); setSaved(true); setTimeout(() => setSaved(false), 2000); };
   return (
     <MStack gap="xl" maw={560}>
       <MStack gap="md">
-        <Text fw={600}>Aspire dashboard</Text>
+        <Text fw={600}>Reachable host</Text>
+        <TextInput label="Public host / IP" value={publicHost} onChange={e => setPublicHost(e.currentTarget.value)}
+          placeholder={reqHost ? `blank = ${reqHost} (how you reached this page)` : "e.g. 192.168.1.50"}
+          description="Host/IP the browser should use for direct app + dashboard port links. Set this to the machine's LAN IP when you reach AspireUI through a domain (proxies forward :443, not app ports). Blank = the host you opened AspireUI with." />
+        <Text fw={600} mt="sm">Aspire dashboard</Text>
         <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
           label="Include the Aspire dashboard in hosting deployments"
           description="Off = the dashboard container isn't published (deployed apps still run; you see resources/logs here in AspireUI)." />
@@ -202,7 +208,7 @@ function DockerTab() {
               <Table.Tr key={c.id}>
                 <Table.Td><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 8, marginRight: 6, background: c.state === "running" ? "var(--mantine-color-green-6)" : "var(--mantine-color-gray-5)" }} />{c.name}</Table.Td>
                 <Table.Td c="dimmed">{c.image}</Table.Td>
-                <Table.Td c="dimmed">{c.status}</Table.Td>
+                <Table.Td c="dimmed">{c.ports || c.status}</Table.Td>
                 <Table.Td w={32}>{del(c.protected, () => rm("containers", c.id, `container "${c.name}"`))}</Table.Td>
               </Table.Tr>
             ))}
