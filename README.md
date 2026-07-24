@@ -39,7 +39,21 @@
 
 Visually build, import, and run .NET Aspire AppHost projects.
 
-## Deploy in one line
+## Deploy
+
+### One-click cloud
+
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ffgilde%2FAspireUI%2Fmaster%2Fdeploy%2Fazuredeploy.json)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/fgilde/AspireUI)
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run/?git_repo=https://github.com/fgilde/AspireUI)
+
+> These spin up the prebuilt image on a managed container platform — perfect for **trying AspireUI**
+> (build, import, publish, explore the catalog). Managed containers have **no host Docker socket**, so
+> the in-app **Run** and **Hosting** features (which launch other containers) need self-hosting with
+> Docker — see below. AWS / Google Compute / Linode / Hetzner have no standard one-click button; use the
+> `docker run` line below on any VM there.
+
+### Self-host with Docker (full features)
 
 **Fastest** — pull the prebuilt image and run it (no clone, no build):
 

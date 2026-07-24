@@ -1,0 +1,19 @@
+# Render.com blueprint — one-click deploy of the prebuilt AspireUI image.
+# Note: Render containers have no host Docker socket, so the in-app Run/Hosting features
+# (which launch sibling containers) are unavailable here. Great for trying the builder /
+# import / publish; self-host with Docker for the full appliance.
+services:
+  - type: web
+    name: aspireui
+    runtime: image
+    image:
+      url: ghcr.io/fgilde/aspireui:latest
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+    disk:
+      name: aspireui-data
+      mountPath: /data
+      sizeGB: 1
