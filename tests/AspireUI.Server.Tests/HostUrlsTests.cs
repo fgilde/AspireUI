@@ -15,6 +15,13 @@ public class HostUrlsTests
     public void Rewrite_no_op_when_host_empty() => Assert.Equal("http://localhost:80", HostUrls.Rewrite("http://localhost:80", ""));
 
     [Theory]
+    [InlineData("http://172.17.0.2:20000", "192.168.178.63", "http://192.168.178.63:20000")]
+    [InlineData("http://172.17.0.2:20000/web", "192.168.178.63", "http://192.168.178.63:20000/web")]
+    [InlineData("https://app.example.com", "192.168.178.63", "https://app.example.com")]   // no port → left alone (proxy URL)
+    public void ForceHost_swaps_host_only_when_a_port_follows(string url, string host, string expected)
+        => Assert.Equal(expected, HostUrls.ForceHost(url, host));
+
+    [Theory]
     [InlineData("192.168.1.5", true)]
     [InlineData("hosting.example.com", false)]
     [InlineData("localhost", false)]

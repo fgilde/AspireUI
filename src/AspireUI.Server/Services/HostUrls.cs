@@ -21,5 +21,5 @@ public static partial class HostUrls
     // https://app.example.com is left alone). Preserves the port + path.
     public static string ForceHost(string url, string? host) =>
         string.IsNullOrWhiteSpace(host) || string.IsNullOrEmpty(url)
-            ? url : Regex.Replace(url, @"^(\w+://)[^/:]+(?=:\d)", $"$1{host}");
+            ? url : Regex.Replace(url, @"^(\w+://)[^/:]+(?=:\d)", m => m.Groups[1].Value + host);
 }
