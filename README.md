@@ -177,11 +177,36 @@ containers on the host — see the security note in `docker-compose.yml`.
 | `ASPIREUI_ADMIN_PASSWORD` | *(unset)*          | Password for the seeded admin (stored hashed) |
 | `ASPIREUI_SEED_STACK_NAME` | *(unset)*         | Seed a starter stack of this name on first start |
 | `ASPIREUI_SEED_STACK_PROJECTS` | *(unset)*     | `;`/`,`-separated project paths → one `AddProject` node each in the seeded stack |
+| `ASPIREUI_SET_<Key>` | *(unset)*              | **Seed any setting** from env (see below) — ships a pre-configured image |
+| `ASPIREUI_SET_FORCE` | `false`                | `true` = `ASPIREUI_SET_*` overrides existing values on every start (default: fill only what's unset) |
 
-The AI provider (OpenAI-compatible endpoint, model, key) is configured in-app under **Settings** — no
-environment variables needed for that. The `ASPIREUI_*` vars let a container come up pre-configured
-(admin + a starter stack) without the manual setup wizard — handy when running AspireUI itself as a
-resource inside another stack.
+### Pre-seeding settings (`ASPIREUI_SET_*`)
+
+Every in-app setting can be seeded from the environment so an image comes up pre-configured — no setup
+wizard. Use `ASPIREUI_SET_<Key>` with the exact setting key. By default a value is only written when
+that setting is still empty (so a user's later change sticks); set `ASPIREUI_SET_FORCE=true` to always
+apply. Known keys:
+
+| Area | Keys |
+|------|------|
+| **AI assistant** | `AiKind` (`http`/`cli`), `AiBaseUrl`, `AiApiKey`, `AiModel`, `AiProviderLabel`, `AiCliTool` |
+| **Hosting dashboard** | `HostDashboard` (`true`/`false`), `DashboardToken` |
+| **Nginx Proxy Manager** | `NpmEnabled` (`true`/`false`), `NpmBaseUrl`, `NpmEmail`, `NpmPassword`, `NpmForwardHost` |
+
+```bash
+docker run -d -p 8080:8080 -v aspireui-data:/data -v /var/run/docker.sock:/var/run/docker.sock \
+  -e ASPIREUI_ADMIN_USERNAME=admin -e ASPIREUI_ADMIN_PASSWORD='change-me' \
+  -e ASPIREUI_SET_AiBaseUrl=http://ollama:11434 -e ASPIREUI_SET_AiModel=llama3.2 \
+  -e ASPIREUI_SET_NpmEnabled=true -e ASPIREUI_SET_NpmBaseUrl=http://npm:81 \
+  ghcr.io/fgilde/aspireui:latest
+```
+
+## API
+
+The whole product is a login-gated REST API. The OpenAPI spec is served at **`/openapi/v1.json`** and a
+browsable **Scalar** reference UI at **`/scalar`** (also linked from the account menu → *API reference*).
+Requests use the session cookie (log in via the UI first). *(Coming: API-key auth + an MCP server so
+agents can drive AspireUI directly — see the roadmap.)*
 
 A prebuilt image is published to **`ghcr.io/fgilde/aspireui:latest`** on every push, so you can
 `docker run` it directly instead of building.

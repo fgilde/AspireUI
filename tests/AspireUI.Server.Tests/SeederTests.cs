@@ -37,6 +37,25 @@ public class SeederTests
     }
 
     [Fact]
+    public void SeedSettings_fills_generic_keys_and_respects_force()
+    {
+        var (_, _, settings) = Stores();
+        Seeder.SeedSettings(settings, new Dictionary<string, string?>
+        {
+            ["ASPIREUI_SET_NpmBaseUrl"] = "http://npm:81",
+            ["ASPIREUI_SET_NpmEnabled"] = "true",
+        });
+        Assert.Equal("http://npm:81", settings.GetValue("NpmBaseUrl"));
+        Assert.Equal("true", settings.GetValue("NpmEnabled"));
+
+        // Without FORCE, an existing value is kept; with FORCE it's overwritten.
+        Seeder.SeedSettings(settings, new Dictionary<string, string?> { ["ASPIREUI_SET_NpmBaseUrl"] = "http://other:81" });
+        Assert.Equal("http://npm:81", settings.GetValue("NpmBaseUrl"));
+        Seeder.SeedSettings(settings, new Dictionary<string, string?> { ["ASPIREUI_SET_NpmBaseUrl"] = "http://other:81", ["ASPIREUI_SET_FORCE"] = "true" });
+        Assert.Equal("http://other:81", settings.GetValue("NpmBaseUrl"));
+    }
+
+    [Fact]
     public void NoEnv_SeedsNothing()
     {
         var (users, stacks, settings) = Stores();

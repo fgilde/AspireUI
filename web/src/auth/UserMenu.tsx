@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, UnstyledButton, Avatar, Group, Text, Badge } from "@mantine/core";
-import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer } from "@tabler/icons-react";
+import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
 import { useAppTheme } from "../ThemeProvider";
@@ -56,6 +56,7 @@ export function UserMenu() {
 
           <Menu.Divider />
           <Menu.Item leftSection={<IconHelp size={14} />} onClick={() => setHelp(true)}>Help &amp; docs</Menu.Item>
+          <Menu.Item leftSection={<IconCode size={14} />} component="a" href="/scalar" target="_blank" rel="noreferrer">API reference</Menu.Item>
           <Menu.Item leftSection={<IconBrandGithub size={14} />} component="a" href={REPO_URL} target="_blank" rel="noreferrer">AspireUI on GitHub</Menu.Item>
           <Menu.Divider />
           <Menu.Item leftSection={<IconLogout size={14} />} color="red" onClick={doLogout}>Logout</Menu.Item>

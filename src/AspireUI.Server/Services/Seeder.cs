@@ -11,6 +11,11 @@ namespace AspireUI.Server.Services;
 //   ASPIREUI_SEED_STACK_NAME + ASPIREUI_SEED_STACK_PROJECTS
 //       Create a stack of that name (once) with one AddProject node per project path in
 //       ASPIREUI_SEED_STACK_PROJECTS (';' or ',' separated). Skipped if a stack with that name exists.
+//   ASPIREUI_SET_<Key>=<value>   (generic — works for EVERY setting)
+//       Seed any settings-store key from env, so an image can ship pre-configured. Key is the exact
+//       store key (e.g. ASPIREUI_SET_AiBaseUrl, ASPIREUI_SET_NpmEnabled, ASPIREUI_SET_DashboardToken).
+//       Only fills keys that aren't set yet (won't clobber a user's changes); ASPIREUI_SET_FORCE=true
+//       overrides existing values on every start.
 public static class Seeder
 {
     private static readonly User HasherUser = new("", "", "", false, "");
@@ -31,6 +36,12 @@ public static class Seeder
             ["ASPIREUI_AI_MODEL"] = Environment.GetEnvironmentVariable("ASPIREUI_AI_MODEL"),
             ["ASPIREUI_AI_API_KEY"] = Environment.GetEnvironmentVariable("ASPIREUI_AI_API_KEY"),
         };
+        // Generic ASPIREUI_SET_<Key> settings-seeding: pull every matching process env var into the map.
+        foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables())
+        {
+            var k = e.Key?.ToString() ?? "";
+            if (k.StartsWith("ASPIREUI_SET_", StringComparison.OrdinalIgnoreCase)) env[k] = e.Value?.ToString();
+        }
         Seed(new UserStore(dbPath), new StackStore(dbPath), new SettingsStore(dbPath), env);
     }
 
@@ -40,6 +51,23 @@ public static class Seeder
         SeedAdmin(users, env);
         SeedStack(stacks, env);
         SeedAi(settings, env);
+        SeedSettings(settings, env);
+    }
+
+    // Generic: ASPIREUI_SET_<Key> → settings store key <Key>. Fills only unset keys unless
+    // ASPIREUI_SET_FORCE=true. Covers all settings (AI, dashboard, NPM, and anything added later).
+    public static void SeedSettings(SettingsStore settings, IReadOnlyDictionary<string, string?> env)
+    {
+        const string prefix = "ASPIREUI_SET_";
+        var force = string.Equals(env.GetValueOrDefault(prefix + "FORCE"), "true", StringComparison.OrdinalIgnoreCase);
+        foreach (var (envKey, value) in env)
+        {
+            if (!envKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            var key = envKey[prefix.Length..];
+            if (key.Length == 0 || key.Equals("FORCE", StringComparison.OrdinalIgnoreCase) || value is null) continue;
+            if (!force && !string.IsNullOrEmpty(settings.GetValue(key))) continue;   // don't clobber
+            settings.SetValue(key, value);
+        }
     }
 
     // Configure the built-in assistant from env on first run (only if not already set), so an

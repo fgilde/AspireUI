@@ -1,6 +1,7 @@
 using AspireUI.Server.Endpoints;
 using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,12 +30,20 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
     });
 builder.Services.AddAuthorization();
+// OpenAPI document for the whole REST API (Scalar UI serves it at /scalar). Agents/tools can read the
+// spec at /openapi/v1.json. Endpoints still require the auth cookie — the docs are just the contract.
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 // Env-driven first-run seeding (admin user + optional starter stack) — lets a container come up
 // pre-configured without the manual setup wizard. No-op unless the ASPIREUI_* vars are set.
 Seeder.Run();
+
+// API docs: raw spec + a Scalar reference UI (linked from the account menu). Anonymous so you can read
+// the docs; the endpoints themselves stay auth-gated.
+app.MapOpenApi();
+app.MapScalarApiReference(o => o.WithTitle("AspireUI API").WithTheme(ScalarTheme.Purple));
 
 app.UseDefaultFiles();
 // Serve the built SPA. Content-hashed assets (index-<hash>.js) may cache forever, but index.html must
