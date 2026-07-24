@@ -97,7 +97,8 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // exposed container port to the ALLOCATED host port from `hostByContainer` (so multiple apps that
     // share a container port, e.g. two :80 apps, get distinct host ports). Skips a service that already
     // publishes ports.
-    public static string PublishExposedPorts(string yaml, IReadOnlyDictionary<int, int> hostByContainer)
+    public static string PublishExposedPorts(string yaml, IReadOnlyDictionary<int, int> hostByContainer,
+        IReadOnlySet<int>? keepInternal = null)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
         var outp = new List<string>();
@@ -114,14 +115,24 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
                 var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
                 if (pm.Success) ports.Add(int.Parse(pm.Groups[1].Value));
             }
-            if (!hasPorts && ports.Count > 0)
+            // Publish only the ports NOT marked internal. If every exposed port is internal, emit no
+            // `ports:` block (the service stays reachable only inside the compose network).
+            var publish = ports.Where(p => keepInternal is null || !keepInternal.Contains(p)).ToList();
+            if (!hasPorts && publish.Count > 0)
             {
                 outp.Add("    ports:");
-                foreach (var p in ports)
+                foreach (var p in publish)
                     outp.Add($"      - \"{(hostByContainer.TryGetValue(p, out var h) ? h : p)}:{p}\"");
             }
         }
         return string.Join("\n", outp);
+    }
+
+    // Is a host port free to bind on loopback right now? (Same probe AllocateHostPort uses.)
+    public static bool PortFree(int p)
+    {
+        try { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, p); l.Start(); l.Stop(); return true; }
+        catch { return false; }
     }
 
     // Pick a free host port in 20000..29999 not already claimed (by another deployment or this run) and
@@ -314,21 +325,32 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         var existing = store.GetByStack(stack.Id);
         var id = existing?.Id ?? "dep" + Guid.NewGuid().ToString("n")[..8];
         store.Upsert(new Deployment(id, stack.Id, stack.Name, existing?.ComposeDir ?? "", project, "deploying",
-            existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null));
+            existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null, existing?.Ports));
         try
         {
             var pub = publish.Publish(stack, publishRoot, "compose");
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
             var raw = EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken));
-            // Allocate a distinct free host port per exposed container port so multiple apps that share a
-            // container port (e.g. two :80 apps) don't collide on the host. Ports already claimed by other
-            // deployments are off-limits.
-            var used = new HashSet<int>(store.List().Where(x => x.Id != id).SelectMany(x => x.Urls)
-                .Select(u => Regex.Match(u, @"://[^/:]+:(\d+)")).Where(m => m.Success).Select(m => int.Parse(m.Groups[1].Value)));
+            // Host-port assignment. A distinct free host port per exposed container port so apps that
+            // share a container port (two :80 apps) don't collide. Ports claimed by OTHER deployments are
+            // off-limits. The chosen map is PERSISTED and REUSED so an app keeps its port across redeploys
+            // (env-save/update). The user may pin a host port or mark a port internal (existing.Ports);
+            // a pinned port that's no longer free falls back to auto-allocation.
+            var used = new HashSet<int>(store.List().Where(x => x.Id != id)
+                .SelectMany(x => (x.Ports ?? new()).Where(p => p.Public).Select(p => p.Host)));
+            var prev = (existing?.Ports ?? new()).ToDictionary(p => p.Container);
+            var chosen = new List<PortMapping>();
             var portMap = new Dictionary<int, int>();
-            foreach (var cp in ExposedAppPorts(raw).Distinct()) portMap[cp] = AllocateHostPort(used);
-            var processed = PublishExposedPorts(raw, portMap);
+            var keepInternal = new HashSet<int>();
+            foreach (var cp in ExposedAppPorts(raw).Distinct())
+            {
+                if (prev.TryGetValue(cp, out var pm) && !pm.Public) { keepInternal.Add(cp); chosen.Add(new(cp, 0, false)); continue; }
+                var pinned = prev.TryGetValue(cp, out var pp) && pp.Public && pp.Host > 0 ? pp.Host : 0;
+                var hostPort = pinned > 0 && !used.Contains(pinned) && PortFree(pinned) ? pinned : AllocateHostPort(used);
+                used.Add(hostPort); portMap[cp] = hostPort; chosen.Add(new(cp, hostPort, true));
+            }
+            var processed = PublishExposedPorts(raw, portMap, keepInternal);
             File.WriteAllText(path, processed);
             // `aspire publish` leaves parameter values blank in .env — fill them or hosted apps get empty
             // passwords/keys/paths and fail.
@@ -345,7 +367,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
             store.Upsert(store.Get(id)! with
             {
-                ComposeDir = pub.OutputDir, Urls = urls,
+                ComposeDir = pub.OutputDir, Urls = urls, Ports = chosen,
                 State = up.Ok ? "running" : "failed", LastError = up.Ok ? null : up.Log,
                 UpdatedAt = DateTime.UtcNow.ToString("O"),
             });

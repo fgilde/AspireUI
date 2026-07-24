@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Modal, Title, Stack, TextInput, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
+import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
 import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize } from "@tabler/icons-react";
-import type { Deployment, NodeConfig } from "../model";
+import type { Deployment, NodeConfig, PortMapping } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 
@@ -48,6 +48,7 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   const [env, setEnv] = useState<Record<string, string[][]>>({});
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
+  const [ports, setPorts] = useState<PortMapping[]>(d.ports ?? []);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -66,7 +67,8 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
     setSaving(true);
     try {
       const clean = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, v.filter(p => p[0].trim())]));
-      await api.reconfigureHosting(d.stackId, clean);
+      const portChanged = JSON.stringify(ports) !== JSON.stringify(d.ports ?? []);
+      await api.reconfigureHosting(d.stackId, clean, portChanged ? ports : undefined);
       toastOk("Saved — redeploying…");
       onDone(); onClose();
     } catch (e) { toastErr(e, "Save failed"); }
@@ -126,6 +128,25 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
             <Tooltip label="Export .env" withArrow><ActionIcon variant="default" onClick={exportEnv} aria-label="Export .env"><IconDownload size={15} /></ActionIcon></Tooltip>
             <input ref={fileRef} type="file" accept=".env,text/plain,.txt" hidden onChange={onFile} />
           </Group>
+          {ports.length > 0 && !q && (
+            <div>
+              <Text fw={600} size="sm" mb={4}>Ports</Text>
+              <Stack gap={6}>
+                {ports.map((pm, i) => (
+                  <Group key={pm.container} gap={10} wrap="nowrap">
+                    <Text size="xs" ff="monospace" style={{ width: 96 }}>:{pm.container}</Text>
+                    <NumberInput size="xs" style={{ width: 120 }} value={pm.public ? (pm.host || undefined) : undefined}
+                      placeholder={pm.public ? "auto" : "—"} disabled={!pm.public} min={1} max={65535} hideControls
+                      onChange={v => setPorts(ps => ps.map((p, j) => j === i ? { ...p, host: Number(v) || 0 } : p))} />
+                    <Switch size="xs" checked={pm.public} label={pm.public ? "public" : "internal"}
+                      onChange={e => setPorts(ps => ps.map((p, j) => j === i ? { ...p, public: e.currentTarget.checked } : p))} />
+                  </Group>
+                ))}
+              </Stack>
+              <Text size="10px" c="dimmed" mt={4}>Pin a host port (blank = auto), or make a port <b>internal</b> — reachable only inside the app, not from the host. Applied on save. A taken port falls back to auto.</Text>
+              <Divider mt="sm" />
+            </div>
+          )}
           <ScrollArea.Autosize mah={420}>
             <Stack gap="lg">
               {cfg.map(n => {

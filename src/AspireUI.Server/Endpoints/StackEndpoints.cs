@@ -592,6 +592,15 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
             hosting.Stop(d.Id);
+            // Apply optional port overrides (pin host port / mark internal) onto the deployment first, so
+            // the redeploy picks them up via existing.Ports. Merge by container port; a bad pin falls back
+            // to auto during Deploy.
+            if (body.Ports is { Count: > 0 })
+            {
+                var merged = (d.Ports ?? new()).ToDictionary(p => p.Container);
+                foreach (var o in body.Ports) merged[o.Container] = o;
+                deployments.Upsert(d with { Ports = merged.Values.ToList() });
+            }
             var updated = HostingService.ApplyEnvUpdates(s, body.Env ?? new());
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
@@ -689,7 +698,7 @@ public static class StackEndpoints
     public record AssistRequest(string Prompt);
     public record AutoPresetRequest(string Url);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
-    public record ReconfigureRequest(Dictionary<string, List<string[]>> Env);
+    public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
     public record StoreExclusionsRequest(List<string>? Ids);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);

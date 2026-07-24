@@ -73,6 +73,34 @@ public class HostingServiceTests
     }
 
     [Fact]
+    public void PublishExposedPorts_keeps_internal_port_unpublished()
+    {
+        const string yaml = """
+            services:
+              web:
+                image: nginx
+                expose:
+                  - "80"
+                  - "9000"
+            """;
+        var outp = HostingService.PublishExposedPorts(yaml,
+            new Dictionary<int, int> { [80] = 20000 }, new HashSet<int> { 9000 });
+        Assert.Contains("- \"20000:80\"", outp);   // public port published to its host port
+        Assert.DoesNotContain("9000:", outp);       // internal port never gets a host mapping
+        Assert.DoesNotContain(":9000", outp);
+    }
+
+    [Fact]
+    public void PortFree_reports_a_bound_port_as_taken()
+    {
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        l.Start();
+        var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        try { Assert.False(HostingService.PortFree(port)); }   // bound → not free
+        finally { l.Stop(); }
+    }
+
+    [Fact]
     public void UrlsFromServices_uses_published_ports_skips_dashboard()
     {
         var svcs = new List<ServiceStatus>

@@ -21,10 +21,12 @@ export interface Stack {
 }
 
 // A stack deployed persistently into the hosting area (a long-lived docker-compose project).
+export interface PortMapping { container: number; host: number; public: boolean }
 export interface Deployment {
   id: string; stackId: string; name: string;
   state: "deploying" | "running" | "stopped" | "failed";
   urls: string[]; createdAt: string; updatedAt: string; lastError?: string | null;
+  ports?: PortMapping[] | null;
 }
 
 // One container of a running deployment (from `docker compose ps`) — for the hosting resource tree.

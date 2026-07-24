@@ -176,5 +176,5 @@ export const hostingServices = (depId: string): Promise<import("./model").Servic
 export const hostingLogsUrl = (depId: string) => `${base}/hosting/${depId}/logs`;
 export const hostingConfig = (stackId: string): Promise<import("./model").NodeConfig[]> =>
   fetch(`${base}/stacks/${stackId}/hosting/config`).then(ok);
-export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>): Promise<import("./model").Deployment> =>
-  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env }) }).then(ok);
+export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[]): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports }) }).then(ok);
