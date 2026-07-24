@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize } from "@tabler/icons-react";
-import type { Deployment, NodeConfig, PortMapping } from "../model";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp } from "@tabler/icons-react";
+import type { Deployment, NodeConfig, PortMapping, BackupInfo } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 
@@ -11,13 +11,12 @@ export const hostingColor = (s: string) => s === "running" ? "green" : s === "fa
 // The hosting action menu items — identical everywhere (the /Hosting rows AND the stack cards) so a
 // change here shows up in both. `onChanged` re-loads the caller after an action; `onConfigure`/`onLogs`
 // open the shared modals (owned by the caller so the menu can unmount).
-export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onOpenEditor?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onOpenEditor, onChanged }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onOpenEditor?: () => void; onChanged: () => void;
 }) {
   const stop = () => { toastOk(`Stopping ${d.name}…`); api.stopHosting(d.stackId).then(onChanged).catch(toastErr); };
   const start = () => { toastOk(`${d.state === "failed" ? "Retrying" : "Starting"} ${d.name}…`); api.startHosting(d.stackId).then(onChanged).catch(toastErr); };
   const update = () => { toastOk(`Updating ${d.name}…`); api.updateHosting(d.stackId).then(onChanged).then(() => toastOk("Updated")).catch(toastErr); };
-  const backup = () => { toastOk(`Backing up ${d.name}…`); api.backupHosting(d.stackId).then(r => toastOk(r.dir ? "Backup written" : "Nothing to back up")).catch(toastErr); };
   const undeploy = () => confirmDelete(`"${d.name}"`, "This runs docker compose down (named volumes are KEPT — data survives).")
     .then(okd => { if (okd) api.undeployHosting(d.stackId).then(onChanged).then(() => toastOk("Undeployed")).catch(toastErr); });
   const wipe = () => confirmDelete(`"${d.name}" AND its data`, "This runs docker compose down -v — the app's named volumes (database, files) are DELETED. Use this to cleanly reinstall an app that got stuck half-initialized. Cannot be undone.")
@@ -32,7 +31,7 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor
       <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
-      <Menu.Item leftSection={<IconArchive size={14} />} onClick={backup}>Back up volumes</Menu.Item>
+      {onBackups && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       <Menu.Divider />
       <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={undeploy}>Undeploy</Menu.Item>
@@ -226,6 +225,64 @@ export function LogsModal({ d, onClose, service }: { d: Deployment; onClose: () 
             {shown.length ? text : "…"}
           </pre>
         </ScrollArea.Autosize>
+      </Stack>
+    </Modal>
+  );
+}
+
+const fmtSize = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : n >= 1024 ? `${Math.round(n / 1024)} KB` : `${n} B`;
+
+// Volume-backup manager: create a snapshot, then list / restore / download / delete existing ones.
+// Backups are per-volume .tgz archives kept in the AspireUI workspace (server-side).
+export function BackupsModal({ d, onClose, onChanged }: { d: Deployment; onClose: () => void; onChanged?: () => void }) {
+  const [list, setList] = useState<BackupInfo[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => api.listBackups(d.stackId).then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, [d.stackId]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const create = async () => {
+    setBusy(true);
+    try { const r = await api.backupHosting(d.stackId); toastOk(r.dir ? "Backup created" : "Nothing to back up — this app has no named volumes"); load(); }
+    catch (e) { toastErr(e, "Backup failed"); } finally { setBusy(false); }
+  };
+  const restore = (stamp: string) =>
+    confirmDelete(`restore "${d.name}" to this snapshot`, "The app stops, its current volume data is REPLACED with the snapshot, then it restarts. Current data is overwritten — cannot be undone.")
+      .then(okd => { if (okd) { toastOk("Restoring…"); api.restoreBackup(d.stackId, stamp).then(() => { onChanged?.(); toastOk("Restored"); load(); }).catch(e => toastErr(e, "Restore failed")); } });
+  const del = (stamp: string) =>
+    confirmDelete(`this backup (${stamp})`, "Deletes the snapshot archives from disk.")
+      .then(okd => { if (okd) api.deleteBackup(d.stackId, stamp).then(load).catch(toastErr); });
+
+  return (
+    <Modal opened onClose={onClose} size="lg" title={<Title order={5}>Backups · {d.name}</Title>}>
+      <Stack gap="md">
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">Snapshots of this app's named volumes (database, files). Kept on the AspireUI host.</Text>
+          <Button size="xs" leftSection={<IconArchive size={14} />} loading={busy} onClick={create}>Back up now</Button>
+        </Group>
+        {list === null ? <Loader size="sm" /> : list.length === 0 ? (
+          <Text size="sm" c="dimmed">No backups yet. Use “Back up now” to create one.</Text>
+        ) : (
+          <ScrollArea.Autosize mah={420}>
+            <Stack gap="xs">
+              {list.map(b => (
+                <Group key={b.stamp} justify="space-between" wrap="nowrap" p="xs"
+                  style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <Text size="sm" fw={600}>{new Date(b.createdAt).toLocaleString()}</Text>
+                    <Text size="xs" c="dimmed" truncate>
+                      {b.volumes.map(v => `${v.name} (${fmtSize(v.size)})`).join(" · ")}
+                    </Text>
+                  </div>
+                  <Group gap={4} wrap="nowrap">
+                    <Tooltip label="Restore this snapshot" withArrow><ActionIcon variant="subtle" color="orange" onClick={() => restore(b.stamp)} aria-label="Restore"><IconArrowBackUp size={16} /></ActionIcon></Tooltip>
+                    <Tooltip label="Download (.zip)" withArrow><ActionIcon variant="subtle" color="gray" component="a" href={api.backupDownloadUrl(d.stackId, b.stamp)} aria-label="Download"><IconDownload size={16} /></ActionIcon></Tooltip>
+                    <Tooltip label="Delete" withArrow><ActionIcon variant="subtle" color="red" onClick={() => del(b.stamp)} aria-label="Delete"><IconTrash size={16} /></ActionIcon></Tooltip>
+                  </Group>
+                </Group>
+              ))}
+            </Stack>
+          </ScrollArea.Autosize>
+        )}
       </Stack>
     </Modal>
   );

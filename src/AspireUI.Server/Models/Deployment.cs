@@ -11,3 +11,7 @@ public record Deployment(string Id, string StackId, string Name, string ComposeD
 // One exposed container port and how it's published: Host is the host port when Public; when !Public the
 // port stays internal to the compose network (not published, no host mapping).
 public record PortMapping(int Container, int Host, bool Public);
+
+// A volume-backup snapshot: a timestamped folder holding one .tgz per named volume.
+public record BackupInfo(string Stamp, string CreatedAt, List<BackupVol> Volumes);
+public record BackupVol(string Name, long Size);

@@ -517,6 +517,75 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return dir;
     }
 
+    private static readonly Regex StampRe = new(@"^\d{8}-\d{6}$");
+    private static string StampPath(Deployment d, string root, string stamp) => Path.Combine(root, d.StackId, stamp);
+
+    // List a deployment's backup snapshots (newest first), each with its per-volume .tgz sizes.
+    public List<BackupInfo> ListBackups(string id, string backupsRoot)
+    {
+        if (store.Get(id) is not { } d) return new();
+        var root = Path.Combine(backupsRoot, d.StackId);
+        if (!Directory.Exists(root)) return new();
+        var list = new List<BackupInfo>();
+        foreach (var dir in Directory.GetDirectories(root).OrderByDescending(x => x))
+        {
+            var stamp = Path.GetFileName(dir);
+            var vols = Directory.GetFiles(dir, "*.tgz")
+                .Select(f => new BackupVol(Path.GetFileNameWithoutExtension(f), new FileInfo(f).Length)).ToList();
+            if (vols.Count == 0) continue;
+            var iso = DateTime.TryParseExact(stamp, "yyyyMMdd-HHmmss", null,
+                System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt)
+                ? dt.ToString("O") : stamp;
+            list.Add(new BackupInfo(stamp, iso, vols));
+        }
+        return list;
+    }
+
+    // Restore a snapshot: stop the app, wipe + re-extract each volume that still exists in the current
+    // compose, then bring it back up. Only touches this deployment's own volumes.
+    public bool Restore(string id, string backupsRoot, string stamp)
+    {
+        if (store.Get(id) is not { } d || !StampRe.IsMatch(stamp)) return false;
+        var dir = StampPath(d, backupsRoot, stamp);
+        if (!Directory.Exists(dir)) return false;
+        var composePath = Path.Combine(d.ComposeDir, "docker-compose.yaml");
+        var current = File.Exists(composePath) ? VolumeNames(File.ReadAllText(composePath)).ToHashSet() : new();
+        store.SetState(id, "deploying");
+        try
+        {
+            deploy.StopProject(d.ComposeDir, d.Project);
+            foreach (var f in Directory.GetFiles(dir, "*.tgz"))
+            {
+                var vol = Path.GetFileNameWithoutExtension(f);
+                if (current.Count > 0 && !current.Contains(vol)) continue;   // don't resurrect orphan volumes
+                var full = $"{d.Project}_{vol}";
+                deploy.Docker(dir, $"run --rm -v {full}:/data -v \"{Path.GetFullPath(dir)}\":/backup alpine sh -c \"find /data -mindepth 1 -delete; tar xzf /backup/{vol}.tgz -C /data\"");
+            }
+            var up = deploy.UpProject(d.ComposeDir, d.Project);
+            store.SetState(id, up.Ok ? "running" : "failed", up.Ok ? null : up.Log);
+            SyncProxy();
+            return up.Ok;
+        }
+        catch (Exception ex) { store.SetState(id, "failed", ex.Message); return false; }
+    }
+
+    public bool DeleteBackup(string id, string backupsRoot, string stamp)
+    {
+        if (store.Get(id) is not { } d || !StampRe.IsMatch(stamp)) return false;
+        var dir = StampPath(d, backupsRoot, stamp);
+        if (!Directory.Exists(dir)) return false;
+        Directory.Delete(dir, true);
+        return true;
+    }
+
+    // The on-disk snapshot folder (for the download endpoint to zip). Null if missing / bad stamp.
+    public string? BackupDir(string id, string backupsRoot, string stamp)
+    {
+        if (store.Get(id) is not { } d || !StampRe.IsMatch(stamp)) return null;
+        var dir = StampPath(d, backupsRoot, stamp);
+        return Directory.Exists(dir) ? dir : null;
+    }
+
     // On host/AppHost start, bring back everything that was "running" (compose restart policy handles
     // container-level restarts, but the AppHost process must re-issue `up -d` after its own restart).
     public void ReconcileOnStartup()

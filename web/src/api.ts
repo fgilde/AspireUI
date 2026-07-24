@@ -171,6 +171,13 @@ export const updateHosting = (id: string): Promise<import("./model").Deployment>
   fetch(`${base}/stacks/${id}/hosting/update`, { method: "POST" }).then(ok);
 export const backupHosting = (id: string): Promise<{ dir: string | null }> =>
   fetch(`${base}/stacks/${id}/hosting/backup`, { method: "POST" }).then(ok);
+export const listBackups = (stackId: string): Promise<import("./model").BackupInfo[]> =>
+  fetch(`${base}/stacks/${stackId}/hosting/backups`).then(ok);
+export const restoreBackup = (stackId: string, stamp: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${stackId}/hosting/backups/${stamp}/restore`, { method: "POST" }).then(ok);
+export const deleteBackup = (stackId: string, stamp: string): Promise<void> =>
+  fetch(`${base}/stacks/${stackId}/hosting/backups/${stamp}`, { method: "DELETE" }).then(() => undefined);
+export const backupDownloadUrl = (stackId: string, stamp: string) => `${base}/stacks/${stackId}/hosting/backups/${stamp}/download`;
 export const hostingServices = (depId: string): Promise<import("./model").ServiceStatus[]> =>
   fetch(`${base}/hosting/${depId}/services`).then(ok);
 export const hostingLogsUrl = (depId: string) => `${base}/hosting/${depId}/logs`;

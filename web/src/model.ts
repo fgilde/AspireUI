@@ -22,6 +22,8 @@ export interface Stack {
 
 // A stack deployed persistently into the hosting area (a long-lived docker-compose project).
 export interface PortMapping { container: number; host: number; public: boolean }
+export interface BackupVol { name: string; size: number }
+export interface BackupInfo { stamp: string; createdAt: string; volumes: BackupVol[] }
 export interface Deployment {
   id: string; stackId: string; name: string;
   state: "deploying" | "running" | "stopped" | "failed";

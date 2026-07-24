@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Text.Json;
 using AspireUI.Server.Models;
 using AspireUI.Server.Services;
@@ -576,10 +577,31 @@ public static class StackEndpoints
         });
         app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
             deployments.GetByStack(id) is { } d ? Results.Ok(hosting.Update(d.Id)) : Results.NotFound());
+        string BackupsRoot() => Path.Combine(wsRoot, "_backups");
         app2.MapPost("/stacks/{id}/hosting/backup", (string id) =>
             deployments.GetByStack(id) is { } d
-                ? Results.Ok(new { dir = hosting.Backup(d.Id, Path.Combine(wsRoot, "_backups")) })
+                ? Results.Ok(new { dir = hosting.Backup(d.Id, BackupsRoot()) })
                 : Results.NotFound());
+        app2.MapGet("/stacks/{id}/hosting/backups", (string id) =>
+            deployments.GetByStack(id) is { } d ? Results.Ok(hosting.ListBackups(d.Id, BackupsRoot())) : Results.NotFound());
+        app2.MapPost("/stacks/{id}/hosting/backups/{stamp}/restore", (string id, string stamp) =>
+            deployments.GetByStack(id) is not { } d ? Results.NotFound()
+                : hosting.Restore(d.Id, BackupsRoot(), stamp)
+                    ? Results.Ok(hosting.Refresh(d.Id) ?? deployments.Get(d.Id))
+                    : Results.BadRequest(new { message = "restore failed" }));
+        app2.MapDelete("/stacks/{id}/hosting/backups/{stamp}", (string id, string stamp) =>
+            deployments.GetByStack(id) is { } d && hosting.DeleteBackup(d.Id, BackupsRoot(), stamp)
+                ? Results.NoContent() : Results.NotFound());
+        app2.MapGet("/stacks/{id}/hosting/backups/{stamp}/download", (string id, string stamp) =>
+        {
+            if (deployments.GetByStack(id) is not { } d || hosting.BackupDir(d.Id, BackupsRoot(), stamp) is not { } dir)
+                return Results.NotFound();
+            var ms = new MemoryStream();
+            using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+                foreach (var f in Directory.GetFiles(dir)) zip.CreateEntryFromFile(f, Path.GetFileName(f));
+            ms.Position = 0;
+            return Results.File(ms, "application/zip", $"{d.Name}-{stamp}.zip");
+        });
         // Resource tree: live per-service status from `docker compose ps`.
         app2.MapGet("/hosting/{id}/services", (string id) => Results.Ok(hosting.Services(id)));
         // Per-resource editable config (name + image + literal env) for the configure dialog.

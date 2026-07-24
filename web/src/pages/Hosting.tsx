@@ -8,7 +8,7 @@ import { canOpenEditor } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
-import { HostingMenuItems, ConfigureModal, LogsModal, hostingColor } from "../hosting/HostingActions";
+import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, hostingColor } from "../hosting/HostingActions";
 
 export function Hosting() {
   const nav = useNavigate();
@@ -19,6 +19,7 @@ export function Hosting() {
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
   const [logsFor, setLogsFor] = useState<Deployment | null>(null);
   const [logsService, setLogsService] = useState<string | undefined>(undefined);
+  const [backupsFor, setBackupsFor] = useState<Deployment | null>(null);
   const [dashToken, setDashToken] = useState("");
   const load = () => api.listHosting().then(setItems).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
@@ -36,18 +37,20 @@ export function Hosting() {
                 {items.map(d => (
                   <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
+                    onBackups={() => setBackupsFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
               </Table.Tbody>
             </Table>)}
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={load} />}
       {logsFor && <LogsModal d={logsFor} service={logsService} onClose={() => setLogsFor(null)} />}
+      {backupsFor && <BackupsModal d={backupsFor} onClose={() => setBackupsFor(null)} onChanged={load} />}
     </PageShell>
   );
 }
 
-function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged, dashToken }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
+function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onOpenEditor, onChanged, dashToken }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -72,7 +75,7 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChange
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
             <Menu.Dropdown>
-              <HostingMenuItems d={d} canEdit={canEdit} onConfigure={onConfigure} onLogs={onLogs} onOpenEditor={onOpenEditor} onChanged={onChanged} />
+              <HostingMenuItems d={d} canEdit={canEdit} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onOpenEditor={onOpenEditor} onChanged={onChanged} />
             </Menu.Dropdown>
           </Menu>
         </Table.Td>
