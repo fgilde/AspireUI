@@ -186,6 +186,13 @@ export const hostingConfig = (stackId: string): Promise<import("./model").NodeCo
 export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[]): Promise<import("./model").Deployment> =>
   fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports }) }).then(ok);
 
+// Personal access tokens (REST API + MCP)
+export const listApiTokens = (): Promise<import("./model").ApiToken[]> => fetch(`${base}/api-tokens`).then(ok);
+export const createApiToken = (name: string): Promise<{ token: string; record: import("./model").ApiToken }> =>
+  fetch(`${base}/api-tokens`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) }).then(ok);
+export const deleteApiToken = (id: string): Promise<void> =>
+  fetch(`${base}/api-tokens/${id}`, { method: "DELETE" }).then(() => undefined);
+
 // Nginx Proxy Manager integration
 type NpmSettingsBody = { enabled: boolean; baseUrl: string; email: string; password?: string | null; forwardHost: string };
 export const getNpmSettings = (): Promise<import("./model").NpmSettings> => fetch(`${base}/hosting/npm-settings`).then(ok);

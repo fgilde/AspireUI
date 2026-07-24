@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Group, Button, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard } from "@tabler/icons-react";
+import { Group, Button, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor } from "@mantine/core";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
-import type { AppSettings, EnvHealth } from "../model";
+import type { AppSettings, EnvHealth, ApiToken } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -82,6 +82,89 @@ function NpmSettingsSection() {
         <Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button>
         <Button variant="default" loading={testing} onClick={runTest} disabled={!enabled || !baseUrl.trim()}>Test connection</Button>
       </Group>
+    </MStack>
+  );
+}
+
+// API & Agents tab — personal access tokens + how to reach the REST API and the MCP server.
+function ApiTab() {
+  const [tokens, setTokens] = useState<ApiToken[] | null>(null);
+  const [name, setName] = useState("");
+  const [created, setCreated] = useState<string | null>(null);   // plaintext shown once
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => api.listApiTokens().then(setTokens).catch(() => setTokens([]));
+  useEffect(() => { load(); }, []);
+  const origin = window.location.origin;
+  const create = async () => {
+    setBusy(true); setErr(null);
+    try { const r = await api.createApiToken(name.trim() || "token"); setCreated(r.token); setName(""); load(); }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+  };
+  const mcpJson = `{
+  "mcpServers": {
+    "aspireui": {
+      "url": "${origin}/mcp",
+      "headers": { "Authorization": "Bearer <your-token>" }
+    }
+  }
+}`;
+  return (
+    <MStack gap="xl" maw={640}>
+      <MStack gap="xs">
+        <Text fw={600}>REST API &amp; MCP</Text>
+        <Text size="sm" c="dimmed">
+          Everything AspireUI does is a REST API. Browse it in the <Anchor href="/scalar" target="_blank">API reference</Anchor> (spec
+          at <Anchor href="/openapi/v1.json" target="_blank">/openapi/v1.json</Anchor>). Agents can drive AspireUI over the
+          built-in <b>MCP</b> server. Both accept a personal access token as <Code>Authorization: Bearer &lt;token&gt;</Code>.
+        </Text>
+        <Group gap="xs"><Text size="sm">API base:</Text><Code>{origin}/api</Code></Group>
+        <Group gap="xs"><Text size="sm">MCP endpoint:</Text><Code>{origin}/mcp</Code></Group>
+      </MStack>
+
+      <MStack gap="sm">
+        <Text fw={600}>Personal access tokens</Text>
+        <Group gap="xs">
+          <TextInput style={{ flex: 1 }} placeholder="Token name (e.g. my-agent)" value={name} onChange={e => setName(e.currentTarget.value)}
+            onKeyDown={e => { if (e.key === "Enter") create(); }} />
+          <Button leftSection={<IconPlus size={16} />} loading={busy} onClick={create}>Create</Button>
+        </Group>
+        {err && <Alert color="red" p="xs" icon={<IconAlertCircle size={16} />}>{err}</Alert>}
+        {created && (
+          <Alert color="green" icon={<IconCheck size={16} />} title="Token created — copy it now, it won't be shown again">
+            <Group gap="xs" wrap="nowrap">
+              <Code style={{ flex: 1, wordBreak: "break-all" }}>{created}</Code>
+              <CopyButton value={created}>{({ copied, copy }) => (
+                <Button size="xs" variant={copied ? "filled" : "light"} color={copied ? "green" : "blue"} leftSection={<IconCopy size={14} />} onClick={copy}>{copied ? "Copied" : "Copy"}</Button>)}
+              </CopyButton>
+            </Group>
+          </Alert>
+        )}
+        {tokens === null ? <Loader size="sm" /> : tokens.length === 0 ? <Text size="sm" c="dimmed">No tokens yet.</Text> : (
+          <MStack gap={4}>
+            {tokens.map(t => (
+              <Group key={t.id} justify="space-between" wrap="nowrap" p="xs" style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <Text size="sm" fw={600} truncate>{t.name} <Code>{t.prefix}…</Code></Text>
+                  <Text size="xs" c="dimmed">created {new Date(t.createdAt).toLocaleDateString()}{t.lastUsed ? ` · last used ${new Date(t.lastUsed).toLocaleDateString()}` : " · never used"}</Text>
+                </div>
+                <ActionIcon variant="subtle" color="red" onClick={() => api.deleteApiToken(t.id).then(load)} aria-label="Revoke"><IconTrash size={16} /></ActionIcon>
+              </Group>
+            ))}
+          </MStack>
+        )}
+      </MStack>
+
+      <MStack gap="xs">
+        <Text fw={600}>Connect an agent (MCP)</Text>
+        <Text size="sm" c="dimmed">Add AspireUI to an MCP-capable agent (Claude, etc.). Replace the token with one from above:</Text>
+        <div style={{ position: "relative" }}>
+          <CopyButton value={mcpJson}>{({ copied, copy }) => (
+            <Button size="compact-xs" variant="subtle" style={{ position: "absolute", top: 6, right: 6, zIndex: 1 }} onClick={copy}>{copied ? "Copied" : "Copy"}</Button>)}
+          </CopyButton>
+          <Code block style={{ fontSize: 12 }}>{mcpJson}</Code>
+        </div>
+      </MStack>
     </MStack>
   );
 }
@@ -179,6 +262,7 @@ export function Settings() {
             <Tabs.List mr="lg">
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
               {isAdmin && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
+              <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="ai" style={{ flex: 1 }}>
@@ -260,6 +344,9 @@ export function Settings() {
                 <HostingTab />
               </Tabs.Panel>
             )}
+            <Tabs.Panel value="api" style={{ flex: 1 }}>
+              <ApiTab />
+            </Tabs.Panel>
             <Tabs.Panel value="env" style={{ flex: 1 }}>
               <EnvTab />
             </Tabs.Panel>

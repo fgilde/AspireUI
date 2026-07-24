@@ -201,12 +201,28 @@ docker run -d -p 8080:8080 -v aspireui-data:/data -v /var/run/docker.sock:/var/r
   ghcr.io/fgilde/aspireui:latest
 ```
 
-## API
+## API &amp; MCP (agents)
 
-The whole product is a login-gated REST API. The OpenAPI spec is served at **`/openapi/v1.json`** and a
-browsable **Scalar** reference UI at **`/scalar`** (also linked from the account menu → *API reference*).
-Requests use the session cookie (log in via the UI first). *(Coming: API-key auth + an MCP server so
-agents can drive AspireUI directly — see the roadmap.)*
+The whole product is a REST API. The OpenAPI spec is at **`/openapi/v1.json`** with a browsable
+**Scalar** reference UI at **`/scalar`** (account menu → *API reference*).
+
+Auth is either the browser session cookie or a **personal access token** — create one under
+**Settings → API &amp; Agents** and send it as `Authorization: Bearer <token>` on any `/api/...` call.
+
+Agents can drive AspireUI through the built-in **MCP server** at **`/mcp`** (same Bearer auth). It
+exposes tools to list/inspect stacks, browse the app catalog, and start/stop/deploy + read logs of
+hosted apps. Add it to an MCP-capable agent:
+
+```json
+{
+  "mcpServers": {
+    "aspireui": {
+      "url": "http://<host>:8080/mcp",
+      "headers": { "Authorization": "Bearer <your-token>" }
+    }
+  }
+}
+```
 
 A prebuilt image is published to **`ghcr.io/fgilde/aspireui:latest`** on every push, so you can
 `docker run` it directly instead of building.

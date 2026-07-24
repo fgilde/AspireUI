@@ -28,6 +28,7 @@ public static class StackEndpoints
         var userTemplates = new UserTemplateStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var snippets = new SnippetStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
         var deployments = new DeploymentStore(Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db"));
+        var apiTokens = app.Services.GetRequiredService<ApiTokenStore>();
         var run = app.Services.GetRequiredService<RunService>();
         var graph = app.Services.GetRequiredService<ResourceGraphService>();
         var publish = new PublishService(gen);
@@ -56,6 +57,18 @@ public static class StackEndpoints
         var app2 = app.MapGroup("/api").RequireAuthorization();
 
         string Dir(string id) => Path.Combine(wsRoot, id);
+        static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+
+        // Personal access tokens for the REST API + MCP (each user manages their own). The plaintext
+        // token is returned once, on create.
+        app2.MapGet("/api-tokens", (HttpContext ctx) => Results.Ok(apiTokens.List(Uid(ctx))));
+        app2.MapPost("/api-tokens", (CreateTokenRequest b, HttpContext ctx) =>
+        {
+            var (token, record) = apiTokens.Create(Uid(ctx), b.Name ?? "token");
+            return Results.Ok(new { token, record });
+        });
+        app2.MapDelete("/api-tokens/{id}", (string id, HttpContext ctx) =>
+            apiTokens.Delete(id, Uid(ctx)) ? Results.NoContent() : Results.NotFound());
 
         // Stamp creation metadata on a brand-new stack (id + who + when).
         StackModel New(StackModel s, HttpContext ctx) => s with
@@ -783,6 +796,7 @@ public static class StackEndpoints
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
     public record StoreExclusionsRequest(List<string>? Ids);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
+    public record CreateTokenRequest(string? Name);
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);

@@ -5,12 +5,28 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
+var dbPath = Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db");
+
 // Shared so the built-in dashboard panel and the stack endpoints see the same run state.
 builder.Services.AddSingleton<ResourceGraphService>();
 builder.Services.AddSingleton<RunService>(sp => new RunService(graph: sp.GetRequiredService<ResourceGraphService>()));
+// Stores the API-key handler + MCP tools resolve (SQLite is the shared source of truth, so these can
+// safely be their own instances alongside the ones the endpoints create).
+builder.Services.AddSingleton(_ => new ApiTokenStore(dbPath));
+builder.Services.AddSingleton(_ => new UserStore(dbPath));
+builder.Services.AddSingleton(_ => new CatalogService());
+// MCP server: exposes AspireUI tools to agents over /mcp (Bearer-token auth, mapped below).
+builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpTools>();
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(o =>
+// Cookie for the browser; Bearer personal-access-token for the API/MCP. A policy scheme routes each
+// request to the right one (Authorization: Bearer → ApiKey, otherwise the cookie).
+builder.Services.AddAuthentication("smart")
+    .AddPolicyScheme("smart", "smart", o => o.ForwardDefaultSelector = ctx =>
+        ctx.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? ApiKeyAuthenticationHandler.Scheme : CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthenticationHandler.Scheme, null)
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, o =>
     {
         // Cookies ignore the port, so two AspireUI instances on localhost (e.g. one running the other
         // as a resource) would clobber each other's session with a shared cookie name. Make the name
@@ -44,6 +60,8 @@ Seeder.Run();
 // the docs; the endpoints themselves stay auth-gated.
 app.MapOpenApi();
 app.MapScalarApiReference(o => o.WithTitle("AspireUI API").WithTheme(ScalarTheme.Purple));
+// MCP endpoint for agents — Bearer personal-access-token required (same auth as the REST API).
+app.MapMcp("/mcp").RequireAuthorization();
 
 app.UseDefaultFiles();
 // Serve the built SPA. Content-hashed assets (index-<hash>.js) may cache forever, but index.html must
