@@ -30,7 +30,7 @@
   </tr>
 </table>
 
-<sub>The <a href="https://fgilde.github.io/AspireUI/">docs</a> have an interactive before/after slider for every screenshot.</sub>
+<sub>Read the <a href="https://fgilde.github.io/AspireUI/">docs</a> to find more.</sub>
 
 <h1>
   <img src="docs/aspireui_transparent.svg" alt="AspireUI" width="50" align="center">
@@ -43,9 +43,26 @@ Visually build, import, and run .NET Aspire AppHost projects.
 
 ### One-click cloud
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ffgilde%2FAspireUI%2Fmaster%2Fdeploy%2Fazuredeploy.json)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/fgilde/AspireUI)
-[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run/?git_repo=https://github.com/fgilde/AspireUI)
+
+<p align="center">
+  <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ffgilde%2FAspireUI%2Fmaster%2Fdeploy%2Fazuredeploy.json">
+    <img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" height="32">
+  </a>
+  &nbsp;
+  <a href="https://render.com/deploy?repo=https://github.com/fgilde/AspireUI">
+    <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render" height="32">
+  </a>
+  &nbsp;
+  <a href="https://deploy.cloud.run/?git_repo=https://github.com/fgilde/AspireUI">
+    <img src="https://deploy.cloud.run/button.svg" alt="Run on Google Cloud" height="32">
+  </a>
+  &nbsp;
+  <a href="https://console.aws.amazon.com/cloudformation/home#/stacks/quickcreate?templateURL=https%3A%2F%2Fraw.githubusercontent.com%2Ffgilde%2FAspireUI%2Fmaster%2Fdeploy%2Faws-template.yaml&stackName=AspireUI">
+    <img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png" alt="Launch Stack on AWS" height="32">
+  </a>
+</p>
+
+
 
 > These spin up the prebuilt image on a managed container platform — perfect for **trying AspireUI**
 > (build, import, publish, explore the catalog). Managed containers have **no host Docker socket**, so
