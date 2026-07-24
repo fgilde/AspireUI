@@ -95,9 +95,11 @@ Then open **http://localhost:8080**. Needs Docker + the Compose v2 plugin. The D
 stacks you launch (and [hosted apps](docs/hosting.md)) start their own containers — see the security
 note in `docker-compose.yml` and [Self-hosting](#run-on-a-server-docker).
 
-> **Operating AspireUI needs only Docker** — no .NET SDK or Git. Those are only for building from
-> source. The Docker socket mount is what makes the in-app **Run** and **Hosting** features work; the
-> socket is **root-equivalent on the host**, so run AspireUI on an isolated/disposable box.
+> **On the host you only need Docker.** The official image bundles the .NET SDK, the Docker CLI +
+> Compose plugin, and the `aspire` CLI — the in-app **Run** and **Hosting** features rely on all of
+> them, so they're baked in rather than optional. You only install .NET/Git yourself when building from
+> source or running AspireUI outside the image. The Docker socket mount (what powers Run/Hosting) is
+> **root-equivalent on the host** — run AspireUI on an isolated/disposable box.
 
 ### Proxmox VE (one command)
 
