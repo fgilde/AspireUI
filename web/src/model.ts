@@ -24,7 +24,7 @@ export interface Stack {
 export interface PortMapping { container: number; host: number; public: boolean }
 export interface BackupVol { name: string; size: number }
 export interface BackupInfo { stamp: string; createdAt: string; volumes: BackupVol[] }
-export interface NpmSettings { enabled: boolean; baseUrl: string; email: string; forwardHost: string; hasPassword: boolean }
+export interface NpmSettings { enabled: boolean; baseUrl: string; email: string; forwardHost: string; hasPassword: boolean; detectedHost?: string | null }
 export interface NpmProxyHost { id: number; domainNames: string[]; forwardScheme: string; forwardHost: string; forwardPort: number; websockets: boolean }
 export interface DomainInfo {
   configured: boolean; error?: string | null;

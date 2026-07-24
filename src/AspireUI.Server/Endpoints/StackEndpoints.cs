@@ -650,7 +650,7 @@ public static class StackEndpoints
         app2.MapGet("/hosting/npm-settings", () => { var c = NpmCfg(); return Results.Ok(new
         {
             enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email, forwardHost = c.ForwardHost,
-            hasPassword = !string.IsNullOrEmpty(c.Password),
+            hasPassword = !string.IsNullOrEmpty(c.Password), detectedHost = NpmService.LocalIPv4(),
         }); }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPut("/hosting/npm-settings", (NpmSettingsRequest b) =>
         {
@@ -675,7 +675,13 @@ public static class StackEndpoints
             var c = NpmCfg();
             if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
             var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-            var fwdHost = string.IsNullOrWhiteSpace(c.ForwardHost) ? ctx.Request.Host.Host : c.ForwardHost;
+            var reqHost = ctx.Request.Host.Host;
+            var reqIsLocal = reqHost is "localhost" or "::1" || reqHost.StartsWith("127.");
+            // Prefer the configured forward host; else the request host if it's already a real address;
+            // else the machine's detected LAN IP (never "localhost" — NPM can't reach that remotely).
+            var fwdHost = !string.IsNullOrWhiteSpace(c.ForwardHost) ? c.ForwardHost
+                : !reqIsLocal ? reqHost
+                : NpmService.LocalIPv4() ?? reqHost;
             NpmProxyHost? existing = null; string? error = null;
             try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
             catch (Exception e) { error = e.Message; }

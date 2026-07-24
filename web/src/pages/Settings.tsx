@@ -45,11 +45,12 @@ function NpmSettingsSection() {
   const [password, setPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
   const [forwardHost, setForwardHost] = useState("");
+  const [detectedHost, setDetectedHost] = useState("");
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; error?: string | null } | null>(null);
   const [testing, setTesting] = useState(false);
   useEffect(() => { api.getNpmSettings().then(s => {
-    setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setForwardHost(s.forwardHost); setHasPassword(s.hasPassword);
+    setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setForwardHost(s.forwardHost); setHasPassword(s.hasPassword); setDetectedHost(s.detectedHost ?? "");
   }).catch(() => {}); }, []);
   const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined, forwardHost: forwardHost.trim() });
   const save = async () => { await api.setNpmSettings(body()); setHasPassword(hasPassword || !!password); setPassword(""); setSaved(true); setTimeout(() => setSaved(false), 2000); };
@@ -71,9 +72,9 @@ function NpmSettingsSection() {
       <TextInput label="Email" placeholder="admin@example.com" value={email} onChange={e => setEmail(e.currentTarget.value)} disabled={!enabled} />
       <PasswordInput label="Password" placeholder={hasPassword ? "•••••••• (stored — leave blank to keep)" : "NPM admin password"}
         value={password} onChange={e => setPassword(e.currentTarget.value)} disabled={!enabled} />
-      <TextInput label="Apps reachable at (forward host)" placeholder="e.g. 192.168.1.50 — leave blank to use this server's address"
+      <TextInput label="Apps reachable at (forward host)" placeholder={detectedHost ? `${detectedHost} (detected — leave blank to use it)` : "e.g. 192.168.1.50"}
         value={forwardHost} onChange={e => setForwardHost(e.currentTarget.value)} disabled={!enabled}
-        description="The host/IP your NPM uses to reach the machine AspireUI publishes apps on. Blank = AspireUI guesses from the request." />
+        description={`The host/IP your NPM uses to reach the machine AspireUI publishes apps on. Blank = AspireUI uses ${detectedHost || "this server's detected LAN IP"} (never localhost).`} />
       {test && <Alert color={test.ok ? "green" : "red"} p="xs" icon={test.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
         {test.ok ? "Connected — NPM reachable and credentials valid." : `Failed: ${test.error}`}
       </Alert>}

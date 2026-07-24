@@ -21,6 +21,21 @@ public static class NpmService
 
     private static string Root(NpmConfig c) => c.BaseUrl.TrimEnd('/');
 
+    // The machine's primary LAN IPv4 — a far better default forward host than "localhost" (NPM usually
+    // runs on another box and must reach the apps over the network). Uses a UDP socket's routing
+    // decision (no packet is actually sent); null if it can't be determined.
+    public static string? LocalIPv4()
+    {
+        try
+        {
+            using var s = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork,
+                System.Net.Sockets.SocketType.Dgram, System.Net.Sockets.ProtocolType.Udp);
+            s.Connect("8.8.8.8", 65530);
+            return (s.LocalEndPoint as System.Net.IPEndPoint)?.Address.ToString();
+        }
+        catch { return null; }
+    }
+
     private static async Task<string?> TokenAsync(NpmConfig c)
     {
         var res = await Http.PostAsJsonAsync($"{Root(c)}/api/tokens", new { identity = c.Email, secret = c.Password });
