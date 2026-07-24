@@ -119,7 +119,7 @@ function ApiTab() {
           built-in <b>MCP</b> server. Both accept a personal access token as <Code>Authorization: Bearer &lt;token&gt;</Code>.
         </Text>
         <Group gap="xs"><Text size="sm">API base:</Text><Code>{origin}/api</Code></Group>
-        <Group gap="xs"><Text size="sm">MCP endpoint:</Text><Code>{origin}/mcp</Code></Group>
+        <Group gap="xs"><Text size="sm">MCP endpoint:</Text><Code>{origin}/mcp</Code><Text size="xs" c="dimmed">(for MCP clients — opening it in a browser shows nothing)</Text></Group>
       </MStack>
 
       <MStack gap="sm">
