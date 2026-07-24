@@ -1,5 +1,4 @@
-<p align="center"><img src="docs/aspireui_transparent.svg" alt="AspireUI" width="540" /></p>
-
+<p align="center"><img src="docs/aspireui_wordmark.svg" alt="AspireUI" width="540" /></p>
 <hr>
 
 <table>
@@ -15,7 +14,10 @@
 
 <sub>The <a href="https://fgilde.github.io/AspireUI/">docs</a> have an interactive before/after slider for every screenshot.</sub>
 
-# AspireUI
+<h1>
+  <img src="docs/aspireui_transparent.svg" alt="AspireUI" width="50" align="center">
+  AspireUI
+</h1>
 
 Visually build, import, and run .NET Aspire AppHost projects.
 
