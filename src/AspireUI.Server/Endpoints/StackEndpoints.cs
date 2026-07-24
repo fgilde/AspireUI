@@ -408,17 +408,30 @@ public static class StackEndpoints
             return Results.Ok(new { ok = false, error = $"Could not launch {r.Ide}. Make sure it's installed and on PATH, and that AspireUI runs on your machine." });
         });
 
-        app2.MapPost("/stacks/{id}/run", (string id) =>
+        // The address to show in run/resource links instead of loopback: a PublicHost setting wins, else
+        // the request IP if you browsed by IP, else the server's LAN IP (never localhost — AspireUI may
+        // run on another machine). Central so a future setting/UI has one place to hook in.
+        string PublicHost(HttpContext ctx)
+        {
+            var cfg = settings.GetValue("PublicHost");
+            if (!string.IsNullOrWhiteSpace(cfg)) return cfg!;
+            var h = ctx.Request.Host.Host;
+            return HostUrls.IsIpLiteral(h) ? h : (NpmService.LocalIPv4() ?? h);
+        }
+        RunStatus WithHost(RunStatus s, HttpContext ctx) =>
+            s.DashboardUrl is null ? s : s with { DashboardUrl = HostUrls.Rewrite(s.DashboardUrl, PublicHost(ctx)) };
+
+        app2.MapPost("/stacks/{id}/run", (string id, HttpContext ctx) =>
         {
             if (LockGuard(id) is { } r) return r;
             // Re-materialize fresh so the run reflects the current model and a clean single-csproj dir
             // (stale csproj from an earlier stack name would otherwise make `dotnet run` ambiguous).
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
-            return Results.Ok(run.Start(id, Path.GetFullPath(Dir(id))));
+            return Results.Ok(WithHost(run.Start(id, Path.GetFullPath(Dir(id))), ctx));
         });
         app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
-        app2.MapGet("/stacks/{id}/status", (string id) => Results.Ok(run.Status(id)));
+        app2.MapGet("/stacks/{id}/status", (string id, HttpContext ctx) => Results.Ok(WithHost(run.Status(id), ctx)));
         // Read-only host filesystem browse — powers the path picker for project/script/config-path
         // params (e.g. a Deno/C# app's working directory). Authenticated (app2) only; local-first tool
         // that already shells dotnet/IDEs, so listing folders is in scope. No path → drive roots.
@@ -447,7 +460,15 @@ public static class StackEndpoints
         });
 
         // Live per-resource view of a running stack (state/urls/parent), from the Aspire resource service.
-        app2.MapGet("/stacks/{id}/resources", (string id) => Results.Ok(graph.GetResources(id)));
+        // Loopback endpoint URLs are rewritten to a reachable host so resources are testable off-box.
+        app2.MapGet("/stacks/{id}/resources", (string id, HttpContext ctx) =>
+        {
+            var host = PublicHost(ctx);
+            var res = graph.GetResources(id)
+                .Select(r => r with { Urls = r.Urls.Select(u => u with { Url = HostUrls.Rewrite(u.Url, host) }).ToList() })
+                .ToList();
+            return Results.Ok(res);
+        });
         // Best-effort container CPU/memory via `docker stats` (single snapshot). Returns all running
         // containers; the client matches them to resources by name. Empty on any error / no docker.
         app2.MapGet("/stacks/{id}/stats", (string id) =>
