@@ -203,12 +203,12 @@ child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*`
 
 <table>
   <tr>
-    <td align="center"><b>Live Resources</b></td>
-    <td align="center"><b>Screenshot 2</b></td>
+    <td align="center"><b>Live Resources | Running Overview</b></td>
+    <td align="center"><b>Complex Application shared user and password</b></td>
   </tr>
   <tr>
     <td>
-      <img src="docs/screenshots/live-resources.png" alt="AspireUI live running stack" />
+      <img src="https://github.com/user-attachments/assets/57a8c4d3-f7d2-4193-b6d6-5c657d540a86" alt="AspireUI live running stack" />
     </td>
     <td>
       <img src="https://github.com/user-attachments/assets/3f7e5d9a-1679-47d8-bdcc-161dbb043079" alt="AspireUI screenshot 2" />
@@ -216,8 +216,8 @@ child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*`
   </tr>
 
   <tr>
-    <td align="center"><b>Screenshot 3</b></td>
-    <td align="center"><b>Screenshot 4</b></td>
+    <td align="center"><b>Dashboard</b></td>
+    <td align="center"><b>Environment edit in Hosting</b></td>
   </tr>
   <tr>
     <td>
@@ -229,21 +229,21 @@ child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*`
   </tr>
 
   <tr>
-    <td align="center"><b>Screenshot 5</b></td>
-    <td align="center"><b>Screenshot 6</b></td>
+    <td align="center"><b>Hosting Treeview</b></td>
+    <td align="center"><b>Settings</b></td>
   </tr>
   <tr>
     <td>
       <img src="https://github.com/user-attachments/assets/bb7d99de-cf7d-4912-8ce3-6530613d785e" alt="AspireUI screenshot 5" />
     </td>
-    <td>
-      <img src="https://github.com/user-attachments/assets/cc13845e-e3c4-4e1d-a416-bce95cbb2a62" alt="AspireUI screenshot 6" />
+    <td>      
+      <img width="1743" height="1335" alt="image" src="https://github.com/user-attachments/assets/a603b545-b314-4268-8ead-1ad257fc957d" />
     </td>
   </tr>
 
   <tr>
-    <td align="center"><b>Screenshot 7</b></td>
-    <td align="center"><b>Screenshot 8</b></td>
+    <td align="center"><b>Add Aspire resource</b></td>
+    <td align="center"><b>Code match for selection</b></td>
   </tr>
   <tr>
     <td>
