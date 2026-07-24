@@ -353,7 +353,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                       <Text fw={600} lineClamp={1}>{s.name}</Text>
                     </Group>
                     <Group gap={6} wrap="nowrap">
-                      {dep && <Badge size="xs" variant="light" color={hostingColor(dep.state)}>Hosting</Badge>}
+                      {dep && <Badge size="xs" variant="light" color={hostingColor(dep.state)}>{dep.state === "running" ? "Hosting" : dep.state}</Badge>}
                       <Menu position="bottom-end" withArrow>
                         <Menu.Target>
                           <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
@@ -416,11 +416,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                     <Group gap={4} onClick={e => e.stopPropagation()}>
                       {dep ? (
                         <>
-                          {active
+                          {dep.state === "deploying"
+                            ? <Tooltip label="Deploying — pulling images &amp; starting…" withArrow><Loader size="xs" color="yellow" /></Tooltip>
+                            : active
                             ? <Tooltip label="Stop (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="red"
-                                onClick={() => api.stopHosting(s.id).then(loadDeps).catch(toastErr)}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
-                            : <Tooltip label="Start (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="green"
-                                onClick={() => api.startHosting(s.id).then(loadDeps).catch(toastErr)}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
+                                onClick={() => { toastOk(`Stopping "${s.name}"…`); api.stopHosting(s.id).then(loadDeps).catch(toastErr); }}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                            : <Tooltip label={dep.state === "failed" ? "Retry (hosting)" : "Start (hosting)"} withArrow><ActionIcon size="sm" variant="subtle" color="green"
+                                onClick={() => { toastOk(`${dep.state === "failed" ? "Retrying" : "Starting"} "${s.name}"…`); api.startHosting(s.id).then(loadDeps).catch(toastErr); }}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
                           {hostUrl && (
                             <Tooltip label="Open app" withArrow><ActionIcon size="sm" variant="subtle" component="a"
                               href={hostUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>

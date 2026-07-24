@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert } from "@mantine/core";
+import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group } from "@mantine/core";
 import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
@@ -66,7 +66,7 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChange
           </ActionIcon>
         </Table.Td>
         <Table.Td>{d.name}</Table.Td>
-        <Table.Td><Badge color={hostingColor(d.state)} variant="light">{d.state}</Badge></Table.Td>
+        <Table.Td><Group gap={6} wrap="nowrap">{d.state === "deploying" && <Loader size={12} color="yellow" />}<Badge color={hostingColor(d.state)} variant="light">{d.state}</Badge></Group></Table.Td>
         <Table.Td>{d.urls.map(u => <Anchor key={u} href={u} target="_blank" mr="sm" size="sm">{u} <IconExternalLink size={12} /></Anchor>)}</Table.Td>
         <Table.Td>
           <Menu position="bottom-end" withArrow>

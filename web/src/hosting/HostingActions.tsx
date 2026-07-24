@@ -14,8 +14,8 @@ export const hostingColor = (s: string) => s === "running" ? "green" : s === "fa
 export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor, onChanged }: {
   d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onOpenEditor?: () => void; onChanged: () => void;
 }) {
-  const stop = () => api.stopHosting(d.stackId).then(onChanged).catch(toastErr);
-  const start = () => api.startHosting(d.stackId).then(onChanged).catch(toastErr);
+  const stop = () => { toastOk(`Stopping ${d.name}…`); api.stopHosting(d.stackId).then(onChanged).catch(toastErr); };
+  const start = () => { toastOk(`${d.state === "failed" ? "Retrying" : "Starting"} ${d.name}…`); api.startHosting(d.stackId).then(onChanged).catch(toastErr); };
   const update = () => { toastOk(`Updating ${d.name}…`); api.updateHosting(d.stackId).then(onChanged).then(() => toastOk("Updated")).catch(toastErr); };
   const backup = () => { toastOk(`Backing up ${d.name}…`); api.backupHosting(d.stackId).then(r => toastOk(r.dir ? "Backup written" : "Nothing to back up")).catch(toastErr); };
   const undeploy = () => confirmDelete(`"${d.name}"`, "This runs docker compose down (named volumes are KEPT — data survives).")
@@ -26,7 +26,9 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onOpenEditor
     <>
       {d.state === "running"
         ? <Menu.Item leftSection={<IconPlayerStop size={14} />} onClick={stop}>Stop</Menu.Item>
-        : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={start}>Start</Menu.Item>}
+        : d.state === "deploying"
+        ? <Menu.Item leftSection={<Loader size={12} />} disabled>Deploying…</Menu.Item>
+        : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={start}>{d.state === "failed" ? "Retry" : "Start"}</Menu.Item>}
       <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
