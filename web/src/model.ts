@@ -4,6 +4,20 @@ declare const __BUILD__: string;
 export const APP_VERSION: string = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0";
 export const BUILD_INFO: string = typeof __BUILD__ !== "undefined" ? __BUILD__ : "dev";
 
+// 8 random hex chars for node/edge/group ids. Uses crypto.getRandomValues (available even over plain
+// http on a remote host, unlike crypto.randomUUID which needs a secure context) with a Math.random
+// fallback — so building stacks works when AspireUI is served over http on a LAN IP/domain, not just
+// on localhost/https.
+export function rid(): string {
+  const c = globalThis.crypto as Crypto | undefined;
+  if (c?.getRandomValues) {
+    const b = new Uint8Array(4);
+    c.getRandomValues(b);
+    return Array.from(b, x => x.toString(16).padStart(2, "0")).join("");
+  }
+  return Math.floor(Math.random() * 0x1_0000_0000).toString(16).padStart(8, "0");
+}
+
 export interface WithCall { method: string; args: string[] }
 export interface Node { id: string; varName: string; addMethod: string; resourceName: string; withCalls: WithCall[]; x: number; y: number; addArgs: string[]; composite?: boolean; usings?: string[]; spawnedBy?: string | null; icon?: string | null }
 export interface Edge { id: string; fromNodeId: string; toNodeId: string; kind: string }
@@ -123,8 +137,8 @@ export function buildPresetNodes(
 ): { nodes: Node[]; edges: Edge[] } {
   const taken = new Set(existing.map(n => n.resourceName));
   const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
-  const nid = () => "n" + crypto.randomUUID().slice(0, 8);
-  const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+  const nid = () => "n" + rid();
+  const eid = () => "e" + rid();
 
   const companions = choices === "none" ? [] : (preset.companions ?? []);
   const mainName = uniq(preset.id);
@@ -275,7 +289,7 @@ export function instantiateSnippet(snip: Snippet, existing: Node[], dx = 60, dy 
   const uniq = (base: string) => { let n = base, i = 2; while (taken.has(n)) n = `${base}${i++}`; taken.add(n); return n; };
   const idMap = new Map<string, string>(), varMap = new Map<string, string>();
   const plan = snip.nodes.map(n => {
-    const name = uniq(n.resourceName), id = "n" + crypto.randomUUID().slice(0, 8), varName = sanitizeIdentifier(name);
+    const name = uniq(n.resourceName), id = "n" + rid(), varName = sanitizeIdentifier(name);
     idMap.set(n.id, id); if (n.varName) varMap.set(n.varName, varName);
     return { n, id, name, varName };
   });
@@ -287,7 +301,7 @@ export function instantiateSnippet(snip: Snippet, existing: Node[], dx = 60, dy 
     spawnedBy: p.n.spawnedBy ? idMap.get(p.n.spawnedBy) ?? null : p.n.spawnedBy,
   }));
   const edges = snip.edges.filter(e => idMap.has(e.fromNodeId) && idMap.has(e.toNodeId)).map(e => ({
-    id: "e" + crypto.randomUUID().slice(0, 8), fromNodeId: idMap.get(e.fromNodeId)!, toNodeId: idMap.get(e.toNodeId)!, kind: e.kind,
+    id: "e" + rid(), fromNodeId: idMap.get(e.fromNodeId)!, toNodeId: idMap.get(e.toNodeId)!, kind: e.kind,
   }));
   return { nodes, edges };
 }

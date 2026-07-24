@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
 import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
-import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier } from "../model";
+import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier, rid } from "../model";
 import { toastOk, toastErr } from "../ui";
 import { ResourceGlyph } from "../resourceIcons";
 import { PathPickerModal } from "./PathPickerModal";
@@ -136,7 +136,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
     pairs.forEach(([k], i) => {
       let vn = sanitizeIdentifier(k.toLowerCase()); while (taken.has(vn)) vn = `${vn}_${i}`; taken.add(vn);
       paramNodes.push({
-        id: "n" + crypto.randomUUID().slice(0, 8), varName: vn, resourceName: k, addMethod: "AddParameter",
+        id: "n" + rid(), varName: vn, resourceName: k, addMethod: "AddParameter",
         addArgs: ["true"], withCalls: [], x: node.x, y: node.y + 140 + i * 30, // secret:true
       });
       newRows.push([toLiteral(k, "string"), vn]); // env value references the parameter var (raw)
@@ -374,7 +374,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
           totalCount={stack.nodes.length}
           nodes={stack.nodes}
           onCreate={(newNode, refIds, usedByIds, extra) => {
-            const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+            const eid = () => "e" + rid();
             const edges = [
               ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: newNode.id, toNodeId, kind: "reference" })),
               ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: newNode.id, kind: "reference" })),

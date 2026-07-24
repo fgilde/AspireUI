@@ -6,7 +6,7 @@ import csharp from "react-syntax-highlighter/dist/esm/languages/prism/csharp";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useMantineColorScheme } from "@mantine/core";
 import type { CatalogOverload, CatalogParam, Node, Edge, ResourceType } from "../model";
-import { sanitizeIdentifier, toLiteral, configureLiteral, isPathParam, reuseCandidates } from "../model";
+import { sanitizeIdentifier, toLiteral, configureLiteral, isPathParam, reuseCandidates, rid } from "../model";
 import { PathPickerModal } from "./PathPickerModal";
 
 SyntaxHighlighter.registerLanguage("csharp", csharp);
@@ -126,7 +126,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
     if (rt.composite) {
       // Statement-node: no var identifier, no references/wait-for edges; carries its own usings.
       onCreate({
-        id: "n" + crypto.randomUUID().slice(0, 8),
+        id: "n" + rid(),
         varName: "", resourceName: rt.label, addMethod: rt.addMethod,
         addArgs, withCalls: [],
         x: 60 + totalCount * 28, y: 60 + totalCount * 28,
@@ -135,7 +135,7 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
       return;
     }
     const node: Node = {
-      id: "n" + crypto.randomUUID().slice(0, 8),
+      id: "n" + rid(),
       varName, resourceName: name, addMethod: rt.addMethod,
       addArgs, withCalls: [],
       x: 60 + totalCount * 28, y: 60 + totalCount * 28,
@@ -144,18 +144,18 @@ export function AddResourceDialog({ rt, existingCount, totalCount, nodes, onCrea
     // AspireUI + AI backend: wire the assistant via WithAi(<backend>, "<model>"), reusing an existing
     // LLM resource or adding Ollama/LocalAI. The backend node (if new) + a waitFor edge come along.
     if (isAspireUI && aiChoice !== "none") {
-      const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+      const eid = () => "e" + rid();
       const extra: { nodes: Node[]; edges: Edge[] } = { nodes: [], edges: [] };
       let backendVar: string | null = null, backendId: string | null = null;
       if (aiChoice.startsWith("reuse:")) {
         const t = nodes.find(n => n.id === aiChoice.slice(6));
         if (t) { backendVar = t.varName; backendId = t.id; }
       } else if (aiChoice === "add:AddOllama") {
-        backendVar = "ollama"; backendId = "n" + crypto.randomUUID().slice(0, 8);
+        backendVar = "ollama"; backendId = "n" + rid();
         extra.nodes.push({ id: backendId, varName: "ollama", resourceName: "ollama", addMethod: "AddOllama",
           addArgs: [], withCalls: [{ method: "AddModel", args: [JSON.stringify(aiModel)] }], x: node.x + 260, y: node.y + 140 });
       } else if (aiChoice === "add:AddLocalAI") {
-        backendVar = "localai"; backendId = "n" + crypto.randomUUID().slice(0, 8);
+        backendVar = "localai"; backendId = "n" + rid();
         extra.nodes.push({ id: backendId, varName: "localai", resourceName: "localai", addMethod: "AddLocalAI",
           addArgs: [], withCalls: [], x: node.x + 260, y: node.y + 140 });
       }

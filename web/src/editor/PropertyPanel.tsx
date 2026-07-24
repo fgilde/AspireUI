@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Tabs, ScrollArea, Text, MultiSelect, Group, ActionIcon, ThemeIcon, Button, Stack as MStack, Badge } from "@mantine/core";
 import { IconTrash, IconCopy, IconBookmark } from "@tabler/icons-react";
 import type { Stack, ResourceType } from "../model";
-import { sanitizeIdentifier, collectSubgraph } from "../model";
+import { sanitizeIdentifier, collectSubgraph, rid } from "../model";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { toastOk, toastErr, promptText } from "../ui";
 import * as api from "../api";
@@ -62,7 +62,7 @@ export function PropertyPanel({ stack, nodeId, selectedIds = [], flash = false, 
     const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
     const copies = multi.map(id => stack.nodes.find(n => n.id === id)).filter(Boolean).map(n => {
       const name = uniq(n!.resourceName);
-      return { ...n!, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+      return { ...n!, id: "n" + rid(), varName: sanitizeIdentifier(name),
         resourceName: name, x: n!.x + 40, y: n!.y + 40 };
     });
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...copies] }).then(s => { setStack(s); toastOk(`Duplicated ${copies.length}`); }).catch(toastErr);

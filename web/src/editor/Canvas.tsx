@@ -5,7 +5,7 @@ import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Me
 import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX, IconBookmark } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, nodesInGroup, collectSubgraph, type Node, type StackGroup } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, nodesInGroup, collectSubgraph, rid, type Node, type StackGroup } from "../model";
 import { useResourceDelete } from "./useResourceDelete";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { toastOk, toastErr, promptText } from "../ui";
@@ -244,7 +244,7 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
   // Canvas annotations (notes + boundary groups) — persisted on the stack, never in the code.
   const annoOps = useMemo(() => {
     const save = (patch: Partial<Stack>) => api.saveStack({ ...stack, ...patch }).then(setStack);
-    const gid = (p: string) => p + crypto.randomUUID().slice(0, 8);
+    const gid = (p: string) => p + rid();
     return {
       addNote: () => save({ notes: [...(stack.notes ?? []), { id: gid("note:"), text: "", x: 80, y: 80 }] }),
       addGroup: () => save({ groups: [...(stack.groups ?? []), { id: gid("group:"), label: "Group", x: 40, y: 40, width: 320, height: 220, color: "#7c8291" }] }),
@@ -290,7 +290,7 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
         x: cx + padX + (i % cols) * cellW, y: rowY + padTop + Math.floor(i / cols) * cellH,
       }));
       const prev = existing.find(g => g.label.toLowerCase() === label.toLowerCase());
-      managed.push({ id: prev?.id ?? "group:" + crypto.randomUUID().slice(0, 8), label,
+      managed.push({ id: prev?.id ?? "group:" + rid(), label,
         x: cx, y: rowY, width: w, height: h, color: prev?.color ?? PALETTE[ci++ % PALETTE.length] });
       cx += w + gap; rowMaxH = Math.max(rowMaxH, h);
     }
@@ -331,10 +331,10 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     const uniq = (base: string) => { let n = `${base}-copy`, i = 2; while (taken.has(n)) n = `${base}-copy${i++}`; taken.add(n); return n; };
     const copies = members.map(n => {
       const name = uniq(n.resourceName);
-      return { ...n, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+      return { ...n, id: "n" + rid(), varName: sanitizeIdentifier(name),
         resourceName: name, x: n.x + dx, y: n.y + dy };
     });
-    const newGroup = { ...g, id: "group:" + crypto.randomUUID().slice(0, 8), label: `${g.label} copy`, x: g.x + dx, y: g.y + dy };
+    const newGroup = { ...g, id: "group:" + rid(), label: `${g.label} copy`, x: g.x + dx, y: g.y + dy };
     api.saveStack({ ...stack, nodes: [...stack.nodes, ...copies], groups: [...(stack.groups ?? []), newGroup] })
       .then(s => { setStack(s); toastOk("Group duplicated"); }).catch(toastErr);
   }, [stack, setStack]);
@@ -395,7 +395,7 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     const taken = new Set(stack.nodes.map(x => x.resourceName));
     let name = `${n.resourceName}-copy`, i = 2;
     while (taken.has(name)) name = `${n.resourceName}-copy${i++}`;
-    const copy = { ...n, id: "n" + crypto.randomUUID().slice(0, 8), varName: sanitizeIdentifier(name),
+    const copy = { ...n, id: "n" + rid(), varName: sanitizeIdentifier(name),
       resourceName: name, x: n.x + 40, y: n.y + 40 };
     api.saveStack({ ...stack, nodes: [...stack.nodes, copy] }).then(setStack);
   }, [stack, setStack]);
@@ -419,7 +419,7 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
   // All edge mutations rewrite the pair's edges and persist the whole stack (edges live in the model,
   // so one saveStack is enough — no per-edge endpoints needed).
   const ops = useMemo(() => {
-    const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+    const eid = () => "e" + rid();
     const save = (edges: typeof stack.edges) => api.saveStack({ ...stack, edges }).then(setStack);
     return {
       setPair(from: string, to: string, ref: boolean, wait: boolean) {

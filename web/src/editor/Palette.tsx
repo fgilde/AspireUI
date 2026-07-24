@@ -3,7 +3,7 @@ import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark, IconInfoCircle } from "@tabler/icons-react";
 import { AppInfoModal } from "../components/AppInfoModal";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
-import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES } from "../model";
+import { buildPresetNodes, reuseCandidates, parameterCandidates, instantiateSnippet, ROLE_ALTERNATIVES, rid } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { toastOk, toastErr, promptText } from "../ui";
 import * as api from "../api";
@@ -156,7 +156,7 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
   const allOpen = groupKeys.every(g => !collapsed.includes(g));
 
   const onCreate = (node: Node, refIds: string[], usedByIds: string[], extra?: { nodes: Node[]; edges: Edge[] }) => {
-    const eid = () => "e" + crypto.randomUUID().slice(0, 8);
+    const eid = () => "e" + rid();
     const edges = [
       ...refIds.map(toNodeId => ({ id: eid(), fromNodeId: node.id, toNodeId, kind: "reference" })),
       ...usedByIds.map(fromNodeId => ({ id: eid(), fromNodeId, toNodeId: node.id, kind: "reference" })),
