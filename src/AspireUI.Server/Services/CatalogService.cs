@@ -52,7 +52,12 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     List<string>? Screenshots = null,
     // Web-UI path appended to the endpoint URL (e.g. Plex "/web", Pi-hole "/admin"). buildPresetNodes
     // emits WithUrlForEndpoint from it — MUST be here or the server drops it on (de)serialize.
-    string? UrlPath = null);
+    string? UrlPath = null,
+    // Richer info-dialog metadata (from the scraped app catalog): bundled logo + GitHub card image
+    // (served under /media), source repo, and GitHub stats. MUST be declared here or the Web serializer
+    // drops them on (de)serialize and the API never sends them.
+    string? Logo = null, string? Card = null, string? Github = null,
+    int? Stars = null, string? License = null, string? Language = null, List<string>? Topics = null);
 public record PresetFile(string Name, string Content);
 // A companion node in a preset. Key wires env references (`${key}` → its resource name). Role (e.g.
 // "postgres"/"redis"/"llm") lets the UI reuse an existing matching resource or offer alternatives

@@ -27,7 +27,18 @@
         "role": "llm"
       }
     ],
-    "website": "https://github.com/mudler/LocalAGI"
+    "website": "https://github.com/mudler/LocalAGI",
+    "github": "https://github.com/mudler/LocalAGI",
+    "stars": 1858,
+    "license": "MIT License (MIT)",
+    "language": "Go",
+    "logo": "/media/localagi/logo.webp",
+    "card": "/media/localagi/card.webp",
+    "screenshots": [
+      "/media/localagi/screenshot_1.webp",
+      "/media/localagi/screenshot_2.webp",
+      "/media/localagi/screenshot_3.webp"
+    ]
   },
   {
     "id": "localrecall",
@@ -37,7 +48,17 @@
     "port": 8080,
     "icon": "localrecall",
     "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI).",
-    "website": "https://github.com/mudler/LocalRecall"
+    "website": "https://github.com/mudler/LocalRecall",
+    "github": "https://github.com/mudler/LocalRecall",
+    "stars": 807,
+    "license": "MIT License (MIT)",
+    "language": "Go",
+    "logo": "/media/localrecall/logo.webp",
+    "card": "/media/localrecall/card.webp",
+    "screenshots": [
+      "/media/localrecall/screenshot_1.webp",
+      "/media/localrecall/screenshot_2.webp"
+    ]
   },
   {
     "id": "openwebui",
@@ -47,7 +68,32 @@
     "port": 8080,
     "icon": "openwebui",
     "description": "Open WebUI — chat UI for Ollama / OpenAI-compatible backends. Point OLLAMA_BASE_URL / OPENAI_API_BASE_URL at your model resource.",
-    "website": "https://openwebui.com"
+    "website": "https://openwebui.com",
+    "github": "https://github.com/open-webui/open-webui",
+    "stars": 146392,
+    "license": "Other (NOASSERTION)",
+    "language": "Python",
+    "topics": [
+      "ai",
+      "llm",
+      "llm-ui",
+      "llm-webui",
+      "llms",
+      "mcp",
+      "ollama",
+      "ollama-webui",
+      "open-webui",
+      "openai",
+      "openapi",
+      "rag"
+    ],
+    "logo": "/media/openwebui/logo.webp",
+    "card": "/media/openwebui/card.webp",
+    "screenshots": [
+      "/media/openwebui/screenshot_1.webp",
+      "/media/openwebui/screenshot_2.webp",
+      "/media/openwebui/screenshot_3.webp"
+    ]
   },
   {
     "id": "comfyui",
@@ -56,9 +102,28 @@
     "image": "ghcr.io/ai-dock/comfyui:latest-cuda",
     "port": 8188,
     "icon": "comfyui",
-    "description": "ComfyUI — node-based Stable Diffusion image/video pipeline (ai-dock build). GPU recommended.",
+    "description": "The most powerful and modular diffusion model GUI, api and backend with a graph/nodes interface. GPU recommended.",
     "gpu": true,
-    "website": "https://github.com/comfyanonymous/ComfyUI"
+    "website": "https://github.com/comfyanonymous/ComfyUI",
+    "github": "https://github.com/Comfy-Org/ComfyUI",
+    "stars": 121997,
+    "license": "GPL-3.0",
+    "language": "Python",
+    "topics": [
+      "ai",
+      "comfy",
+      "comfyui",
+      "python",
+      "pytorch",
+      "stable-diffusion"
+    ],
+    "logo": "/media/comfyui/logo.webp",
+    "card": "/media/comfyui/card.webp",
+    "screenshots": [
+      "/media/comfyui/screenshot_1.webp",
+      "/media/comfyui/screenshot_2.webp",
+      "/media/comfyui/screenshot_3.webp"
+    ]
   },
   {
     "id": "sdnext",
@@ -69,7 +134,30 @@
     "icon": "sdnext",
     "description": "SD.Next — all-in-one WebUI for generative image/video (vladmandic). CUDA image shown; ROCm/IPEX/OpenVINO variants exist. GPU recommended.",
     "gpu": true,
-    "website": "https://github.com/vladmandic/sdnext"
+    "website": "https://github.com/vladmandic/sdnext",
+    "github": "https://github.com/vladmandic/automatic",
+    "stars": 7131,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Python",
+    "topics": [
+      "ai-art",
+      "caption",
+      "diffusers",
+      "generative-art",
+      "python",
+      "pytorch",
+      "sdnext",
+      "stable-diffusion",
+      "transformers",
+      "webui"
+    ],
+    "logo": "/media/sdnext/logo.webp",
+    "card": "/media/sdnext/card.webp",
+    "screenshots": [
+      "/media/sdnext/screenshot_1.webp",
+      "/media/sdnext/screenshot_2.webp",
+      "/media/sdnext/screenshot_3.webp"
+    ]
   },
   {
     "id": "acestep",
@@ -78,9 +166,20 @@
     "image": "ghcr.io/dotnetautor/ace-step-1.5-docker:latest",
     "port": 7860,
     "icon": "acestep",
-    "description": "ACE-Step 1.5 — open music generation (Gradio UI, models baked in ~15GB). GPU recommended.",
+    "description": "ACE-Step: A Step Towards Music Generation Foundation Model GPU recommended.",
     "gpu": true,
-    "website": "https://github.com/ace-step/ACE-Step"
+    "website": "https://github.com/ace-step/ACE-Step",
+    "github": "https://github.com/ace-step/ACE-Step",
+    "stars": 4683,
+    "license": "Apache-2.0",
+    "language": "Python",
+    "logo": "/media/acestep/logo.webp",
+    "card": "/media/acestep/card.webp",
+    "screenshots": [
+      "/media/acestep/screenshot_1.webp",
+      "/media/acestep/screenshot_2.webp",
+      "/media/acestep/screenshot_3.webp"
+    ]
   },
   {
     "id": "langflow",
@@ -89,7 +188,7 @@
     "image": "langflowai/langflow:latest",
     "port": 7860,
     "icon": "langflow",
-    "description": "Langflow — visual builder for LangChain-style LLM flows and agents. Superuser seeded (admin/admin — change it).",
+    "description": "This section includes the ... the world. ... To self-host your local server through an ngrok gateway, see Deploy a public Langflow server. This approach uses ngrok to forward traffic and share your local Langflow server over the internet, without deploying to a cloud provider or exposing your network directly. Superuser seeded (admin/admin — change it).",
     "env": [
       [
         "LANGFLOW_AUTO_LOGIN",
@@ -109,7 +208,26 @@
         "secret": true
       }
     ],
-    "website": "https://www.langflow.org"
+    "website": "https://www.langflow.org",
+    "github": "https://github.com/langflow-ai/langflow",
+    "stars": 152120,
+    "license": "MIT License (MIT)",
+    "language": "Python",
+    "topics": [
+      "agents",
+      "chatgpt",
+      "generative-ai",
+      "large-language-models",
+      "multiagent",
+      "react-flow"
+    ],
+    "logo": "/media/langflow/logo.webp",
+    "card": "/media/langflow/card.webp",
+    "screenshots": [
+      "/media/langflow/screenshot_1.webp",
+      "/media/langflow/screenshot_2.webp",
+      "/media/langflow/screenshot_3.webp"
+    ]
   },
   {
     "id": "flowise",
@@ -118,8 +236,31 @@
     "image": "flowiseai/flowise:latest",
     "port": 3000,
     "icon": "flowise",
-    "description": "Flowise — drag-and-drop LLM app / agent builder.",
-    "website": "https://flowiseai.com"
+    "description": "Build AI Agents, Visually",
+    "website": "https://flowiseai.com",
+    "github": "https://github.com/FlowiseAI/Flowise",
+    "stars": 54868,
+    "license": "NOASSERTION",
+    "language": "TypeScript",
+    "topics": [
+      "agentic-ai",
+      "agentic-workflow",
+      "agents",
+      "artificial-intelligence",
+      "chatbot",
+      "chatgpt",
+      "javascript",
+      "langchain",
+      "large-language-models",
+      "low-code",
+      "multiagent-systems",
+      "no-code"
+    ],
+    "logo": "/media/flowise/logo.webp",
+    "card": "/media/flowise/card.webp",
+    "screenshots": [
+      "/media/flowise/screenshot_1.webp"
+    ]
   },
   {
     "id": "whisper-asr",
@@ -129,7 +270,26 @@
     "port": 9000,
     "icon": "whisper",
     "description": "Whisper ASR web service — speech-to-text HTTP API (openai-whisper / faster-whisper).",
-    "website": "https://github.com/ahmetoner/whisper-asr-webservice"
+    "website": "https://github.com/ahmetoner/whisper-asr-webservice",
+    "github": "https://github.com/ahmetoner/whisper-asr-webservice",
+    "stars": 3303,
+    "license": "MIT License (MIT)",
+    "language": "Python",
+    "topics": [
+      "asr",
+      "automatic-speech-recognition",
+      "docker",
+      "openai-whisper",
+      "speech",
+      "speech-recognition",
+      "speech-to-text"
+    ],
+    "logo": "/media/whisper-asr/logo.webp",
+    "card": "/media/whisper-asr/card.webp",
+    "screenshots": [
+      "/media/whisper-asr/screenshot_1.webp",
+      "/media/whisper-asr/screenshot_2.webp"
+    ]
   },
   {
     "id": "code-server",
@@ -147,7 +307,27 @@
         "secret": true
       }
     ],
-    "website": "https://github.com/coder/code-server"
+    "website": "https://github.com/coder/code-server",
+    "github": "https://github.com/coder/code-server",
+    "stars": 78190,
+    "license": "MIT License (MIT)",
+    "language": "TypeScript",
+    "topics": [
+      "browser-ide",
+      "dev-tools",
+      "development-environment",
+      "ide",
+      "remote-work",
+      "vscode",
+      "vscode-remote"
+    ],
+    "logo": "/media/code-server/logo.webp",
+    "card": "/media/code-server/card.webp",
+    "screenshots": [
+      "/media/code-server/screenshot_1.webp",
+      "/media/code-server/screenshot_2.webp",
+      "/media/code-server/screenshot_3.webp"
+    ]
   },
   {
     "id": "uptime-kuma",
@@ -157,7 +337,32 @@
     "port": 3001,
     "icon": "uptimekuma",
     "description": "Uptime Kuma — self-hosted uptime/status monitoring.",
-    "website": "https://github.com/louislam/uptime-kuma"
+    "website": "https://github.com/louislam/uptime-kuma",
+    "github": "https://github.com/louislam/uptime-kuma",
+    "stars": 89384,
+    "license": "MIT License (MIT)",
+    "language": "JavaScript",
+    "topics": [
+      "docker",
+      "monitor",
+      "monitoring",
+      "responsive",
+      "self-hosted",
+      "selfhosted",
+      "single-page-app",
+      "socket-io",
+      "uptime",
+      "uptime-monitoring",
+      "webapp",
+      "websocket"
+    ],
+    "logo": "/media/uptime-kuma/logo.webp",
+    "card": "/media/uptime-kuma/card.webp",
+    "screenshots": [
+      "/media/uptime-kuma/screenshot_1.webp",
+      "/media/uptime-kuma/screenshot_2.webp",
+      "/media/uptime-kuma/screenshot_3.webp"
+    ]
   },
   {
     "id": "paperclip",
@@ -175,7 +380,11 @@
         "secret": true
       }
     ],
-    "website": "https://github.com/paperclipai/paperclip"
+    "website": "https://github.com/paperclipai/paperclip",
+    "github": "https://github.com/paperclip-ai/paperclip",
+    "stars": 0,
+    "logo": "/media/paperclip/logo.webp",
+    "card": "/media/paperclip/card.webp"
   },
   {
     "id": "paperless-ai",
@@ -185,7 +394,16 @@
     "port": 3000,
     "icon": "paperless",
     "description": "Paperless-AI — AI companion for Paperless-ngx: auto tagging/classification + semantic search. Point it at your Paperless instance.",
-    "website": "https://github.com/clusterzx/paperless-ai"
+    "website": "https://github.com/clusterzx/paperless-ai",
+    "github": "https://github.com/paperless-ai/paperless-ai",
+    "stars": 0,
+    "logo": "/media/paperless-ai/logo.webp",
+    "card": "/media/paperless-ai/card.webp",
+    "screenshots": [
+      "/media/paperless-ai/screenshot_1.webp",
+      "/media/paperless-ai/screenshot_2.webp",
+      "/media/paperless-ai/screenshot_3.webp"
+    ]
   },
   {
     "id": "paperless-ngx",
@@ -254,7 +472,31 @@
         "/usr/src/paperless/media"
       ]
     ],
-    "website": "https://docs.paperless-ngx.com"
+    "website": "https://docs.paperless-ngx.com",
+    "github": "https://github.com/paperless-ngx/paperless-ngx",
+    "stars": 43305,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "Python",
+    "topics": [
+      "angular",
+      "archiving",
+      "django",
+      "dms",
+      "document-management",
+      "document-management-system",
+      "hacktoberfest",
+      "machine-learning",
+      "ocr",
+      "optical-character-recognition",
+      "pdf"
+    ],
+    "logo": "/media/paperless-ngx/logo.webp",
+    "card": "/media/paperless-ngx/card.webp",
+    "screenshots": [
+      "/media/paperless-ngx/screenshot_1.webp",
+      "/media/paperless-ngx/screenshot_2.webp",
+      "/media/paperless-ngx/screenshot_3.webp"
+    ]
   },
   {
     "id": "nextcloud",
@@ -270,7 +512,17 @@
         "/var/www/html"
       ]
     ],
-    "website": "https://nextcloud.com"
+    "website": "https://nextcloud.com",
+    "github": "https://github.com/nextcloud/server",
+    "stars": 35928,
+    "license": "GNU Affero General Public License v3.0",
+    "logo": "/media/nextcloud/logo.webp",
+    "card": "/media/nextcloud/card.webp",
+    "screenshots": [
+      "/media/nextcloud/screenshot_1.webp",
+      "/media/nextcloud/screenshot_2.webp",
+      "/media/nextcloud/screenshot_3.webp"
+    ]
   },
   {
     "id": "vaultwarden",
@@ -286,7 +538,25 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/dani-garcia/vaultwarden"
+    "website": "https://github.com/dani-garcia/vaultwarden",
+    "github": "https://github.com/dani-garcia/vaultwarden",
+    "stars": 63391,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Rust",
+    "topics": [
+      "bitwarden",
+      "bitwarden-rs",
+      "docker",
+      "rocket",
+      "rust",
+      "vaultwarden"
+    ],
+    "logo": "/media/vaultwarden/logo.webp",
+    "card": "/media/vaultwarden/card.webp",
+    "screenshots": [
+      "/media/vaultwarden/screenshot_1.webp",
+      "/media/vaultwarden/screenshot_2.webp"
+    ]
   },
   {
     "id": "gitea",
@@ -295,14 +565,39 @@
     "image": "gitea/gitea:latest",
     "port": 3000,
     "icon": "gitea",
-    "description": "Gitea — lightweight self-hosted Git service.",
+    "description": "Git with a cup of tea! Painless self-hosted all-in-one software development service, including Git hosting, code review, team collaboration, package registry and CI/CD",
     "volumes": [
       [
         "data",
         "/data"
       ]
     ],
-    "website": "https://about.gitea.com"
+    "website": "https://about.gitea.com",
+    "github": "https://github.com/go-gitea/gitea",
+    "stars": 56996,
+    "license": "MIT",
+    "language": "Go",
+    "topics": [
+      "bitbucket",
+      "cicd",
+      "devops",
+      "docker-registry-v2",
+      "git",
+      "git-gui",
+      "git-lfs",
+      "git-server",
+      "gitea",
+      "github",
+      "github-actions",
+      "gitlab"
+    ],
+    "logo": "/media/gitea/logo.webp",
+    "card": "/media/gitea/card.webp",
+    "screenshots": [
+      "/media/gitea/screenshot_1.webp",
+      "/media/gitea/screenshot_2.webp",
+      "/media/gitea/screenshot_3.webp"
+    ]
   },
   {
     "id": "metabase",
@@ -312,7 +607,32 @@
     "port": 3000,
     "icon": "metabase",
     "description": "Metabase — BI dashboards & ad-hoc analytics over your databases.",
-    "website": "https://www.metabase.com"
+    "website": "https://www.metabase.com",
+    "github": "https://github.com/metabase/metabase",
+    "stars": 48307,
+    "license": "Other (NOASSERTION)",
+    "language": "Clojure",
+    "topics": [
+      "analytics",
+      "bi",
+      "business-intelligence",
+      "businessintelligence",
+      "clojure",
+      "dashboard",
+      "data",
+      "data-analysis",
+      "data-visualization",
+      "database",
+      "metabase",
+      "mysql"
+    ],
+    "logo": "/media/metabase/logo.webp",
+    "card": "/media/metabase/card.webp",
+    "screenshots": [
+      "/media/metabase/screenshot_1.webp",
+      "/media/metabase/screenshot_2.webp",
+      "/media/metabase/screenshot_3.webp"
+    ]
   },
   {
     "id": "jaeger",
@@ -321,8 +641,27 @@
     "image": "jaegertracing/all-in-one:latest",
     "port": 16686,
     "icon": "jaeger",
-    "description": "Jaeger — distributed tracing UI + collector (OTLP). All-in-one, in-memory storage.",
-    "website": "https://www.jaegertracing.io"
+    "description": "Jaeger backend is released as a single binary or container image (see Downloads). Despite that, it can be configured to operate in different roles, such as all-in-one, collector, query, and ingester (see Architecture). ... An explicit YAML configuration file must be provided via the`--config` command line argument (see Configuration). When running in a container, the path to the config file must be mapped into the…",
+    "website": "https://www.jaegertracing.io",
+    "github": "https://github.com/jaegertracing/jaeger",
+    "stars": 22865,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Go",
+    "topics": [
+      "cncf",
+      "distributed-tracing",
+      "hacktoberfest",
+      "jaeger",
+      "observability",
+      "opentelemetry",
+      "tracing"
+    ],
+    "logo": "/media/jaeger/logo.webp",
+    "card": "/media/jaeger/card.webp",
+    "screenshots": [
+      "/media/jaeger/screenshot_1.webp",
+      "/media/jaeger/screenshot_2.webp"
+    ]
   },
   {
     "id": "homepage",
@@ -331,7 +670,7 @@
     "image": "ghcr.io/gethomepage/homepage:latest",
     "port": 3000,
     "icon": "homepage",
-    "description": "Homepage — a sleek, configurable start page/dashboard for your services. HOMEPAGE_ALLOWED_HOSTS=* (dev) so it doesn't reject the Aspire host; config volume so /app/config exists.",
+    "description": "A modern, fully static, fast, secure fully proxied, highly customizable application dashboard with integrations for over 100 services and translations into multiple languages. Easily configured via YAML files or through docker label discovery. HOMEPAGE_ALLOWED_HOSTS=* (dev) so it doesn't reject the Aspire host; config volume so /app/config exists.",
     "env": [
       [
         "HOMEPAGE_ALLOWED_HOSTS",
@@ -344,7 +683,18 @@
         "/app/config"
       ]
     ],
-    "website": "https://gethomepage.dev"
+    "website": "https://gethomepage.dev",
+    "github": "https://github.com/benphelps/homepage",
+    "stars": 178,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "JavaScript",
+    "logo": "/media/homepage/logo.webp",
+    "card": "/media/homepage/card.webp",
+    "screenshots": [
+      "/media/homepage/screenshot_1.webp",
+      "/media/homepage/screenshot_2.webp",
+      "/media/homepage/screenshot_3.webp"
+    ]
   },
   {
     "id": "onlyoffice",
@@ -353,8 +703,13 @@
     "image": "onlyoffice/documentserver:latest",
     "port": 80,
     "icon": "onlyoffice",
-    "description": "OnlyOffice Document Server — a document-editing BACKEND (API), not a standalone app. The welcome/test page is expected; it's meant to be embedded in Nextcloud/your app, no user UI of its own.",
-    "website": "https://www.onlyoffice.com"
+    "description": "I believe this is just a description based on the fact, that ONLYOFFICE Docs is a web-based application. Therefore it has to be “hosted” on a machine (PC) and can then also be accessed and used from other PCs via web-browser, either from outside and/or inside a network-environment, depending on the configuration of the host/network … As in comparison to ONLYOFFICE Destktop installations. ... Firstly, Desktop…",
+    "website": "https://www.onlyoffice.com",
+    "github": "https://github.com/ONLYOFFICE/DocumentServer",
+    "stars": 6729,
+    "license": "GNU Affero General Public License v3.0",
+    "logo": "/media/onlyoffice/logo.webp",
+    "card": "/media/onlyoffice/card.webp"
   },
   {
     "id": "gokapi",
@@ -363,8 +718,32 @@
     "image": "f0rc3/gokapi:latest",
     "port": 53842,
     "icon": "gokapi",
-    "description": "Gokapi — lightweight self-hosted file sharing with expiring links.",
-    "website": "https://github.com/Forceu/Gokapi"
+    "description": "Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported.",
+    "website": "https://github.com/Forceu/Gokapi",
+    "github": "https://github.com/Forceu/Gokapi",
+    "stars": 2809,
+    "license": "AGPL-3.0",
+    "language": "Go",
+    "topics": [
+      "backblaze-b2",
+      "docker",
+      "download",
+      "firefox-send",
+      "golang",
+      "ownyourdata",
+      "s3-storage",
+      "self-hosted",
+      "selfhosted",
+      "ssl",
+      "uploader"
+    ],
+    "logo": "/media/gokapi/logo.webp",
+    "card": "/media/gokapi/card.webp",
+    "screenshots": [
+      "/media/gokapi/screenshot_1.webp",
+      "/media/gokapi/screenshot_2.webp",
+      "/media/gokapi/screenshot_3.webp"
+    ]
   },
   {
     "id": "stirling-pdf",
@@ -373,8 +752,33 @@
     "image": "ghcr.io/stirling-tools/stirling-pdf:latest",
     "port": 8080,
     "icon": "stirlingpdf",
-    "description": "Stirling-PDF — local, privacy-friendly PDF toolbox (merge/split/OCR/convert…).",
-    "website": "https://www.stirlingpdf.com"
+    "description": "Stirling PDF is a locally hosted web application that allows you to perform various operations on PDF files. With 60+ tools, flexible deployment options, and enterprise features, it's the comprehensive PDF solution for individuals and organizations.",
+    "website": "https://www.stirlingpdf.com",
+    "github": "https://github.com/Stirling-Tools/Stirling-PDF",
+    "stars": 87363,
+    "license": "Other (NOASSERTION)",
+    "language": "Java",
+    "topics": [
+      "docker",
+      "hacktoberfest",
+      "java",
+      "pdf",
+      "pdf-converter",
+      "pdf-editor",
+      "pdf-manipulation",
+      "pdf-merger",
+      "pdf-ocr",
+      "pdf-tools",
+      "pdf-web-apps",
+      "pdfmerger"
+    ],
+    "logo": "/media/stirling-pdf/logo.webp",
+    "card": "/media/stirling-pdf/card.webp",
+    "screenshots": [
+      "/media/stirling-pdf/screenshot_1.webp",
+      "/media/stirling-pdf/screenshot_2.webp",
+      "/media/stirling-pdf/screenshot_3.webp"
+    ]
   },
   {
     "id": "actualbudget",
@@ -383,8 +787,25 @@
     "image": "actualbudget/actual-server:latest",
     "port": 5006,
     "icon": "actual",
-    "description": "Actual — fast, local-first personal budgeting/finance.",
-    "website": "https://actualbudget.org"
+    "description": "A local-first personal finance app",
+    "website": "https://actualbudget.org",
+    "github": "https://github.com/actualbudget/actual",
+    "stars": 27682,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "budgeting",
+      "finance",
+      "money",
+      "personal-finance"
+    ],
+    "logo": "/media/actualbudget/logo.webp",
+    "card": "/media/actualbudget/card.webp",
+    "screenshots": [
+      "/media/actualbudget/screenshot_1.webp",
+      "/media/actualbudget/screenshot_2.webp",
+      "/media/actualbudget/screenshot_3.webp"
+    ]
   },
   {
     "id": "it-tools",
@@ -394,7 +815,16 @@
     "port": 80,
     "icon": "ittools",
     "description": "IT-Tools — a big box of handy dev utilities (encoders, converters, generators…).",
-    "website": "https://it-tools.tech"
+    "website": "https://it-tools.tech",
+    "github": "https://github.com/CorentinTh/it-tools",
+    "stars": 0,
+    "logo": "/media/it-tools/logo.webp",
+    "card": "/media/it-tools/card.webp",
+    "screenshots": [
+      "/media/it-tools/screenshot_1.webp",
+      "/media/it-tools/screenshot_2.webp",
+      "/media/it-tools/screenshot_3.webp"
+    ]
   },
   {
     "id": "ntfy",
@@ -407,7 +837,27 @@
     "args": [
       "serve"
     ],
-    "website": "https://ntfy.sh"
+    "website": "https://ntfy.sh",
+    "github": "https://github.com/binwiederhier/ntfy",
+    "stars": 32069,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Go",
+    "topics": [
+      "curl",
+      "notifications",
+      "ntfy",
+      "ntfysh",
+      "pubsub",
+      "push-notifications",
+      "rest-api"
+    ],
+    "logo": "/media/ntfy/logo.webp",
+    "card": "/media/ntfy/card.webp",
+    "screenshots": [
+      "/media/ntfy/screenshot_1.webp",
+      "/media/ntfy/screenshot_2.webp",
+      "/media/ntfy/screenshot_3.webp"
+    ]
   },
   {
     "id": "freshrss",
@@ -416,8 +866,28 @@
     "image": "freshrss/freshrss:latest",
     "port": 80,
     "icon": "freshrss",
-    "description": "FreshRSS — self-hosted RSS feed aggregator/reader.",
-    "website": "https://freshrss.org"
+    "description": "A free, self-hostable news aggregator…",
+    "website": "https://freshrss.org",
+    "github": "https://github.com/FreshRSS/FreshRSS",
+    "stars": 15592,
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "feed",
+      "freshrss",
+      "news-aggregator",
+      "php",
+      "rss",
+      "rss-aggregator",
+      "rss-reader",
+      "self-hosted",
+      "websub"
+    ],
+    "logo": "/media/freshrss/logo.webp",
+    "card": "/media/freshrss/card.webp",
+    "screenshots": [
+      "/media/freshrss/screenshot_1.webp"
+    ]
   },
   {
     "id": "immich",
@@ -493,7 +963,32 @@
         "/usr/src/app/upload"
       ]
     ],
-    "website": "https://immich.app"
+    "website": "https://immich.app",
+    "github": "https://github.com/immich-app/immich",
+    "stars": 108450,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "TypeScript",
+    "topics": [
+      "backup-tool",
+      "flutter",
+      "google-photos",
+      "google-photos-alternative",
+      "javascript",
+      "mobile-app",
+      "nestjs",
+      "nodejs",
+      "photo-gallery",
+      "photos",
+      "photos-management",
+      "self-hosted"
+    ],
+    "logo": "/media/immich/logo.webp",
+    "card": "/media/immich/card.webp",
+    "screenshots": [
+      "/media/immich/screenshot_1.webp",
+      "/media/immich/screenshot_2.webp",
+      "/media/immich/screenshot_3.webp"
+    ]
   },
   {
     "id": "dockge",
@@ -502,8 +997,33 @@
     "image": "louislam/dockge:1",
     "port": 5001,
     "icon": "dockge",
-    "description": "Dockge — a tidy manager for docker-compose stacks (by the Uptime-Kuma author).",
-    "website": "https://github.com/louislam/dockge"
+    "description": "A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager",
+    "website": "https://github.com/louislam/dockge",
+    "github": "https://github.com/louislam/dockge",
+    "stars": 23865,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "docker-compose",
+      "docker-deployment",
+      "docker-stack",
+      "docker-stack-deploy",
+      "docker-ui",
+      "responsive",
+      "self-hosted",
+      "selfhosted",
+      "single-page-app",
+      "socket-io",
+      "webapp"
+    ],
+    "logo": "/media/dockge/logo.webp",
+    "card": "/media/dockge/card.webp",
+    "screenshots": [
+      "/media/dockge/screenshot_1.webp",
+      "/media/dockge/screenshot_2.webp",
+      "/media/dockge/screenshot_3.webp"
+    ]
   },
   {
     "id": "dozzle",
@@ -512,7 +1032,7 @@
     "image": "amir20/dozzle:latest",
     "port": 8080,
     "icon": "dozzle",
-    "description": "Dozzle — real-time Docker container log viewer in the browser. Bind-mounts the host Docker socket (read-only) to read container logs.",
+    "description": "Realtime log viewer for containers. Supports Docker, Swarm and K8s.",
     "bindMounts": [
       [
         "/var/run/docker.sock",
@@ -520,7 +1040,30 @@
         "ro"
       ]
     ],
-    "website": "https://dozzle.dev"
+    "website": "https://dozzle.dev",
+    "github": "https://github.com/amir20/dozzle",
+    "stars": 13622,
+    "license": "MIT",
+    "language": "Go",
+    "topics": [
+      "docker",
+      "docker-container",
+      "golang",
+      "k8s",
+      "log",
+      "logging",
+      "logging-server",
+      "real-time",
+      "sever-events",
+      "swarm",
+      "vuejs"
+    ],
+    "logo": "/media/dozzle/logo.webp",
+    "card": "/media/dozzle/card.webp",
+    "screenshots": [
+      "/media/dozzle/screenshot_1.webp",
+      "/media/dozzle/screenshot_2.webp"
+    ]
   },
   {
     "id": "jellyfin",
@@ -529,7 +1072,7 @@
     "image": "jellyfin/jellyfin:latest",
     "port": 8096,
     "icon": "jellyfin",
-    "description": "Jellyfin — free media server (movies/TV/music). Mount your media as volumes; GPU for transcoding.",
+    "description": "Jellyfin enables you to collect, manage, and stream your media. Run the Jellyfin server on your system and gain access to the leading free-software entertainment system, bells and whistles included. ... With a large array of official and third-party clients, Jellyfin is available on most popular platforms. Your media is ready to follow you, wherever you go. ... Jellyfin is Free Software, licensed under the GNU GPL.…",
     "volumes": [
       [
         "config",
@@ -541,7 +1084,24 @@
       ]
     ],
     "gpu": true,
-    "website": "https://jellyfin.org"
+    "website": "https://jellyfin.org",
+    "github": "https://github.com/jellyfin/jellyfin",
+    "stars": 54123,
+    "license": "GNU General Public License v2.0 (GPL-2.0)",
+    "language": "C#",
+    "topics": [
+      "csharp",
+      "dotnet",
+      "hacktoberfest",
+      "jellyfin"
+    ],
+    "logo": "/media/jellyfin/logo.webp",
+    "card": "/media/jellyfin/card.webp",
+    "screenshots": [
+      "/media/jellyfin/screenshot_1.webp",
+      "/media/jellyfin/screenshot_2.webp",
+      "/media/jellyfin/screenshot_3.webp"
+    ]
   },
   {
     "id": "navidrome",
@@ -557,7 +1117,32 @@
         "/data"
       ]
     ],
-    "website": "https://www.navidrome.org"
+    "website": "https://www.navidrome.org",
+    "github": "https://github.com/navidrome/navidrome",
+    "stars": 22462,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "Go",
+    "topics": [
+      "airsonic",
+      "madsonic",
+      "media-server",
+      "music",
+      "music-server",
+      "navidrome",
+      "opensubsonic",
+      "raspberry-pi",
+      "self-hosted",
+      "streamer",
+      "streaming-api",
+      "streaming-audio"
+    ],
+    "logo": "/media/navidrome/logo.webp",
+    "card": "/media/navidrome/card.webp",
+    "screenshots": [
+      "/media/navidrome/screenshot_1.webp",
+      "/media/navidrome/screenshot_2.webp",
+      "/media/navidrome/screenshot_3.webp"
+    ]
   },
   {
     "id": "audiobookshelf",
@@ -566,7 +1151,7 @@
     "image": "ghcr.io/advplyr/audiobookshelf:latest",
     "port": 80,
     "icon": "audiobookshelf",
-    "description": "Audiobookshelf — audiobook & podcast server.",
+    "description": "Self-hosted audiobook and podcast server",
     "volumes": [
       [
         "config",
@@ -577,7 +1162,25 @@
         "/metadata"
       ]
     ],
-    "website": "https://www.audiobookshelf.org"
+    "website": "https://www.audiobookshelf.org",
+    "github": "https://github.com/advplyr/audiobookshelf",
+    "stars": 13666,
+    "license": "GPL-3.0",
+    "language": "JavaScript",
+    "topics": [
+      "audiobook-manager",
+      "audiobooks",
+      "audiobookshelf",
+      "podcasts",
+      "self-hosted"
+    ],
+    "logo": "/media/audiobookshelf/logo.webp",
+    "card": "/media/audiobookshelf/card.webp",
+    "screenshots": [
+      "/media/audiobookshelf/screenshot_1.webp",
+      "/media/audiobookshelf/screenshot_2.webp",
+      "/media/audiobookshelf/screenshot_3.webp"
+    ]
   },
   {
     "id": "photoprism",
@@ -586,7 +1189,7 @@
     "image": "photoprism/photoprism:latest",
     "port": 2342,
     "icon": "photoprism",
-    "description": "PhotoPrism — AI-powered photo gallery/backup. Login admin / please-change-me (change it).",
+    "description": "PhotoPrism® Pro provides your organization with access to additional configuration and deployment options — all fully GDPR-compliant, hosted on your own infrastructure, and backed by our team. ... Our mission is to provide the most user- and privacy-friendly solution to keep your pictures organized and accessible. That’s why PhotoPrism was built from the ground up to run wherever you need it, without compromising…",
     "params": [
       {
         "key": "admin-user",
@@ -606,7 +1209,27 @@
         "/photoprism/storage"
       ]
     ],
-    "website": "https://www.photoprism.app"
+    "website": "https://www.photoprism.app",
+    "github": "https://github.com/photoprism/photoprism",
+    "stars": 39985,
+    "license": "Other (NOASSERTION)",
+    "language": "Go",
+    "topics": [
+      "ai",
+      "golang",
+      "google-photos",
+      "machine-learning",
+      "photography",
+      "private-cloud",
+      "self-hosted",
+      "tensorflow"
+    ],
+    "logo": "/media/photoprism/logo.webp",
+    "card": "/media/photoprism/card.webp",
+    "screenshots": [
+      "/media/photoprism/screenshot_1.webp",
+      "/media/photoprism/screenshot_2.webp"
+    ]
   },
   {
     "id": "sonarr",
@@ -615,8 +1238,17 @@
     "image": "lscr.io/linuxserver/sonarr:latest",
     "port": 8989,
     "icon": "sonarr",
-    "description": "Sonarr — TV series collection manager (needs a download client + indexer).",
-    "website": "https://sonarr.tv"
+    "description": "## Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is supported natively on Windows. Sonarr can be installed as Windows Service or System Tray Application.",
+    "website": "https://sonarr.tv",
+    "github": "https://github.com/Sonarr/Sonarr",
+    "stars": 0,
+    "logo": "/media/sonarr/logo.webp",
+    "card": "/media/sonarr/card.webp",
+    "screenshots": [
+      "/media/sonarr/screenshot_1.webp",
+      "/media/sonarr/screenshot_2.webp",
+      "/media/sonarr/screenshot_3.webp"
+    ]
   },
   {
     "id": "radarr",
@@ -625,8 +1257,17 @@
     "image": "lscr.io/linuxserver/radarr:latest",
     "port": 7878,
     "icon": "radarr",
-    "description": "Radarr — movie collection manager (pairs with Prowlarr + qBittorrent).",
-    "website": "https://radarr.video"
+    "description": "Movie organizer/manager for usenet and torrent users. ... Radarr is a movie collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new movies and will interface with clients and indexers to grab, sort, and rename them. It can also be configured to automatically upgrade the quality of existing files in the library when a better quality format becomes available.",
+    "website": "https://radarr.video",
+    "github": "https://github.com/Radarr/Radarr",
+    "stars": 0,
+    "logo": "/media/radarr/logo.webp",
+    "card": "/media/radarr/card.webp",
+    "screenshots": [
+      "/media/radarr/screenshot_1.webp",
+      "/media/radarr/screenshot_2.webp",
+      "/media/radarr/screenshot_3.webp"
+    ]
   },
   {
     "id": "prowlarr",
@@ -635,8 +1276,27 @@
     "image": "lscr.io/linuxserver/prowlarr:latest",
     "port": 9696,
     "icon": "prowlarr",
-    "description": "Prowlarr — indexer manager for the *arr apps.",
-    "website": "https://prowlarr.com"
+    "description": "Prowlarr is an indexer manager/proxy built on the popular *arr .net/reactjs base stack to integrate with your various PVR apps, supporting management of both Torrent Trackers and Usenet Indexers. ... Prowlarr is an indexer manager/proxy built on the popular \\*arr .net/reactjs base stack to integrate with your various PVR apps. Prowlarr supports management of both Torrent Trackers and Usenet Indexers. It integrates…",
+    "website": "https://prowlarr.com",
+    "github": "https://github.com/Prowlarr/Prowlarr",
+    "stars": 6514,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "C#",
+    "topics": [
+      "hacktoberfest",
+      "indexer",
+      "nzb",
+      "radarr",
+      "sonarr",
+      "torrent"
+    ],
+    "logo": "/media/prowlarr/logo.webp",
+    "card": "/media/prowlarr/card.webp",
+    "screenshots": [
+      "/media/prowlarr/screenshot_1.webp",
+      "/media/prowlarr/screenshot_2.webp",
+      "/media/prowlarr/screenshot_3.webp"
+    ]
   },
   {
     "id": "qbittorrent",
@@ -645,7 +1305,7 @@
     "image": "lscr.io/linuxserver/qbittorrent:latest",
     "port": 8080,
     "icon": "qbittorrent",
-    "description": "qBittorrent — torrent client with a web UI. Login admin / adminadmin (change it in the UI). Ships a qBittorrent.conf with seeded credentials + host-header/CSRF validation disabled so the WebUI isn't 'Unauthorized' behind Aspire. (qBittorrent reads creds from its config file, not env, so they can't be Aspire parameters.)",
+    "description": "qBittorrent is a free, open-source BitTorrent client with a built-in web UI. It’s the most popular self-hosted torrent client — lightweight, feature-rich, and widely supported by the *arr stack (Sonarr, Radarr, Lidarr). qBittorrent replaces paid or ad-supported clients like uTorrent and BitTorrent, with better privacy and full control over your downloads. ... qBittorrent has a more feature-rich web UI, better *arr…",
     "fixedPort": true,
     "env": [
       [
@@ -671,7 +1331,21 @@
         "content": "[LegalNotice]\nAccepted=true\n\n[Preferences]\nWebUI\\HostHeaderValidation=false\nWebUI\\CSRFProtection=false\nWebUI\\Username=admin\nWebUI\\Password_PBKDF2=\"@ByteArray(ASNFZ4mrze8BI0VniavN7w==:2eudnLCDJryVCeZQf9qr7NAUBmebSO3e9/32HTM945ugU8DM74Jj2MyIr1YSq0sOMwASMCn0emH3SB5ZbeKR4Q==)\"\n"
       }
     ],
-    "website": "https://www.qbittorrent.org"
+    "website": "https://www.qbittorrent.org",
+    "github": "https://github.com/qbittorrent/qBittorrent",
+    "stars": 38963,
+    "license": "Other (NOASSERTION)",
+    "language": "C++",
+    "topics": [
+      "bittorrent",
+      "bittorrent-client",
+      "c-plus-plus",
+      "crossplatform",
+      "torrent",
+      "torrent-client"
+    ],
+    "logo": "/media/qbittorrent/logo.webp",
+    "card": "/media/qbittorrent/card.webp"
   },
   {
     "id": "pihole",
@@ -691,7 +1365,31 @@
     ],
     "hostNetwork": true,
     "website": "https://pi-hole.net",
-    "urlPath": "/admin"
+    "urlPath": "/admin",
+    "github": "https://github.com/pi-hole/pi-hole",
+    "stars": 59989,
+    "license": "Other (NOASSERTION)",
+    "language": "Shell",
+    "topics": [
+      "ad-blocker",
+      "blocker",
+      "cloud",
+      "dashboard",
+      "dhcp",
+      "dhcp-server",
+      "dns-server",
+      "dnsmasq",
+      "pi-hole",
+      "raspberry-pi",
+      "shell"
+    ],
+    "logo": "/media/pihole/logo.webp",
+    "card": "/media/pihole/card.webp",
+    "screenshots": [
+      "/media/pihole/screenshot_1.webp",
+      "/media/pihole/screenshot_2.webp",
+      "/media/pihole/screenshot_3.webp"
+    ]
   },
   {
     "id": "adguard",
@@ -700,9 +1398,32 @@
     "image": "adguard/adguardhome:latest",
     "port": 3000,
     "icon": "adguard",
-    "description": "AdGuard Home — DNS-based ad/tracker blocking (setup UI on :3000, DNS on :53).",
+    "description": "Network-wide ads & trackers blocking DNS server",
     "hostNetwork": true,
-    "website": "https://adguard.com/adguard-home/overview.html"
+    "website": "https://adguard.com/adguard-home/overview.html",
+    "github": "https://github.com/AdguardTeam/AdGuardHome",
+    "stars": 35654,
+    "license": "GPL-3.0",
+    "language": "TypeScript",
+    "topics": [
+      "adblock",
+      "adguard",
+      "dns",
+      "dns-over-https",
+      "dns-over-quic",
+      "dns-over-tls",
+      "dnscrypt",
+      "golang",
+      "open-source",
+      "privacy"
+    ],
+    "logo": "/media/adguard/logo.webp",
+    "card": "/media/adguard/card.webp",
+    "screenshots": [
+      "/media/adguard/screenshot_1.webp",
+      "/media/adguard/screenshot_2.webp",
+      "/media/adguard/screenshot_3.webp"
+    ]
   },
   {
     "id": "npm",
@@ -722,7 +1443,20 @@
         "/etc/letsencrypt"
       ]
     ],
-    "website": "https://nginxproxymanager.com"
+    "website": "https://nginxproxymanager.com",
+    "github": "https://github.com/jc21/nginx-proxy-manager",
+    "stars": 33608,
+    "license": "MIT License (MIT)",
+    "language": "TypeScript",
+    "topics": [
+      "nginx",
+      "nginx-proxy"
+    ],
+    "logo": "/media/npm/logo.webp",
+    "card": "/media/npm/card.webp",
+    "screenshots": [
+      "/media/npm/screenshot_1.webp"
+    ]
   },
   {
     "id": "homeassistant",
@@ -731,9 +1465,30 @@
     "image": "ghcr.io/home-assistant/home-assistant:stable",
     "port": 8123,
     "icon": "homeassistant",
-    "description": "Home Assistant — open-source home automation. Works best on host networking for device discovery.",
+    "description": ":house_with_garden: Open source home automation that puts local control and privacy first.",
     "hostNetwork": true,
-    "website": "https://www.home-assistant.io"
+    "website": "https://www.home-assistant.io",
+    "github": "https://github.com/home-assistant/core",
+    "stars": 89402,
+    "license": "Apache-2.0",
+    "language": "Python",
+    "topics": [
+      "asyncio",
+      "hacktoberfest",
+      "home-automation",
+      "internet-of-things",
+      "iot",
+      "mqtt",
+      "python",
+      "raspberry-pi"
+    ],
+    "logo": "/media/homeassistant/logo.webp",
+    "card": "/media/homeassistant/card.webp",
+    "screenshots": [
+      "/media/homeassistant/screenshot_1.webp",
+      "/media/homeassistant/screenshot_2.webp",
+      "/media/homeassistant/screenshot_3.webp"
+    ]
   },
   {
     "id": "nodered",
@@ -742,8 +1497,27 @@
     "image": "nodered/node-red:latest",
     "port": 1880,
     "icon": "nodered",
-    "description": "Node-RED — low-code flow automation / event wiring.",
-    "website": "https://nodered.org"
+    "description": "Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS Foundation. ... Node-RED provides a browser-based flow editor that makes it easy to wire together flows using the wide range of nodes in the palette. Flows can be then deployed to the runtime in a single-click. ... The light-weight runtime is built on Node.js, taking full advantage…",
+    "website": "https://nodered.org",
+    "github": "https://github.com/node-red/node-red",
+    "stars": 23404,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "JavaScript",
+    "topics": [
+      "flow-based-programming",
+      "javascript",
+      "low-code",
+      "node-red",
+      "openjs-foundation",
+      "visual-programming"
+    ],
+    "logo": "/media/nodered/logo.webp",
+    "card": "/media/nodered/card.webp",
+    "screenshots": [
+      "/media/nodered/screenshot_1.webp",
+      "/media/nodered/screenshot_2.webp",
+      "/media/nodered/screenshot_3.webp"
+    ]
   },
   {
     "id": "vikunja",
@@ -773,7 +1547,28 @@
         "/db"
       ]
     ],
-    "website": "https://vikunja.io"
+    "website": "https://vikunja.io",
+    "github": "https://github.com/go-vikunja/vikunja",
+    "stars": 4499,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Go",
+    "topics": [
+      "api",
+      "golang",
+      "project-management",
+      "self-hosted",
+      "todo",
+      "todoapp",
+      "todolist",
+      "vuejs"
+    ],
+    "logo": "/media/vikunja/logo.webp",
+    "card": "/media/vikunja/card.webp",
+    "screenshots": [
+      "/media/vikunja/screenshot_1.webp",
+      "/media/vikunja/screenshot_2.webp",
+      "/media/vikunja/screenshot_3.webp"
+    ]
   },
   {
     "id": "memos",
@@ -783,7 +1578,32 @@
     "port": 5230,
     "icon": "memos",
     "description": "Memos — lightweight, privacy-first note/memo hub.",
-    "website": "https://www.usememos.com"
+    "website": "https://www.usememos.com",
+    "github": "https://github.com/usememos/memos",
+    "stars": 61649,
+    "license": "MIT License (MIT)",
+    "language": "Go",
+    "topics": [
+      "docker",
+      "foss",
+      "go",
+      "markdown",
+      "memo",
+      "microblog",
+      "note-taking",
+      "notecard",
+      "own-your-data",
+      "react",
+      "self-hosted",
+      "social-network"
+    ],
+    "logo": "/media/memos/logo.webp",
+    "card": "/media/memos/card.webp",
+    "screenshots": [
+      "/media/memos/screenshot_1.webp",
+      "/media/memos/screenshot_2.webp",
+      "/media/memos/screenshot_3.webp"
+    ]
   },
   {
     "id": "excalidraw",
@@ -792,8 +1612,28 @@
     "image": "excalidraw/excalidraw:latest",
     "port": 80,
     "icon": "excalidraw",
-    "description": "Excalidraw — hand-drawn-style whiteboard/diagrams.",
-    "website": "https://excalidraw.com"
+    "description": "Virtual whiteboard for sketching hand-drawn like diagrams",
+    "website": "https://excalidraw.com",
+    "github": "https://github.com/excalidraw/excalidraw",
+    "stars": 128211,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "canvas",
+      "collaboration",
+      "diagrams",
+      "drawing",
+      "hacktoberfest",
+      "productivity",
+      "whiteboard"
+    ],
+    "logo": "/media/excalidraw/logo.webp",
+    "card": "/media/excalidraw/card.webp",
+    "screenshots": [
+      "/media/excalidraw/screenshot_1.webp",
+      "/media/excalidraw/screenshot_2.webp",
+      "/media/excalidraw/screenshot_3.webp"
+    ]
   },
   {
     "id": "drawio",
@@ -802,8 +1642,24 @@
     "image": "jgraph/drawio:latest",
     "port": 8080,
     "icon": "drawio",
-    "description": "Draw.io (diagrams.net) — full diagram editor, self-hosted. HTTP 400 'Request header is too large' = too many localhost cookies from other apps on other ports (Tomcat's 8KB limit); open it in a private window or clear localhost cookies.",
-    "website": "https://www.drawio.com"
+    "description": "draw.io is a JavaScript, client-side editor for general diagramming.",
+    "website": "https://www.drawio.com",
+    "github": "https://github.com/jgraph/drawio",
+    "stars": 7005,
+    "license": "Apache-2.0",
+    "language": "JavaScript",
+    "topics": [
+      "diagram",
+      "javascript",
+      "whiteboard"
+    ],
+    "logo": "/media/drawio/logo.webp",
+    "card": "/media/drawio/card.webp",
+    "screenshots": [
+      "/media/drawio/screenshot_1.webp",
+      "/media/drawio/screenshot_2.webp",
+      "/media/drawio/screenshot_3.webp"
+    ]
   },
   {
     "id": "anythingllm",
@@ -812,7 +1668,7 @@
     "image": "mintplexlabs/anythingllm:latest",
     "port": 3001,
     "icon": "anythingllm",
-    "description": "AnythingLLM — all-in-one RAG/chat over your docs with any LLM.",
+    "description": "Stop renting your intelligence. Own it with AnythingLLM. Everything you need for a powerful local-first agent experience",
     "env": [
       [
         "STORAGE_DIR",
@@ -825,7 +1681,32 @@
         "/app/server/storage"
       ]
     ],
-    "website": "https://anythingllm.com"
+    "website": "https://anythingllm.com",
+    "github": "https://github.com/Mintplex-Labs/anything-llm",
+    "stars": 63745,
+    "license": "MIT",
+    "language": "JavaScript",
+    "topics": [
+      "agent-computer",
+      "agent-harness",
+      "agent-orchestration",
+      "agentic-ai",
+      "ai-agents",
+      "computer-use",
+      "hermes-agent",
+      "llm",
+      "local-ai",
+      "localai",
+      "multimodal",
+      "no-code"
+    ],
+    "logo": "/media/anythingllm/logo.webp",
+    "card": "/media/anythingllm/card.webp",
+    "screenshots": [
+      "/media/anythingllm/screenshot_1.webp",
+      "/media/anythingllm/screenshot_2.webp",
+      "/media/anythingllm/screenshot_3.webp"
+    ]
   },
   {
     "id": "librechat",
@@ -905,7 +1786,27 @@
         "role": "meilisearch"
       }
     ],
-    "website": "https://www.librechat.ai"
+    "website": "https://www.librechat.ai",
+    "github": "https://github.com/danny-avila/LibreChat",
+    "stars": 41100,
+    "license": "MIT License (MIT)",
+    "language": "TypeScript",
+    "topics": [
+      "ai",
+      "anthropic",
+      "artifacts",
+      "aws",
+      "azure",
+      "chatgpt",
+      "chatgpt-clone",
+      "claude",
+      "clone",
+      "deepseek",
+      "gemini",
+      "google"
+    ],
+    "logo": "/media/librechat/logo.webp",
+    "card": "/media/librechat/card.webp"
   },
   {
     "id": "searxng",
@@ -914,8 +1815,33 @@
     "image": "searxng/searxng:latest",
     "port": 8080,
     "icon": "searxng",
-    "description": "SearXNG — private meta-search engine; great as a web-search tool for agents/RAG.",
-    "website": "https://docs.searxng.org"
+    "description": "Search without being tracked. ... SearXNG is a free internet metasearch engine which aggregates results from up to 279 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor for online anonymity. ... Get started with SearXNG by using one of the instances listed at searx.space. If you don’t trust anyone, you can set up your own, see Installation.",
+    "website": "https://docs.searxng.org",
+    "github": "https://github.com/searxng/searxng",
+    "stars": 34036,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Python",
+    "topics": [
+      "bing",
+      "brave",
+      "degoogle",
+      "duckduckgo",
+      "google",
+      "metasearch",
+      "privacy",
+      "python",
+      "qwant",
+      "search",
+      "search-engine",
+      "searx"
+    ],
+    "logo": "/media/searxng/logo.webp",
+    "card": "/media/searxng/card.webp",
+    "screenshots": [
+      "/media/searxng/screenshot_1.webp",
+      "/media/searxng/screenshot_2.webp",
+      "/media/searxng/screenshot_3.webp"
+    ]
   },
   {
     "id": "bazarr",
@@ -924,14 +1850,35 @@
     "image": "lscr.io/linuxserver/bazarr:latest",
     "port": 6767,
     "icon": "bazarr",
-    "description": "Bazarr — companion to Sonarr/Radarr that manages & downloads subtitles.",
+    "description": "Bazarr is a companion application to Sonarr and Radarr. It manages and downloads subtitles based on your requirements. You define your preferences by TV show or movie and Bazarr takes care of everything for you. Bazarr — companion to Sonarr/Radarr that manages & downloads subtitles.",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://www.bazarr.media"
+    "website": "https://www.bazarr.media",
+    "github": "https://github.com/morpheus65535/bazarr",
+    "stars": 4157,
+    "license": "GPL-3.0",
+    "language": "Python",
+    "topics": [
+      "download-subtitles",
+      "episodes",
+      "movie",
+      "radarr",
+      "series",
+      "sonarr",
+      "subliminal",
+      "subtitle-downloader"
+    ],
+    "logo": "/media/bazarr/logo.webp",
+    "card": "/media/bazarr/card.webp",
+    "screenshots": [
+      "/media/bazarr/screenshot_1.webp",
+      "/media/bazarr/screenshot_2.webp",
+      "/media/bazarr/screenshot_3.webp"
+    ]
   },
   {
     "id": "jellyseerr",
@@ -947,7 +1894,30 @@
         "/app/config"
       ]
     ],
-    "website": "https://github.com/Fallenbagel/jellyseerr"
+    "website": "https://github.com/Fallenbagel/jellyseerr",
+    "github": "https://github.com/Fallenbagel/jellyseerr",
+    "stars": 11307,
+    "license": "MIT License (MIT)",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "emby",
+      "jellyfin",
+      "movie",
+      "notifications",
+      "nzb",
+      "plex",
+      "radarr",
+      "sonarr",
+      "tv"
+    ],
+    "logo": "/media/jellyseerr/logo.webp",
+    "card": "/media/jellyseerr/card.webp",
+    "screenshots": [
+      "/media/jellyseerr/screenshot_1.webp",
+      "/media/jellyseerr/screenshot_2.webp",
+      "/media/jellyseerr/screenshot_3.webp"
+    ]
   },
   {
     "id": "jackett",
@@ -963,7 +1933,32 @@
         "/config"
       ]
     ],
-    "website": "https://github.com/Jackett/Jackett"
+    "website": "https://github.com/Jackett/Jackett",
+    "github": "https://github.com/Jackett/Jackett",
+    "stars": 15724,
+    "license": "GNU General Public License v2.0 (GPL-2.0)",
+    "language": "C#",
+    "topics": [
+      "api",
+      "couchpotato",
+      "duckietv",
+      "hacktoberfest",
+      "indexer",
+      "jackett",
+      "lidarr",
+      "medusa",
+      "mylar3",
+      "nefarious",
+      "newznab",
+      "proxy"
+    ],
+    "logo": "/media/jackett/logo.webp",
+    "card": "/media/jackett/card.webp",
+    "screenshots": [
+      "/media/jackett/screenshot_1.webp",
+      "/media/jackett/screenshot_2.webp",
+      "/media/jackett/screenshot_3.webp"
+    ]
   },
   {
     "id": "deluge",
@@ -972,14 +1967,23 @@
     "image": "lscr.io/linuxserver/deluge:latest",
     "port": 8112,
     "icon": "deluge",
-    "description": "Deluge — lightweight BitTorrent client with a web UI (default password 'deluge', change it).",
+    "description": "## A Lightweight Torrent Client with a Plugin Ecosystem ... Deluge is a free, cross-platform BitTorrent client with full encryption, a web UI, and an extensible plugin system. Unlike qBittorrent, which bundles everything into one package, Deluge separates the daemon (libtorrent engine) from its interfaces — you can control one daemon from the web UI, a desktop GTK client, or the command line simultaneously. This…",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://deluge-torrent.org"
+    "website": "https://deluge-torrent.org",
+    "github": "https://github.com/deluge-team/deluge",
+    "stars": 0,
+    "logo": "/media/deluge/logo.webp",
+    "card": "/media/deluge/card.webp",
+    "screenshots": [
+      "/media/deluge/screenshot_1.webp",
+      "/media/deluge/screenshot_2.webp",
+      "/media/deluge/screenshot_3.webp"
+    ]
   },
   {
     "id": "komga",
@@ -995,7 +1999,32 @@
         "/config"
       ]
     ],
-    "website": "https://komga.org"
+    "website": "https://komga.org",
+    "github": "https://github.com/gotson/komga",
+    "stars": 6476,
+    "license": "MIT License (MIT)",
+    "language": "Kotlin",
+    "topics": [
+      "api",
+      "comics",
+      "ddd",
+      "docker",
+      "domain-driven-design",
+      "kobo",
+      "koreader-sync",
+      "kotlin",
+      "manga",
+      "opds",
+      "opds-feed",
+      "spring-boot"
+    ],
+    "logo": "/media/komga/logo.webp",
+    "card": "/media/komga/card.webp",
+    "screenshots": [
+      "/media/komga/screenshot_1.webp",
+      "/media/komga/screenshot_2.webp",
+      "/media/komga/screenshot_3.webp"
+    ]
   },
   {
     "id": "kavita",
@@ -1011,7 +2040,30 @@
         "/config"
       ]
     ],
-    "website": "https://www.kavitareader.com"
+    "website": "https://www.kavitareader.com",
+    "github": "https://github.com/Kareadita/Kavita",
+    "stars": 11302,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "C#",
+    "topics": [
+      "annotations",
+      "cbz",
+      "comicinfo",
+      "comics",
+      "comics-reader",
+      "cross-platform",
+      "csharp",
+      "epub",
+      "epub-reader",
+      "free",
+      "linux",
+      "manga"
+    ],
+    "logo": "/media/kavita/logo.webp",
+    "card": "/media/kavita/card.webp",
+    "screenshots": [
+      "/media/kavita/screenshot_1.webp"
+    ]
   },
   {
     "id": "calibre-web",
@@ -1020,7 +2072,7 @@
     "image": "lscr.io/linuxserver/calibre-web:latest",
     "port": 8083,
     "icon": "calibreweb",
-    "description": "Calibre-Web — clean web UI to browse/read/download your Calibre e-book library (login admin / admin123).",
+    "description": ":books: Web app for browsing, reading and downloading eBooks stored in a Calibre database Calibre-Web — clean web UI to browse/read/download your Calibre e-book library (login admin / admin123).",
     "volumes": [
       [
         "config",
@@ -1031,7 +2083,25 @@
         "/books"
       ]
     ],
-    "website": "https://github.com/janeczku/calibre-web"
+    "website": "https://github.com/janeczku/calibre-web",
+    "github": "https://github.com/janeczku/calibre-web",
+    "stars": 17744,
+    "license": "GPL-3.0",
+    "language": "Fluent",
+    "topics": [
+      "calibre",
+      "ebook",
+      "ebook-manager",
+      "epub",
+      "mobi"
+    ],
+    "logo": "/media/calibre-web/logo.webp",
+    "card": "/media/calibre-web/card.webp",
+    "screenshots": [
+      "/media/calibre-web/screenshot_1.webp",
+      "/media/calibre-web/screenshot_2.webp",
+      "/media/calibre-web/screenshot_3.webp"
+    ]
   },
   {
     "id": "filebrowser",
@@ -1040,7 +2110,7 @@
     "image": "filebrowser/filebrowser:latest",
     "port": 80,
     "icon": "filebrowser",
-    "description": "File Browser — a tidy web file manager for a directory (login admin / admin, change it).",
+    "description": "📂 Web File Browser File Browser — a tidy web file manager for a directory (login admin / admin, change it).",
     "volumes": [
       [
         "srv",
@@ -1051,7 +2121,27 @@
         "/database"
       ]
     ],
-    "website": "https://filebrowser.org"
+    "website": "https://filebrowser.org",
+    "github": "https://github.com/filebrowser/filebrowser",
+    "stars": 35648,
+    "license": "Apache-2.0",
+    "language": "Go",
+    "topics": [
+      "file-browser",
+      "file-manager",
+      "file-sharing",
+      "go",
+      "material-design",
+      "self-hosted",
+      "vue"
+    ],
+    "logo": "/media/filebrowser/logo.webp",
+    "card": "/media/filebrowser/card.webp",
+    "screenshots": [
+      "/media/filebrowser/screenshot_1.webp",
+      "/media/filebrowser/screenshot_2.webp",
+      "/media/filebrowser/screenshot_3.webp"
+    ]
   },
   {
     "id": "heimdall",
@@ -1060,14 +2150,37 @@
     "image": "lscr.io/linuxserver/heimdall:latest",
     "port": 80,
     "icon": "heimdall",
-    "description": "Heimdall — a good-looking application dashboard / start page for your services.",
+    "description": "An Application dashboard and launcher",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://heimdall.site"
+    "website": "https://heimdall.site",
+    "github": "https://github.com/linuxserver/Heimdall",
+    "stars": 9277,
+    "license": "MIT",
+    "language": "PHP",
+    "topics": [
+      "application-dashboard",
+      "bookmark",
+      "couchpotato",
+      "dashboard",
+      "emby",
+      "heimdall",
+      "homepage",
+      "htpc",
+      "landing",
+      "landingpage",
+      "muximux",
+      "nginx"
+    ],
+    "logo": "/media/heimdall/logo.webp",
+    "card": "/media/heimdall/card.webp",
+    "screenshots": [
+      "/media/heimdall/screenshot_1.webp"
+    ]
   },
   {
     "id": "homer",
@@ -1083,7 +2196,25 @@
         "/www/assets"
       ]
     ],
-    "website": "https://github.com/bastienwirtz/homer"
+    "website": "https://github.com/bastienwirtz/homer",
+    "github": "https://github.com/bastienwirtz/homer",
+    "stars": 11481,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Vue",
+    "topics": [
+      "dashboard",
+      "hacktoberfest",
+      "homepage",
+      "self-hosted",
+      "toolbox",
+      "vuejs"
+    ],
+    "logo": "/media/homer/logo.webp",
+    "card": "/media/homer/card.webp",
+    "screenshots": [
+      "/media/homer/screenshot_1.webp",
+      "/media/homer/screenshot_2.webp"
+    ]
   },
   {
     "id": "duplicati",
@@ -1092,7 +2223,7 @@
     "image": "lscr.io/linuxserver/duplicati:latest",
     "port": 8200,
     "icon": "duplicati",
-    "description": "Duplicati — encrypted, scheduled backups to local/cloud storage.",
+    "description": "Store securely encrypted backups in the cloud!",
     "volumes": [
       [
         "config",
@@ -1103,7 +2234,26 @@
         "/backups"
       ]
     ],
-    "website": "https://www.duplicati.com"
+    "website": "https://www.duplicati.com",
+    "github": "https://github.com/duplicati/duplicati",
+    "stars": 14793,
+    "license": "NOASSERTION",
+    "language": "C#",
+    "topics": [
+      "backup",
+      "c-sharp",
+      "client-only-backup",
+      "cloud-backup",
+      "cloud-storage-services",
+      "duplicati",
+      "encryption",
+      "sftp",
+      "tno-backup",
+      "trust-no-one-backup",
+      "webdav"
+    ],
+    "logo": "/media/duplicati/logo.webp",
+    "card": "/media/duplicati/card.webp"
   },
   {
     "id": "gotify",
@@ -1112,14 +2262,39 @@
     "image": "gotify/server:latest",
     "port": 80,
     "icon": "gotify",
-    "description": "Gotify — simple self-hosted server for push notifications (login admin / admin, change it).",
+    "description": "A simple server for sending and receiving messages in real-time per WebSocket. (Includes a sleek web-ui) Gotify — simple self-hosted server for push notifications (login admin / admin, change it).",
     "volumes": [
       [
         "data",
         "/app/data"
       ]
     ],
-    "website": "https://gotify.net"
+    "website": "https://gotify.net",
+    "github": "https://github.com/gotify/server",
+    "stars": 15468,
+    "license": "NOASSERTION",
+    "language": "Go",
+    "topics": [
+      "api",
+      "cloud",
+      "free-software",
+      "golang",
+      "gotify",
+      "hosting",
+      "javascript",
+      "notifications",
+      "privacy",
+      "react",
+      "self-hosted",
+      "self-hosting"
+    ],
+    "logo": "/media/gotify/logo.webp",
+    "card": "/media/gotify/card.webp",
+    "screenshots": [
+      "/media/gotify/screenshot_1.webp",
+      "/media/gotify/screenshot_2.webp",
+      "/media/gotify/screenshot_3.webp"
+    ]
   },
   {
     "id": "grocy",
@@ -1128,14 +2303,36 @@
     "image": "lscr.io/linuxserver/grocy:latest",
     "port": 80,
     "icon": "grocy",
-    "description": "Grocy — ERP for your fridge: groceries, stock, chores & recipes (login admin / admin).",
+    "description": "ERP beyond your fridge - Grocy is a web-based self-hosted groceries & household management solution for your home Grocy — ERP for your fridge: groceries, stock, chores & recipes (login admin / admin).",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://grocy.info"
+    "website": "https://grocy.info",
+    "github": "https://github.com/grocy/grocy",
+    "stars": 9268,
+    "license": "MIT",
+    "language": "JavaScript",
+    "topics": [
+      "erp",
+      "food",
+      "groceries",
+      "grocy",
+      "home",
+      "meal-planner",
+      "ownyourdata",
+      "php",
+      "self-hosted"
+    ],
+    "logo": "/media/grocy/logo.webp",
+    "card": "/media/grocy/card.webp",
+    "screenshots": [
+      "/media/grocy/screenshot_1.webp",
+      "/media/grocy/screenshot_2.webp",
+      "/media/grocy/screenshot_3.webp"
+    ]
   },
   {
     "id": "libretranslate",
@@ -1151,7 +2348,17 @@
         "/home/libretranslate/.local"
       ]
     ],
-    "website": "https://libretranslate.com"
+    "website": "https://libretranslate.com",
+    "github": "https://github.com/uav4geo/LibreTranslate",
+    "stars": 15413,
+    "license": "GNU Affero General Public License v3.0",
+    "logo": "/media/libretranslate/logo.webp",
+    "card": "/media/libretranslate/card.webp",
+    "screenshots": [
+      "/media/libretranslate/screenshot_1.webp",
+      "/media/libretranslate/screenshot_2.webp",
+      "/media/libretranslate/screenshot_3.webp"
+    ]
   },
   {
     "id": "lobe-chat",
@@ -1161,7 +2368,32 @@
     "port": 3210,
     "icon": "lobechat",
     "description": "LobeChat — polished chat UI for OpenAI/Claude/Ollama and more (enter your API keys in-app).",
-    "website": "https://lobehub.com"
+    "website": "https://lobehub.com",
+    "github": "https://github.com/lobehub/lobe-chat",
+    "stars": 80601,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "agent",
+      "agent-collaboration",
+      "agent-harness",
+      "ai",
+      "cao",
+      "chatgpt",
+      "chief-agent-operator",
+      "claude",
+      "deepseek",
+      "fable",
+      "gemini",
+      "glm"
+    ],
+    "logo": "/media/lobe-chat/logo.webp",
+    "card": "/media/lobe-chat/card.webp",
+    "screenshots": [
+      "/media/lobe-chat/screenshot_1.webp",
+      "/media/lobe-chat/screenshot_2.webp",
+      "/media/lobe-chat/screenshot_3.webp"
+    ]
   },
   {
     "id": "grafana",
@@ -1170,14 +2402,39 @@
     "image": "grafana/grafana:latest",
     "port": 3000,
     "icon": "grafana",
-    "description": "Grafana — dashboards & visualization over your metrics/logs (login admin / admin).",
+    "description": "The open and composable observability and data visualization platform. Visualize metrics, logs, and traces from multiple sources like Prometheus, Loki, Elasticsearch, InfluxDB, Postgres and many more. Grafana — dashboards & visualization over your metrics/logs (login admin / admin).",
     "volumes": [
       [
         "data",
         "/var/lib/grafana"
       ]
     ],
-    "website": "https://grafana.com"
+    "website": "https://grafana.com",
+    "github": "https://github.com/grafana/grafana",
+    "stars": 75746,
+    "license": "AGPL-3.0",
+    "language": "TypeScript",
+    "topics": [
+      "alerting",
+      "analytics",
+      "business-intelligence",
+      "dashboard",
+      "data-visualization",
+      "elasticsearch",
+      "go",
+      "grafana",
+      "hacktoberfest",
+      "influxdb",
+      "metrics",
+      "monitoring"
+    ],
+    "logo": "/media/grafana/logo.webp",
+    "card": "/media/grafana/card.webp",
+    "screenshots": [
+      "/media/grafana/screenshot_1.webp",
+      "/media/grafana/screenshot_2.webp",
+      "/media/grafana/screenshot_3.webp"
+    ]
   },
   {
     "id": "glances",
@@ -1186,7 +2443,7 @@
     "image": "nicolargo/glances:latest-full",
     "port": 61208,
     "icon": "glances",
-    "description": "Glances — a cross-platform system monitor with a web UI. Runs in web-server mode; bind-mounts the Docker socket (read-only) to show container stats.",
+    "description": "Glances an Eye on your system. A top/htop alternative for GNU/Linux, BSD, Mac OS and Windows operating systems.",
     "env": [
       [
         "GLANCES_OPT",
@@ -1200,7 +2457,28 @@
         "ro"
       ]
     ],
-    "website": "https://nicolargo.github.io/glances/"
+    "website": "https://nicolargo.github.io/glances/",
+    "github": "https://github.com/nicolargo/glances",
+    "stars": 33155,
+    "license": "NOASSERTION",
+    "language": "Python",
+    "topics": [
+      "monitoring",
+      "multi-platform",
+      "python",
+      "restful",
+      "restful-api",
+      "system",
+      "terminal",
+      "web"
+    ],
+    "logo": "/media/glances/logo.webp",
+    "card": "/media/glances/card.webp",
+    "screenshots": [
+      "/media/glances/screenshot_1.webp",
+      "/media/glances/screenshot_2.webp",
+      "/media/glances/screenshot_3.webp"
+    ]
   },
   {
     "id": "portainer",
@@ -1209,7 +2487,7 @@
     "image": "portainer/portainer-ce:latest",
     "port": 9000,
     "icon": "portainer",
-    "description": "Portainer — web UI to manage Docker/containers. Bind-mounts the host Docker socket. Set the admin password on first visit.",
+    "description": "**Portainer Community Edition** is a lightweight service delivery platform for containerized applications that can be used to manage Docker, Swarm, Kubernetes and ACI environments. It is designed to be as simple to deploy as it is to use. The application allows you to manage all your orchestrator resources (containers, images, volumes, networks and more) through a ‘smart’ GUI and/or an extensive API. ... Portainer…",
     "volumes": [
       [
         "data",
@@ -1222,7 +2500,32 @@
         "/var/run/docker.sock"
       ]
     ],
-    "website": "https://www.portainer.io"
+    "website": "https://www.portainer.io",
+    "github": "https://github.com/portainer/portainer",
+    "stars": 38029,
+    "license": "zlib License (Zlib)",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "docker-compose",
+      "docker-container",
+      "docker-deployment",
+      "docker-image",
+      "docker-swarm",
+      "docker-ui",
+      "dockerfile",
+      "hacktoberfest",
+      "kubernetes",
+      "moby",
+      "portainer"
+    ],
+    "logo": "/media/portainer/logo.webp",
+    "card": "/media/portainer/card.webp",
+    "screenshots": [
+      "/media/portainer/screenshot_1.webp",
+      "/media/portainer/screenshot_2.webp",
+      "/media/portainer/screenshot_3.webp"
+    ]
   },
   {
     "id": "nocodb",
@@ -1238,7 +2541,32 @@
         "/usr/app/data"
       ]
     ],
-    "website": "https://nocodb.com"
+    "website": "https://nocodb.com",
+    "github": "https://github.com/nocodb/nocodb",
+    "stars": 64216,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "airtable",
+      "airtable-alternative",
+      "automatic-api",
+      "hacktoberfest",
+      "low-code",
+      "no-code",
+      "no-code-database",
+      "no-code-platform",
+      "postgresql",
+      "rest-api",
+      "restful-api",
+      "spreadsheet"
+    ],
+    "logo": "/media/nocodb/logo.webp",
+    "card": "/media/nocodb/card.webp",
+    "screenshots": [
+      "/media/nocodb/screenshot_1.webp",
+      "/media/nocodb/screenshot_2.webp",
+      "/media/nocodb/screenshot_3.webp"
+    ]
   },
   {
     "id": "mealie",
@@ -1247,14 +2575,30 @@
     "image": "ghcr.io/mealie-recipes/mealie:latest",
     "port": 9000,
     "icon": "mealie",
-    "description": "Mealie — self-hosted recipe manager & meal planner (SQLite by default).",
+    "description": "Mealie is a self hosted recipe manager and meal planner with a RestAPI backend and a reactive frontend application built in Vue for a pleasant user experience for the whole family. Easily add recipes into your database by providing the url and Mealie will automatically import the relevant data or add a family recipe with the UI editor. Mealie also provides an API for interactions from 3rd party applications.",
     "volumes": [
       [
         "data",
         "/app/data"
       ]
     ],
-    "website": "https://mealie.io"
+    "website": "https://mealie.io",
+    "github": "https://github.com/mealie-recipes/mealie",
+    "stars": 12489,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Python",
+    "topics": [
+      "meal-plans",
+      "recipe-manager",
+      "self-hosted"
+    ],
+    "logo": "/media/mealie/logo.webp",
+    "card": "/media/mealie/card.webp",
+    "screenshots": [
+      "/media/mealie/screenshot_1.webp",
+      "/media/mealie/screenshot_2.webp",
+      "/media/mealie/screenshot_3.webp"
+    ]
   },
   {
     "id": "homebox",
@@ -1263,7 +2607,7 @@
     "image": "ghcr.io/sysadminsmedia/homebox:latest",
     "port": 7745,
     "icon": "homebox",
-    "description": "Homebox — simple home inventory & organization (SQLite). Needs an API-key pepper (>= 32 bytes) — seeded as a parameter; rotating it invalidates issued API keys.",
+    "description": "Homebox is the inventory and organization system built for the Home User Needs an API-key pepper (>= 32 bytes) — seeded as a parameter; rotating it invalidates issued API keys.",
     "params": [
       {
         "key": "api-key-pepper",
@@ -1278,7 +2622,21 @@
         "/data"
       ]
     ],
-    "website": "https://homebox.software"
+    "website": "https://homebox.software",
+    "github": "https://github.com/hay-kot/homebox",
+    "stars": 3019,
+    "license": "AGPL-3.0",
+    "language": "Go",
+    "topics": [
+      "hacktoberfest",
+      "hacktoberfest2022"
+    ],
+    "logo": "/media/homebox/logo.webp",
+    "card": "/media/homebox/card.webp",
+    "screenshots": [
+      "/media/homebox/screenshot_1.webp",
+      "/media/homebox/screenshot_2.webp"
+    ]
   },
   {
     "id": "linkding",
@@ -1287,7 +2645,7 @@
     "image": "sissbruecker/linkding:latest",
     "port": 9090,
     "icon": "linkding",
-    "description": "linkding — minimal, fast self-hosted bookmark manager. Seeds an admin user (change the password).",
+    "description": "A self-hosted bookmark manager designed to be minimal, fast, and easy to set up. ... Automatically fetches titles, descriptions, icons and preview images of bookmarked websites. Seeds an admin user (change the password).",
     "params": [
       {
         "key": "superuser",
@@ -1307,7 +2665,24 @@
         "/etc/linkding/data"
       ]
     ],
-    "website": "https://linkding.link"
+    "website": "https://linkding.link",
+    "github": "https://github.com/sissbruecker/linkding",
+    "stars": 10771,
+    "license": "MIT License (MIT)",
+    "language": "Python",
+    "topics": [
+      "bookmark-manager",
+      "bookmark-service",
+      "bookmarks",
+      "self-hosted"
+    ],
+    "logo": "/media/linkding/logo.webp",
+    "card": "/media/linkding/card.webp",
+    "screenshots": [
+      "/media/linkding/screenshot_1.webp",
+      "/media/linkding/screenshot_2.webp",
+      "/media/linkding/screenshot_3.webp"
+    ]
   },
   {
     "id": "shiori",
@@ -1334,7 +2709,16 @@
         "/shiori"
       ]
     ],
-    "website": "https://github.com/go-shiori/shiori"
+    "website": "https://github.com/go-shiori/shiori",
+    "github": "https://github.com/go-shiori/shiori",
+    "stars": 11503,
+    "license": "MIT License",
+    "logo": "/media/shiori/logo.webp",
+    "card": "/media/shiori/card.webp",
+    "screenshots": [
+      "/media/shiori/screenshot_1.webp",
+      "/media/shiori/screenshot_2.webp"
+    ]
   },
   {
     "id": "changedetection",
@@ -1350,7 +2734,32 @@
         "/datastore"
       ]
     ],
-    "website": "https://changedetection.io"
+    "website": "https://changedetection.io",
+    "github": "https://github.com/dgtlmoon/changedetection.io",
+    "stars": 32375,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Python",
+    "topics": [
+      "back-in-stock",
+      "change-alert",
+      "change-detection",
+      "change-monitoring",
+      "monitoring",
+      "notifications",
+      "restock-monitor",
+      "rss",
+      "self-hosted",
+      "url-monitor",
+      "web-scraping",
+      "website-change-detection"
+    ],
+    "logo": "/media/changedetection/logo.webp",
+    "card": "/media/changedetection/card.webp",
+    "screenshots": [
+      "/media/changedetection/screenshot_1.webp",
+      "/media/changedetection/screenshot_2.webp",
+      "/media/changedetection/screenshot_3.webp"
+    ]
   },
   {
     "id": "cyberchef",
@@ -1359,8 +2768,27 @@
     "image": "mpepping/cyberchef:latest",
     "port": 8000,
     "icon": "cyberchef",
-    "description": "CyberChef — the 'Cyber Swiss-Army knife' for encoding, encryption and data analysis (static web app).",
-    "website": "https://gchq.github.io/CyberChef/"
+    "description": "The Cyber Swiss Army Knife - a web app for encryption, encoding, compression and data analysis",
+    "website": "https://gchq.github.io/CyberChef/",
+    "github": "https://github.com/gchq/CyberChef",
+    "stars": 35415,
+    "license": "Apache-2.0",
+    "language": "JavaScript",
+    "topics": [
+      "compression",
+      "data-analysis",
+      "data-manipulation",
+      "encoding",
+      "encryption",
+      "hashing",
+      "parsing"
+    ],
+    "logo": "/media/cyberchef/logo.webp",
+    "card": "/media/cyberchef/card.webp",
+    "screenshots": [
+      "/media/cyberchef/screenshot_1.webp",
+      "/media/cyberchef/screenshot_2.webp"
+    ]
   },
   {
     "id": "dashy",
@@ -1369,8 +2797,33 @@
     "image": "lissy93/dashy:latest",
     "port": 8080,
     "icon": "dashy",
-    "description": "Dashy — a highly configurable, good-looking dashboard for your self-hosted services.",
-    "website": "https://dashy.to"
+    "description": "🚀 A self-hostable personal dashboard built for you. Includes status-checking, widgets, themes, icon packs, a UI editor and tons more!",
+    "website": "https://dashy.to",
+    "github": "https://github.com/lissy93/dashy",
+    "stars": 25957,
+    "license": "MIT",
+    "language": "Vue",
+    "topics": [
+      "awesome",
+      "dashboard",
+      "docker",
+      "homelab",
+      "homepage",
+      "mit",
+      "nodejs",
+      "organization",
+      "productivity",
+      "pwa",
+      "self-hosted",
+      "startpage"
+    ],
+    "logo": "/media/dashy/logo.webp",
+    "card": "/media/dashy/card.webp",
+    "screenshots": [
+      "/media/dashy/screenshot_1.webp",
+      "/media/dashy/screenshot_2.webp",
+      "/media/dashy/screenshot_3.webp"
+    ]
   },
   {
     "id": "filestash",
@@ -1379,8 +2832,33 @@
     "image": "machines/filestash:latest",
     "port": 8334,
     "icon": "filestash",
-    "description": "Filestash — a web file manager frontend for S3/FTP/SFTP/WebDAV and more.",
-    "website": "https://www.filestash.app"
+    "description": ":file_folder: Universal File Storage Client",
+    "website": "https://www.filestash.app",
+    "github": "https://github.com/mickael-kerjean/filestash",
+    "stars": 14407,
+    "license": "AGPL-3.0",
+    "language": "Go",
+    "topics": [
+      "archiving",
+      "azure",
+      "dms",
+      "dropbox",
+      "edrms",
+      "ftp",
+      "ged",
+      "git",
+      "ipfs",
+      "mft",
+      "nfs",
+      "s3"
+    ],
+    "logo": "/media/filestash/logo.webp",
+    "card": "/media/filestash/card.webp",
+    "screenshots": [
+      "/media/filestash/screenshot_1.webp",
+      "/media/filestash/screenshot_2.webp",
+      "/media/filestash/screenshot_3.webp"
+    ]
   },
   {
     "id": "syncthing",
@@ -1400,7 +2878,24 @@
         "/data"
       ]
     ],
-    "website": "https://syncthing.net"
+    "website": "https://syncthing.net",
+    "github": "https://github.com/syncthing/syncthing",
+    "stars": 86553,
+    "license": "Mozilla Public License 2.0 (MPL-2.0)",
+    "language": "Go",
+    "topics": [
+      "go",
+      "p2p",
+      "peer-to-peer",
+      "synchronization"
+    ],
+    "logo": "/media/syncthing/logo.webp",
+    "card": "/media/syncthing/card.webp",
+    "screenshots": [
+      "/media/syncthing/screenshot_1.webp",
+      "/media/syncthing/screenshot_2.webp",
+      "/media/syncthing/screenshot_3.webp"
+    ]
   },
   {
     "id": "wallos",
@@ -1420,7 +2915,17 @@
         "/var/www/html/images/uploads/logos"
       ]
     ],
-    "website": "https://github.com/ellite/Wallos"
+    "website": "https://github.com/ellite/Wallos",
+    "github": "https://github.com/ellite/Wallos",
+    "stars": 8244,
+    "license": "GNU General Public License v3.0",
+    "logo": "/media/wallos/logo.webp",
+    "card": "/media/wallos/card.webp",
+    "screenshots": [
+      "/media/wallos/screenshot_1.webp",
+      "/media/wallos/screenshot_2.webp",
+      "/media/wallos/screenshot_3.webp"
+    ]
   },
   {
     "id": "whoogle",
@@ -1430,7 +2935,30 @@
     "port": 5000,
     "icon": "whoogle",
     "description": "Whoogle — private, ad-free Google search proxy (no JS, no tracking).",
-    "website": "https://github.com/benbusby/whoogle-search"
+    "website": "https://github.com/benbusby/whoogle-search",
+    "github": "https://github.com/benbusby/whoogle-search",
+    "stars": 11570,
+    "license": "MIT License (MIT)",
+    "language": "Python",
+    "topics": [
+      "adblock",
+      "docker",
+      "easy-deploy",
+      "flask",
+      "heroku",
+      "metasearch",
+      "metasearch-engine",
+      "privacy",
+      "python",
+      "search",
+      "search-engine"
+    ],
+    "logo": "/media/whoogle/logo.webp",
+    "card": "/media/whoogle/card.webp",
+    "screenshots": [
+      "/media/whoogle/screenshot_1.webp",
+      "/media/whoogle/screenshot_2.webp"
+    ]
   },
   {
     "id": "librespeed",
@@ -1440,7 +2968,17 @@
     "port": 80,
     "icon": "librespeed",
     "description": "LibreSpeed — self-hosted network speed test (no Flash/Java, single container).",
-    "website": "https://librespeed.org"
+    "website": "https://librespeed.org",
+    "github": "https://github.com/librespeed/speedtest",
+    "stars": 14974,
+    "license": "GNU Lesser General Public License v3.0",
+    "logo": "/media/librespeed/logo.webp",
+    "card": "/media/librespeed/card.webp",
+    "screenshots": [
+      "/media/librespeed/screenshot_1.webp",
+      "/media/librespeed/screenshot_2.webp",
+      "/media/librespeed/screenshot_3.webp"
+    ]
   },
   {
     "id": "overseerr",
@@ -1456,7 +2994,28 @@
         "/app/config"
       ]
     ],
-    "website": "https://overseerr.dev"
+    "website": "https://overseerr.dev",
+    "github": "https://github.com/sct/overseerr",
+    "stars": 5003,
+    "license": "MIT License (MIT)",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "movie",
+      "notifications",
+      "nzb",
+      "plex",
+      "radarr",
+      "sonarr",
+      "tv"
+    ],
+    "logo": "/media/overseerr/logo.webp",
+    "card": "/media/overseerr/card.webp",
+    "screenshots": [
+      "/media/overseerr/screenshot_1.webp",
+      "/media/overseerr/screenshot_2.webp",
+      "/media/overseerr/screenshot_3.webp"
+    ]
   },
   {
     "id": "tautulli",
@@ -1465,14 +3024,34 @@
     "image": "ghcr.io/tautulli/tautulli:latest",
     "port": 8181,
     "icon": "tautulli",
-    "description": "Tautulli — monitoring & analytics for a Plex Media Server.",
+    "description": "Tautulli is the best web application to monitor, view analytics, and receive notifications about your Plex Media Server. ... Tautulli is a 3rd party application that you can run alongside your Plex Media Server to monitor activity and track various statistics. Most importantly, these statistics include what has been watched, who watched it, when and where they watched it, and how it was watched. The only thing…",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://tautulli.com"
+    "website": "https://tautulli.com",
+    "github": "https://github.com/Tautulli/Tautulli",
+    "stars": 6485,
+    "license": "GNU General Public License v3.0 (GPL-3.0)",
+    "language": "Python",
+    "topics": [
+      "analytics",
+      "monitoring",
+      "notifications",
+      "plex",
+      "plexpy",
+      "python",
+      "statistics",
+      "stats",
+      "tautulli"
+    ],
+    "logo": "/media/tautulli/logo.webp",
+    "card": "/media/tautulli/card.webp",
+    "screenshots": [
+      "/media/tautulli/screenshot_1.webp"
+    ]
   },
   {
     "id": "flaresolverr",
@@ -1481,8 +3060,31 @@
     "image": "ghcr.io/flaresolverr/flaresolverr:latest",
     "port": 8191,
     "icon": "flaresolverr",
-    "description": "FlareSolverr — proxy that solves Cloudflare challenges for indexers (Prowlarr/Jackett). HTTP API, no real UI.",
-    "website": "https://github.com/FlareSolverr/FlareSolverr"
+    "description": "Proxy server to bypass Cloudflare protection",
+    "website": "https://github.com/FlareSolverr/FlareSolverr",
+    "github": "https://github.com/FlareSolverr/FlareSolverr",
+    "stars": 14860,
+    "license": "MIT",
+    "language": "Python",
+    "topics": [
+      "api",
+      "chrome",
+      "chromium",
+      "cloudflare",
+      "docker",
+      "hacktoberfest",
+      "proxy",
+      "puppeteer",
+      "rest",
+      "server"
+    ],
+    "logo": "/media/flaresolverr/logo.webp",
+    "card": "/media/flaresolverr/card.webp",
+    "screenshots": [
+      "/media/flaresolverr/screenshot_1.webp",
+      "/media/flaresolverr/screenshot_2.webp",
+      "/media/flaresolverr/screenshot_3.webp"
+    ]
   },
   {
     "id": "firefly-iii",
@@ -1555,7 +3157,32 @@
         "/var/www/html/storage/upload"
       ]
     ],
-    "website": "https://www.firefly-iii.org"
+    "website": "https://www.firefly-iii.org",
+    "github": "https://github.com/firefly-iii/firefly-iii",
+    "stars": 24115,
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "accounting",
+      "budget",
+      "budgeting",
+      "budgets",
+      "cash-flow",
+      "cashflow",
+      "credit-card",
+      "docker",
+      "expenses",
+      "finance",
+      "finances",
+      "financial"
+    ],
+    "logo": "/media/firefly-iii/logo.webp",
+    "card": "/media/firefly-iii/card.webp",
+    "screenshots": [
+      "/media/firefly-iii/screenshot_1.webp",
+      "/media/firefly-iii/screenshot_2.webp",
+      "/media/firefly-iii/screenshot_3.webp"
+    ]
   },
   {
     "id": "wikijs",
@@ -1614,7 +3241,27 @@
         ]
       }
     ],
-    "website": "https://js.wiki"
+    "website": "https://js.wiki",
+    "github": "https://github.com/requarks/wiki",
+    "stars": 28618,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Vue",
+    "topics": [
+      "cross-platform",
+      "documentation",
+      "git",
+      "markdown",
+      "nodejs",
+      "open-source",
+      "wiki"
+    ],
+    "logo": "/media/wikijs/logo.webp",
+    "card": "/media/wikijs/card.webp",
+    "screenshots": [
+      "/media/wikijs/screenshot_1.webp",
+      "/media/wikijs/screenshot_2.webp",
+      "/media/wikijs/screenshot_3.webp"
+    ]
   },
   {
     "id": "linkwarden",
@@ -1623,7 +3270,7 @@
     "image": "ghcr.io/linkwarden/linkwarden:latest",
     "port": 3000,
     "icon": "linkwarden",
-    "description": "Linkwarden — collaborative bookmark & web-archive manager. Postgres companion. Set NEXTAUTH_URL to how you reach it (default localhost:3000).",
+    "description": "Linkwarden is a self-hosted, open-source collaborative bookmark manager to collect, read, annotate, and fully preserve what matters, all in one place. ... The objective is to organize useful webpages and articles you find across the web in one place, and since useful webpages can go away (see the inevitability of Link Rot), Linkwarden also saves a copy of each webpage in multiple formats, ensuring accessibility…",
     "env": [
       [
         "DATABASE_URL",
@@ -1659,7 +3306,28 @@
       }
     ],
     "website": "https://linkwarden.app",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/linkwarden/linkwarden",
+    "stars": 18995,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "TypeScript",
+    "topics": [
+      "bookmark",
+      "bookmark-manager",
+      "collaboration",
+      "nextjs",
+      "react-native",
+      "read-it-later",
+      "self-hosted",
+      "typescript"
+    ],
+    "logo": "/media/linkwarden/logo.webp",
+    "card": "/media/linkwarden/card.webp",
+    "screenshots": [
+      "/media/linkwarden/screenshot_1.webp",
+      "/media/linkwarden/screenshot_2.webp",
+      "/media/linkwarden/screenshot_3.webp"
+    ]
   },
   {
     "id": "bookstack",
@@ -1668,7 +3336,7 @@
     "image": "lscr.io/linuxserver/bookstack:latest",
     "port": 80,
     "icon": "bookstack",
-    "description": "BookStack — simple, self-hosted documentation/wiki. MariaDB companion. APP_KEY seeded (base64). Set APP_URL to how you reach it (default http://localhost). Built-in first login: admin@admin.com / password (change it).",
+    "description": "NOW MANAGED ON CODEBERG MariaDB companion. APP_KEY seeded (base64). Set APP_URL to how you reach it (default http://localhost). Built-in first login: admin@admin.com / password (change it).",
     "env": [
       [
         "DB_HOST",
@@ -1738,7 +3406,26 @@
       ]
     ],
     "website": "https://www.bookstackapp.com",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/BookStackApp/BookStack",
+    "stars": 18934,
+    "license": "MIT",
+    "language": "PHP",
+    "topics": [
+      "bookstack",
+      "documentation",
+      "laravel",
+      "php",
+      "selfhosted",
+      "wiki"
+    ],
+    "logo": "/media/bookstack/logo.webp",
+    "card": "/media/bookstack/card.webp",
+    "screenshots": [
+      "/media/bookstack/screenshot_1.webp",
+      "/media/bookstack/screenshot_2.webp",
+      "/media/bookstack/screenshot_3.webp"
+    ]
   },
   {
     "id": "hedgedoc",
@@ -1747,7 +3434,7 @@
     "image": "quay.io/hedgedoc/hedgedoc:latest",
     "port": 3000,
     "icon": "hedgedoc",
-    "description": "HedgeDoc — real-time collaborative markdown notes. Postgres companion. Set CMD_DOMAIN to your host (default localhost) — CMD_URL_ADDPORT keeps the port in links.",
+    "description": "HedgeDoc - Ideas grow better together Postgres companion. Set CMD_DOMAIN to your host (default localhost) — CMD_URL_ADDPORT keeps the port in links.",
     "env": [
       [
         "CMD_DB_URL",
@@ -1809,7 +3496,30 @@
       ]
     ],
     "website": "https://hedgedoc.org",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/hedgedoc/hedgedoc",
+    "stars": 7318,
+    "license": "AGPL-3.0",
+    "language": "TypeScript",
+    "topics": [
+      "codimd",
+      "collaboration",
+      "diagrams",
+      "editor",
+      "hackmd",
+      "hacktoberfest",
+      "hedgedoc",
+      "markdown",
+      "notes",
+      "real-time"
+    ],
+    "logo": "/media/hedgedoc/logo.webp",
+    "card": "/media/hedgedoc/card.webp",
+    "screenshots": [
+      "/media/hedgedoc/screenshot_1.webp",
+      "/media/hedgedoc/screenshot_2.webp",
+      "/media/hedgedoc/screenshot_3.webp"
+    ]
   },
   {
     "id": "ghost",
@@ -1818,7 +3528,7 @@
     "image": "ghost:5-alpine",
     "port": 2368,
     "icon": "ghost",
-    "description": "Ghost — professional publishing / blog platform. MySQL companion (Ghost 5 requires MySQL). Set url to how you reach it (default localhost:2368).",
+    "description": "Independent technology for modern publishing, memberships, subscriptions and newsletters. MySQL companion (Ghost 5 requires MySQL). Set url to how you reach it (default localhost:2368).",
     "env": [
       [
         "database__client",
@@ -1882,7 +3592,28 @@
       ]
     ],
     "website": "https://ghost.org",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/TryGhost/Ghost",
+    "stars": 54515,
+    "license": "MIT",
+    "language": "JavaScript",
+    "topics": [
+      "blogging",
+      "cms",
+      "ghost",
+      "javascript",
+      "journalism",
+      "nodejs",
+      "publishing",
+      "web-application"
+    ],
+    "logo": "/media/ghost/logo.webp",
+    "card": "/media/ghost/card.webp",
+    "screenshots": [
+      "/media/ghost/screenshot_1.webp",
+      "/media/ghost/screenshot_2.webp",
+      "/media/ghost/screenshot_3.webp"
+    ]
   },
   {
     "id": "planka",
@@ -1954,7 +3685,32 @@
       }
     ],
     "website": "https://planka.app",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/plankanban/planka",
+    "stars": 12006,
+    "license": "Other (NOASSERTION)",
+    "language": "JavaScript",
+    "topics": [
+      "agile",
+      "collaboration",
+      "docker",
+      "javascript",
+      "kanban",
+      "nodejs",
+      "planka",
+      "project-management",
+      "react",
+      "real-time",
+      "self-hosted",
+      "trello"
+    ],
+    "logo": "/media/planka/logo.webp",
+    "card": "/media/planka/card.webp",
+    "screenshots": [
+      "/media/planka/screenshot_1.webp",
+      "/media/planka/screenshot_2.webp",
+      "/media/planka/screenshot_3.webp"
+    ]
   },
   {
     "id": "plex",
@@ -1991,7 +3747,16 @@
         "192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
       ]
     ],
-    "urlPath": "/web"
+    "urlPath": "/web",
+    "github": "https://github.com/plexinc/plex",
+    "stars": 0,
+    "logo": "/media/plex/logo.webp",
+    "card": "/media/plex/card.webp",
+    "screenshots": [
+      "/media/plex/screenshot_1.webp",
+      "/media/plex/screenshot_2.webp",
+      "/media/plex/screenshot_3.webp"
+    ]
   },
   {
     "id": "emby",
@@ -2000,7 +3765,7 @@
     "image": "emby/embyserver:latest",
     "port": 8096,
     "icon": "emby",
-    "description": "Emby Media Server — movies/TV/music. Create the admin account via the first-run wizard. Mount your media; GPU for transcoding.",
+    "description": "Emby Server is a personal media server with apps on just about every device. Create the admin account via the first-run wizard. Mount your media; GPU for transcoding.",
     "gpu": true,
     "volumes": [
       [
@@ -2008,7 +3773,18 @@
         "/config"
       ]
     ],
-    "website": "https://emby.media"
+    "website": "https://emby.media",
+    "github": "https://github.com/MediaBrowser/Emby",
+    "stars": 4924,
+    "license": "GPL-2.0",
+    "language": "C#",
+    "logo": "/media/emby/logo.webp",
+    "card": "/media/emby/card.webp",
+    "screenshots": [
+      "/media/emby/screenshot_1.webp",
+      "/media/emby/screenshot_2.webp",
+      "/media/emby/screenshot_3.webp"
+    ]
   },
   {
     "id": "lidarr",
@@ -2024,7 +3800,16 @@
         "/config"
       ]
     ],
-    "website": "https://lidarr.audio"
+    "website": "https://lidarr.audio",
+    "github": "https://github.com/Lidarr/Lidarr",
+    "stars": 5450,
+    "license": "GNU General Public License v3.0",
+    "logo": "/media/lidarr/logo.webp",
+    "card": "/media/lidarr/card.webp",
+    "screenshots": [
+      "/media/lidarr/screenshot_1.webp",
+      "/media/lidarr/screenshot_2.webp"
+    ]
   },
   {
     "id": "mattermost",
@@ -2077,7 +3862,25 @@
         "/mattermost/data"
       ]
     ],
-    "website": "https://mattermost.com"
+    "website": "https://mattermost.com",
+    "github": "https://github.com/mattermost/mattermost",
+    "stars": 38493,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "collaboration",
+      "golang",
+      "hacktoberfest",
+      "mattermost",
+      "monorepo",
+      "react",
+      "react-native"
+    ],
+    "logo": "/media/mattermost/logo.webp",
+    "card": "/media/mattermost/card.webp",
+    "screenshots": [
+      "/media/mattermost/screenshot_1.webp"
+    ]
   },
   {
     "id": "outline",
@@ -2086,7 +3889,7 @@
     "image": "docker.getoutline.com/outlinewiki/outline:latest",
     "port": 3000,
     "icon": "outline",
-    "description": "Outline — team wiki/knowledge base. Postgres + Redis companions. GOTCHA: needs an auth provider (OIDC/Google/Slack env) to sign in — no built-in local login. Set URL to how you reach it.",
+    "description": "# Hosting Outline ... This guide contains documentation for installing and configuring the Outline knowledge base in a variety of environments. There is a separate guide that on how to use Outline for general documentation of Outline's features. ... While we've done our best to make this as easy as possible, however please note that Outline is engineered as a horizontally scalable cloud platform and requires…",
     "env": [
       [
         "NODE_ENV",
@@ -2160,7 +3963,27 @@
       }
     ],
     "website": "https://www.getoutline.com",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/outline/outline",
+    "stars": 39712,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "javascript",
+      "mobx",
+      "nodejs",
+      "react",
+      "slack",
+      "wiki"
+    ],
+    "logo": "/media/outline/logo.webp",
+    "card": "/media/outline/card.webp",
+    "screenshots": [
+      "/media/outline/screenshot_1.webp",
+      "/media/outline/screenshot_2.webp",
+      "/media/outline/screenshot_3.webp"
+    ]
   },
   {
     "id": "ghostfolio",
@@ -2169,7 +3992,7 @@
     "image": "ghostfolio/ghostfolio:latest",
     "port": 3333,
     "icon": "ghostfolio",
-    "description": "Ghostfolio — open-source wealth/portfolio tracker. Postgres + Redis companions. Create your account in-app. ACCESS_TOKEN_SALT & JWT_SECRET_KEY seeded as params (change them).",
+    "description": "Open Source Wealth Management Software. Angular + NestJS + Prisma + Nx + TypeScript 🤍 Postgres + Redis companions. ACCESS_TOKEN_SALT & JWT_SECRET_KEY seeded as params (change them).",
     "env": [
       [
         "DATABASE_URL",
@@ -2233,7 +4056,32 @@
         "role": "redis"
       }
     ],
-    "website": "https://ghostfol.io"
+    "website": "https://ghostfol.io",
+    "github": "https://github.com/ghostfolio/ghostfolio",
+    "stars": 9000,
+    "license": "AGPL-3.0",
+    "language": "TypeScript",
+    "topics": [
+      "angular",
+      "etf",
+      "finance",
+      "fintech",
+      "ghostfolio",
+      "hacktoberfest",
+      "investing",
+      "nestjs",
+      "oss",
+      "personal-finance",
+      "portfolio",
+      "prisma"
+    ],
+    "logo": "/media/ghostfolio/logo.webp",
+    "card": "/media/ghostfolio/card.webp",
+    "screenshots": [
+      "/media/ghostfolio/screenshot_1.webp",
+      "/media/ghostfolio/screenshot_2.webp",
+      "/media/ghostfolio/screenshot_3.webp"
+    ]
   },
   {
     "id": "librephotos",
@@ -2242,7 +4090,7 @@
     "image": "reallibrephotos/librephotos-unified:latest",
     "port": 8001,
     "icon": "librephotos",
-    "description": "LibrePhotos — self-hosted photo management with AI tagging & face recognition (unified build, SQLite). Heavy first-run indexing, ~4GB RAM. Admin from params (admin / please-change-me).",
+    "description": "GitHub - LibrePhotos/librephotos: A self-hosted open source photo management service. · GitHub ... A self-hosted, open-source photo management service with automatic face recognition, object detection, and semantic search — powered by modern machine learning. ... A self-hosted open source photo management service. Admin from params (admin / please-change-me).",
     "env": [
       [
         "SERVE_FRONTEND",
@@ -2291,7 +4139,16 @@
         "/logs"
       ]
     ],
-    "website": "https://www.librephotos.com"
+    "website": "https://www.librephotos.com",
+    "github": "https://github.com/LibrePhotos/librephotos",
+    "stars": 0,
+    "logo": "/media/librephotos/logo.webp",
+    "card": "/media/librephotos/card.webp",
+    "screenshots": [
+      "/media/librephotos/screenshot_1.webp",
+      "/media/librephotos/screenshot_2.webp",
+      "/media/librephotos/screenshot_3.webp"
+    ]
   },
   {
     "id": "docuseal",
@@ -2307,7 +4164,16 @@
         "/data"
       ]
     ],
-    "website": "https://www.docuseal.com"
+    "website": "https://www.docuseal.com",
+    "github": "https://github.com/docuseal/docuseal",
+    "stars": 0,
+    "logo": "/media/docuseal/logo.webp",
+    "card": "/media/docuseal/card.webp",
+    "screenshots": [
+      "/media/docuseal/screenshot_1.webp",
+      "/media/docuseal/screenshot_2.webp",
+      "/media/docuseal/screenshot_3.webp"
+    ]
   },
   {
     "id": "penpot",
@@ -2438,7 +4304,27 @@
       ]
     ],
     "website": "https://penpot.app",
-    "fixedPort": true
+    "fixedPort": true,
+    "github": "https://github.com/penpot/penpot",
+    "stars": 57146,
+    "license": "Mozilla Public License 2.0 (MPL-2.0)",
+    "language": "Clojure",
+    "topics": [
+      "clojure",
+      "clojurescript",
+      "design",
+      "prototyping",
+      "ui",
+      "ux-design",
+      "ux-experience"
+    ],
+    "logo": "/media/penpot/logo.webp",
+    "card": "/media/penpot/card.webp",
+    "screenshots": [
+      "/media/penpot/screenshot_1.webp",
+      "/media/penpot/screenshot_2.webp",
+      "/media/penpot/screenshot_3.webp"
+    ]
   },
   {
     "id": "homarr",
@@ -2447,7 +4333,7 @@
     "image": "ghcr.io/homarr-labs/homarr:latest",
     "port": 7575,
     "icon": "homarr",
-    "description": "Homarr — modern, customizable dashboard for your services. Requires SECRET_ENCRYPTION_KEY (64 hex) or it exits — seeded as a parameter (rotating it invalidates stored integration secrets).",
+    "description": "Customizable browser's home page to interact with your homeserver's Docker containers (e.g. Sonarr/Radarr) Requires SECRET_ENCRYPTION_KEY (64 hex) or it exits — seeded as a parameter (rotating it invalidates stored integration secrets).",
     "params": [
       {
         "key": "encryption-key",
@@ -2462,7 +4348,29 @@
         "/appdata"
       ]
     ],
-    "website": "https://homarr.dev"
+    "website": "https://homarr.dev",
+    "github": "https://github.com/ajnart/homarr",
+    "stars": 7222,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "dashboard",
+      "docker",
+      "homepage",
+      "homeserver",
+      "mantine",
+      "nextjs",
+      "radarr",
+      "react",
+      "sonarr"
+    ],
+    "logo": "/media/homarr/logo.webp",
+    "card": "/media/homarr/card.webp",
+    "screenshots": [
+      "/media/homarr/screenshot_1.webp",
+      "/media/homarr/screenshot_2.webp",
+      "/media/homarr/screenshot_3.webp"
+    ]
   },
   {
     "id": "homebridge",
@@ -2471,7 +4379,7 @@
     "image": "homebridge/homebridge:latest",
     "port": 8581,
     "icon": "homebridge",
-    "description": "Homebridge — bridge non-HomeKit devices into Apple HomeKit; config UI on :8581 (create admin on first visit). Host networking for HomeKit discovery (won't work under Docker Desktop).",
+    "description": "HomeKit support for the impatient. Homebridge — bridge non-HomeKit devices into Apple HomeKit; config UI on :8581 (create admin on first visit).",
     "hostNetwork": true,
     "volumes": [
       [
@@ -2479,7 +4387,26 @@
         "/homebridge"
       ]
     ],
-    "website": "https://homebridge.io"
+    "website": "https://homebridge.io",
+    "github": "https://github.com/homebridge/homebridge",
+    "stars": 25442,
+    "license": "Apache-2.0",
+    "language": "TypeScript",
+    "topics": [
+      "hap",
+      "homebridge",
+      "homekit",
+      "homekit-accessory-protocol",
+      "homekit-api",
+      "homekit-bridge",
+      "siri"
+    ],
+    "logo": "/media/homebridge/logo.webp",
+    "card": "/media/homebridge/card.webp",
+    "screenshots": [
+      "/media/homebridge/screenshot_1.webp",
+      "/media/homebridge/screenshot_2.webp"
+    ]
   },
   {
     "id": "octoprint",
@@ -2495,7 +4422,17 @@
         "/octoprint"
       ]
     ],
-    "website": "https://octoprint.org"
+    "website": "https://octoprint.org",
+    "github": "https://github.com/OctoPrint/OctoPrint",
+    "stars": 9044,
+    "license": "GNU Affero General Public License v3.0",
+    "logo": "/media/octoprint/logo.webp",
+    "card": "/media/octoprint/card.webp",
+    "screenshots": [
+      "/media/octoprint/screenshot_1.webp",
+      "/media/octoprint/screenshot_2.webp",
+      "/media/octoprint/screenshot_3.webp"
+    ]
   },
   {
     "id": "esphome",
@@ -2504,14 +4441,37 @@
     "image": "ghcr.io/esphome/esphome:latest",
     "port": 6052,
     "icon": "esphome",
-    "description": "ESPHome — build & flash firmware for ESP32/ESP8266 from a web dashboard. Host networking helps mDNS/OTA; USB flashing needs the device passed in.",
+    "description": "ESPHome is a system to control your ESP32, ESP8266, BK72xx, RP2040 by simple yet powerful configuration files and control them remotely through Home Automation systems.",
     "volumes": [
       [
         "config",
         "/config"
       ]
     ],
-    "website": "https://esphome.io"
+    "website": "https://esphome.io",
+    "github": "https://github.com/esphome/esphome",
+    "stars": 11421,
+    "license": "NOASSERTION",
+    "language": "C++",
+    "topics": [
+      "esp32",
+      "esp8266",
+      "hacktoberfest",
+      "home-assistant",
+      "home-automation",
+      "iot",
+      "mqtt",
+      "platformio",
+      "python",
+      "yaml"
+    ],
+    "logo": "/media/esphome/logo.webp",
+    "card": "/media/esphome/card.webp",
+    "screenshots": [
+      "/media/esphome/screenshot_1.webp",
+      "/media/esphome/screenshot_2.webp",
+      "/media/esphome/screenshot_3.webp"
+    ]
   },
   {
     "id": "frigate",
@@ -2520,7 +4480,7 @@
     "image": "ghcr.io/blakeblackshear/frigate:stable",
     "port": 8971,
     "icon": "frigate",
-    "description": "Frigate — NVR with realtime object detection. Ships a minimal config.yml (no cameras, auth/tls off) so it starts; add cameras + a detector (Coral/GPU). Raise /dev/shm for multiple cameras.",
+    "description": "NVR with realtime local object detection for IP cameras Ships a minimal config.yml (no cameras, auth/tls off) so it starts; add cameras + a detector (Coral/GPU).",
     "bindMounts": [
       [
         "frigate/config.yml",
@@ -2539,7 +4499,32 @@
         "content": "mqtt:\n  enabled: false\nauth:\n  enabled: false\ntls:\n  enabled: false\n"
       }
     ],
-    "website": "https://frigate.video"
+    "website": "https://frigate.video",
+    "github": "https://github.com/blakeblackshear/frigate",
+    "stars": 34516,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "ai",
+      "camera",
+      "google-coral",
+      "home-assistant",
+      "home-automation",
+      "homeautomation",
+      "mqtt",
+      "nvr",
+      "object-detection",
+      "realtime",
+      "rtsp",
+      "tensorflow"
+    ],
+    "logo": "/media/frigate/logo.webp",
+    "card": "/media/frigate/card.webp",
+    "screenshots": [
+      "/media/frigate/screenshot_1.webp",
+      "/media/frigate/screenshot_2.webp",
+      "/media/frigate/screenshot_3.webp"
+    ]
   },
   {
     "id": "metube",
@@ -2555,7 +4540,24 @@
         "/downloads"
       ]
     ],
-    "website": "https://github.com/alexta69/metube"
+    "website": "https://github.com/alexta69/metube",
+    "github": "https://github.com/alexta69/metube",
+    "stars": 14100,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Python",
+    "topics": [
+      "self-hosted",
+      "youtube",
+      "youtube-dl",
+      "yt-dlp"
+    ],
+    "logo": "/media/metube/logo.webp",
+    "card": "/media/metube/card.webp",
+    "screenshots": [
+      "/media/metube/screenshot_1.webp",
+      "/media/metube/screenshot_2.webp",
+      "/media/metube/screenshot_3.webp"
+    ]
   },
   {
     "id": "influxdb",
@@ -2564,7 +4566,7 @@
     "image": "influxdb:2",
     "port": 8086,
     "icon": "influxdb",
-    "description": "InfluxDB 2 — time-series DB + UI. Auto first-time setup (org aspireui, bucket default); admin user/password + admin API token seeded as params (password >= 8 chars).",
+    "description": "# Quantified Self: Building a Pro-Level Health Dashboard with InfluxDB and Grafana ... In this tutorial, we are diving deep into Health Data Engineering. We will use InfluxDB as our high-performance time-series engine, Grafana for stunning visualizations, and Airflow to orchestrate the ETL (Extract, Transform, Load) process. By the end of this guide, you’ll have a professional-grade Quantified Self dashboard that…",
     "env": [
       [
         "DOCKER_INFLUXDB_INIT_MODE",
@@ -2604,7 +4606,28 @@
         "/var/lib/influxdb2"
       ]
     ],
-    "website": "https://www.influxdata.com"
+    "website": "https://www.influxdata.com",
+    "github": "https://github.com/influxdata/influxdb",
+    "stars": 31650,
+    "license": "Apache License 2.0 (Apache-2.0)",
+    "language": "Rust",
+    "topics": [
+      "database",
+      "go",
+      "influxdb",
+      "metrics",
+      "monitoring",
+      "react",
+      "rust",
+      "time-series"
+    ],
+    "logo": "/media/influxdb/logo.webp",
+    "card": "/media/influxdb/card.webp",
+    "screenshots": [
+      "/media/influxdb/screenshot_1.webp",
+      "/media/influxdb/screenshot_2.webp",
+      "/media/influxdb/screenshot_3.webp"
+    ]
   },
   {
     "id": "minio",
@@ -2639,7 +4662,32 @@
         "/data"
       ]
     ],
-    "website": "https://min.io"
+    "website": "https://min.io",
+    "github": "https://github.com/minio/minio",
+    "stars": 61362,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "Go",
+    "topics": [
+      "amazon-s3",
+      "cloud",
+      "cloudnative",
+      "cloudstorage",
+      "go",
+      "k8s",
+      "kubernetes",
+      "multi-cloud",
+      "multi-cloud-kubernetes",
+      "objectstorage",
+      "s3",
+      "storage"
+    ],
+    "logo": "/media/minio/logo.webp",
+    "card": "/media/minio/card.webp",
+    "screenshots": [
+      "/media/minio/screenshot_1.webp",
+      "/media/minio/screenshot_2.webp",
+      "/media/minio/screenshot_3.webp"
+    ]
   },
   {
     "id": "etherpad",
@@ -2648,7 +4696,7 @@
     "image": "etherpad/etherpad:latest",
     "port": 9001,
     "icon": "etherpad",
-    "description": "Etherpad — real-time collaborative document editor (built-in dirtyDB; add a DB for scale). Admin UI (/admin) login admin + the seeded ADMIN_PASSWORD.",
+    "description": "Etherpad: A modern really-real-time collaborative document editor. Admin UI (/admin) login admin + the seeded ADMIN_PASSWORD.",
     "params": [
       {
         "key": "admin-password",
@@ -2657,7 +4705,31 @@
         "secret": true
       }
     ],
-    "website": "https://etherpad.org"
+    "website": "https://etherpad.org",
+    "github": "https://github.com/ether/etherpad",
+    "stars": 18456,
+    "license": "Apache-2.0",
+    "language": "TypeScript",
+    "topics": [
+      "collaboration",
+      "collaborative",
+      "collaborative-ai",
+      "collaborative-editing",
+      "collaborative-framework",
+      "collaborative-research",
+      "collaborative-writing",
+      "document",
+      "documents",
+      "etherpad",
+      "pdf-generation",
+      "rich-text-editor"
+    ],
+    "logo": "/media/etherpad/logo.webp",
+    "card": "/media/etherpad/card.webp",
+    "screenshots": [
+      "/media/etherpad/screenshot_1.webp",
+      "/media/etherpad/screenshot_2.webp"
+    ]
   },
   {
     "id": "jupyterlab",
@@ -2681,7 +4753,17 @@
         "/home/jovyan/work"
       ]
     ],
-    "website": "https://jupyter.org"
+    "website": "https://jupyter.org",
+    "github": "https://github.com/jupyterlab/jupyterlab",
+    "stars": 15229,
+    "license": "BSD 3-Clause \"New\" or \"Revised\" License",
+    "logo": "/media/jupyterlab/logo.webp",
+    "card": "/media/jupyterlab/card.webp",
+    "screenshots": [
+      "/media/jupyterlab/screenshot_1.webp",
+      "/media/jupyterlab/screenshot_2.webp",
+      "/media/jupyterlab/screenshot_3.webp"
+    ]
   },
   {
     "id": "archivebox",
@@ -2690,7 +4772,7 @@
     "image": "archivebox/archivebox:latest",
     "port": 8000,
     "icon": "archivebox",
-    "description": "ArchiveBox — self-hosted web archive/bookmarking (HTML, PDF, screenshots). Create an admin login with 'archivebox manage createsuperuser' in the container.",
+    "description": "🗃 Open source self-hosted web archiving. Takes URLs/browser history/bookmarks/Pocket/Pinboard/etc., saves HTML, JS, PDFs, media, and more... Create an admin login with 'archivebox manage createsuperuser' in the container.",
     "args": [
       "server",
       "--quick-init",
@@ -2702,7 +4784,32 @@
         "/data"
       ]
     ],
-    "website": "https://archivebox.io"
+    "website": "https://archivebox.io",
+    "github": "https://github.com/ArchiveBox/ArchiveBox",
+    "stars": 27995,
+    "license": "MIT",
+    "language": "Python",
+    "topics": [
+      "archivebox",
+      "backups",
+      "bookmark-archiver",
+      "browser-bookmarks",
+      "chromium",
+      "digipres",
+      "firefox",
+      "headless-browser",
+      "internet-archiving",
+      "pinboard",
+      "pocket",
+      "python"
+    ],
+    "logo": "/media/archivebox/logo.webp",
+    "card": "/media/archivebox/card.webp",
+    "screenshots": [
+      "/media/archivebox/screenshot_1.webp",
+      "/media/archivebox/screenshot_2.webp",
+      "/media/archivebox/screenshot_3.webp"
+    ]
   },
   {
     "id": "autobrr",
@@ -2718,7 +4825,32 @@
         "/config"
       ]
     ],
-    "website": "https://autobrr.com"
+    "website": "https://autobrr.com",
+    "github": "https://github.com/autobrr/autobrr",
+    "stars": 2854,
+    "license": "GNU General Public License v2.0 (GPL-2.0)",
+    "language": "Go",
+    "topics": [
+      "announce",
+      "autobrr",
+      "autodl-irssi",
+      "automation",
+      "bittorrent",
+      "deluge",
+      "docker",
+      "golang",
+      "irc",
+      "nzb",
+      "p2p",
+      "qbittorrent"
+    ],
+    "logo": "/media/autobrr/logo.webp",
+    "card": "/media/autobrr/card.webp",
+    "screenshots": [
+      "/media/autobrr/screenshot_1.webp",
+      "/media/autobrr/screenshot_2.webp",
+      "/media/autobrr/screenshot_3.webp"
+    ]
   },
   {
     "id": "baikal",
@@ -2727,7 +4859,7 @@
     "image": "ckulka/baikal:nginx",
     "port": 80,
     "icon": "baikal",
-    "description": "Baikal — lightweight CalDAV + CardDAV server (calendars & contacts). Finish setup (admin + SQLite/MySQL) via the web installer on first visit.",
+    "description": "Baïkal is a Calendar+Contacts server Finish setup (admin + SQLite/MySQL) via the web installer on first visit.",
     "volumes": [
       [
         "config",
@@ -2738,7 +4870,18 @@
         "/var/www/baikal/Specific"
       ]
     ],
-    "website": "https://sabre.io/baikal/"
+    "website": "https://sabre.io/baikal/",
+    "github": "https://github.com/sabre-io/Baikal",
+    "stars": 3241,
+    "license": "GPL-3.0",
+    "language": "PHP",
+    "logo": "/media/baikal/logo.webp",
+    "card": "/media/baikal/card.webp",
+    "screenshots": [
+      "/media/baikal/screenshot_1.webp",
+      "/media/baikal/screenshot_2.webp",
+      "/media/baikal/screenshot_3.webp"
+    ]
   },
   {
     "id": "flatnotes",
@@ -2779,7 +4922,17 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/dullage/flatnotes"
+    "website": "https://github.com/dullage/flatnotes",
+    "github": "https://github.com/dullage/flatnotes",
+    "stars": 3113,
+    "license": "MIT License",
+    "logo": "/media/flatnotes/logo.webp",
+    "card": "/media/flatnotes/card.webp",
+    "screenshots": [
+      "/media/flatnotes/screenshot_1.webp",
+      "/media/flatnotes/screenshot_2.webp",
+      "/media/flatnotes/screenshot_3.webp"
+    ]
   },
   {
     "id": "linkstack",
@@ -2795,7 +4948,16 @@
         "/htdocs"
       ]
     ],
-    "website": "https://linkstack.org"
+    "website": "https://linkstack.org",
+    "github": "https://github.com/JulianPrieber/linkstack",
+    "stars": 0,
+    "logo": "/media/linkstack/logo.webp",
+    "card": "/media/linkstack/card.webp",
+    "screenshots": [
+      "/media/linkstack/screenshot_1.webp",
+      "/media/linkstack/screenshot_2.webp",
+      "/media/linkstack/screenshot_3.webp"
+    ]
   },
   {
     "id": "myspeed",
@@ -2811,7 +4973,17 @@
         "/myspeed/data"
       ]
     ],
-    "website": "https://myspeed.dev"
+    "website": "https://myspeed.dev",
+    "github": "https://github.com/gnmyt/myspeed",
+    "stars": 2962,
+    "license": "MIT License",
+    "logo": "/media/myspeed/logo.webp",
+    "card": "/media/myspeed/card.webp",
+    "screenshots": [
+      "/media/myspeed/screenshot_1.webp",
+      "/media/myspeed/screenshot_2.webp",
+      "/media/myspeed/screenshot_3.webp"
+    ]
   },
   {
     "id": "cosmos-server",
@@ -2820,7 +4992,7 @@
     "image": "azukaar/cosmos-server:latest",
     "port": 80,
     "icon": "cosmos-server",
-    "description": "Cosmos — self-hosted reverse proxy + app manager with auth/anti-DDOS (:80 / :443). Bind-mounts the Docker socket; complete the setup wizard on first visit. Meant to sit at the network edge.",
+    "description": "☁️ The Most Secure and Easy Selfhosted Home Server. Take control of your data and privacy without sacrificing security and stability (Authentication, anti-DDOS, anti-bot)",
     "bindMounts": [
       [
         "/var/run/docker.sock",
@@ -2833,7 +5005,31 @@
         "/config"
       ]
     ],
-    "website": "https://cosmos-cloud.io"
+    "website": "https://cosmos-cloud.io",
+    "github": "https://github.com/azukaar/Cosmos-Server",
+    "stars": 6040,
+    "license": "NOASSERTION",
+    "language": "JavaScript",
+    "topics": [
+      "authentication",
+      "cloud",
+      "cosmos",
+      "reverse-proxy",
+      "security",
+      "self-hosted",
+      "self-hosting",
+      "selfhosted",
+      "selfhosting",
+      "server",
+      "sso"
+    ],
+    "logo": "/media/cosmos-server/logo.webp",
+    "card": "/media/cosmos-server/card.webp",
+    "screenshots": [
+      "/media/cosmos-server/screenshot_1.webp",
+      "/media/cosmos-server/screenshot_2.webp",
+      "/media/cosmos-server/screenshot_3.webp"
+    ]
   },
   {
     "id": "electrs",
@@ -2867,7 +5063,16 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/romanz/electrs"
+    "website": "https://github.com/romanz/electrs",
+    "github": "https://github.com/romanz/electrs",
+    "stars": 1375,
+    "license": "MIT License",
+    "logo": "/media/electrs/logo.webp",
+    "card": "/media/electrs/card.webp",
+    "screenshots": [
+      "/media/electrs/screenshot_1.webp",
+      "/media/electrs/screenshot_2.webp"
+    ]
   },
   {
     "id": "fulcrum",
@@ -2883,7 +5088,15 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/cculianu/Fulcrum"
+    "website": "https://github.com/cculianu/Fulcrum",
+    "github": "https://github.com/cculian/Fulcrum",
+    "stars": 0,
+    "logo": "/media/fulcrum/logo.webp",
+    "card": "/media/fulcrum/card.webp",
+    "screenshots": [
+      "/media/fulcrum/screenshot_1.webp",
+      "/media/fulcrum/screenshot_2.webp"
+    ]
   },
   {
     "id": "electrumx",
@@ -2892,7 +5105,7 @@
     "image": "lukechilds/electrumx:latest",
     "port": 50001,
     "icon": "electrumx",
-    "description": "ElectrumX server (env-configurable). Requires an external Bitcoin Core node with txindex; set DAEMON_URL to its RPC.",
+    "description": "Server impl for Electrum Protocol, for public-facing or personal usage ElectrumX server (env-configurable). Requires an external Bitcoin Core node with txindex; set DAEMON_URL to its RPC.",
     "env": [
       [
         "COIN",
@@ -2920,7 +5133,24 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/lukechilds/docker-electrumx"
+    "website": "https://github.com/lukechilds/docker-electrumx",
+    "github": "https://github.com/spesmilo/electrumx",
+    "stars": 566,
+    "license": "MIT",
+    "language": "Python",
+    "topics": [
+      "bitcoin",
+      "electrum",
+      "electrum-server",
+      "python"
+    ],
+    "logo": "/media/electrumx/logo.webp",
+    "card": "/media/electrumx/card.webp",
+    "screenshots": [
+      "/media/electrumx/screenshot_1.webp",
+      "/media/electrumx/screenshot_2.webp",
+      "/media/electrumx/screenshot_3.webp"
+    ]
   },
   {
     "id": "btc-rpc-explorer",
@@ -2929,7 +5159,7 @@
     "image": "getumbrel/btc-rpc-explorer:v3.5.1",
     "port": 3002,
     "icon": "btc-rpc-explorer",
-    "description": "Self-hosted Bitcoin block explorer (janoside). Needs a Bitcoin Core RPC; an Electrum server (electrs/Fulcrum) is optional for address balances.",
+    "description": "Database-free, self-hosted Bitcoin explorer, via RPC to Bitcoin Core.",
     "env": [
       [
         "BTCEXP_HOST",
@@ -2962,7 +5192,30 @@
         "secret": true
       }
     ],
-    "website": "https://github.com/janoside/btc-rpc-explorer"
+    "website": "https://github.com/janoside/btc-rpc-explorer",
+    "github": "https://github.com/janoside/btc-rpc-explorer",
+    "stars": 1791,
+    "license": "MIT",
+    "language": "JavaScript",
+    "topics": [
+      "bitcoin",
+      "bitcoin-blockchain",
+      "bitcoin-explorer",
+      "bitcoind",
+      "bootstrap5",
+      "btc-rpc-explorer",
+      "express",
+      "json-rpc",
+      "nodejs",
+      "rpc"
+    ],
+    "logo": "/media/btc-rpc-explorer/logo.webp",
+    "card": "/media/btc-rpc-explorer/card.webp",
+    "screenshots": [
+      "/media/btc-rpc-explorer/screenshot_1.webp",
+      "/media/btc-rpc-explorer/screenshot_2.webp",
+      "/media/btc-rpc-explorer/screenshot_3.webp"
+    ]
   },
   {
     "id": "mempool",
@@ -3068,7 +5321,24 @@
         ]
       }
     ],
-    "website": "https://github.com/mempool/mempool"
+    "website": "https://github.com/mempool/mempool",
+    "github": "https://github.com/mempool/mempool",
+    "stars": 2782,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "bitcoin",
+      "explorer",
+      "fees",
+      "mempool"
+    ],
+    "logo": "/media/mempool/logo.webp",
+    "card": "/media/mempool/card.webp",
+    "screenshots": [
+      "/media/mempool/screenshot_1.webp",
+      "/media/mempool/screenshot_2.webp",
+      "/media/mempool/screenshot_3.webp"
+    ]
   },
   {
     "id": "lnbits",
@@ -3077,7 +5347,7 @@
     "image": "lnbits/lnbits:latest",
     "port": 5000,
     "icon": "lnbits",
-    "description": "LNbits — Lightning wallet/accounts system with extensions. Starts on a VoidWallet (demo); switch LNBITS_BACKEND_WALLET_CLASS to LND/CLN and add its env to go live.",
+    "description": "LNbits, free and open-source Lightning wallet and accounts system. ... # LNbits — The most powerful Bitcoin & Lightning toolkit ... LNbits is a lightweight Python server that sits on top of your Lightning funding source. It gives you safe, isolated wallets, a clean API, and an extension system for rapidly adding features - without locking you into a single node implementation. The Inspiration for LNBits came from…",
     "env": [
       [
         "LNBITS_DATA_FOLDER",
@@ -3102,7 +5372,17 @@
         "/app/data"
       ]
     ],
-    "website": "https://lnbits.com"
+    "website": "https://lnbits.com",
+    "github": "https://github.com/lnbits/lnbits",
+    "stars": 1216,
+    "license": "MIT License",
+    "logo": "/media/lnbits/logo.webp",
+    "card": "/media/lnbits/card.webp",
+    "screenshots": [
+      "/media/lnbits/screenshot_1.webp",
+      "/media/lnbits/screenshot_2.webp",
+      "/media/lnbits/screenshot_3.webp"
+    ]
   },
   {
     "id": "core-lightning",
@@ -3111,7 +5391,7 @@
     "image": "elementsproject/lightningd:latest",
     "port": 9735,
     "icon": "core-lightning",
-    "description": "Core Lightning (CLN) node daemon. Requires a Bitcoin Core backend — set --bitcoin-rpc* flags or mount a config; no UI of its own.",
+    "description": "Core Lightning — Lightning Network implementation focusing on spec compliance and performance",
     "params": [
       {
         "key": "network",
@@ -3125,7 +5405,24 @@
         "/root/.lightning"
       ]
     ],
-    "website": "https://github.com/ElementsProject/lightning"
+    "website": "https://github.com/ElementsProject/lightning",
+    "github": "https://github.com/ElementsProject/lightning",
+    "stars": 3080,
+    "license": "NOASSERTION",
+    "language": "C",
+    "topics": [
+      "bitcoin",
+      "lightning",
+      "lightning-network",
+      "p2p"
+    ],
+    "logo": "/media/core-lightning/logo.webp",
+    "card": "/media/core-lightning/card.webp",
+    "screenshots": [
+      "/media/core-lightning/screenshot_1.webp",
+      "/media/core-lightning/screenshot_2.webp",
+      "/media/core-lightning/screenshot_3.webp"
+    ]
   },
   {
     "id": "rtl",
@@ -3151,7 +5448,16 @@
         "/RTL/database"
       ]
     ],
-    "website": "https://github.com/Ride-The-Lightning/RTL"
+    "website": "https://github.com/Ride-The-Lightning/RTL",
+    "github": "https://github.com/saubyk/c-lightning-REST",
+    "stars": 115,
+    "license": "MIT License",
+    "logo": "/media/rtl/logo.webp",
+    "card": "/media/rtl/card.webp",
+    "screenshots": [
+      "/media/rtl/screenshot_1.webp",
+      "/media/rtl/screenshot_2.webp"
+    ]
   },
   {
     "id": "bitcoin-knots",
@@ -3160,7 +5466,7 @@
     "image": "bitcoinknots/bitcoin:latest",
     "port": 8332,
     "icon": "bitcoin-knots",
-    "description": "Bitcoin Knots full node (drop-in for Bitcoin Core). Runs standalone and starts IBD; RPC on 8332, P2P on 8333.",
+    "description": "Bitcoin Knots enhanced Bitcoin node/wallet software",
     "params": [
       {
         "key": "rpc-user",
@@ -3180,7 +5486,26 @@
         "/data/.bitcoin"
       ]
     ],
-    "website": "https://bitcoinknots.org"
+    "website": "https://bitcoinknots.org",
+    "github": "https://github.com/bitcoinknots/bitcoin",
+    "stars": 678,
+    "license": "MIT",
+    "language": "C++",
+    "topics": [
+      "bitcoin",
+      "c-plus-plus",
+      "cryptocurrency",
+      "cryptography",
+      "finance",
+      "p2p"
+    ],
+    "logo": "/media/bitcoin-knots/logo.webp",
+    "card": "/media/bitcoin-knots/card.webp",
+    "screenshots": [
+      "/media/bitcoin-knots/screenshot_1.webp",
+      "/media/bitcoin-knots/screenshot_2.webp",
+      "/media/bitcoin-knots/screenshot_3.webp"
+    ]
   },
   {
     "id": "bitcoin-cash-node",
@@ -3189,14 +5514,24 @@
     "image": "zquestz/bitcoin-cash-node:latest",
     "port": 8332,
     "icon": "bitcoin-cash-node",
-    "description": "Bitcoin Cash (BCHN) full node. Runs standalone as a daemon and starts IBD; RPC on 8332, P2P on 8333.",
+    "description": "This is a mirror of the official Bitcoin Cash Node repository. Please see README.md https://gitlab.com/bitcoin-cash-node/bitcoin-cash-node",
     "volumes": [
       [
         "data",
         "/data"
       ]
     ],
-    "website": "https://bitcoincashnode.org"
+    "website": "https://bitcoincashnode.org",
+    "github": "https://github.com/bitcoin-cash-node/bitcoin-cash-node",
+    "stars": 99,
+    "license": "MIT",
+    "language": "C++",
+    "logo": "/media/bitcoin-cash-node/logo.webp",
+    "card": "/media/bitcoin-cash-node/card.webp",
+    "screenshots": [
+      "/media/bitcoin-cash-node/screenshot_1.webp",
+      "/media/bitcoin-cash-node/screenshot_2.webp"
+    ]
   },
   {
     "id": "leafwiki",
@@ -3232,7 +5567,15 @@
         "/app/data"
       ]
     ],
-    "website": "https://leafwiki.com"
+    "website": "https://leafwiki.com",
+    "github": "https://github.com/leaf-wiki/leaf-wiki",
+    "stars": 0,
+    "logo": "/media/leafwiki/logo.webp",
+    "card": "/media/leafwiki/card.webp",
+    "screenshots": [
+      "/media/leafwiki/screenshot_1.webp",
+      "/media/leafwiki/screenshot_2.webp"
+    ]
   },
   {
     "id": "transmute",
@@ -3241,14 +5584,22 @@
     "image": "ghcr.io/transmute-app/transmute:latest",
     "port": 3313,
     "icon": "transmute",
-    "description": "Transmute — self-hosted file converter/compressor (images, video, audio, docs). Runs entirely locally.",
+    "description": "Self hosted file converter for images, video, audio, json, excel and more. Supports close to 3,000 conversions! ... **Transmute** is a free, open-source, self-hosted file conversion and compression tool built for privacy and automation. Convert images, video, audio, documents, spreadsheets, subtitles, and fonts entirely locally, or compress supported files to make them smaller without sending anything to a third…",
     "volumes": [
       [
         "data",
         "/app/data"
       ]
     ],
-    "website": "https://transmute.sh"
+    "website": "https://transmute.sh",
+    "github": "https://github.com/transmute/transmute",
+    "stars": 0,
+    "logo": "/media/transmute/logo.webp",
+    "card": "/media/transmute/card.webp",
+    "screenshots": [
+      "/media/transmute/screenshot_1.webp",
+      "/media/transmute/screenshot_2.webp"
+    ]
   },
   {
     "id": "foldergram",
@@ -3257,7 +5608,7 @@
     "image": "ghcr.io/foldergram/foldergram:latest",
     "port": 4141,
     "icon": "foldergram",
-    "description": "Foldergram — self-hosted folder-based photo/video gallery. Point volumes at your media.",
+    "description": "Self-hosted folder-based Instagram-style photo and video gallery app. Point volumes at your media.",
     "env": [
       [
         "IMAGE_DETAIL_SOURCE",
@@ -3286,7 +5637,32 @@
         "/app/data/previews"
       ]
     ],
-    "website": "https://github.com/foldergram/foldergram"
+    "website": "https://github.com/foldergram/foldergram",
+    "github": "https://github.com/foldergram/foldergram",
+    "stars": 507,
+    "license": "AGPL-3.0",
+    "language": "TypeScript",
+    "topics": [
+      "docker",
+      "express",
+      "ffmpeg",
+      "folder-based",
+      "instagram",
+      "local-first",
+      "media-gallery",
+      "nodejs",
+      "photo-gallery",
+      "pwa-app",
+      "self-hosted",
+      "sqlite"
+    ],
+    "logo": "/media/foldergram/logo.webp",
+    "card": "/media/foldergram/card.webp",
+    "screenshots": [
+      "/media/foldergram/screenshot_1.webp",
+      "/media/foldergram/screenshot_2.webp",
+      "/media/foldergram/screenshot_3.webp"
+    ]
   },
   {
     "id": "umbrel",
@@ -3295,7 +5671,7 @@
     "image": "dockurr/umbrel:latest",
     "port": 80,
     "icon": "umbrel",
-    "description": "umbrelOS via the community dockurr/umbrel wrapper — there is NO official Umbrel container image (official install is a script onto Debian/Ubuntu/RaspberryPiOS). EXPERIMENTAL: umbrelOS is itself an orchestrator, so nesting it stacks two managers on one Docker daemon. Needs the Docker socket + host PID.",
+    "description": "Umbrel is a small device that sits in your home and lets you store your files, stream your media, run your own AI, and much more. All the convenience of the cloud, but your data stays with you. You access it from any device (phone, tablet, or computer) right in your browser. ... umbrelOS is the operating system that powers every Umbrel — think macOS or Windows, but for your home server. It's designed to be simple…",
     "bindMounts": [
       [
         "/var/run/docker.sock",
@@ -3311,7 +5687,31 @@
         "/data"
       ]
     ],
-    "website": "https://umbrel.com"
+    "website": "https://umbrel.com",
+    "github": "https://github.com/getumbrel/umbrel",
+    "stars": 11644,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "bitcoin",
+      "docker",
+      "home-server",
+      "homeserver",
+      "lightning",
+      "openclaw",
+      "personal-server",
+      "raspberry-pi",
+      "raspberrypi",
+      "self-hosted",
+      "self-hosting",
+      "selfhosted"
+    ],
+    "logo": "/media/umbrel/logo.webp",
+    "card": "/media/umbrel/card.webp",
+    "screenshots": [
+      "/media/umbrel/screenshot_1.webp",
+      "/media/umbrel/screenshot_2.webp"
+    ]
   },
   {
     "id": "hermes-agent",
@@ -3345,7 +5745,32 @@
         "/opt/data"
       ]
     ],
-    "website": "https://nousresearch.com"
+    "website": "https://nousresearch.com",
+    "github": "https://github.com/NousResearch/hermes-agent",
+    "stars": 219494,
+    "license": "MIT",
+    "language": "Python",
+    "topics": [
+      "ai",
+      "ai-agent",
+      "ai-agents",
+      "anthropic",
+      "chatgpt",
+      "claude",
+      "claude-code",
+      "clawdbot",
+      "codex",
+      "hermes",
+      "hermes-agent",
+      "llm"
+    ],
+    "logo": "/media/hermes-agent/logo.webp",
+    "card": "/media/hermes-agent/card.webp",
+    "screenshots": [
+      "/media/hermes-agent/screenshot_1.webp",
+      "/media/hermes-agent/screenshot_2.webp",
+      "/media/hermes-agent/screenshot_3.webp"
+    ]
   },
   {
     "id": "openclaw",
@@ -3373,7 +5798,27 @@
         "/home/linuxbrew"
       ]
     ],
-    "website": "https://github.com/getumbrel/openclaw-umbrel"
+    "website": "https://github.com/getumbrel/openclaw-umbrel",
+    "github": "https://github.com/openclaw/openclaw",
+    "stars": 383937,
+    "license": "Other (NOASSERTION)",
+    "language": "TypeScript",
+    "topics": [
+      "ai",
+      "assistant",
+      "crustacean",
+      "molty",
+      "openclaw",
+      "own-your-data",
+      "personal"
+    ],
+    "logo": "/media/openclaw/logo.webp",
+    "card": "/media/openclaw/card.webp",
+    "screenshots": [
+      "/media/openclaw/screenshot_1.webp",
+      "/media/openclaw/screenshot_2.webp",
+      "/media/openclaw/screenshot_3.webp"
+    ]
   },
   {
     "id": "joinstr",
@@ -3426,7 +5871,16 @@
         "/app/data"
       ]
     ],
-    "website": "https://github.com/1440000bytes/joinstr"
+    "website": "https://github.com/1440000bytes/joinstr",
+    "github": "https://github.com/joinstr/joinstr",
+    "stars": 0,
+    "logo": "/media/joinstr/logo.webp",
+    "card": "/media/joinstr/card.webp",
+    "screenshots": [
+      "/media/joinstr/screenshot_1.webp",
+      "/media/joinstr/screenshot_2.webp",
+      "/media/joinstr/screenshot_3.webp"
+    ]
   },
   {
     "id": "pearcircle-seeder",
@@ -3435,7 +5889,7 @@
     "image": "ghcr.io/peerloomllc/pearcircle-seeder:1.0.23",
     "port": 8730,
     "icon": "pearcircle-seeder",
-    "description": "PearCircle Seeder — always-on seeder companion for the PearCircle phone app (P2P sharing). Dashboard on :8730; only useful once you enroll a circle from the phone app. SEEDER_NO_AUTH=1 = no login (put behind your own auth).",
+    "description": "Run a blind seeder for your PearCircle circles on your Umbrel so their history stays in sync even when every phone is offline. ... PearCircle is a peer-to-peer location-sharing app with no accounts and no servers: a circle's data lives only on its members' devices and syncs directly between them. That means a circle is only reachable while at least one member's phone is online. This app runs the PearCircle…",
     "env": [
       [
         "SEEDER_HOST",
@@ -3460,7 +5914,15 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/peerloomllc/pearcircle-seeder"
+    "website": "https://github.com/peerloomllc/pearcircle-seeder",
+    "github": "https://github.com/pearcircle/seeder",
+    "stars": 0,
+    "logo": "/media/pearcircle-seeder/logo.webp",
+    "card": "/media/pearcircle-seeder/card.webp",
+    "screenshots": [
+      "/media/pearcircle-seeder/screenshot_1.webp",
+      "/media/pearcircle-seeder/screenshot_2.webp"
+    ]
   },
   {
     "id": "seedtool",
@@ -3469,8 +5931,17 @@
     "image": "dennysubke/seedtool:2.3.0",
     "port": 8080,
     "icon": "seedtool",
-    "description": "Bitcoin Seed Tool — offline BIP39 seed / education tool. Fully standalone. WARNING: educational only — never use it for seeds protecting real funds.",
-    "website": "https://github.com/dennysubke/seedtool-web"
+    "description": "# Bitcoin Seed Tool ... This tool offers a space for bitcoiners to experiment and learn how bitcoin wallets are generated using different sources of entropy (randomness). The page also offers many other seed related functionalites, some of which are outlined below. The online version can be found at https://bitcoiner.guide/seed. ... NEVER use the online version of this tool to create or interact with seeds used to…",
+    "website": "https://github.com/dennysubke/seedtool-web",
+    "github": "https://github.com/seedtool/seedtool",
+    "stars": 0,
+    "logo": "/media/seedtool/logo.webp",
+    "card": "/media/seedtool/card.webp",
+    "screenshots": [
+      "/media/seedtool/screenshot_1.webp",
+      "/media/seedtool/screenshot_2.webp",
+      "/media/seedtool/screenshot_3.webp"
+    ]
   },
   {
     "id": "skybro",
@@ -3496,7 +5967,16 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/xdeekay/skybro"
+    "website": "https://github.com/xdeekay/skybro",
+    "github": "https://github.com/skybro/skybro",
+    "stars": 0,
+    "logo": "/media/skybro/logo.webp",
+    "card": "/media/skybro/card.webp",
+    "screenshots": [
+      "/media/skybro/screenshot_1.webp",
+      "/media/skybro/screenshot_2.webp",
+      "/media/skybro/screenshot_3.webp"
+    ]
   },
   {
     "id": "valorgrid",
@@ -3505,7 +5985,7 @@
     "image": "ghcr.io/aivm23/valorgrid:v3.33.1",
     "port": 1325,
     "icon": "valorgrid",
-    "description": "ValorGrid — local-first SQLite portfolio tracker. Set an auth password (params); add an Alpha Vantage API key for live market prices.",
+    "description": "Add ValorGrid to the CasaOS AppStore. ... ValorGrid is a private, single-user local portfolio dashboard with SQLite persistence, local backups, and portfolio views for holdings, allocation, movements, monthly tracking, and history. Set an auth password (params); add an Alpha Vantage API key for live market prices.",
     "env": [
       [
         "HOST",
@@ -3549,7 +6029,15 @@
         "/data"
       ]
     ],
-    "website": "https://github.com/aivm23/valorgrid"
+    "website": "https://github.com/aivm23/valorgrid",
+    "github": "https://github.com/valorgrid/valorgrid",
+    "stars": 0,
+    "logo": "/media/valorgrid/logo.webp",
+    "card": "/media/valorgrid/card.webp",
+    "screenshots": [
+      "/media/valorgrid/screenshot_1.webp",
+      "/media/valorgrid/screenshot_2.webp"
+    ]
   },
   {
     "id": "runtipi",
@@ -3683,6 +6171,16 @@
         "/app-data"
       ]
     ],
-    "website": "https://runtipi.io"
+    "website": "https://runtipi.io",
+    "github": "https://github.com/meienberger/runtipi",
+    "stars": 9485,
+    "license": "GNU General Public License v3.0",
+    "logo": "/media/runtipi/logo.webp",
+    "card": "/media/runtipi/card.webp",
+    "screenshots": [
+      "/media/runtipi/screenshot_1.webp",
+      "/media/runtipi/screenshot_2.webp",
+      "/media/runtipi/screenshot_3.webp"
+    ]
   }
 ]

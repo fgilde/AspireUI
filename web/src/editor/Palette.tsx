@@ -318,7 +318,8 @@ export function Palette({ stack, setStack }: { stack: Stack; setStack: (s: Stack
       {infoPreset && (
         <AppInfoModal
           info={{ label: infoPreset.label, group: infoPreset.group, icon: infoPreset.icon, description: infoPreset.description,
-            website: infoPreset.website, image: infoPreset.image, port: infoPreset.port, screenshots: infoPreset.screenshots, tags: infoPreset.tags }}
+            website: infoPreset.website, image: infoPreset.image, port: infoPreset.port, screenshots: infoPreset.screenshots, tags: infoPreset.tags,
+            logo: infoPreset.logo, card: infoPreset.card, github: infoPreset.github, stars: infoPreset.stars, license: infoPreset.license, language: infoPreset.language, topics: infoPreset.topics }}
           onClose={() => setInfoPreset(null)}
           onAction={() => { createPreset(infoPreset); setInfoPreset(null); }}
           actionLabel="Add to canvas" actionIcon={<IconPlus size={14} />} />

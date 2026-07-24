@@ -48,6 +48,16 @@ Action<Microsoft.AspNetCore.StaticFiles.StaticFileResponseContext> cacheHeaders 
         ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
 };
 app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = cacheHeaders });
+// Bundled app media (logos / GitHub cards / screenshots for the info dialog) live next to the catalog
+// and are served read-only under /media. Anonymous — they're just public app art.
+var mediaDir = Path.Combine(AppContext.BaseDirectory, "catalog", "media");
+if (Directory.Exists(mediaDir))
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mediaDir),
+        RequestPath = "/media",
+        OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "public, max-age=604800",
+    });
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();     // /auth/*, /env/health — anonymous

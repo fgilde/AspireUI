@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, SimpleGrid, Anchor, Box } from "@mantine/core";
-import { IconExternalLink, IconWorld } from "@tabler/icons-react";
+import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode } from "@tabler/icons-react";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 
 // Normalized view of anything the store / palette can describe (a container preset, a catalog package,
@@ -9,7 +9,11 @@ export interface AppInfo {
   label: string; group?: string | null; icon?: string | null; description?: string | null;
   website?: string | null; image?: string | null; port?: number | null;
   screenshots?: string[] | null; tags?: string[] | null; custom?: boolean; kindLabel?: string | null;
+  logo?: string | null; card?: string | null; github?: string | null;
+  stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null;
 }
+
+const fmtStars = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
 
 // Shared app-details dialog used by both the editor palette ("i" button) and the app store. One design,
 // one place to improve. `onAction` is the primary CTA (add-to-canvas / install); omit it for read-only.
@@ -19,9 +23,11 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
 }) {
   const color = resourceVisual(info.icon || "").color;
   const shots = info.screenshots?.filter(Boolean) ?? [];
+  const topics = (info.topics ?? []).filter(t => t && t !== info.group).slice(0, 8);
+  const hasStats = !!info.stars || !!info.language || !!info.license;
   return (
     <Modal opened onClose={onClose} size="lg" centered padding={0} radius="md" withCloseButton={false}>
-      {/* Hero band */}
+      {/* Hero band — our colored glyph tile stays; the app's real logo (if any) rides on the right. */}
       <Box p="lg" style={{
         background: `linear-gradient(135deg, ${color}22, transparent 70%)`,
         borderBottom: "1px solid var(--mantine-color-default-border)",
@@ -37,21 +43,44 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
               {info.group && <Badge size="sm" variant="light">{info.group}</Badge>}
               {info.custom && <Badge size="sm" variant="light" color="grape">Custom</Badge>}
               {info.kindLabel && <Badge size="sm" variant="outline" color="gray">{info.kindLabel}</Badge>}
-              {(info.tags ?? []).filter(t => t !== info.group).slice(0, 4).map(t => (
-                <Badge key={t} size="sm" variant="dot" color="gray">{t}</Badge>
-              ))}
             </Group>
           </div>
+          {info.logo && <Image src={info.logo} w={40} h={40} fit="contain" fallbackSrc=""
+            style={{ flexShrink: 0, borderRadius: 8 }} />}
         </Group>
       </Box>
 
       <MStack gap="md" p="lg">
+        {info.card && (
+          <Image src={info.card} radius="md" fit="cover" fallbackSrc=""
+            style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+        )}
+
         {info.description && <Text size="sm">{info.description}</Text>}
 
-        {info.website && (
-          <Anchor href={info.website} target="_blank" size="sm">
-            <Group gap={6} wrap="nowrap"><IconWorld size={15} />{info.website.replace(/^https?:\/\//, "")}<IconExternalLink size={12} /></Group>
-          </Anchor>
+        <Group gap="lg">
+          {info.website && (
+            <Anchor href={info.website} target="_blank" size="sm">
+              <Group gap={5} wrap="nowrap"><IconWorld size={15} />{info.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}<IconExternalLink size={11} /></Group>
+            </Anchor>
+          )}
+          {info.github && info.github !== info.website && (
+            <Anchor href={info.github} target="_blank" size="sm" c="dimmed">
+              <Group gap={5} wrap="nowrap"><IconBrandGithub size={15} />GitHub</Group>
+            </Anchor>
+          )}
+        </Group>
+
+        {hasStats && (
+          <Group gap="lg">
+            {!!info.stars && <Group gap={4}><IconStar size={14} color="var(--mantine-color-yellow-6)" /><Text size="xs" c="dimmed">{fmtStars(info.stars)}</Text></Group>}
+            {info.language && <Group gap={4}><IconCode size={14} /><Text size="xs" c="dimmed">{info.language}</Text></Group>}
+            {info.license && <Group gap={4}><IconLicense size={14} /><Text size="xs" c="dimmed">{info.license.replace(/ \(.*\)$/, "")}</Text></Group>}
+          </Group>
+        )}
+
+        {topics.length > 0 && (
+          <Group gap={5}>{topics.map(t => <Badge key={t} size="xs" variant="dot" color="gray">{t}</Badge>)}</Group>
         )}
 
         {shots.length > 0 && (
@@ -75,8 +104,7 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
         <Group justify="flex-end" mt="xs">
           <Button variant="default" onClick={onClose}>Close</Button>
           {onAction && (
-            <Button leftSection={actionIcon} loading={actionLoading}
-              onClick={() => { onAction(); }}>{actionLabel}</Button>
+            <Button leftSection={actionIcon} loading={actionLoading} onClick={() => onAction()}>{actionLabel}</Button>
           )}
         </Group>
       </MStack>

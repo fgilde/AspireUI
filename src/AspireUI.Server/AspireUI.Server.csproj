@@ -80,6 +80,8 @@
     <!-- catalog/*.json is already picked up by the SDK's default Content items (like appsettings.json);
          Update (not Include) just adds CopyToOutputDirectory without duplicating the item. -->
     <Content Update="catalog\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Bundled app media (webp logos/cards/screenshots) served under /media at runtime. -->
+    <Content Include="catalog\media\**\*.webp" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

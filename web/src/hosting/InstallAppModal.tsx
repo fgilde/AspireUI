@@ -37,7 +37,8 @@ const KIND_COLOR: Record<Kind, string> = { app: "blue", package: "teal", snippet
 const presetItem = (p: ContainerPreset): Item => ({
   id: `preset:${p.id}`, kind: "app", label: p.label, group: p.group, icon: p.icon || "", description: p.description,
   featured: FEATURED.has(p.id),
-  info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App" },
+  info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App",
+    logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics },
   install: () => { const { nodes, edges } = buildPresetNodes(p, []); return api.createStack({ name: p.label, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [], hostingUrlPath: p.urlPath ?? null }); },
 });
 const snippetItem = (s: Snippet): Item => ({
