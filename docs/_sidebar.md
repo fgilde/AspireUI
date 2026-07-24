@@ -4,5 +4,7 @@
 - [Importing](importing.md)
 - [AI Assistant](ai-assistant.md)
 - [Running & Deploying](running-and-deploying.md)
+- [Hosting (install & forget)](hosting.md)
+- [App Catalog](apps.md)
 - [Live Resources & Logs](live-resources.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)

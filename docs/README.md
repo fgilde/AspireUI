@@ -42,6 +42,8 @@ The stacks overview:
 - **Import** — an existing AppHost (`.cs` / `.csproj` / `.zip`) or a `docker-compose.yml`.
 - **Publish / deploy** — Docker Compose, Kubernetes (Helm), Azure Bicep, or the Aspire manifest;
   view/download the artifacts; deploy Compose locally.
+- **[Hosting](hosting.md)** — install a stack as a persistent, tracked appliance (URL,
+  start/stop/update/backup) from a one-click **app store**, with **[139+ preconfigured apps](apps.md)**.
 - **Whole-stack validation** — Roslyn diagnostics over the generated code, surfaced as a health badge.
 - **Themes** (GitHub, Aspire, Blazor, Dracula, Nord, Terminal, …), **command palette** (Ctrl/⌘+K),
   keyboard shortcuts, saveable dock **layouts**, undo/redo, toast notifications.

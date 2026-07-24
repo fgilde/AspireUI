@@ -1,4 +1,14 @@
 <p align="center"><img src="docs/aspireui_wordmark.svg" alt="AspireUI" width="540" /></p>
+
+<p align="center">
+  <a href="https://github.com/fgilde/AspireUI/actions/workflows/docker-publish.yml"><img src="https://github.com/fgilde/AspireUI/actions/workflows/docker-publish.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/fgilde/AspireUI/pkgs/container/aspireui"><img src="https://img.shields.io/badge/ghcr.io-fgilde%2Faspireui-2496ED?logo=docker&logoColor=white" alt="Container image"></a>
+  <a href="https://github.com/fgilde/AspireUI/releases"><img src="https://img.shields.io/github/v/tag/fgilde/AspireUI?label=release&sort=semver" alt="Release"></a>
+  <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
+  <a href="https://github.com/fgilde/AspireUI/stargazers"><img src="https://img.shields.io/github/stars/fgilde/AspireUI?style=flat" alt="Stars"></a>
+  <a href="https://fgilde.github.io/AspireUI/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
+</p>
+
 <hr>
 
 <table>
@@ -21,16 +31,25 @@
 
 Visually build, import, and run .NET Aspire AppHost projects.
 
-## Install (one line)
+## Deploy in one line
 
-Run on any Docker host — clones the repo (if needed) and starts AspireUI in a container:
+**Fastest** — pull the prebuilt image and run it (no clone, no build):
+
+```bash
+docker run -d --name aspireui -p 8080:8080 \
+  -v aspireui-data:/data -v /var/run/docker.sock:/var/run/docker.sock \
+  ghcr.io/fgilde/aspireui:latest
+```
+
+Or the installer, which clones the repo and starts it via Compose (and re-run to update):
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/fgilde/AspireUI/master/install.sh)"
 ```
 
-Then open **http://localhost:8080**. Re-run the same command any time to update. Needs Docker + the
-Compose v2 plugin. (See [Self-hosting](#run-on-a-server-docker) for details and the security note.)
+Then open **http://localhost:8080**. Needs Docker + the Compose v2 plugin. The Docker socket mount lets
+stacks you launch (and [hosted apps](docs/hosting.md)) start their own containers — see the security
+note in `docker-compose.yml` and [Self-hosting](#run-on-a-server-docker).
 
 ## What is AspireUI
 
@@ -62,6 +81,10 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
   **per-resource console-log streaming**
 - Publish a stack to **Docker Compose / Kubernetes (Helm) / Azure Bicep / Aspire manifest** (via
   `aspire publish`): view the generated artifact, download the bundle, or deploy Compose locally
+- **Hosting — install &amp; forget**: deploy a stack as a persistent, tracked appliance with a URL,
+  start/stop/update/backup, and a one-click **app store** (Umbrel/CasaOS style) — see [Hosting](docs/hosting.md)
+- **139+ preconfigured container apps** (Immich, Jellyfin, Nextcloud, Gitea, n8n, Pi-hole, …) ready to
+  drop on the canvas or install from the store — see the [App Catalog](docs/apps.md)
 - NuGet packages panel for the AppHost project
 - Import an existing AppHost from `.cs`, `.csproj`, or a `.zip` — or a `docker-compose.yml`
 - Demo templates to start from a working example
