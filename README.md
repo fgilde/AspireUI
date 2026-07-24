@@ -200,14 +200,64 @@ A prebuilt image is published to **`ghcr.io/fgilde/aspireui:latest`** on every p
 A running **Supabase + Observability** stack — builder nodes show live per-resource status and the
 child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*` stack, …):
 
-![Live running stack](docs/screenshots/live-resources.png)
 
-<img width="1797" height="1153" alt="image" src="https://github.com/user-attachments/assets/7255f244-773c-4558-858c-93d485993363" />
+<table>
+  <tr>
+    <td align="center"><b>Live Resources</b></td>
+    <td align="center"><b>Screenshot 2</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="docs/screenshots/live-resources.png" alt="AspireUI live running stack" />
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/3f7e5d9a-1679-47d8-bdcc-161dbb043079" alt="AspireUI screenshot 2" />
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Screenshot 3</b></td>
+    <td align="center"><b>Screenshot 4</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="https://github.com/user-attachments/assets/20e18426-70f1-441b-90a3-c2960e3a9e5f" alt="AspireUI screenshot 3" />
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/ae7da385-1f04-4ab7-81ec-11b80966712d" alt="AspireUI screenshot 4" />
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Screenshot 5</b></td>
+    <td align="center"><b>Screenshot 6</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="https://github.com/user-attachments/assets/bb7d99de-cf7d-4912-8ce3-6530613d785e" alt="AspireUI screenshot 5" />
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/cc13845e-e3c4-4e1d-a416-bce95cbb2a62" alt="AspireUI screenshot 6" />
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center"><b>Screenshot 7</b></td>
+    <td align="center"><b>Screenshot 8</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="https://github.com/user-attachments/assets/49290942-a2d2-431e-b05b-53e34a50632d" alt="AspireUI screenshot 7" />
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/06faa9b9-abfa-4b47-a5b2-6ec43891d124" alt="AspireUI screenshot 8" />
+    </td>
+  </tr>
+</table>
 
 
-<img width="2374" height="1259" alt="image" src="https://github.com/user-attachments/assets/b968d27a-0b2a-4a39-bbaf-d00d006a33fb" />
 
-<img width="1446" height="558" alt="image" src="https://github.com/user-attachments/assets/61c908be-7bfd-4a36-b2a7-e04cfe4cf621" />
+
 
 
 
