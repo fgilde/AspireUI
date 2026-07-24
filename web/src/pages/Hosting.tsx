@@ -22,9 +22,10 @@ export function Hosting() {
   const [backupsFor, setBackupsFor] = useState<Deployment | null>(null);
   const [domainFor, setDomainFor] = useState<Deployment | null>(null);
   const [dashToken, setDashToken] = useState("");
+  const [pubHost, setPubHost] = useState("");
   const load = () => api.listHosting().then(setItems).catch(() => {});
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
-  useEffect(() => { api.getDashboardSettings().then(s => setDashToken(s.dashboardToken)).catch(() => {}); }, []);
+  useEffect(() => { api.getDashboardSettings().then(s => { setDashToken(s.dashboardToken); setPubHost(s.publicHost ?? ""); }).catch(() => {}); }, []);
 
   return (
     <PageShell title="Hosting" container="lg">
@@ -36,7 +37,7 @@ export function Hosting() {
                 <Table.Th w={30} /><Table.Th>App</Table.Th><Table.Th>Status</Table.Th><Table.Th>URLs</Table.Th><Table.Th /></Table.Tr></Table.Thead>
               <Table.Tbody>
                 {items.map(d => (
-                  <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken}
+                  <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken} pubHost={pubHost}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
                     onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
@@ -51,8 +52,8 @@ export function Hosting() {
   );
 }
 
-function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onOpenEditor, onChanged, dashToken }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string;
+function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onOpenEditor, onChanged, dashToken, pubHost }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string;
 }) {
   const [open, setOpen] = useState(false);
   const [svcs, setSvcs] = useState<ServiceStatus[] | null>(null);
@@ -101,8 +102,8 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, o
                       const port = s.ports.split(",")[0]?.trim().split(":")[0];
                       const isDash = s.service.includes("dashboard") || s.name.includes("dashboard");
                       const url = port && /^\d+$/.test(port)
-                        ? (isDash ? `http://${window.location.hostname}:${port}/login${dashToken ? `?t=${encodeURIComponent(dashToken)}` : ""}`
-                                  : `http://${window.location.hostname}:${port}`)
+                        ? (isDash ? `http://${pubHost || window.location.hostname}:${port}/login${dashToken ? `?t=${encodeURIComponent(dashToken)}` : ""}`
+                                  : `http://${pubHost || window.location.hostname}:${port}`)
                         : null;
                       return (
                       <Table.Tr key={s.name}>

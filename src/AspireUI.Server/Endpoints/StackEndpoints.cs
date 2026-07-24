@@ -600,7 +600,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(s, PublishRoot(id), ctx.Request.Host.Host, dc.Host, dc.Token));
+            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token));
         });
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
@@ -672,13 +672,16 @@ public static class StackEndpoints
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), ctx.Request.Host.Host, dc.Host, dc.Token));
+            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token));
         });
         // Dashboard hosting settings (token visible to any authed user — they can reach the dashboard anyway).
-        app2.MapGet("/hosting/dashboard-settings", () => Results.Ok(new
+        app2.MapGet("/hosting/dashboard-settings", (HttpContext ctx) => Results.Ok(new
         {
             hostDashboard = (settings.GetValue("HostDashboard") ?? "true") == "true",
             dashboardToken = settings.GetValue("DashboardToken") ?? "",
+            // The host the UI should use for direct port links (proxies only forward :443/:8080, not
+            // arbitrary app ports) — a PublicHost setting, else the request IP, else the LAN IP.
+            publicHost = PublicHost(ctx),
         }));
         app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
         {
