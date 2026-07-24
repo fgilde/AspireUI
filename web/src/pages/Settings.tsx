@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Group, Button, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy } from "@tabler/icons-react";
+import { Group, Button, TextInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea } from "@mantine/core";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
-import type { AppSettings, EnvHealth, ApiToken } from "../model";
+import { confirmDelete, toastOk, toastErr } from "../ui";
+import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -169,6 +170,79 @@ function ApiTab() {
   );
 }
 
+// Docker housekeeping (admin) — see + clean up the images/containers/volumes AspireUI created via the
+// socket (dev-run + hosting). AspireUI's own container + data volume are protected (no remove button).
+function DockerTab() {
+  const [containers, setContainers] = useState<DockerContainer[] | null>(null);
+  const [images, setImages] = useState<DockerImage[] | null>(null);
+  const [volumes, setVolumes] = useState<DockerVolume[] | null>(null);
+  const load = () => {
+    api.dockerContainers().then(setContainers).catch(() => setContainers([]));
+    api.dockerImages().then(setImages).catch(() => setImages([]));
+    api.dockerVolumes().then(setVolumes).catch(() => setVolumes([]));
+  };
+  useEffect(() => { load(); }, []);
+  const rm = (kind: "images" | "containers" | "volumes", id: string, label: string, warn?: string) =>
+    confirmDelete(label, warn ?? "").then(ok => { if (ok) api.dockerRemove(kind, id).then(load).catch(e => toastErr(e, "Remove failed")); });
+  const prune = (kind: "images" | "containers") =>
+    confirmDelete(`unused ${kind}`, kind === "images" ? "Removes dangling images (not used by any container)." : "Removes all stopped containers.")
+      .then(ok => { if (ok) api.dockerPrune(kind).then(() => { toastOk("Pruned"); load(); }).catch(e => toastErr(e, "Prune failed")); });
+  const del = (protectedRow: boolean, onClick: () => void) =>
+    <ActionIcon variant="subtle" color="red" size="sm" disabled={protectedRow} onClick={onClick} aria-label="Remove"><IconTrash size={15} /></ActionIcon>;
+
+  return (
+    <MStack gap="xl" maw={640}>
+      <Text size="xs" c="dimmed">Everything Docker built through AspireUI (dev runs + hosting pull images and create containers/volumes). Clean up here. AspireUI's own container and <Code>aspireui-data</Code> volume are protected.</Text>
+
+      <MStack gap={6}>
+        <Group justify="space-between"><Text fw={600}>Containers</Text><Button size="compact-xs" variant="light" color="orange" onClick={() => prune("containers")}>Prune stopped</Button></Group>
+        {containers === null ? <Loader size="sm" /> : containers.length === 0 ? <Text size="sm" c="dimmed">None.</Text> : (
+          <ScrollArea.Autosize mah={220}><Table fz="xs" verticalSpacing={4}><Table.Tbody>
+            {containers.map(c => (
+              <Table.Tr key={c.id}>
+                <Table.Td><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 8, marginRight: 6, background: c.state === "running" ? "var(--mantine-color-green-6)" : "var(--mantine-color-gray-5)" }} />{c.name}</Table.Td>
+                <Table.Td c="dimmed">{c.image}</Table.Td>
+                <Table.Td c="dimmed">{c.status}</Table.Td>
+                <Table.Td w={32}>{del(c.protected, () => rm("containers", c.id, `container "${c.name}"`))}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody></Table></ScrollArea.Autosize>
+        )}
+      </MStack>
+
+      <MStack gap={6}>
+        <Group justify="space-between"><Text fw={600}>Images</Text><Button size="compact-xs" variant="light" color="orange" onClick={() => prune("images")}>Prune dangling</Button></Group>
+        {images === null ? <Loader size="sm" /> : images.length === 0 ? <Text size="sm" c="dimmed">None.</Text> : (
+          <ScrollArea.Autosize mah={220}><Table fz="xs" verticalSpacing={4}><Table.Tbody>
+            {images.map(i => (
+              <Table.Tr key={i.id + i.tag}>
+                <Table.Td>{i.repository === "<none>" ? <Text c="dimmed" span>&lt;none&gt;</Text> : i.repository}<Text c="dimmed" span>:{i.tag}</Text></Table.Td>
+                <Table.Td c="dimmed">{i.size}</Table.Td>
+                <Table.Td c="dimmed">{i.created}</Table.Td>
+                <Table.Td w={32}>{del(false, () => rm("images", i.id, `image ${i.repository}:${i.tag}`))}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody></Table></ScrollArea.Autosize>
+        )}
+      </MStack>
+
+      <MStack gap={6}>
+        <Text fw={600}>Volumes</Text>
+        {volumes === null ? <Loader size="sm" /> : volumes.length === 0 ? <Text size="sm" c="dimmed">None.</Text> : (
+          <ScrollArea.Autosize mah={220}><Table fz="xs" verticalSpacing={4}><Table.Tbody>
+            {volumes.map(v => (
+              <Table.Tr key={v.name}>
+                <Table.Td style={{ wordBreak: "break-all" }}>{v.name}{v.protected && <Badge size="xs" variant="light" color="gray" ml={6}>protected</Badge>}</Table.Td>
+                <Table.Td w={32}>{del(v.protected, () => rm("volumes", v.name, `volume "${v.name}" and its data`, "This deletes the volume's data (database/files) — cannot be undone."))}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody></Table></ScrollArea.Autosize>
+        )}
+      </MStack>
+    </MStack>
+  );
+}
+
 // Environment/about tab — server-side health of the tools a run needs, plus the build version.
 function EnvTab() {
   const [env, setEnv] = useState<EnvHealth | null>(null);
@@ -262,6 +336,7 @@ export function Settings() {
             <Tabs.List mr="lg">
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
               {isAdmin && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
+              {isAdmin && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
               <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
@@ -342,6 +417,11 @@ export function Settings() {
             {isAdmin && (
               <Tabs.Panel value="hosting" style={{ flex: 1 }}>
                 <HostingTab />
+              </Tabs.Panel>
+            )}
+            {isAdmin && (
+              <Tabs.Panel value="docker" style={{ flex: 1 }}>
+                <DockerTab />
               </Tabs.Panel>
             )}
             <Tabs.Panel value="api" style={{ flex: 1 }}>

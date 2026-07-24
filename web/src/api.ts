@@ -193,6 +193,15 @@ export const createApiToken = (name: string): Promise<{ token: string; record: i
 export const deleteApiToken = (id: string): Promise<void> =>
   fetch(`${base}/api-tokens/${id}`, { method: "DELETE" }).then(() => undefined);
 
+// Docker housekeeping (admin)
+export const dockerImages = (): Promise<import("./model").DockerImage[]> => fetch(`${base}/docker/images`).then(ok);
+export const dockerVolumes = (): Promise<import("./model").DockerVolume[]> => fetch(`${base}/docker/volumes`).then(ok);
+export const dockerContainers = (): Promise<import("./model").DockerContainer[]> => fetch(`${base}/docker/containers`).then(ok);
+export const dockerRemove = (kind: "images" | "containers" | "volumes", id: string): Promise<void> =>
+  fetch(`${base}/docker/${kind}/${encodeURIComponent(id)}`, { method: "DELETE" }).then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t || r.statusText); }); });
+export const dockerPrune = (kind: "images" | "containers"): Promise<{ log: string }> =>
+  fetch(`${base}/docker/prune`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }) }).then(ok);
+
 // Nginx Proxy Manager integration
 type NpmSettingsBody = { enabled: boolean; baseUrl: string; email: string; password?: string | null; forwardHost: string };
 export const getNpmSettings = (): Promise<import("./model").NpmSettings> => fetch(`${base}/hosting/npm-settings`).then(ok);

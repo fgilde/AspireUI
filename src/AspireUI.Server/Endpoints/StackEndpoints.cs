@@ -55,6 +55,17 @@ public static class StackEndpoints
         // Program.cs). Anonymous endpoints (/auth/*, /env/health, SPA static files) are mapped
         // separately and never go through this group.
         var app2 = app.MapGroup("/api").RequireAuthorization();
+        var docker = new DockerService(deploy);
+        // Docker housekeeping (admin): see + clean up the images/containers/volumes AspireUI created via
+        // the socket (dev-run + hosting). AspireUI's own container + data volume are protected.
+        var dockerGrp = app2.MapGroup("/docker").RequireAuthorization(p => p.RequireRole("Admin"));
+        dockerGrp.MapGet("/images", () => Results.Ok(docker.Images()));
+        dockerGrp.MapGet("/volumes", () => Results.Ok(docker.Volumes()));
+        dockerGrp.MapGet("/containers", () => Results.Ok(docker.Containers()));
+        dockerGrp.MapDelete("/images/{id}", (string id) => { var (ok, log) = docker.RemoveImage(id); return ok ? Results.NoContent() : Results.BadRequest(new { message = log }); });
+        dockerGrp.MapDelete("/containers/{id}", (string id) => { var (ok, log) = docker.RemoveContainer(id); return ok ? Results.NoContent() : Results.BadRequest(new { message = log }); });
+        dockerGrp.MapDelete("/volumes/{name}", (string name) => { var (ok, log) = docker.RemoveVolume(name); return ok ? Results.NoContent() : Results.BadRequest(new { message = log }); });
+        dockerGrp.MapPost("/prune", (PruneRequest b) => { var (ok, log) = docker.Prune(b.Kind ?? ""); return ok ? Results.Ok(new { log }) : Results.BadRequest(new { message = log }); });
 
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
@@ -818,6 +829,7 @@ public static class StackEndpoints
     public record StoreExclusionsRequest(List<string>? Ids);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
     public record CreateTokenRequest(string? Name);
+    public record PruneRequest(string? Kind);
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
