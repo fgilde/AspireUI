@@ -22,10 +22,17 @@ function HostingTab() {
   return (
     <MStack gap="xl" maw={560}>
       <MStack gap="md">
-        <Text fw={600}>Reachable host</Text>
-        <TextInput label="Public host / IP" value={publicHost} onChange={e => setPublicHost(e.currentTarget.value)}
-          placeholder={reqHost ? `blank = ${reqHost} (how you reached this page)` : "e.g. 192.168.1.50"}
-          description="Host/IP the browser should use for direct app + dashboard port links. Set this to the machine's LAN IP when you reach AspireUI through a domain (proxies forward :443, not app ports). Blank = the host you opened AspireUI with." />
+        <Text fw={600}>Server IP address</Text>
+        <Group gap="xs" align="flex-end">
+          <TextInput style={{ flex: 1 }} label="IP address of this machine" value={publicHost} onChange={e => setPublicHost(e.currentTarget.value)}
+            placeholder={reqHost ? `e.g. 192.168.1.50 — blank uses ${reqHost}` : "e.g. 192.168.1.50"}
+            description="The LAN IP of the machine AspireUI runs on. Used for ALL reachable links (hosted apps, dev apps, dashboard, and the NPM proxy target). Leave blank only if you open AspireUI directly by that IP." />
+          <Button variant="default" onClick={async () => {
+            try { const ips = await api.detectIps(); if (ips.length) { setPublicHost(ips[0]); toastOk(ips.length > 1 ? `Detected: ${ips.join(", ")} — using ${ips[0]}` : `Detected ${ips[0]}`); } else toastErr("No IP detected — enter it manually"); }
+            catch (e) { toastErr(e); }
+          }}>Detect</Button>
+        </Group>
+        <Text size="xs" c="dimmed">Inside a container this may only find the docker-bridge IP (172.x) — then type the host's LAN IP manually.</Text>
         <Text fw={600} mt="sm">Aspire dashboard</Text>
         <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
           label="Include the Aspire dashboard in hosting deployments"
@@ -51,15 +58,13 @@ function NpmSettingsSection() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
-  const [forwardHost, setForwardHost] = useState("");
-  const [detectedHost, setDetectedHost] = useState("");
   const [saved, setSaved] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; error?: string | null } | null>(null);
   const [testing, setTesting] = useState(false);
   useEffect(() => { api.getNpmSettings().then(s => {
-    setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setForwardHost(s.forwardHost); setHasPassword(s.hasPassword); setDetectedHost(s.detectedHost ?? "");
+    setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setHasPassword(s.hasPassword);
   }).catch(() => {}); }, []);
-  const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined, forwardHost: forwardHost.trim() });
+  const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined, forwardHost: "" });
   const save = async () => { await api.setNpmSettings(body()); setHasPassword(hasPassword || !!password); setPassword(""); setSaved(true); setTimeout(() => setSaved(false), 2000); };
   const runTest = async () => { setTesting(true); setTest(null); try { setTest(await api.testNpm(body())); } catch (e) { setTest({ ok: false, error: e instanceof Error ? e.message : String(e) }); } finally { setTesting(false); } };
   return (
@@ -79,9 +84,7 @@ function NpmSettingsSection() {
       <TextInput label="Email" placeholder="admin@example.com" value={email} onChange={e => setEmail(e.currentTarget.value)} disabled={!enabled} />
       <PasswordInput label="Password" placeholder={hasPassword ? "•••••••• (stored — leave blank to keep)" : "NPM admin password"}
         value={password} onChange={e => setPassword(e.currentTarget.value)} disabled={!enabled} />
-      <TextInput label="Apps reachable at (forward host)" placeholder={detectedHost ? `${detectedHost} (detected — leave blank to use it)` : "e.g. 192.168.1.50"}
-        value={forwardHost} onChange={e => setForwardHost(e.currentTarget.value)} disabled={!enabled}
-        description={`The host/IP your NPM uses to reach the machine AspireUI publishes apps on. Blank = AspireUI uses ${detectedHost || "this server's detected LAN IP"} (never localhost).`} />
+      <Text size="xs" c="dimmed">NPM forwards to the <b>Server IP address</b> set above + each app's port — no separate host to enter here.</Text>
       {test && <Alert color={test.ok ? "green" : "red"} p="xs" icon={test.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
         {test.ok ? "Connected — NPM reachable and credentials valid." : `Failed: ${test.error}`}
       </Alert>}

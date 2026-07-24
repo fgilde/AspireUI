@@ -56,6 +56,7 @@ public static class StackEndpoints
         // separately and never go through this group.
         var app2 = app.MapGroup("/api").RequireAuthorization();
         var docker = new DockerService(deploy);
+        var devProxy = new DevProxyService(deploy);
         // Docker housekeeping (admin): see + clean up the images/containers/volumes AspireUI created via
         // the socket (dev-run + hosting). AspireUI's own container + data volume are protected.
         var dockerGrp = app2.MapGroup("/docker").RequireAuthorization(p => p.RequireRole("Admin"));
@@ -440,7 +441,7 @@ public static class StackEndpoints
             gen.Materialize(s, Dir(id));
             return Results.Ok(WithHost(run.Start(id, Path.GetFullPath(Dir(id))), ctx));
         });
-        app2.MapPost("/stacks/{id}/stop", (string id) => Results.Ok(run.Stop(id)));
+        app2.MapPost("/stacks/{id}/stop", (string id) => { devProxy.Teardown(id); return Results.Ok(run.Stop(id)); });
         app2.MapGet("/stacks/{id}/status", (string id, HttpContext ctx) => Results.Ok(WithHost(run.Status(id), ctx)));
         // Read-only host filesystem browse — powers the path picker for project/script/config-path
         // params (e.g. a Deno/C# app's working directory). Authenticated (app2) only; local-first tool
@@ -474,10 +475,21 @@ public static class StackEndpoints
         app2.MapGet("/stacks/{id}/resources", (string id, HttpContext ctx) =>
         {
             var host = PublicHost(ctx);
-            var res = graph.GetResources(id)
-                .Select(r => r with { Urls = r.Urls.Select(u => u with { Url = HostUrls.Rewrite(u.Url, host) }).ToList() })
-                .ToList();
-            return Results.Ok(res);
+            var res = graph.GetResources(id).ToList();
+            // Dev-run off-box reachability: for containers Aspire published to 127.0.0.1, stand up socat
+            // forwarders on <host>:<port> and rewrite those resources' links to <host>:<port>. No-op
+            // unless AspireUI runs in a container with a PublicHost set.
+            var byRes = new Dictionary<string, int>();
+            foreach (var (r, p) in devProxy.LoopbackPorts(res.Select(x => x.Name))) byRes.TryAdd(r, p);
+            if (byRes.Count > 0) devProxy.Ensure(id, host, byRes.Values);
+            var mapped = res.Select(r => r with
+            {
+                Urls = r.Urls.Select(u => u with
+                {
+                    Url = byRes.TryGetValue(r.Name, out var rp) ? HostUrls.WithHostPort(u.Url, host, rp) : HostUrls.Rewrite(u.Url, host),
+                }).ToList(),
+            }).ToList();
+            return Results.Ok(mapped);
         });
         // Best-effort container CPU/memory via `docker stats` (single snapshot). Returns all running
         // containers; the client matches them to resources by name. Empty on any error / no docker.
@@ -684,6 +696,7 @@ public static class StackEndpoints
             publicHostSetting = settings.GetValue("PublicHost") ?? "",
             requestHost = ctx.Request.Host.Host,
         }));
+        app2.MapGet("/hosting/detect-ip", () => Results.Ok(HostUrls.CandidateIPs())).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
         {
             settings.SetValue("HostDashboard", b.HostDashboard ? "true" : "false");
@@ -699,8 +712,8 @@ public static class StackEndpoints
             settings.GetValue("NpmPassword") ?? "", settings.GetValue("NpmForwardHost") ?? "");
         app2.MapGet("/hosting/npm-settings", () => { var c = NpmCfg(); return Results.Ok(new
         {
-            enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email, forwardHost = c.ForwardHost,
-            hasPassword = !string.IsNullOrEmpty(c.Password), detectedHost = NpmService.LocalIPv4(),
+            enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email,
+            hasPassword = !string.IsNullOrEmpty(c.Password),
         }); }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPut("/hosting/npm-settings", (NpmSettingsRequest b) =>
         {
@@ -725,9 +738,8 @@ public static class StackEndpoints
             var c = NpmCfg();
             if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
             var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-            // Forward host NPM uses to reach the app: NPM's own forward-host setting wins, else the
-            // PublicHost (the LAN IP you set for direct links) — never the domain you browsed with.
-            var fwdHost = !string.IsNullOrWhiteSpace(c.ForwardHost) ? c.ForwardHost : PublicHost(ctx);
+            // One source of truth: the PublicHost (the machine's IP). NPM forwards there.
+            var fwdHost = PublicHost(ctx);
             NpmProxyHost? existing = null; string? error = null;
             try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
             catch (Exception e) { error = e.Message; }

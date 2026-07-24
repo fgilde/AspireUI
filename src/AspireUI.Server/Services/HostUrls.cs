@@ -1,3 +1,5 @@
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text.RegularExpressions;
 
 namespace AspireUI.Server.Services;
@@ -22,4 +24,26 @@ public static partial class HostUrls
     public static string ForceHost(string url, string? host) =>
         string.IsNullOrWhiteSpace(host) || string.IsNullOrEmpty(url)
             ? url : Regex.Replace(url, @"^(\w+://)[^/:]+(?=:\d)", m => m.Groups[1].Value + host);
+
+    // Replace BOTH host and port of a URL with host:port (keeps scheme + path). For dev links pointed at
+    // a socat-forwarded LAN endpoint.
+    public static string WithHostPort(string url, string host, int port) =>
+        string.IsNullOrEmpty(url) ? url : Regex.Replace(url, @"^(\w+://)[^/]+", m => m.Groups[1].Value + host + ":" + port);
+
+    // Candidate LAN IPv4s of this machine (for the "detect" button). Excludes loopback + APIPA. Inside a
+    // container this is only the docker-bridge IP — so it's a hint, not gospel; the user can override.
+    public static List<string> CandidateIPs()
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up)
+                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+                .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork)
+                .Select(a => a.Address.ToString())
+                .Where(ip => !ip.StartsWith("127.") && !ip.StartsWith("169.254."))
+                .Distinct().ToList();
+        }
+        catch { return new(); }
+    }
 }

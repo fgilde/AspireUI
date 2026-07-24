@@ -140,6 +140,7 @@ export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; erro
 
 export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
+export const detectIps = (): Promise<string[]> => fetch(`${base}/hosting/detect-ip`).then(ok);
 export const setDashboardSettings = (hostDashboard: boolean, dashboardToken: string, publicHost?: string): Promise<void> =>
   fetch(`${base}/hosting/dashboard-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostDashboard, dashboardToken, publicHost }) }).then(okVoid);
 export const getStoreExclusions = (): Promise<string[]> => fetch(`${base}/store/exclusions`).then(ok);
