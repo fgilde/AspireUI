@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, SimpleGrid, Anchor, Box } from "@mantine/core";
+import { useEffect, useState, type ReactNode } from "react";
+import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, Anchor, Box, UnstyledButton } from "@mantine/core";
 import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode } from "@tabler/icons-react";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 
@@ -25,6 +25,11 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
   const shots = info.screenshots?.filter(Boolean) ?? [];
   const topics = (info.topics ?? []).filter(t => t && t !== info.group).slice(0, 8);
   const hasStats = !!info.stars || !!info.language || !!info.license;
+  // Preview gallery: the GitHub card first, then screenshots. Clicking a thumbnail swaps the big image.
+  const gallery = [info.card, ...shots].filter(Boolean) as string[];
+  const [sel, setSel] = useState<string | null>(null);
+  useEffect(() => setSel(null), [info.label]);   // reset when a different app opens
+  const selected = sel ?? gallery[0] ?? null;
   return (
     <Modal opened onClose={onClose} size="lg" centered padding={0} radius="md" withCloseButton={false}>
       {/* Hero band — our colored glyph tile stays; the app's real logo (if any) rides on the right. */}
@@ -51,9 +56,22 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
       </Box>
 
       <MStack gap="md" p="lg">
-        {info.card && (
-          <Image src={info.card} radius="md" fit="cover" fallbackSrc=""
-            style={{ border: "1px solid var(--mantine-color-default-border)" }} />
+        {selected && (
+          <MStack gap="xs">
+            <Anchor href={selected} target="_blank" style={{ display: "block", overflow: "hidden", borderRadius: 8, border: "1px solid var(--mantine-color-default-border)" }}>
+              <Image src={selected} radius="md" fit="contain" fallbackSrc="" mah={340} className="store-shot" />
+            </Anchor>
+            {gallery.length > 1 && (
+              <Group gap={6} wrap="nowrap" style={{ overflowX: "auto", paddingBottom: 2 }}>
+                {gallery.map(src => (
+                  <UnstyledButton key={src} onClick={() => setSel(src)} style={{ flexShrink: 0, borderRadius: 6, overflow: "hidden",
+                    border: `2px solid ${src === selected ? "var(--mantine-primary-color-filled)" : "transparent"}`, opacity: src === selected ? 1 : 0.7, transition: "opacity .15s" }}>
+                    <Image src={src} w={92} h={56} fit="cover" fallbackSrc="" />
+                  </UnstyledButton>
+                ))}
+              </Group>
+            )}
+          </MStack>
         )}
 
         {info.description && <Text size="sm">{info.description}</Text>}
@@ -81,16 +99,6 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
 
         {topics.length > 0 && (
           <Group gap={5}>{topics.map(t => <Badge key={t} size="xs" variant="dot" color="gray">{t}</Badge>)}</Group>
-        )}
-
-        {shots.length > 0 && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            {shots.map(src => (
-              <Anchor key={src} href={src} target="_blank" style={{ display: "block", overflow: "hidden", borderRadius: 8, border: "1px solid var(--mantine-color-default-border)" }}>
-                <Image src={src} fit="cover" h={130} fallbackSrc="" className="store-shot" />
-              </Anchor>
-            ))}
-          </SimpleGrid>
         )}
 
         {(info.image || info.port) && (

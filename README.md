@@ -9,6 +9,14 @@
   <a href="https://fgilde.github.io/AspireUI/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
 </p>
 
+<p align="center">
+  <sub>Powered by</sub>&nbsp;
+  <a href="https://www.nuget.org/packages?q=Nextended&includeComputedFrameworks=true&prerel=true"><img src="https://api.nuget.org/v3-flatcontainer/nextended.aspire/10.1.19/icon" height="18" valign="middle" alt="Nextended.Aspire"> <b>Nextended</b></a>
+  <a href="https://github.com/fgilde/Nextended"><img src="https://img.shields.io/badge/-181717?logo=github&logoColor=white" valign="middle" alt="Nextended on GitHub"></a>
+  &nbsp;·&nbsp;
+  <a href="https://www.aspire.love/"><img src="https://www.aspire.love/assets/favicon.ico" height="16" valign="middle" alt=""> <b>aspire.love</b></a>
+</p>
+
 <hr>
 
 <table>
