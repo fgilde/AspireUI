@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp } from "@tabler/icons-react";
-import type { Deployment, NodeConfig, PortMapping, BackupInfo } from "../model";
+import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge } from "@mantine/core";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld } from "@tabler/icons-react";
+import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 
@@ -11,8 +11,8 @@ export const hostingColor = (s: string) => s === "running" ? "green" : s === "fa
 // The hosting action menu items — identical everywhere (the /Hosting rows AND the stack cards) so a
 // change here shows up in both. `onChanged` re-loads the caller after an action; `onConfigure`/`onLogs`
 // open the shared modals (owned by the caller so the menu can unmount).
-export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onOpenEditor, onChanged }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onOpenEditor?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onOpenEditor, onChanged }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onOpenEditor?: () => void; onChanged: () => void;
 }) {
   const stop = () => { toastOk(`Stopping ${d.name}…`); api.stopHosting(d.stackId).then(onChanged).catch(toastErr); };
   const start = () => { toastOk(`${d.state === "failed" ? "Retrying" : "Starting"} ${d.name}…`); api.startHosting(d.stackId).then(onChanged).catch(toastErr); };
@@ -32,6 +32,7 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, o
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
       {onBackups && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
+      {onDomain && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       <Menu.Divider />
       <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={undeploy}>Undeploy</Menu.Item>
@@ -48,6 +49,7 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   const [saving, setSaving] = useState(false);
   const [q, setQ] = useState("");
   const [ports, setPorts] = useState<PortMapping[]>(d.ports ?? []);
+  const [domainOpen, setDomainOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -176,12 +178,16 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
               {cfg.length === 0 && <Text size="sm" c="dimmed">No configurable resources.</Text>}
             </Stack>
           </ScrollArea.Autosize>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>Cancel</Button>
-            <Button loading={saving} onClick={save}>Save &amp; redeploy</Button>
+          <Group justify="space-between">
+            <Button variant="subtle" color="gray" leftSection={<IconWorld size={15} />} onClick={() => setDomainOpen(true)}>Domain / reverse proxy…</Button>
+            <Group>
+              <Button variant="default" onClick={onClose}>Cancel</Button>
+              <Button loading={saving} onClick={save}>Save &amp; redeploy</Button>
+            </Group>
           </Group>
         </Stack>
       )}
+      {domainOpen && <DomainModal d={d} onClose={() => setDomainOpen(false)} />}
     </Modal>
   );
 }
@@ -284,6 +290,68 @@ export function BackupsModal({ d, onClose, onChanged }: { d: Deployment; onClose
           </ScrollArea.Autosize>
         )}
       </Stack>
+    </Modal>
+  );
+}
+
+// Give a hosted app a real domain via the configured Nginx Proxy Manager. Prefills the forward host +
+// port from the deployment; shows/edits an existing proxy-host entry when one already targets the app.
+export function DomainModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
+  const [info, setInfo] = useState<DomainInfo | null>(null);
+  const [domains, setDomains] = useState("");
+  const [scheme, setScheme] = useState("http");
+  const [host, setHost] = useState("");
+  const [port, setPort] = useState(0);
+  const [ws, setWs] = useState(true);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api.getDomain(d.stackId).then(i => {
+      setInfo(i);
+      if (i.existing) { setDomains(i.existing.domainNames.join(", ")); setScheme(i.existing.forwardScheme); setHost(i.existing.forwardHost); setPort(i.existing.forwardPort); setWs(i.existing.websockets); }
+      else if (i.proposal) { setScheme(i.proposal.scheme); setHost(i.proposal.forwardHost); setPort(i.proposal.forwardPort); setWs(i.proposal.websockets); }
+    }).catch(() => setInfo({ configured: false }));
+  }, [d.stackId]);
+
+  const save = async () => {
+    const list = domains.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+    if (list.length === 0) { toastErr("Enter at least one domain name"); return; }
+    setSaving(true);
+    try {
+      await api.setDomain(d.stackId, { id: info?.existing?.id, domainNames: list, scheme, forwardHost: host, forwardPort: port, websockets: ws });
+      toastOk(info?.existing ? "Proxy host updated" : "Proxy host created");
+      onClose();
+    } catch (e) { toastErr(e, "Could not save proxy host"); } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconWorld size={18} /><Title order={5}>Domain · {d.name}</Title></Group>}>
+      {info === null ? <Loader size="sm" /> : !info.configured ? (
+        <Alert color="blue" icon={<IconWorld size={16} />}>
+          Connect your Nginx Proxy Manager first under <b>Settings → Hosting</b>. Then this dialog can create or
+          edit the proxy host that points your domain at this app.
+        </Alert>
+      ) : (
+        <Stack gap="md">
+          {info.error && <Alert color="orange" p="xs" icon={<IconAlertTriangle size={16} />}>Couldn't read existing entries from NPM: {info.error}. You can still create one below.</Alert>}
+          {info.existing
+            ? <Badge variant="light" color="teal">Editing existing proxy host #{info.existing.id}</Badge>
+            : port > 0 ? <Text size="xs" c="dimmed">No proxy host targets this app yet — creating a new one.</Text>
+            : <Alert color="yellow" p="xs" icon={<IconAlertTriangle size={16} />}>This app has no published host port yet (deploy it first), so there's nothing to forward to.</Alert>}
+          <TextInput label="Domain names" placeholder="app.example.com, www.example.com" value={domains}
+            onChange={e => setDomains(e.currentTarget.value)} description="Comma- or space-separated." data-autofocus />
+          <Group grow>
+            <Select label="Forward scheme" data={["http", "https"]} value={scheme} onChange={v => setScheme(v ?? "http")} allowDeselect={false} />
+            <TextInput label="Forward host" value={host} onChange={e => setHost(e.currentTarget.value)} />
+            <NumberInput label="Forward port" value={port || undefined} onChange={v => setPort(Number(v) || 0)} min={1} max={65535} hideControls />
+          </Group>
+          <Switch checked={ws} onChange={e => setWs(e.currentTarget.checked)} label="Allow WebSocket upgrade" />
+          <Text size="xs" c="dimmed">AspireUI prefilled the forward host + port from this deployment. NPM handles SSL/Let's Encrypt from its own UI.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={onClose}>Cancel</Button>
+            <Button loading={saving} disabled={port <= 0} onClick={save}>{info.existing ? "Update proxy host" : "Create proxy host"}</Button>
+          </Group>
+        </Stack>
+      )}
     </Modal>
   );
 }

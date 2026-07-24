@@ -185,3 +185,15 @@ export const hostingConfig = (stackId: string): Promise<import("./model").NodeCo
   fetch(`${base}/stacks/${stackId}/hosting/config`).then(ok);
 export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[]): Promise<import("./model").Deployment> =>
   fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports }) }).then(ok);
+
+// Nginx Proxy Manager integration
+type NpmSettingsBody = { enabled: boolean; baseUrl: string; email: string; password?: string | null; forwardHost: string };
+export const getNpmSettings = (): Promise<import("./model").NpmSettings> => fetch(`${base}/hosting/npm-settings`).then(ok);
+export const setNpmSettings = (b: NpmSettingsBody): Promise<void> =>
+  fetch(`${base}/hosting/npm-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(() => undefined);
+export const testNpm = (b: NpmSettingsBody): Promise<{ ok: boolean; error?: string | null }> =>
+  fetch(`${base}/hosting/npm/test`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const getDomain = (stackId: string): Promise<import("./model").DomainInfo> =>
+  fetch(`${base}/stacks/${stackId}/hosting/domain`).then(ok);
+export const setDomain = (stackId: string, b: { id?: number | null; domainNames: string[]; scheme: string; forwardHost: string; forwardPort: number; websockets: boolean }): Promise<import("./model").NpmProxyHost> =>
+  fetch(`${base}/stacks/${stackId}/hosting/domain`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);

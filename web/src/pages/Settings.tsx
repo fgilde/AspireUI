@@ -17,18 +17,70 @@ function HostingTab() {
   useEffect(() => { api.getDashboardSettings().then(s => { setHost(s.hostDashboard); setToken(s.dashboardToken); }).catch(() => {}); }, []);
   const save = async () => { await api.setDashboardSettings(host, token.trim()); setSaved(true); setTimeout(() => setSaved(false), 2000); };
   return (
-    <MStack gap="md" maw={520}>
-      <Text fw={600}>Aspire dashboard</Text>
-      <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
-        label="Include the Aspire dashboard in hosting deployments"
-        description="Off = the dashboard container isn't published (deployed apps still run; you see resources/logs here in AspireUI)." />
-      <TextInput label="Dashboard browser token" value={token} onChange={e => setToken(e.currentTarget.value)}
-        placeholder="leave empty for Aspire's random per-start token"
-        description="Set a fixed token and AspireUI shows a one-click dashboard login link. Anyone with this token can open the dashboard — treat it like a password." />
+    <MStack gap="xl" maw={560}>
+      <MStack gap="md">
+        <Text fw={600}>Aspire dashboard</Text>
+        <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
+          label="Include the Aspire dashboard in hosting deployments"
+          description="Off = the dashboard container isn't published (deployed apps still run; you see resources/logs here in AspireUI)." />
+        <TextInput label="Dashboard browser token" value={token} onChange={e => setToken(e.currentTarget.value)}
+          placeholder="leave empty for Aspire's random per-start token"
+          description="Set a fixed token and AspireUI shows a one-click dashboard login link. Anyone with this token can open the dashboard — treat it like a password." />
+        <Group>
+          <Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button>
+        </Group>
+        <Text size="xs" c="dimmed">Changes apply on the next deploy/re-deploy of a stack.</Text>
+      </MStack>
+      <NpmSettingsSection />
+    </MStack>
+  );
+}
+
+// Connect AspireUI to the user's own Nginx Proxy Manager so hosted apps can get a real domain
+// (managed from the hosting Domain dialog) without leaving AspireUI.
+function NpmSettingsSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [hasPassword, setHasPassword] = useState(false);
+  const [forwardHost, setForwardHost] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [test, setTest] = useState<{ ok: boolean; error?: string | null } | null>(null);
+  const [testing, setTesting] = useState(false);
+  useEffect(() => { api.getNpmSettings().then(s => {
+    setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setForwardHost(s.forwardHost); setHasPassword(s.hasPassword);
+  }).catch(() => {}); }, []);
+  const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined, forwardHost: forwardHost.trim() });
+  const save = async () => { await api.setNpmSettings(body()); setHasPassword(hasPassword || !!password); setPassword(""); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const runTest = async () => { setTesting(true); setTest(null); try { setTest(await api.testNpm(body())); } catch (e) { setTest({ ok: false, error: e instanceof Error ? e.message : String(e) }); } finally { setTesting(false); } };
+  return (
+    <MStack gap="md">
+      <Group gap={10}>
+        <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nginx-proxy-manager.png" width={22} height={22} alt="" style={{ display: "block" }} />
+        <Text fw={600}>Nginx Proxy Manager</Text>
+      </Group>
+      <Text size="xs" c="dimmed">
+        Point AspireUI at your <a href="https://nginxproxymanager.com" target="_blank" rel="noreferrer">Nginx Proxy Manager</a> and
+        you can give any hosted app a real domain right from its <b>Domain</b> dialog — AspireUI prefills the
+        forward host + port and can update an existing proxy entry.
+      </Text>
+      <Switch checked={enabled} onChange={e => setEnabled(e.currentTarget.checked)} label="Enable" />
+      <TextInput label="NPM URL" placeholder="http://npm-host:81" value={baseUrl} onChange={e => setBaseUrl(e.currentTarget.value)}
+        description="Your Nginx Proxy Manager admin URL (the login page)." disabled={!enabled} />
+      <TextInput label="Email" placeholder="admin@example.com" value={email} onChange={e => setEmail(e.currentTarget.value)} disabled={!enabled} />
+      <PasswordInput label="Password" placeholder={hasPassword ? "•••••••• (stored — leave blank to keep)" : "NPM admin password"}
+        value={password} onChange={e => setPassword(e.currentTarget.value)} disabled={!enabled} />
+      <TextInput label="Apps reachable at (forward host)" placeholder="e.g. 192.168.1.50 — leave blank to use this server's address"
+        value={forwardHost} onChange={e => setForwardHost(e.currentTarget.value)} disabled={!enabled}
+        description="The host/IP your NPM uses to reach the machine AspireUI publishes apps on. Blank = AspireUI guesses from the request." />
+      {test && <Alert color={test.ok ? "green" : "red"} p="xs" icon={test.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
+        {test.ok ? "Connected — NPM reachable and credentials valid." : `Failed: ${test.error}`}
+      </Alert>}
       <Group>
         <Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button>
+        <Button variant="default" loading={testing} onClick={runTest} disabled={!enabled || !baseUrl.trim()}>Test connection</Button>
       </Group>
-      <Text size="xs" c="dimmed">Changes apply on the next deploy/re-deploy of a stack.</Text>
     </MStack>
   );
 }

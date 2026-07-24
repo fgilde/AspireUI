@@ -18,7 +18,7 @@ import { useTitle } from "../useTitle";
 import type { TemplateInfo, BundleFile } from "../api";
 import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
-import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, hostingColor } from "../hosting/HostingActions";
+import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, hostingColor } from "../hosting/HostingActions";
 import { InstallAppModal } from "../hosting/InstallAppModal";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
@@ -48,6 +48,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
   const [logsFor, setLogsFor] = useState<Deployment | null>(null);
   const [backupsFor, setBackupsFor] = useState<Deployment | null>(null);
+  const [domainFor, setDomainFor] = useState<Deployment | null>(null);
   const [installOpen, setInstallOpen] = useState(false);
   // In simple/appliance mode the overview IS the app list: only hosted stacks, click = manage, and the
   // header offers "Install app" instead of New/Import.
@@ -366,7 +367,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           {dep ? (
                             <>
                               <HostingMenuItems d={dep} canEdit={canEdit} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
-                                onBackups={() => setBackupsFor(dep)} onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
+                                onBackups={() => setBackupsFor(dep)} onDomain={() => setDomainFor(dep)} onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
                               <Menu.Divider />
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
@@ -477,6 +478,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
       {configFor && <ConfigureModal d={configFor} onClose={() => setConfigFor(null)} onDone={loadDeps} />}
       {logsFor && <LogsModal d={logsFor} onClose={() => setLogsFor(null)} />}
       {backupsFor && <BackupsModal d={backupsFor} onClose={() => setBackupsFor(null)} onChanged={loadDeps} />}
+      {domainFor && <DomainModal d={domainFor} onClose={() => setDomainFor(null)} />}
       {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => { load(); loadDeps(); }} />}
     </PageShell>
   );

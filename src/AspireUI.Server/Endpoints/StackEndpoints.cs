@@ -641,6 +641,60 @@ public static class StackEndpoints
             settings.SetValue("DashboardToken", b.DashboardToken ?? "");
             return Results.NoContent();
         }).RequireAuthorization(p => p.RequireRole("Admin"));
+
+        // Nginx Proxy Manager (external, user-owned) integration -------------------------------------
+        NpmConfig NpmCfg() => new(
+            (settings.GetValue("NpmEnabled") ?? "false") == "true",
+            settings.GetValue("NpmBaseUrl") ?? "", settings.GetValue("NpmEmail") ?? "",
+            settings.GetValue("NpmPassword") ?? "", settings.GetValue("NpmForwardHost") ?? "");
+        app2.MapGet("/hosting/npm-settings", () => { var c = NpmCfg(); return Results.Ok(new
+        {
+            enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email, forwardHost = c.ForwardHost,
+            hasPassword = !string.IsNullOrEmpty(c.Password),
+        }); }).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapPut("/hosting/npm-settings", (NpmSettingsRequest b) =>
+        {
+            settings.SetValue("NpmEnabled", b.Enabled ? "true" : "false");
+            settings.SetValue("NpmBaseUrl", b.BaseUrl ?? "");
+            settings.SetValue("NpmEmail", b.Email ?? "");
+            if (b.Password is not null) settings.SetValue("NpmPassword", b.Password);   // keep stored one when omitted
+            settings.SetValue("NpmForwardHost", b.ForwardHost ?? "");
+            return Results.NoContent();
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapPost("/hosting/npm/test", async (NpmSettingsRequest b) =>
+        {
+            var c = new NpmConfig(true, b.BaseUrl ?? "", b.Email ?? "", b.Password ?? (settings.GetValue("NpmPassword") ?? ""), b.ForwardHost ?? "");
+            var (ok, error) = await NpmService.TestAsync(c);
+            return Results.Ok(new { ok, error });
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        // Per-app domain config: current NPM proxy-host entry (matched by the app's host port) + a
+        // proposal (forward host/port from the deployment, http, websockets on) to prefill the dialog.
+        app2.MapGet("/stacks/{id}/hosting/domain", async (string id, HttpContext ctx) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            var c = NpmCfg();
+            if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
+            var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
+            var fwdHost = string.IsNullOrWhiteSpace(c.ForwardHost) ? ctx.Request.Host.Host : c.ForwardHost;
+            NpmProxyHost? existing = null; string? error = null;
+            try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
+            catch (Exception e) { error = e.Message; }
+            return Results.Ok(new
+            {
+                configured = true, error,
+                proposal = new { forwardHost = fwdHost, forwardPort = port, scheme = "http", websockets = true },
+                existing,
+            });
+        });
+        app2.MapPut("/stacks/{id}/hosting/domain", async (string id, DomainRequest b) =>
+        {
+            if (deployments.GetByStack(id) is null) return Results.NotFound();
+            var c = NpmCfg();
+            if (!c.Enabled) return Results.BadRequest(new { message = "Nginx Proxy Manager isn't configured (Settings → Hosting)." });
+            try { return Results.Ok(await NpmService.UpsertAsync(c, b.Id, b.DomainNames ?? new(), b.Scheme ?? "http", b.ForwardHost, b.ForwardPort, b.Websockets)); }
+            catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
+        });
+
         app2.MapGet("/hosting", () => Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)));
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
@@ -723,5 +777,7 @@ public static class StackEndpoints
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
     public record StoreExclusionsRequest(List<string>? Ids);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken);
+    public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
+    public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

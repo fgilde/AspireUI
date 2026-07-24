@@ -24,6 +24,13 @@ export interface Stack {
 export interface PortMapping { container: number; host: number; public: boolean }
 export interface BackupVol { name: string; size: number }
 export interface BackupInfo { stamp: string; createdAt: string; volumes: BackupVol[] }
+export interface NpmSettings { enabled: boolean; baseUrl: string; email: string; forwardHost: string; hasPassword: boolean }
+export interface NpmProxyHost { id: number; domainNames: string[]; forwardScheme: string; forwardHost: string; forwardPort: number; websockets: boolean }
+export interface DomainInfo {
+  configured: boolean; error?: string | null;
+  proposal?: { forwardHost: string; forwardPort: number; scheme: string; websockets: boolean };
+  existing?: NpmProxyHost | null;
+}
 export interface Deployment {
   id: string; stackId: string; name: string;
   state: "deploying" | "running" | "stopped" | "failed";
