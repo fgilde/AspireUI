@@ -95,6 +95,30 @@ Then open **http://localhost:8080**. Needs Docker + the Compose v2 plugin. The D
 stacks you launch (and [hosted apps](docs/hosting.md)) start their own containers — see the security
 note in `docker-compose.yml` and [Self-hosting](#run-on-a-server-docker).
 
+> **Operating AspireUI needs only Docker** — no .NET SDK or Git. Those are only for building from
+> source. The Docker socket mount is what makes the in-app **Run** and **Hosting** features work; the
+> socket is **root-equivalent on the host**, so run AspireUI on an isolated/disposable box.
+
+### Proxmox VE (one command)
+
+On a Proxmox host, [`deploy/pve-install-aspireui.sh`](deploy/pve-install-aspireui.sh) spins up a clean
+Debian VM, installs Docker, and runs AspireUI (socket mounted) — from nothing to a working URL:
+
+```bash
+# on the Proxmox host, as root:
+bash pve-install-aspireui.sh
+# or override defaults:
+IP=192.168.1.50/24 GW=192.168.1.1 RAM=8192 CORES=4 DISK=40 bash pve-install-aspireui.sh
+```
+
+It prints `http://<vm-ip>:8080` when done; put that behind a reverse proxy (e.g. Nginx Proxy Manager)
+for a real domain, and AspireUI can then manage that same NPM from **Settings → Hosting**. Tear it all
+down with `qm stop <vmid> && qm destroy <vmid>`.
+
+> **Why a VM, not an LXC:** AspireUI launches *other* containers through the Docker socket (Hosting),
+> which needs real Docker — clean in a VM, fiddly with Docker-in-LXC on PVE. A disposable VM also
+> contains the root-equivalent socket.
+
 ## What is AspireUI
 
 AspireUI is a visual canvas for [.NET Aspire](https://learn.microsoft.com/dotnet/aspire/) AppHost
