@@ -209,7 +209,7 @@ The whole product is a REST API. The OpenAPI spec is at **`/openapi/v1.json`** w
 Auth is either the browser session cookie or a **personal access token** — create one under
 **Settings → API &amp; Agents** and send it as `Authorization: Bearer <token>` on any `/api/...` call.
 
-Agents can drive AspireUI through the built-in **MCP server** at **`/mcp`** (same Bearer auth). Tools:
+Agents can drive AspireUI through the built-in **MCP server** at **`/api/mcp`** (same Bearer auth). Tools:
 inspect stacks (`list_stacks`, `get_stack`), browse the catalog (`search_apps`), author
 (`create_stack`, `install_app`, `add_resource`, `delete_stack`), and run/host
 (`run_stack`, `stop_run`, `deploy_to_hosting`, `start_hosting`, `stop_hosting`, `hosting_logs`). Add it
@@ -219,7 +219,7 @@ to an MCP-capable agent:
 {
   "mcpServers": {
     "aspireui": {
-      "url": "http://<host>:8080/mcp",
+      "url": "http://<host>:8080/api/mcp",
       "headers": { "Authorization": "Bearer <your-token>" }
     }
   }

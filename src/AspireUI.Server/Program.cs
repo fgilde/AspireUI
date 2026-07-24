@@ -61,7 +61,8 @@ Seeder.Run();
 app.MapOpenApi();
 app.MapScalarApiReference(o => o.WithTitle("AspireUI API").WithTheme(ScalarTheme.Purple));
 // MCP endpoint for agents — Bearer personal-access-token required (same auth as the REST API).
-app.MapMcp("/mcp").RequireAuthorization();
+// Under /api so it's clearly an API surface and never shadowed by the SPA fallback.
+app.MapMcp("/api/mcp").RequireAuthorization();
 
 app.UseDefaultFiles();
 // Serve the built SPA. Content-hashed assets (index-<hash>.js) may cache forever, but index.html must
@@ -89,6 +90,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapAuthEndpoints();     // /auth/*, /env/health — anonymous
 app.MapStackEndpoints();    // app endpoints — require auth (gated inside)
+// Unknown /api/* (incl. wrong methods on /api/mcp) → 404, never the SPA. Real API + MCP routes are
+// more specific so they still win; this only catches the leftovers the SPA fallback would otherwise
+// answer with index.html (which broke `curl /mcp` and confused MCP clients).
+app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });
 
 app.Run();
