@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconCopy, IconCheck, IconMaximize, IconMinimize } from "@tabler/icons-react";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize } from "@tabler/icons-react";
 import type { Deployment, NodeConfig } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -47,6 +47,8 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   const [cfg, setCfg] = useState<NodeConfig[] | null>(null);
   const [env, setEnv] = useState<Record<string, string[][]>>({});
   const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.hostingConfig(d.stackId).then(c => {
@@ -71,6 +73,45 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
     finally { setSaving(false); }
   };
 
+  // Export all resources' env as a `.env` with `# <resource>` section headers (round-trips with import).
+  const exportEnv = () => {
+    const cfgList = cfg ?? [];
+    const text = cfgList.map(n => `# ${n.name}\n` +
+      (env[n.nodeId] ?? []).filter(p => p[0].trim()).map(([k, v]) => `${k}=${v}`).join("\n")).join("\n\n") + "\n";
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a"); a.href = url; a.download = `${d.name}.env`; a.click(); URL.revokeObjectURL(url);
+  };
+  // Import a `.env`: lines routed to the resource named by the nearest `# <resource>` header (a flat
+  // file with a single resource applies to it). Existing keys are updated, new ones appended.
+  const importEnv = (text: string) => {
+    const cfgList = cfg ?? [];
+    const nameToId = Object.fromEntries(cfgList.map(n => [n.name.toLowerCase(), n.nodeId]));
+    let curId: string | null = cfgList.length === 1 ? cfgList[0].nodeId : null;
+    let applied = 0;
+    setEnv(prev => {
+      const next: Record<string, string[][]> = Object.fromEntries(Object.entries(prev).map(([k, v]) => [k, v.map(p => [...p])]));
+      for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+        const h = line.match(/^#\s*(.+)$/);
+        if (h) { curId = nameToId[h[1].trim().toLowerCase()] ?? curId; continue; }
+        const m = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.*)$/);
+        if (!m || !curId) continue;
+        const key = m[1], val = m[2].replace(/^["']|["']$/g, "");
+        const arr = next[curId] ??= [];
+        const i = arr.findIndex(p => p[0] === key);
+        if (i >= 0) arr[i] = [key, val]; else arr.push([key, val]);
+        applied++;
+      }
+      return next;
+    });
+    toastOk(applied ? `Imported ${applied} variable(s) — review, then Save` : "No variables found in file");
+  };
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (f) f.text().then(importEnv).catch(err => toastErr(err, "Could not read file"));
+  };
+
   return (
     <Modal opened onClose={onClose} size="lg" title={<Title order={5}>Configure {d.name}</Title>}>
       {cfg === null ? <Loader size="sm" /> : (
@@ -78,27 +119,40 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
           <Alert color="yellow" icon={<IconAlertTriangle size={16} />} p="xs">
             Saving stops the app, applies your changes and redeploys it. Brief downtime.
           </Alert>
+          <Group gap="xs" wrap="nowrap">
+            <TextInput size="xs" style={{ flex: 1 }} placeholder="Filter variables…" value={q}
+              onChange={e => setQ(e.currentTarget.value)} leftSection={<IconSearch size={13} />} />
+            <Tooltip label="Import .env" withArrow><ActionIcon variant="default" onClick={() => fileRef.current?.click()} aria-label="Import .env"><IconUpload size={15} /></ActionIcon></Tooltip>
+            <Tooltip label="Export .env" withArrow><ActionIcon variant="default" onClick={exportEnv} aria-label="Export .env"><IconDownload size={15} /></ActionIcon></Tooltip>
+            <input ref={fileRef} type="file" accept=".env,text/plain,.txt" hidden onChange={onFile} />
+          </Group>
           <ScrollArea.Autosize mah={420}>
             <Stack gap="lg">
-              {cfg.map(n => (
+              {cfg.map(n => {
+                const ql = q.toLowerCase();
+                const rows = (env[n.nodeId] ?? []).map((p, i) => ({ p, i }))
+                  .filter(({ p }) => !ql || `${p[0]} ${p[1]}`.toLowerCase().includes(ql));
+                if (ql && rows.length === 0) return null;
+                return (
                 <div key={n.nodeId}>
                   <Group gap={6} mb={4}>
                     <Text fw={600} size="sm">{n.name}</Text>
                     {n.image && <Text size="xs" c="dimmed">{n.image}</Text>}
                   </Group>
                   <Stack gap={6}>
-                    {(env[n.nodeId] ?? []).map((p, i) => (
+                    {rows.map(({ p, i }) => (
                       <Group key={i} gap={6} wrap="nowrap">
                         <TextInput size="xs" placeholder="KEY" value={p[0]} onChange={e => setPair(n.nodeId, i, 0, e.currentTarget.value)} style={{ flex: "0 0 40%" }} styles={{ input: { fontFamily: "monospace" } }} />
                         <TextInput size="xs" placeholder="value" value={p[1]} onChange={e => setPair(n.nodeId, i, 1, e.currentTarget.value)} style={{ flex: 1 }} styles={{ input: { fontFamily: "monospace" } }} />
                         <ActionIcon variant="subtle" color="red" size="sm" onClick={() => delPair(n.nodeId, i)} aria-label="Remove"><IconX size={14} /></ActionIcon>
                       </Group>
                     ))}
-                    <Button variant="subtle" size="compact-xs" leftSection={<IconPlus size={12} />} onClick={() => addPair(n.nodeId)} style={{ alignSelf: "flex-start" }}>Add variable</Button>
+                    {!ql && <Button variant="subtle" size="compact-xs" leftSection={<IconPlus size={12} />} onClick={() => addPair(n.nodeId)} style={{ alignSelf: "flex-start" }}>Add variable</Button>}
                   </Stack>
                   <Divider mt="sm" />
                 </div>
-              ))}
+                );
+              })}
               {cfg.length === 0 && <Text size="sm" c="dimmed">No configurable resources.</Text>}
             </Stack>
           </ScrollArea.Autosize>
