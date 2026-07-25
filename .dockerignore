@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/wwwroot/
+.git/
+.vs/
+tests/
+docs/
+BACKLOG.md

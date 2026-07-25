@@ -1,0 +1,119 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, Anchor, Box, UnstyledButton } from "@mantine/core";
+import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode } from "@tabler/icons-react";
+import { ResourceGlyph, resourceVisual } from "../resourceIcons";
+
+// Normalized view of store/palette resources; only `label` required, rest is optional.
+export interface AppInfo {
+  label: string; group?: string | null; icon?: string | null; description?: string | null;
+  website?: string | null; image?: string | null; port?: number | null;
+  screenshots?: string[] | null; tags?: string[] | null; custom?: boolean; kindLabel?: string | null;
+  logo?: string | null; card?: string | null; github?: string | null;
+  stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null;
+}
+
+const fmtStars = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
+
+// Shared app-details dialog for palette and store; omit `onAction` for read-only mode.
+export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", actionIcon, actionLoading }: {
+  info: AppInfo; onClose: () => void; onAction?: () => void;
+  actionLabel?: string; actionIcon?: ReactNode; actionLoading?: boolean;
+}) {
+  const color = resourceVisual(info.icon || "").color;
+  const shots = info.screenshots?.filter(Boolean) ?? [];
+  const topics = (info.topics ?? []).filter(t => t && t !== info.group).slice(0, 8);
+  const hasStats = !!info.stars || !!info.language || !!info.license;
+  const gallery = [info.card, ...shots].filter(Boolean) as string[];
+  const [sel, setSel] = useState<string | null>(null);
+  useEffect(() => setSel(null), [info.label]);
+  const selected = sel ?? gallery[0] ?? null;
+  return (
+    <Modal opened onClose={onClose} size="lg" centered padding={0} radius="md" withCloseButton={false}>
+      <Box p="lg" style={{
+        background: `linear-gradient(135deg, ${color}22, transparent 70%)`,
+        borderBottom: "1px solid var(--mantine-color-default-border)",
+      }}>
+        <Group gap="md" wrap="nowrap" align="flex-start">
+          <div style={{ width: 52, height: 52, borderRadius: 12, flexShrink: 0, display: "grid", placeItems: "center",
+            background: `${color}1f`, border: `1px solid ${color}44` }}>
+            <ResourceGlyph addMethod={info.icon || ""} iconKey={info.icon} size={30} />
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <Text fw={700} size="xl" lh={1.2}>{info.label}</Text>
+            <Group gap={6} mt={6}>
+              {info.group && <Badge size="sm" variant="light">{info.group}</Badge>}
+              {info.custom && <Badge size="sm" variant="light" color="grape">Custom</Badge>}
+              {info.kindLabel && <Badge size="sm" variant="outline" color="gray">{info.kindLabel}</Badge>}
+            </Group>
+          </div>
+          {info.logo && <Image src={info.logo} w={40} h={40} fit="contain" fallbackSrc=""
+            style={{ flexShrink: 0, borderRadius: 8 }} />}
+        </Group>
+      </Box>
+
+      <MStack gap="md" p="lg">
+        {selected && (
+          <MStack gap="xs">
+            <Anchor href={selected} target="_blank" style={{ display: "block", overflow: "hidden", borderRadius: 8, border: "1px solid var(--mantine-color-default-border)" }}>
+              <Image src={selected} radius="md" fit="contain" fallbackSrc="" mah={340} className="store-shot" />
+            </Anchor>
+            {gallery.length > 1 && (
+              <Group gap={6} wrap="nowrap" style={{ overflowX: "auto", paddingBottom: 2 }}>
+                {gallery.map(src => (
+                  <UnstyledButton key={src} onClick={() => setSel(src)} style={{ flexShrink: 0, borderRadius: 6, overflow: "hidden",
+                    border: `2px solid ${src === selected ? "var(--mantine-primary-color-filled)" : "transparent"}`, opacity: src === selected ? 1 : 0.7, transition: "opacity .15s" }}>
+                    <Image src={src} w={92} h={56} fit="cover" fallbackSrc="" />
+                  </UnstyledButton>
+                ))}
+              </Group>
+            )}
+          </MStack>
+        )}
+
+        {info.description && <Text size="sm">{info.description}</Text>}
+
+        <Group gap="lg">
+          {info.website && (
+            <Anchor href={info.website} target="_blank" size="sm">
+              <Group gap={5} wrap="nowrap"><IconWorld size={15} />{info.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}<IconExternalLink size={11} /></Group>
+            </Anchor>
+          )}
+          {info.github && info.github !== info.website && (
+            <Anchor href={info.github} target="_blank" size="sm" c="dimmed">
+              <Group gap={5} wrap="nowrap"><IconBrandGithub size={15} />GitHub</Group>
+            </Anchor>
+          )}
+        </Group>
+
+        {hasStats && (
+          <Group gap="lg">
+            {!!info.stars && <Group gap={4}><IconStar size={14} color="var(--mantine-color-yellow-6)" /><Text size="xs" c="dimmed">{fmtStars(info.stars)}</Text></Group>}
+            {info.language && <Group gap={4}><IconCode size={14} /><Text size="xs" c="dimmed">{info.language}</Text></Group>}
+            {info.license && <Group gap={4}><IconLicense size={14} /><Text size="xs" c="dimmed">{info.license.replace(/ \(.*\)$/, "")}</Text></Group>}
+          </Group>
+        )}
+
+        {topics.length > 0 && (
+          <Group gap={5}>{topics.map(t => <Badge key={t} size="xs" variant="dot" color="gray">{t}</Badge>)}</Group>
+        )}
+
+        {(info.image || info.port) && (
+          <Text size="xs" c="dimmed">
+            {info.image && <>Image: <Text span ff="monospace" size="xs">{info.image}</Text></>}
+            {info.image && info.port ? " · " : ""}
+            {info.port ? `Port ${info.port}` : ""}
+          </Text>
+        )}
+
+        <Group justify="flex-end" mt="xs">
+          <Button variant="default" onClick={onClose}>Close</Button>
+          {onAction && (
+            <Button leftSection={actionIcon} loading={actionLoading} onClick={() => onAction()}>{actionLabel}</Button>
+          )}
+        </Group>
+      </MStack>
+
+      <style>{`.store-shot img{transition:transform .25s ease}.store-shot:hover img{transform:scale(1.06)}`}</style>
+    </Modal>
+  );
+}

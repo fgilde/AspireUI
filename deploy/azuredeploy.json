@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "description": "Run AspireUI on Azure Container Instances from the prebuilt public image. Note: ACI has no host Docker socket, so the in-app Run/Hosting features (which launch sibling containers) are unavailable here — great for trying the builder / import / publish. Self-host with Docker for the full appliance."
+  },
+  "parameters": {
+    "name": {
+      "type": "string",
+      "defaultValue": "[concat('aspireui-', uniqueString(resourceGroup().id))]",
+      "metadata": { "description": "Container group + DNS label (must be globally unique in the region)." }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "image": {
+      "type": "string",
+      "defaultValue": "ghcr.io/fgilde/aspireui:latest"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2023-05-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "osType": "Linux",
+        "restartPolicy": "OnFailure",
+        "ipAddress": {
+          "type": "Public",
+          "ports": [{ "protocol": "TCP", "port": 8080 }],
+          "dnsNameLabel": "[parameters('name')]"
+        },
+        "containers": [
+          {
+            "name": "aspireui",
+            "properties": {
+              "image": "[parameters('image')]",
+              "ports": [{ "port": 8080 }],
+              "environmentVariables": [
+                { "name": "ASPNETCORE_URLS", "value": "http://0.0.0.0:8080" }
+              ],
+              "resources": { "requests": { "cpu": 1, "memoryInGB": 2 } }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "url": {
+      "type": "string",
+      "value": "[concat('http://', reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('name'))).ipAddress.fqdn, ':8080')]"
+    }
+  }
+}

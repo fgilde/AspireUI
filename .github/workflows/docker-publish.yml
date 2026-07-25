@@ -1,0 +1,57 @@
+name: Publish Docker image
+
+# Builds the AspireUI container and publishes it to GitHub Container Registry
+# (ghcr.io/fgilde/aspireui) so anyone can `docker run` / reference it as an Aspire resource
+# without building locally. Pushes :latest for master, a version tag for git tags, and a
+# short-sha tag for every build.
+#
+# amd64 only. arm64 is currently blocked: the arm64 `protoc` bundled with Grpc.Tools 2.80.0
+# segfaults (exit 139) while compiling the Aspire dashboard proto — under QEMU emulation AND
+# natively on ubuntu-24.04-arm. Our deploy target (Proxmox) is x86_64, so amd64 is what matters.
+# To restore arm64 later: bump Grpc.Tools (test that the dashboard proto still compiles), then add
+# a native-arm64 matrix leg that pushes by digest + a merge job for the multi-arch manifest.
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/fgilde/aspireui
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 420" role="img" aria-labelledby="title desc">
+  <title id="title">AspireUI Wordmark</title>
+  <desc id="desc">Transparent AspireUI wordmark with a stylized A icon and modern gradient lettering.</desc>
+  <defs>
+    <linearGradient id="aRight" x1="155" y1="70" x2="340" y2="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#48FFF4"/>
+      <stop offset="0.52" stop-color="#16D7E9"/>
+      <stop offset="1" stop-color="#FF49C6"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7AFFF8"/>
+      <stop offset="1" stop-color="#00C8DF"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="400" y1="90" x2="1360" y2="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFF"/>
+      <stop offset="0.38" stop-color="#A9B9FF"/>
+      <stop offset="0.72" stop-color="#7B61FF"/>
+      <stop offset="1" stop-color="#FF4FC7"/>
+    </linearGradient>
+    <linearGradient id="underlineGrad" x1="420" y1="0" x2="1360" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#20E3FF"/>
+      <stop offset="0.55" stop-color="#7A5CFF"/>
+      <stop offset="1" stop-color="#FF4FC7"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g transform="translate(30 20)">
+    <path d="M65 300 C145 242 190 166 238 62 L274 0 L307 65 C270 186 205 267 124 320 Z"
+          fill="#FFFFFF"/>
+    <path d="M65 300 C126 268 178 216 214 154 C186 214 152 269 105 331 L36 331 Z"
+          fill="#DDE8FF" opacity=".95"/>
+    <path d="M315 40 L460 331 L392 331 L284 111 C298 86 307 62 315 40 Z"
+          fill="url(#aRight)"/>
+    <path d="M291 108 L350 225 L312 255 L266 160 C279 142 287 124 291 108 Z"
+          fill="#2B208F" opacity=".82"/>
+    <g filter="url(#glow)">
+      <rect x="219" y="230" width="30" height="54" rx="4" fill="url(#bar)"/>
+      <rect x="262" y="204" width="32" height="80" rx="4" fill="url(#bar)"/>
+      <rect x="309" y="169" width="34" height="115" rx="4" fill="url(#bar)"/>
+    </g>
+    <path d="M198 284 C252 257 314 256 379 278 C340 273 296 275 254 287 C234 292 216 299 198 306 Z"
+          fill="#FF5BD4"/>
+  </g>
+
+  <text x="470" y="278"
+        font-family="Inter, Avenir Next, Helvetica Neue, Arial, sans-serif"
+        font-size="198"
+        font-weight="760"
+        letter-spacing="-10"
+        fill="url(#textGrad)">spireUI</text>
+
+  <path d="M485 326 C690 345 960 346 1332 316"
+        fill="none"
+        stroke="url(#underlineGrad)"
+        stroke-width="10"
+        stroke-linecap="round"
+        opacity=".9"/>
+  <circle cx="1345" cy="315" r="8" fill="#FF4FC7"/>
+  <circle cx="1372" cy="312" r="4" fill="#7AFFF8"/>
+</svg>

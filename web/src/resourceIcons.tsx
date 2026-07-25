@@ -1,0 +1,276 @@
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
+import type { Icon } from "@tabler/icons-react";
+import { useState, type ReactNode } from "react";
+import {
+  siRedis, siPostgresql, siDocker, siGithub, siOllama, siN8n, siSupabase, siDotnet, siMinio,
+  siMysql, siMongodb, siApachekafka, siRabbitmq, siNatsdotio, siElasticsearch, siKeycloak,
+  siQdrant, siMilvus, siDapr, siOpenjdk, siSpring, siGo, siPython,
+  siBun, siDeno, siRust, siNgrok, siMeilisearch, siGrafana,
+  siJellyfin, siGitea, siNextcloud, siHomeassistant, siSonarr, siRadarr, siQbittorrent,
+  siImmich, siPihole, siExcalidraw, siSearxng, siPaperlessngx, siVaultwarden, siMetabase,
+  siLangflow, siNodered, siJaeger, siOnlyoffice, siActualbudget, siFreshrss,
+} from "simple-icons";
+
+import aspireuiLogo from "./assets/logo.svg";
+import localagiLogo from "./assets/localagi.png";
+import localaiLogo from "./assets/localai.png";
+import localrecallLogo from "./assets/localrecall.png";
+
+type Brand = { path: string };
+interface Visual { si?: Brand; tabler?: Icon; img?: string; color: string }
+
+const TEXT = "var(--mantine-color-text)";
+
+const MAP: Record<string, Visual> = {
+  AddAspireUI:         { img: aspireuiLogo, color: "#10B981" },
+  AddRedis:            { si: siRedis, color: "#FF4438" },
+  AddPostgres:         { si: siPostgresql, color: "#4169E1" },
+  AddContainer:        { si: siDocker, color: "#2496ED" },
+  AddDockerfile:       { si: siDocker, color: "#2496ED" },
+  AddGithubRepository: { si: siGithub, color: TEXT },
+  AddOllama:           { si: siOllama, color: TEXT },
+  AddLocalAI:          { img: localaiLogo, color: "#10A37F" },
+  AddN8n:              { si: siN8n, color: "#EA4B71" },
+  AddSupabase:         { si: siSupabase, color: "#3FCF8E" },
+  AddProject:          { si: siDotnet, color: "#512BD4" },
+  AddCSharpApp:        { si: siDotnet, color: "#512BD4" },
+  AddDotnetTool:       { si: siDotnet, color: "#512BD4" },
+  AddExecutable:       { tabler: IconTerminal2, color: "#64748B" },
+  AddExternalService:  { tabler: IconCloud, color: "#0891B2" },
+  AddParameter:        { tabler: IconSettings, color: "#64748B" },
+  AddConnectionString: { tabler: IconPlugConnected, color: "#64748B" },
+  AddMinioS3OnNfs:     { si: siMinio, color: "#C72E49" },
+
+  AddSqlServer:        { tabler: IconDatabase, color: "#CC2927" },
+  AddMySql:            { si: siMysql, color: "#4479A1" },
+  AddMongoDB:          { si: siMongodb, color: "#47A248" },
+  AddAzureCosmosDB:    { tabler: IconDatabase, color: "#3999D6" },
+  AddValkey:           { tabler: IconDatabase, color: "#AA6CF5" },
+  AddGarnet:           { tabler: IconDatabase, color: "#B23A48" },
+  AddKafka:            { si: siApachekafka, color: TEXT },
+  AddRabbitMQ:         { si: siRabbitmq, color: "#FF6600" },
+  AddNats:             { si: siNatsdotio, color: "#27AAE1" },
+  AddActiveMQ:         { tabler: IconMessages, color: "#78A22F" },
+  AddActiveMQArtemis:  { tabler: IconMessages, color: "#78A22F" },
+  AddElasticsearch:    { si: siElasticsearch, color: "#00BFB3" },
+  AddKeycloak:         { si: siKeycloak, color: TEXT },
+  AddSeq:              { tabler: IconReportAnalytics, color: "#00A9E0" },
+  AddGrafana:          { si: siGrafana, color: "#F46800" },
+
+  // Container-preset ("app") icons — keyed by the preset's `icon` field.
+  localagi:            { img: localagiLogo, color: "#0EA5E9" },
+  localrecall:         { img: localrecallLogo, color: "#16A34A" },
+  openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
+  comfyui:             { tabler: IconPhoto, color: "#7C3AED" },
+  sdnext:              { tabler: IconPhoto, color: "#EC4899" },
+  acestep:             { tabler: IconMusic, color: "#F59E0B" },
+  flowise:             { tabler: IconSitemap, color: "#14B8A6" },
+  whisper:             { tabler: IconMicrophone, color: "#6366F1" },
+  vscode:              { tabler: IconBrandVscode, color: "#007ACC" },
+  uptimekuma:          { tabler: IconActivityHeartbeat, color: "#22C55E" },
+  paperclip:           { tabler: IconPaperclip, color: "#6366F1" },
+  homepage:            { tabler: IconLayoutDashboard, color: "#0EA5E9" },
+  gokapi:              { tabler: IconShare, color: "#2B6CB0" },
+  stirlingpdf:         { tabler: IconFileTypePdf, color: "#E53E3E" },
+  ittools:             { tabler: IconTool, color: "#4A5568" },
+  ntfy:                { tabler: IconBell, color: "#16A34A" },
+  dockge:              { tabler: IconStack3, color: "#06B6D4" },
+  dozzle:              { tabler: IconBrandDocker, color: "#2496ED" },
+  jellyfin:            { si: siJellyfin, color: "#00A4DC" },
+  navidrome:           { tabler: IconMusic, color: "#2B9CE5" },
+  audiobookshelf:      { tabler: IconHeadphones, color: "#F97316" },
+  photoprism:          { tabler: IconPhoto, color: "#00A6A6" },
+  sonarr:              { si: siSonarr, color: "#2596BE" },
+  radarr:              { si: siRadarr, color: "#FFC230" },
+  prowlarr:            { tabler: IconSearch, color: "#E56E2C" },
+  qbittorrent:         { si: siQbittorrent, color: "#2F67BA" },
+  pihole:              { si: siPihole, color: "#96060C" },
+  adguard:             { tabler: IconShieldCheck, color: "#68BC71" },
+  npm:                 { tabler: IconServer2, color: "#F15A2B" },
+  homeassistant:       { si: siHomeassistant, color: "#18BCF2" },
+  nodered:             { si: siNodered, color: "#8F0000" },
+  vikunja:             { tabler: IconChecklist, color: "#1973FF" },
+  memos:               { tabler: IconNote, color: "#4CA57D" },
+  excalidraw:          { si: siExcalidraw, color: "#6965DB" },
+  drawio:              { tabler: IconSchema, color: "#F08705" },
+  anythingllm:         { tabler: IconMessageChatbot, color: "#3B82F6" },
+  librechat:           { tabler: IconMessages, color: "#10A37F" },
+  searxng:             { si: siSearxng, color: "#3050FF" },
+  gitea:               { si: siGitea, color: "#609926" },
+  nextcloud:           { si: siNextcloud, color: "#0082C9" },
+  immich:              { si: siImmich, color: "#4250AF" },
+  paperless:           { si: siPaperlessngx, color: "#17541F" },
+  vaultwarden:         { si: siVaultwarden, color: TEXT },
+  metabase:            { si: siMetabase, color: "#509EE3" },
+  langflow:            { si: siLangflow, color: TEXT },
+  jaeger:              { si: siJaeger, color: "#66CFE3" },
+  onlyoffice:          { si: siOnlyoffice, color: "#444444" },
+  actual:              { si: siActualbudget, color: "#6B46C1" },
+  freshrss:            { si: siFreshrss, color: "#0062BE" },
+  bazarr:              { tabler: IconMessages, color: "#BE4B3B" },
+  jellyseerr:          { tabler: IconChecklist, color: "#6366F1" },
+  jackett:             { tabler: IconSearch, color: "#E56E2C" },
+  deluge:              { tabler: IconCloud, color: "#4A90D9" },
+  komga:               { tabler: IconNote, color: "#5B21B6" },
+  kavita:              { tabler: IconNote, color: "#4AC694" },
+  calibreweb:          { tabler: IconNote, color: "#D9534F" },
+  filebrowser:         { tabler: IconStack3, color: "#2B6CB0" },
+  heimdall:            { tabler: IconLayoutDashboard, color: "#D62E2E" },
+  homer:               { tabler: IconLayoutDashboard, color: "#4A5568" },
+  duplicati:           { tabler: IconCloud, color: "#1B70C6" },
+  gotify:              { tabler: IconBell, color: "#16A34A" },
+  grocy:               { tabler: IconChecklist, color: "#7FB800" },
+  libretranslate:      { tabler: IconMessages, color: "#1565C0" },
+  lobechat:            { tabler: IconMessageChatbot, color: "#4A66F5" },
+  grafana:             { si: siGrafana, color: "#F46800" },
+  glances:             { tabler: IconReportAnalytics, color: "#22C55E" },
+  portainer:           { tabler: IconBrandDocker, color: "#13BEF9" },
+  nocodb:              { tabler: IconTable, color: "#1F2937" },
+  mealie:              { tabler: IconNote, color: "#E58325" },
+  homebox:             { tabler: IconChecklist, color: "#5B8DEF" },
+  linkding:            { tabler: IconShare, color: "#2B6CB0" },
+  shiori:              { tabler: IconShare, color: "#E53E3E" },
+  changedetection:     { tabler: IconSearch, color: "#0EA5E9" },
+  cyberchef:           { tabler: IconTool, color: "#4A5568" },
+  dashy:               { tabler: IconLayoutDashboard, color: "#40A9FF" },
+  filestash:           { tabler: IconStack3, color: "#3B82F6" },
+  syncthing:           { tabler: IconCloud, color: "#0891B2" },
+  wallos:              { tabler: IconReportAnalytics, color: "#16A34A" },
+  whoogle:             { tabler: IconSearch, color: "#5F6368" },
+  librespeed:          { tabler: IconActivityHeartbeat, color: "#F59E0B" },
+  overseerr:           { tabler: IconChecklist, color: "#6366F1" },
+  tautulli:            { tabler: IconReportAnalytics, color: "#DBA81C" },
+  flaresolverr:        { tabler: IconShieldCheck, color: "#F97316" },
+  firefly:             { tabler: IconReportAnalytics, color: "#CD5029" },
+  wikijs:              { tabler: IconNote, color: "#1976D2" },
+  linkwarden:          { tabler: IconShare, color: "#2563EB" },
+  bookstack:           { tabler: IconNote, color: "#0288D1" },
+  hedgedoc:            { tabler: IconNote, color: "#5D8FBD" },
+  tandoor:             { tabler: IconNote, color: "#4A9D5B" },
+  ghost:               { tabler: IconNote, color: "#738A94" },
+  planka:              { tabler: IconChecklist, color: "#3B82F6" },
+  plex:                { tabler: IconServer2, color: "#E5A00D" },
+  emby:                { tabler: IconServer2, color: "#52B54B" },
+  lidarr:              { tabler: IconMusic, color: "#009252" },
+  mattermost:          { tabler: IconMessages, color: "#0058CC" },
+  outline:             { tabler: IconNote, color: "#4B5563" },
+  owncloud:            { tabler: IconCloud, color: "#0082C9" },
+  ghostfolio:          { tabler: IconReportAnalytics, color: "#4B5563" },
+  librephotos:         { tabler: IconPhoto, color: "#2196F3" },
+  docuseal:            { tabler: IconChecklist, color: "#1A5FB4" },
+  penpot:              { tabler: IconSchema, color: "#7C3AED" },
+  homarr:              { tabler: IconLayoutDashboard, color: "#FA5252" },
+  homebridge:          { tabler: IconSettings, color: "#5B21B6" },
+  octoprint:           { tabler: IconTool, color: "#22C55E" },
+  esphome:             { tabler: IconSettings, color: "#1F2937" },
+  frigate:             { tabler: IconActivityHeartbeat, color: "#1E88E5" },
+  metube:              { tabler: IconCloud, color: "#E53E3E" },
+  influxdb:            { tabler: IconDatabase, color: "#22ADF6" },
+  minio:               { si: siMinio, color: "#C72E49" },
+  mosquitto:           { tabler: IconMessages, color: "#3C5280" },
+  etherpad:            { tabler: IconNote, color: "#4B5563" },
+  jupyter:             { tabler: IconTerminal2, color: "#F37626" },
+  archivebox:          { tabler: IconStack3, color: "#6B7280" },
+  autobrr:             { tabler: IconActivityHeartbeat, color: "#4F46E5" },
+  baikal:              { tabler: IconChecklist, color: "#2563EB" },
+  flatnotes:           { tabler: IconNote, color: "#1F6FEB" },
+  linkstack:           { tabler: IconShare, color: "#4F46E5" },
+  kiwix:               { tabler: IconNote, color: "#1A73E8" },
+  myspeed:             { tabler: IconActivityHeartbeat, color: "#2196F3" },
+  cosmos:              { tabler: IconRouter, color: "#4F46E5" },
+  electrs:             { tabler: IconDatabase, color: "#F7931A" },
+  fulcrum:             { tabler: IconDatabase, color: "#F7931A" },
+  electrumx:           { tabler: IconDatabase, color: "#1652A0" },
+  "btc-rpc-explorer":  { tabler: IconSearch, color: "#F7931A" },
+  mempool:             { tabler: IconReportAnalytics, color: "#F7931A" },
+  lnbits:              { tabler: IconActivityHeartbeat, color: "#6B21A8" },
+  "core-lightning":    { tabler: IconActivityHeartbeat, color: "#6D28D9" },
+  rtl:                 { tabler: IconRouter, color: "#7B1FA2" },
+  "bitcoin-knots":     { tabler: IconDatabase, color: "#F7931A" },
+  "bitcoin-cash-node": { tabler: IconDatabase, color: "#0AC18E" },
+  leafwiki:            { tabler: IconNote, color: "#4CAF50" },
+  transmute:           { tabler: IconTool, color: "#6366F1" },
+  foldergram:          { tabler: IconPhoto, color: "#E1306C" },
+  runtipi:             { tabler: IconLayoutDashboard, color: "#5C6BC0" },
+  umbrel:              { tabler: IconLayoutDashboard, color: "#5351FB" },
+  "hermes-agent":      { tabler: IconMessageChatbot, color: "#7C3AED" },
+  openclaw:            { tabler: IconMessageChatbot, color: "#EA580C" },
+  joinstr:             { tabler: IconActivityHeartbeat, color: "#F7931A" },
+  "pearcircle-seeder": { tabler: IconShare, color: "#16A34A" },
+  seedtool:            { tabler: IconLock, color: "#F7931A" },
+  skybro:              { tabler: IconActivityHeartbeat, color: "#0EA5E9" },
+  valorgrid:           { tabler: IconReportAnalytics, color: "#22C55E" },
+  AddQdrant:           { si: siQdrant, color: "#DC244C" },
+  AddMilvus:           { si: siMilvus, color: "#00A1EA" },
+  AddDaprComponent:    { si: siDapr, color: "#4756C7" },
+  AddDaprPubSub:       { si: siDapr, color: "#4756C7" },
+  AddDaprStateStore:   { si: siDapr, color: "#4756C7" },
+  AddJavaApp:          { si: siOpenjdk, color: TEXT },
+  AddJavaContainerApp: { si: siOpenjdk, color: TEXT },
+  AddSpringApp:        { si: siSpring, color: "#6DB33F" },
+  AddGolangApp:        { si: siGo, color: "#00ADD8" },
+  AddPythonApp:        { si: siPython, color: "#3776AB" },
+  AddPythonModule:     { si: siPython, color: "#3776AB" },
+  AddPythonExecutable: { si: siPython, color: "#3776AB" },
+  AddUvicornApp:       { si: siPython, color: "#3776AB" },
+  AddMauiProject:      { si: siDotnet, color: "#512BD4" },
+  AddOracle:           { tabler: IconDatabase, color: "#F80000" },
+  AddYarp:             { tabler: IconRouter, color: "#68217A" },
+  AddAzureStorage:     { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureServiceBus:  { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureKeyVault:    { tabler: IconLock, color: "#3999D6" },
+  AddAzureApplicationInsights: { tabler: IconBrandAzure, color: "#3999D6" },
+  AddAzureOpenAI:      { tabler: IconBrandOpenai, color: "#10A37F" },
+  AddMinioContainer:   { si: siMinio, color: "#C72E49" },
+  AddMeilisearch:      { si: siMeilisearch, color: "#FF5CAA" },
+  AddRavenDB:          { tabler: IconDatabase, color: "#CE2E28" },
+  AddMailPit:          { tabler: IconMail, color: "#2AA198" },
+  AddAdminer:          { tabler: IconTable, color: "#5A7FB5" },
+  AddNgrok:            { si: siNgrok, color: TEXT },
+  AddBunApp:           { si: siBun, color: TEXT },
+  AddDenoApp:          { si: siDeno, color: TEXT },
+  AddDenoTask:         { si: siDeno, color: TEXT },
+  AddRustApp:          { si: siRust, color: TEXT },
+};
+const FALLBACK: Visual = { tabler: IconCube, color: "#7C8593" };
+
+export function resourceVisual(addMethod: string) {
+  const v = MAP[addMethod] ?? FALLBACK;
+  return { color: v.color === TEXT ? "#8b98a5" : v.color };  // minimap etc. need a concrete color
+}
+
+function renderVisual(v: Visual, size: number) {
+  if (v.img) return <img src={v.img} alt="" width={size} height={size} style={{ display: "block", objectFit: "contain" }} />;
+  if (v.si) {
+    return (
+      <svg role="img" viewBox="0 0 24 24" width={size} height={size} fill={v.color} style={{ display: "block" }}>
+        <path d={v.si.path} />
+      </svg>
+    );
+  }
+  const T = v.tabler ?? IconCube;
+  return <T size={size} style={{ color: v.color }} />;
+}
+
+// The real brand logo for a self-hosted app, pulled from the dashboard-icons project (covers ~all of
+// them). Falls back to the local curated glyph on error / offline. Used only for app (preset) icons.
+function CdnIcon({ slug, size, fallback }: { slug: string; size: number; fallback: ReactNode }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{fallback}</>;
+  return (
+    <img src={`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${slug}.png`}
+      alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)}
+      style={{ display: "block", objectFit: "contain" }} />
+  );
+}
+
+export function ResourceGlyph({ addMethod, iconKey, size = 16 }: { addMethod: string; iconKey?: string | null; size?: number }) {
+  const key = iconKey || addMethod;
+  const v = (iconKey && MAP[iconKey]) || MAP[addMethod] || FALLBACK;
+  // Curated brand marks (si/img) win — instant + offline. For app icons that only have a generic tabler
+  // glyph (or none), fetch the real logo from the dashboard-icons CDN. Catalog resource methods (AddX)
+  // keep their curated glyphs and never hit the CDN.
+  if (v.si || v.img) return renderVisual(v, size);
+  if (key && !key.startsWith("Add")) return <CdnIcon slug={key} size={size} fallback={renderVisual(v, size)} />;
+  return renderVisual(v, size);
+}
