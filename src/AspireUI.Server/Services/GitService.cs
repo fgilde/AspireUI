@@ -1,12 +1,95 @@
 using System.Diagnostics;
+using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
 
-// Deploy-from-Git: shallow-clone public repo + extract docker-compose; ponytail: public/compose only.
 public static class GitService
 {
     private static readonly string[] ComposeNames =
         { "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml" };
+
+    private static readonly HashSet<string> SkipDirs =
+        new(StringComparer.OrdinalIgnoreCase) { ".git", "bin", "obj", "node_modules", ".vs", ".idea", "packages", "dist", "TestResults" };
+    private static readonly HashSet<string> TextExt =
+        new(StringComparer.OrdinalIgnoreCase) { ".cs", ".csproj", ".fsproj", ".vbproj", ".sln", ".props", ".targets", ".json", ".config", ".cshtml", ".razor", ".xml", ".yml", ".yaml", ".txt", ".md", ".sql", ".env", ".sh", ".ps1", ".editorconfig", ".gitignore", ".http", ".resx" };
+
+    public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error);
+
+    public static RepoInfo Inspect(string url, string? branch, string? subdir)
+    {
+        var dir = TempDir();
+        try
+        {
+            if (Clone(url, branch, dir) is { } err) return new(false, false, null, err);
+            var root = RootOf(dir, subdir);
+            if (!Directory.Exists(root)) return new(false, false, null, $"subdir '{subdir}' not found");
+            var hasCompose = ComposeNames.Any(f => File.Exists(Path.Combine(root, f)));
+            var hasAppHost = FindAppHost(root) is not null;
+            return new(hasCompose, hasAppHost, RepoName(url), null);
+        }
+        catch (Exception e) { return new(false, false, null, e.Message); }
+        finally { Cleanup(dir); }
+    }
+
+    public static (List<ExtraFile>? files, string? appHostProject, string? name, string? error) FetchAppHost(string url, string? branch, string? subdir)
+    {
+        var dir = TempDir();
+        try
+        {
+            if (Clone(url, branch, dir) is { } err) return (null, null, null, err);
+            var root = Path.GetFullPath(RootOf(dir, subdir));
+            if (!Directory.Exists(root)) return (null, null, null, $"subdir '{subdir}' not found");
+            var appHost = FindAppHost(root);
+            if (appHost is null) return (null, null, null, "no .NET Aspire AppHost project found (no .csproj referencing Aspire.Hosting.AppHost)");
+
+            var files = new List<ExtraFile>();
+            long total = 0;
+            foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            {
+                var rel = Path.GetRelativePath(root, file).Replace('\\', '/');
+                if (rel.Split('/').Any(seg => SkipDirs.Contains(seg))) continue;
+                var name = Path.GetFileName(file);
+                if (!TextExt.Contains(Path.GetExtension(file)) && !name.Equals("Dockerfile", StringComparison.OrdinalIgnoreCase)) continue;
+                var info = new FileInfo(file);
+                if (info.Length > 512 * 1024) continue;
+                total += info.Length;
+                if (total > 25 * 1024 * 1024 || files.Count > 3000) return (null, null, null, "repository is too large to import as-is");
+                files.Add(new ExtraFile(rel, File.ReadAllText(file)));
+            }
+            var appHostRel = Path.GetRelativePath(root, appHost).Replace('\\', '/');
+            return (files, appHostRel, RepoName(url), null);
+        }
+        catch (Exception e) { return (null, null, null, e.Message); }
+        finally { Cleanup(dir); }
+    }
+
+    private static string? FindAppHost(string root)
+    {
+        foreach (var csproj in Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories))
+        {
+            if (csproj.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(SkipDirs.Contains)) continue;
+            var text = File.ReadAllText(csproj);
+            if (text.Contains("Aspire.Hosting.AppHost", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("Aspire.AppHost.Sdk", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("<IsAspireHost>true", StringComparison.OrdinalIgnoreCase))
+                return csproj;
+        }
+        return null;
+    }
+
+    private static string TempDir() => Path.Combine(Path.GetTempPath(), "aspireui-git-" + Guid.NewGuid().ToString("n")[..8]);
+    private static string RootOf(string dir, string? subdir) => string.IsNullOrWhiteSpace(subdir) ? dir : Path.Combine(dir, subdir!.Replace('\\', '/').Trim('/'));
+    private static void Cleanup(string dir) { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
+
+    private static string? Clone(string url, string? branch, string dir)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return "no repository URL";
+        var args = new List<string> { "clone", "--depth", "1" };
+        if (!string.IsNullOrWhiteSpace(branch)) { args.Add("--branch"); args.Add(branch!); }
+        args.Add(url); args.Add(dir);
+        var (code, log) = Run("git", args, 120_000);
+        return code == 0 ? null : $"git clone failed: {Trim(log)}";
+    }
 
     // Shallow-clone repo; return compose YAML + suggested name; cleanup on exit.
     public static (string? yaml, string? name, string? error) FetchCompose(string url, string? branch, string? subdir = null)

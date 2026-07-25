@@ -178,6 +178,11 @@ public class CodeGenService
     public void Materialize(StackModel s, string dir, PublishEnv? env = null)
     {
         Directory.CreateDirectory(dir);
+        if (s.RunAsIs)
+        {
+            MaterializeRaw(s, dir);
+            return;
+        }
         File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, env));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
         foreach (var old in Directory.GetFiles(dir, "*.csproj"))
@@ -199,6 +204,18 @@ public class CodeGenService
             if (string.Equals(Path.GetDirectoryName(fullPath), root, StringComparison.OrdinalIgnoreCase)
                 && reservedRootNames.Contains(Path.GetFileName(fullPath)))
                 continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            File.WriteAllText(fullPath, f.Content);
+        }
+    }
+
+    private static void MaterializeRaw(StackModel s, string dir)
+    {
+        var root = Path.GetFullPath(dir);
+        foreach (var f in s.ExtraFiles)
+        {
+            var fullPath = Path.GetFullPath(Path.Combine(root, f.Name));
+            if (!fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
             File.WriteAllText(fullPath, f.Content);
         }

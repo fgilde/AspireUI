@@ -62,6 +62,17 @@ public static class StackEndpoints
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
 
+        static string AppHostProgram(List<ExtraFile> files, string appHostProject)
+        {
+            var dir = Path.GetDirectoryName(appHostProject)?.Replace('\\', '/') ?? "";
+            var prefix = dir.Length == 0 ? "" : dir + "/";
+            var prog = files.FirstOrDefault(f => f.Name.Equals(prefix + "Program.cs", StringComparison.OrdinalIgnoreCase));
+            if (prog is not null) return prog.Content;
+            var alt = files.FirstOrDefault(f => f.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && f.Name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && f.Content.Contains("CreateBuilder"));
+            return alt?.Content ?? "";
+        }
+
         app2.MapGet("/api-tokens", (HttpContext ctx) => Results.Ok(apiTokens.List(Uid(ctx))));
         app2.MapPost("/api-tokens", (CreateTokenRequest b, HttpContext ctx) =>
         {
@@ -226,8 +237,22 @@ public static class StackEndpoints
         {
             if (LockGuard(id) is { } r) return r;
             run.Stop(id);
+            if (deployments.GetByStack(id) is { } dep) hosting.Undeploy(dep.Id);
             store.Delete(id);
-            if (Directory.Exists(Dir(id))) Directory.Delete(Dir(id), true);
+            void Rm(string d) { try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { } }
+            Rm(Dir(id));
+            Rm(Path.Combine(wsRoot, "_publish", id));
+            Rm(Path.Combine(wsRoot, "_backups", id));
+            if (settings.GetValue($"git:{id}") is { } cfgRaw)
+            {
+                try
+                {
+                    var opts = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+                    if (System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(cfgRaw, opts) is { } g) settings.SetValue($"githook:{g.Token}", null);
+                }
+                catch { }
+                settings.SetValue($"git:{id}", null);
+            }
             return Results.NoContent();
         });
 
@@ -369,17 +394,42 @@ public static class StackEndpoints
             }
             return Results.Ok(new { stackId = id, redeployed });
         }
+        app2.MapPost("/git/inspect", (GitImportRequest b) =>
+        {
+            var r = GitService.Inspect(b.Url, b.Branch, b.Subdir);
+            return r.Error is not null ? Results.UnprocessableEntity(new { message = r.Error })
+                : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name });
+        });
         app2.MapPost("/git/import", (GitImportRequest b, HttpContext ctx) =>
         {
-            var (yaml, name, error) = GitService.FetchCompose(b.Url, b.Branch, b.Subdir);
-            if (yaml is null) return Results.UnprocessableEntity(new { message = error });
-            var (stack, err2) = compose.Import(Guid.NewGuid().ToString("n"), string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!, yaml);
-            if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
+            var mode = string.IsNullOrWhiteSpace(b.Mode) ? "compose" : b.Mode!.ToLowerInvariant();
+            StackModel? stack; string? err2;
+            var sid = Guid.NewGuid().ToString("n");
+
+            if (mode is "apphost" or "runasis")
+            {
+                var (files, appHostProject, name, error) = GitService.FetchAppHost(b.Url, b.Branch, b.Subdir);
+                if (files is null) return Results.UnprocessableEntity(new { message = error });
+                var stackName = string.IsNullOrWhiteSpace(b.Name) ? (name ?? "aspire app") : b.Name!;
+                var programCs = AppHostProgram(files, appHostProject!);
+                stack = import.Import(sid, stackName, programCs, "{}");
+                stack = stack with { ExtraFiles = files, RunAsIs = mode == "runasis", AppHostProject = mode == "runasis" ? appHostProject : null };
+            }
+            else
+            {
+                var (yaml, name, error) = GitService.FetchCompose(b.Url, b.Branch, b.Subdir);
+                if (yaml is null) return Results.UnprocessableEntity(new { message = error });
+                (stack, err2) = compose.Import(sid, string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!, yaml);
+                if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
+            }
+
             var withMeta = New(stack, ctx);
             var token = Guid.NewGuid().ToString("n");
             settings.SetValue($"git:{withMeta.Id}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token), gitJson));
             settings.SetValue($"githook:{token}", withMeta.Id);
-            return Persist(withMeta);
+            store.Save(withMeta);
+            gen.Materialize(withMeta, Dir(withMeta.Id));
+            return Results.Ok(withMeta);
         });
         app2.MapGet("/stacks/{id}/git", (string id) =>
         {
@@ -450,7 +500,7 @@ public static class StackEndpoints
             if (LockGuard(id) is { } r) return r;
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
-            return Results.Ok(WithHost(run.Start(id, Path.GetFullPath(Dir(id))), ctx));
+            return Results.Ok(WithHost(run.Start(id, Path.GetFullPath(Dir(id)), s.RunAsIs ? s.AppHostProject : null), ctx));
         });
         app2.MapPost("/stacks/{id}/stop", (string id) => { devProxy.Teardown(id); return Results.Ok(run.Stop(id)); });
         app2.MapGet("/stacks/{id}/status", (string id, HttpContext ctx) => Results.Ok(WithHost(run.Status(id), ctx)));
@@ -941,7 +991,7 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record ExecRequest(string Container, string Cmd);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
-    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name);
+    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token);
     public record EnabledRequest(bool Enabled);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);

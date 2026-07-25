@@ -29,6 +29,8 @@ export interface Stack {
   createdAt?: string | null; createdBy?: string | null;
   deployment?: Deployment | null;
   hostingUrlPath?: string | null;
+  runAsIs?: boolean;
+  appHostProject?: string | null;
 }
 
 // Stack deployed persistently; long-lived docker-compose project.

@@ -224,4 +224,26 @@ public class CodeGenTests
         Assert.DoesNotContain("evil overwrite", content);
         Directory.Delete(dir, true);
     }
+
+    [Fact]
+    public void Materialize_RunAsIs_WritesFilesVerbatim_NoCodegen()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aui-raw-" + Guid.NewGuid().ToString("n"));
+        var m = Fixture() with
+        {
+            RunAsIs = true,
+            ExtraFiles =
+            [
+                new ExtraFile("AppHost/Program.cs", "var builder = DistributedApplication.CreateBuilder(args); // original"),
+                new ExtraFile("AppHost/AppHost.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />"),
+            ],
+        };
+        new CodeGenService().Materialize(m, dir);
+        Assert.Equal("var builder = DistributedApplication.CreateBuilder(args); // original",
+            File.ReadAllText(Path.Combine(dir, "AppHost", "Program.cs")));
+        Assert.True(File.Exists(Path.Combine(dir, "AppHost", "AppHost.csproj")));
+        Assert.False(File.Exists(Path.Combine(dir, "Program.cs")));
+        Assert.Empty(Directory.GetFiles(dir, "*.csproj"));
+        Directory.Delete(dir, true);
+    }
 }

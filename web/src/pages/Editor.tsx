@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge, LoadingOverlay } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket, IconPuzzle, IconFolderDown } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket, IconPuzzle, IconFolderDown, IconDownload, IconLock, IconLockOpen, IconAlertTriangle } from "@tabler/icons-react";
+import { Modal, Stack as MStack, Alert } from "@mantine/core";
+import { InstallAppModal } from "../hosting/InstallAppModal";
 import JSZip from "jszip";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
@@ -144,6 +146,16 @@ export function Editor() {
   }, [stack?.id]);
 
   const locked = stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying";
+  const runAsIs = !!stack?.runAsIs;
+  const [installOpen, setInstallOpen] = useState(false);
+  const [editWarn, setEditWarn] = useState(false);
+  const unlockForEdit = async () => {
+    if (!stack) return;
+    const saved = await api.saveStack({ ...stack, runAsIs: false, appHostProject: null });
+    setStackState(saved);
+    setEditWarn(false);
+    toastOk("Editing unlocked — the code will regenerate from the graph");
+  };
   const [hostingBusy, setHostingBusy] = useState(false);
   const deployToHosting = useCallback(async () => {
     if (!stack) return;
@@ -187,6 +199,9 @@ export function Editor() {
                 : <Tooltip label="Deploy this stack to hosting" withArrow>
                     <Button size="xs" variant="light" color="teal" leftSection={<IconRocket size={14} />} onClick={() => showPanel("publish")}>Deploy</Button>
                   </Tooltip>}
+              <Tooltip label="Install an app from the store" withArrow>
+                <Button size="xs" variant="default" leftSection={<IconDownload size={14} />} onClick={() => setInstallOpen(true)}>Install from Store</Button>
+              </Tooltip>
             </Group>
             <Group>
               <ValidateBadge />
@@ -275,13 +290,45 @@ export function Editor() {
               </Button>
             </Group>
           )}
+          {runAsIs && (
+            <Group gap="sm" px="md" py={6} style={{ background: "var(--mantine-color-violet-light)", flexShrink: 0 }}>
+              <IconLock size={15} />
+              <Text size="sm">Imported project — runs <b>as-is</b>. The visual editor is locked so your original code isn't regenerated.</Text>
+              <Button size="compact-xs" color="violet" variant="light" leftSection={<IconLockOpen size={13} />} onClick={() => setEditWarn(true)}>Edit anyway</Button>
+            </Group>
+          )}
           <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
             <LoadingOverlay visible={hostingBusy} zIndex={400} overlayProps={{ blur: 2 }}
               loaderProps={{ children: <Text fw={600}>Deploying to hosting…</Text> }} />
+            {runAsIs && (
+              <div onClick={() => setEditWarn(true)}
+                style={{ position: "absolute", inset: 0, zIndex: 350, cursor: "pointer",
+                  background: "light-dark(rgba(255,255,255,.35), rgba(0,0,0,.45))", backdropFilter: "blur(1px)",
+                  display: "grid", placeItems: "center" }}>
+                <MStack gap={6} align="center" style={{ background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)", borderRadius: 12, padding: "18px 24px", boxShadow: "var(--mantine-shadow-md)" }}>
+                  <IconLock size={26} />
+                  <Text fw={600}>Editing locked</Text>
+                  <Text size="xs" c="dimmed" ta="center" maw={320}>This is an imported project running as-is. Click to edit — it will be regenerated from the visual graph.</Text>
+                </MStack>
+              </div>
+            )}
             <DockLayout ref={dockRef} />
           </div>
         </AppShell.Main>
       </AppShell>
+      {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => setInstallOpen(false)} />}
+      <Modal opened={editWarn} onClose={() => setEditWarn(false)} title={<Group gap={8}><IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" /><Text fw={600}>Edit this imported project?</Text></Group>} centered>
+        <MStack gap="md">
+          <Alert color="orange" icon={<IconAlertTriangle size={16} />}>
+            AspireUI regenerates the AppHost code from the visual graph. Custom C# — loops, conditionals, helper methods, your own extensions — that couldn't be parsed into nodes will be <b>lost</b> once you edit and save.
+          </Alert>
+          <Text size="sm" c="dimmed">You can keep running it as-is instead. Only unlock if the graph fully represents your project.</Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setEditWarn(false)}>Keep as-is</Button>
+            <Button color="orange" leftSection={<IconLockOpen size={16} />} onClick={unlockForEdit}>Unlock &amp; edit</Button>
+          </Group>
+        </MStack>
+      </Modal>
     </EditorContext.Provider>
   );
 }

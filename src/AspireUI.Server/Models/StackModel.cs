@@ -13,7 +13,9 @@ public record StackModel(
     List<StackGroup>? Groups = null,
     string? CreatedAt = null,
     string? CreatedBy = null,
-    string? HostingUrlPath = null);
+    string? HostingUrlPath = null,
+    bool RunAsIs = false,
+    string? AppHostProject = null);
 
 public record StackNote(string Id, string Text, double X, double Y);
 public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);

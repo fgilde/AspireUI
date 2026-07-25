@@ -11,12 +11,22 @@ public class ComposeImporter
     private sealed class ComposeService
     {
         public string? Image { get; set; }
+        public object? Build { get; set; }
         public List<string>? Ports { get; set; }
         public object? Environment { get; set; }
         public object? DependsOn { get; set; }
         public object? Command { get; set; }
         public List<string>? Volumes { get; set; }
     }
+
+    private static (string? context, string? dockerfile) ReadBuild(object? build) => build switch
+    {
+        string s when !string.IsNullOrWhiteSpace(s) => (s, null),
+        IDictionary<object, object> d => (
+            d.TryGetValue("context", out var c) ? c?.ToString() : ".",
+            d.TryGetValue("dockerfile", out var f) ? f?.ToString() : null),
+        _ => (null, null),
+    };
 
     public (StackModel? stack, string? error) Import(string id, string name, string yaml)
     {
@@ -63,10 +73,24 @@ public class ComposeImporter
             var cmdArgs = ReadCommand(def.Command);
             if (cmdArgs.Count > 0) withs.Add(new WithCall("WithArgs", cmdArgs.Select(Quote).ToList()));
 
+            string addMethod;
+            List<string> addArgs;
+            if (!string.IsNullOrWhiteSpace(def.Image))
+            {
+                addMethod = "AddContainer";
+                addArgs = [Quote(def.Image!)];
+            }
+            else
+            {
+                var (context, dockerfile) = ReadBuild(def.Build);
+                if (context is null) continue;
+                addMethod = "AddDockerfile";
+                addArgs = dockerfile is null ? [Quote(context)] : [Quote(context), Quote(dockerfile)];
+            }
+
             var id2 = "n" + Guid.NewGuid().ToString("n")[..8];
             nameToId[svc] = id2;
-            var addArgs = string.IsNullOrWhiteSpace(def.Image) ? new List<string>() : [Quote(def.Image!)];
-            nodes.Add(new NodeModel(id2, varName, "AddContainer", svc, withs, 60 + (i % 3) * 320, 60 + (i / 3) * 200, addArgs));
+            nodes.Add(new NodeModel(id2, varName, addMethod, svc, withs, 60 + (i % 3) * 320, 60 + (i / 3) * 200, addArgs));
             i++;
         }
 

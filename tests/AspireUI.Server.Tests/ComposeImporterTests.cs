@@ -44,4 +44,32 @@ services:
         Assert.NotNull(new ComposeImporter().Import("s", "x", "not: valid: compose: here").error
             ?? new ComposeImporter().Import("s", "x", "version: '3'").error);
     }
+
+    [Fact]
+    public void Import_BuildService_MapsToAddDockerfile()
+    {
+        const string yaml = """
+            services:
+              api:
+                build:
+                  context: ./api
+                  dockerfile: Dockerfile.prod
+                ports:
+                  - "5000:5000"
+              worker:
+                build: ./worker
+            """;
+        var (stack, error) = new ComposeImporter().Import("s", "x", yaml);
+        Assert.Null(error);
+        Assert.NotNull(stack);
+
+        var api = stack!.Nodes.First(n => n.ResourceName == "api");
+        Assert.Equal("AddDockerfile", api.AddMethod);
+        Assert.Equal(new[] { "\"./api\"", "\"Dockerfile.prod\"" }, api.AddArgs);
+        Assert.Contains(api.WithCalls, w => w.Method == "WithHttpEndpoint");
+
+        var worker = stack.Nodes.First(n => n.ResourceName == "worker");
+        Assert.Equal("AddDockerfile", worker.AddMethod);
+        Assert.Equal(new[] { "\"./worker\"" }, worker.AddArgs);
+    }
 }

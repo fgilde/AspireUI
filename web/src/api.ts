@@ -172,7 +172,9 @@ export const checkUpdates = (id: string): Promise<{ images: { image: string; upd
   fetch(`${base}/stacks/${id}/hosting/check-updates`, { method: "POST" }).then(ok);
 export const execInContainer = (depId: string, container: string, cmd: string): Promise<{ ok: boolean; output: string }> =>
   fetch(`${base}/hosting/${depId}/exec`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ container, cmd }) }).then(ok);
-export const gitImport = (b: { url: string; branch?: string; subdir?: string; name?: string }): Promise<import("./model").Stack> =>
+export const gitInspect = (b: { url: string; branch?: string; subdir?: string }): Promise<{ hasCompose: boolean; hasAppHost: boolean; name?: string }> =>
+  fetch(`${base}/git/inspect`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const gitImport = (b: { url: string; branch?: string; subdir?: string; name?: string; mode?: string }): Promise<import("./model").Stack> =>
   fetch(`${base}/git/import`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
 export const gitInfo = (stackId: string): Promise<{ url: string; branch?: string | null; subdir?: string | null; webhookPath: string } | null> =>
   fetch(`${base}/stacks/${stackId}/git`).then(r => r.ok ? r.json() : null);

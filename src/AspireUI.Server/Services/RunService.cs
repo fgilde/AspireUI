@@ -63,13 +63,15 @@ public class RunService : IDisposable
         return m.Success ? m.Value : null;
     }
 
-    public RunStatus Start(string id, string workdir)
+    public RunStatus Start(string id, string workdir, string? project = null)
     {
         if (_runs.TryGetValue(id, out var existing) &&
             existing.State is RunState.Running or RunState.Starting)
             return Snapshot(existing);
 
         var psi = _commandFactory(workdir);
+        if (!string.IsNullOrWhiteSpace(project))
+            psi.Arguments = $"run --project \"{Path.Combine(workdir, project)}\"";
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
         psi.UseShellExecute = false;
