@@ -6,3 +6,5 @@ src/AspireUI.Server/wwwroot/
 
 src/AspireUI.Server/workspace/
 src/AspireUI.Server/*.db
+/docs/super*
+.super*
