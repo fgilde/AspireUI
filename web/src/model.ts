@@ -64,7 +64,7 @@ export interface NodeConfig { nodeId: string; name: string; addMethod: string; i
 export interface CatalogParam { name: string; type: "string" | "int" | "number" | "bool" | "enum" | "configure" | "resourceRef"; required: boolean; default?: string | null; options?: string[] | null; enumTypeName?: string | null; label: string; fields?: CatalogParam[] | null }
 export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
-export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null }
+export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null; supportsConnectionString?: boolean; supportsEndpoints?: boolean }
 // Curated one-click app preset; preconfigured AddContainer node.
 export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null }
 // Preset parameter: password, key, or setting; can be a new AddParameter, reused, or literal value.

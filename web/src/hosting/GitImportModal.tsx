@@ -35,7 +35,10 @@ const parseServices = (contents: string[]): Service[] => {
   return [...images].map(([name, image]) => ({ name, image, proxy: /(caddy|nginx|traefik|haproxy|envoy)/i.test(image) }));
 };
 
+const repoName = (u: string) => (u.trim().replace(/\/+$/, "").split("/").pop() ?? "").replace(/\.git$/i, "");
+
 export function GitImportModal({ onClose, onImported }: { onClose: () => void; onImported: (stackId: string) => void }) {
+  const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
   const [subdir, setSubdir] = useState("");
@@ -67,7 +70,7 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
   const doImport = async (m: string, files?: string[], env?: Record<string, string>, svcs?: string[]) => {
     setBusy(true);
     try {
-      const s = await api.gitImport({ ...req(), mode: m, files, env, services: svcs });
+      const s = await api.gitImport({ ...req(), name: name.trim() || undefined, mode: m, files, env, services: svcs });
       toastOk(`Imported "${s.name}" from Git`);
       onImported(s.id);
     } catch (e) { toastErr(e, "Git import failed"); } finally { setBusy(false); }
@@ -120,8 +123,10 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
       {step === "form" && (
         <Stack gap="md">
           <Text size="sm" c="dimmed">Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file to resources.</Text>
+          <TextInput label="Stack name" placeholder="auto from repo name if blank" value={name}
+            onChange={e => setName(e.currentTarget.value)} />
           <TextInput label="Repository URL" placeholder="https://github.com/user/repo" value={url}
-            onChange={e => setUrl(e.currentTarget.value)} onBlur={loadBranches} data-autofocus />
+            onChange={e => setUrl(e.currentTarget.value)} onBlur={() => { loadBranches(); if (!name.trim()) setName(repoName(url)); }} data-autofocus />
           <Group grow>
             <Autocomplete label="Branch" placeholder={loadingBranches ? "loading branches…" : "default branch"}
               data={branches} value={branch} onChange={setBranch} onFocus={() => { if (!branches.length) loadBranches(); }} />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
-import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload, IconVariable } from "@tabler/icons-react";
+import { TextInput, NumberInput, Switch, Select, Autocomplete, Radio, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
+import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier, rid } from "../model";
 import { toastOk, toastErr } from "../ui";
@@ -107,7 +107,40 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
   const envRows = readWithRows(draft, ENV_METHOD);
   const otherNodes = stack.nodes.filter(n => n.id !== node.id);
-  const paramNodes = stack.nodes.filter(n => n.addMethod === "AddParameter");
+  const [refIntent, setRefIntent] = useState<number | null>(null);
+  const [browseFor, setBrowseFor] = useState<number | null>(null);
+  const [browseQ, setBrowseQ] = useState("");
+  const [howRef, setHowRef] = useState<{ ri: number; node: Node; endpoints: boolean; conn: boolean; endpoint: string; kind: "self" | "endpoint" | "conn" } | null>(null);
+
+  const setEnvValAt = (ri: number, code: string) => {
+    const nr = readWithRows(draft, ENV_METHOD).map(r => [...r]);
+    if (!nr[ri]) return;
+    nr[ri][1] = code;
+    commit(writeWithRows(draft, ENV_METHOD, nr));
+  };
+  const endpointNames = (n: Node) => {
+    const names = n.withCalls.filter(w => w.method === "WithHttpEndpoint")
+      .map(w => w.args.find(a => a.trim().startsWith("name:")))
+      .filter((a): a is string => !!a)
+      .map(a => fromLiteral(a.slice(a.indexOf(":") + 1).trim()));
+    return names.length ? [...new Set(names)] : ["http"];
+  };
+  const startRef = (ri: number, n: Node) => {
+    const rt = catalog.find(r => r.addMethod === n.addMethod);
+    const endpoints = !!rt?.supportsEndpoints || n.withCalls.some(w => w.method === "WithHttpEndpoint");
+    const conn = !!rt?.supportsConnectionString;
+    if (!endpoints && !conn) { setEnvValAt(ri, n.varName); return; }
+    setHowRef({ ri, node: n, endpoints, conn, endpoint: endpointNames(n)[0], kind: "self" });
+  };
+  const applyHowRef = () => {
+    if (!howRef) return;
+    const n = howRef.node;
+    const code = howRef.kind === "endpoint" ? `${n.varName}.GetEndpoint(${toLiteral(howRef.endpoint || "http", "string")})`
+      : howRef.kind === "conn" ? `${n.varName}.Resource.ConnectionStringExpression`
+      : n.varName;
+    setEnvValAt(howRef.ri, code);
+    setHowRef(null);
+  };
 
   const envFileRef = useRef<HTMLInputElement>(null);
   const importSecret = useRef(false);
@@ -157,8 +190,10 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const addChoices = useMemo(() => {
     const real = catalog.filter(r => !r.composite);
     const matched = addTarget?.enumTypeName ? real.filter(r => r.resourceTypeName === addTarget.enumTypeName) : real;
-    return matched.length > 0 ? matched : real;
-  }, [catalog, addTarget]);
+    const list = matched.length > 0 ? matched : real;
+    // When picking a resource to reference an env value, Parameter is the most common pick — put it first.
+    return refIntent !== null ? [...list].sort((a, b) => Number(b.addMethod === "AddParameter") - Number(a.addMethod === "AddParameter")) : list;
+  }, [catalog, addTarget, refIntent]);
 
   const canExternal = rt?.withs.some(w => w.method === "WithExternalHttpEndpoints") ?? false;
   const canHttp = rt?.withs.some(w => w.method === "WithHttpEndpoint") ?? false;
@@ -223,38 +258,20 @@ export function PropertyGrid({ stack, node, rt, setStack }:
                   value={isExpression ? rawValue : fromLiteral(rawValue)}
                   styles={isExpression ? { input: { fontFamily: "monospace", color: "var(--mantine-color-grape-text)" } } : undefined}
                   onChange={e => setVal(isExpression ? e.currentTarget.value : toLiteral(e.currentTarget.value, "string"))} />
-                {isExpression && otherNodes.length > 0 && (
-                  <Menu position="bottom-end" withArrow width={260}>
-                    <Menu.Target>
-                      <Tooltip label="Reference another resource" withArrow><ActionIcon variant="subtle"><IconLink size={14} /></ActionIcon></Tooltip>
-                    </Menu.Target>
-                    <Menu.Dropdown mah={300} style={{ overflowY: "auto" }}>
-                      <Menu.Label>Insert a reference</Menu.Label>
-                      {otherNodes.map(n => [
-                        <Menu.Item key={n.id + "h"} onClick={() => setVal(`${n.varName}.GetEndpoint("http")`)}>{n.resourceName} — HTTP endpoint</Menu.Item>,
-                        <Menu.Item key={n.id + "c"} onClick={() => setVal(`${n.varName}.Resource.ConnectionStringExpression`)}>{n.resourceName} — connection string</Menu.Item>,
-                      ])}
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
-                <Menu position="bottom-end" withArrow width={280}>
+                <Menu position="bottom-end" withArrow width={300}>
                   <Menu.Target>
-                    <Tooltip label="Use a parameter" withArrow><ActionIcon variant="subtle"><IconVariable size={15} /></ActionIcon></Tooltip>
+                    <Tooltip label="Reference a resource or parameter" withArrow><ActionIcon variant="subtle"><IconLink size={15} /></ActionIcon></Tooltip>
                   </Menu.Target>
-                  <Menu.Dropdown mah={320} style={{ overflowY: "auto" }}>
-                    {paramNodes.length > 0 && <Menu.Label>Use existing parameter</Menu.Label>}
-                    {paramNodes.map(p => (
-                      <Menu.Item key={p.id} leftSection={<IconVariable size={14} />} onClick={() => setVal(p.varName)}>
-                        {p.resourceName} <Text span size="xs" c="dimmed">({p.varName})</Text>
+                  <Menu.Dropdown mah={340} style={{ overflowY: "auto" }}>
+                    {otherNodes.length > 0 && <Menu.Label>Use existing</Menu.Label>}
+                    {otherNodes.slice(0, 8).map(n => (
+                      <Menu.Item key={n.id} leftSection={<ResourceGlyph addMethod={n.addMethod} size={14} />} onClick={() => startRef(ri, n)}>
+                        {n.resourceName} <Text span size="xs" c="dimmed">({n.varName})</Text>
                       </Menu.Item>
                     ))}
-                    {paramNodes.length > 0 && <Menu.Divider />}
-                    <Menu.Item leftSection={<IconPlus size={14} />} onClick={() => {
-                      const paramRt = catalog.find(r => r.addMethod === "AddParameter");
-                      if (!paramRt) { toastErr("Parameter resource not in catalog"); return; }
-                      setAddTarget({ onPick: v => { setVal(v); setAddTarget(null); setAddRt(null); } });
-                      setAddRt(paramRt);
-                    }}>Replace with new parameter…</Menu.Item>
+                    {otherNodes.length > 8 && <Menu.Item c="dimmed" onClick={() => setBrowseFor(ri)}>Browse all {otherNodes.length}…</Menu.Item>}
+                    {otherNodes.length > 0 && <Menu.Divider />}
+                    <Menu.Item leftSection={<IconPlus size={14} />} onClick={() => { setRefIntent(ri); setAddTarget({ onPick: () => {} }); }}>New resource…</Menu.Item>
                   </Menu.Dropdown>
                 </Menu>
                 <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
@@ -362,7 +379,44 @@ export function PropertyGrid({ stack, node, rt, setStack }:
         <PathPickerModal opened initial={pathPick.value} onClose={() => setPathPick(null)} onPick={pathPick.onPick} />
       )}
 
-      <Modal opened={!!addTarget && !addRt} onClose={() => setAddTarget(null)} title="Add a resource" size="md">
+      <Modal opened={howRef !== null} onClose={() => setHowRef(null)} title={howRef ? `Reference "${howRef.node.resourceName}"` : ""} size="md">
+        {howRef && (
+          <MStack gap="md">
+            <Text size="sm" c="dimmed">How should this variable reference the resource?</Text>
+            <Radio.Group value={howRef.kind} onChange={k => setHowRef({ ...howRef, kind: k as "self" | "endpoint" | "conn" })}>
+              <MStack gap="xs">
+                <Radio value="self" label={<span>The resource itself <Text span size="xs" c="dimmed">({howRef.node.varName})</Text></span>} />
+                {howRef.endpoints && <Radio value="endpoint" label="An endpoint URL" />}
+                {howRef.conn && <Radio value="conn" label="Connection string" />}
+              </MStack>
+            </Radio.Group>
+            {howRef.kind === "endpoint" && (
+              <Autocomplete label="Endpoint name" data={endpointNames(howRef.node)} value={howRef.endpoint}
+                onChange={v => setHowRef({ ...howRef, endpoint: v })} />
+            )}
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setHowRef(null)}>Cancel</Button>
+              <Button onClick={applyHowRef}>Use</Button>
+            </Group>
+          </MStack>
+        )}
+      </Modal>
+
+      <Modal opened={browseFor !== null} onClose={() => { setBrowseFor(null); setBrowseQ(""); }} title="Pick a resource" size="md">
+        <MStack gap="xs">
+          <TextInput placeholder="Search…" value={browseQ} onChange={e => setBrowseQ(e.currentTarget.value)} data-autofocus />
+          <MStack gap={2} mah={360} style={{ overflowY: "auto" }}>
+            {otherNodes.filter(n => `${n.resourceName} ${n.varName}`.toLowerCase().includes(browseQ.toLowerCase())).map(n => (
+              <Button key={n.id} variant="subtle" justify="start" leftSection={<ResourceGlyph addMethod={n.addMethod} size={16} />}
+                onClick={() => { const ri = browseFor!; setBrowseFor(null); setBrowseQ(""); startRef(ri, n); }}>
+                {n.resourceName} <Text span size="xs" c="dimmed" ml={6}>({n.varName})</Text>
+              </Button>
+            ))}
+          </MStack>
+        </MStack>
+      </Modal>
+
+      <Modal opened={!!addTarget && !addRt} onClose={() => { setAddTarget(null); setRefIntent(null); }} title="Add a resource" size="md">
         <MStack gap={4}>
           {addTarget?.enumTypeName && <Text size="xs" c="dimmed">Resources matching {addTarget.enumTypeName} first.</Text>}
           {addChoices.map(rtc => (
@@ -388,8 +442,14 @@ export function PropertyGrid({ stack, node, rt, setStack }:
             if (newNode.composite && addRt.package && !extraPackages.some(p => p.id === addRt.package))
               extraPackages.push({ id: addRt.package, version: addRt.packageVersion || "" });
             const target = addTarget;
+            const intent = refIntent;
             api.saveStack({ ...stack, nodes: [...stack.nodes, newNode, ...(extra?.nodes ?? [])], edges: [...stack.edges, ...edges], extraPackages })
-              .then(s => { setStack(s); target?.onPick(newNode.varName); });
+              .then(s => {
+                setStack(s);
+                setAddTarget(null); setAddRt(null);
+                if (intent !== null) { setRefIntent(null); startRef(intent, newNode); }
+                else target?.onPick(newNode.varName);
+              });
           }}
           onClose={() => setAddRt(null)} />
       )}

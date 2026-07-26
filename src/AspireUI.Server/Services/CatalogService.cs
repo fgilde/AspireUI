@@ -9,7 +9,7 @@ public record CatalogOverload(List<CatalogParam> Params);
 public record CatalogMethod(string Method, string Label, List<CatalogOverload> Overloads);
 public record ResourceType(string AddMethod, string Label, string? Icon, string? Group, string? Description, List<CatalogOverload> AddOverloads, List<CatalogMethod> Withs,
     bool Composite = false, List<string>? Usings = null, string? Package = null, string? PackageVersion = null,
-    string? ResourceTypeName = null);
+    string? ResourceTypeName = null, bool SupportsConnectionString = false, bool SupportsEndpoints = false);
 
 // Curated app preset: one-click preconfigured AddContainer (image + endpoint + env) from catalog/presets/container-presets.json.
 public record ContainerPreset(string Id, string Label, string Group, string Image, int Port,
@@ -143,6 +143,7 @@ public class CatalogService
             var pkgId = decl?.Assembly.GetName().Name;
             var pkgVer = pkgId is null ? null : (pkgVersions.FirstOrDefault(p => p.Id == pkgId).Version ?? CodeGenService.AspireVersion);
 
+            var ifaces = tResource?.GetInterfaces() ?? Array.Empty<Type>();
             result.Add(new ResourceType(
                 grp.Key,
                 over?.TryGetProperty("label", out var lbl) == true ? lbl.GetString()! : grp.Key[3..],
@@ -150,7 +151,9 @@ public class CatalogService
                 over?.TryGetProperty("group", out var g) == true ? g.GetString() : "Other",
                 over?.TryGetProperty("description", out var d) == true ? d.GetString() : null,
                 addOverloads, withs, Usings: usings, Package: pkgId, PackageVersion: pkgVer,
-                ResourceTypeName: tResource?.Name));
+                ResourceTypeName: tResource?.Name,
+                SupportsConnectionString: ifaces.Any(x => x.Name == "IResourceWithConnectionString"),
+                SupportsEndpoints: ifaces.Any(x => x.Name == "IResourceWithEndpoints")));
         }
 
         var composites = methods
