@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AppShell, Group, Title, Button, Menu, ActionIcon, Tooltip, Text, Badge, LoadingOverlay } from "@mantine/core";
-import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket, IconPuzzle, IconFolderDown, IconDownload, IconLock, IconLockOpen, IconAlertTriangle } from "@tabler/icons-react";
+import { IconArrowLeft, IconLayoutGrid, IconLayoutSidebar, IconCheck, IconDeviceFloppy, IconTrash, IconRestore, IconArrowBackUp, IconArrowForwardUp, IconExternalLink, IconWindowMaximize, IconBookmark, IconServer, IconRocket, IconPuzzle, IconFolderDown, IconLock, IconLockOpen, IconAlertTriangle } from "@tabler/icons-react";
 import { Modal, Stack as MStack, Alert } from "@mantine/core";
-import { InstallAppModal } from "../hosting/InstallAppModal";
 import JSZip from "jszip";
 import type { Stack, RunStatus } from "../model";
 import type { CodeDiagnostic } from "../api";
@@ -147,7 +146,6 @@ export function Editor() {
 
   const locked = stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying";
   const runAsIs = !!stack?.runAsIs;
-  const [installOpen, setInstallOpen] = useState(false);
   const [editWarn, setEditWarn] = useState(false);
   const unlockForEdit = async () => {
     if (!stack) return;
@@ -199,9 +197,6 @@ export function Editor() {
                 : <Tooltip label="Deploy this stack to hosting" withArrow>
                     <Button size="xs" variant="light" color="teal" leftSection={<IconRocket size={14} />} onClick={() => showPanel("publish")}>Deploy</Button>
                   </Tooltip>}
-              <Tooltip label="Install an app from the store" withArrow>
-                <Button size="xs" variant="default" leftSection={<IconDownload size={14} />} onClick={() => setInstallOpen(true)}>Install from Store</Button>
-              </Tooltip>
             </Group>
             <Group>
               <ValidateBadge />
@@ -316,7 +311,6 @@ export function Editor() {
           </div>
         </AppShell.Main>
       </AppShell>
-      {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => setInstallOpen(false)} />}
       <Modal opened={editWarn} onClose={() => setEditWarn(false)} title={<Group gap={8}><IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" /><Text fw={600}>Edit this imported project?</Text></Group>} centered>
         <MStack gap="md">
           <Alert color="orange" icon={<IconAlertTriangle size={16} />}>

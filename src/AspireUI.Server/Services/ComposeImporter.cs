@@ -54,9 +54,9 @@ public class ComposeImporter
             foreach (var p in def.Ports ?? [])
             {
                 var (host, target) = SplitPort(p);
-                if (host is null) continue;
-                var args = new List<string> { $"port: {host}" };
-                if (target is not null && target != host) args.Add($"targetPort: {target}");
+                if (target is null) continue;
+                var args = new List<string> { $"targetPort: {target}" };
+                if (host is not null && host != target) args.Insert(0, $"port: {host}");
                 withs.Add(new WithCall("WithHttpEndpoint", args));
             }
             foreach (var (k, v) in ReadEnv(def.Environment))

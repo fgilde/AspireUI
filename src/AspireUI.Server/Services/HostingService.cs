@@ -273,7 +273,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     }
 
     public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost",
-        bool hostDashboard = true, string? dashboardToken = null)
+        bool hostDashboard = true, string? dashboardToken = null, string? cloneSrc = null)
     {
         var project = Project(stack.Id);
         var now = DateTime.UtcNow.ToString("O");
@@ -283,7 +283,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null, existing?.Ports));
         try
         {
-            var pub = publish.Publish(stack, publishRoot, "compose");
+            var pub = publish.Publish(stack, publishRoot, "compose", cloneSrc);
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
             var raw = EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken));

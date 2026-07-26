@@ -130,6 +130,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     if (name) api.saveStack({ ...s, name }).then(() => { load(); toastOk("Stack renamed"); }).catch(toastErr);
   });
   const duplicate = (s: Stack) => api.duplicateStack(s.id).then(() => { load(); toastOk("Stack duplicated"); }).catch(toastErr);
+  const updateFromGit = async (s: Stack) => {
+    toastOk(`Updating "${s.name}" from Git…`);
+    try { await api.gitPull(s.id); load(); loadDeps(); toastOk(`Updated "${s.name}" from Git`); }
+    catch (e) { toastErr(e, "Git update failed"); }
+  };
 
   const finishImport = async (bundleName: string, files: BundleFile[]) => {
     if (files.length === 0) { toastErr("No .cs/.csproj files found to import.", "Nothing to import"); return; }
@@ -193,7 +198,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
 
   const headerActions = (
     <>
-              {simple && <Button leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install app</Button>}
+              <Button variant={simple ? "filled" : "default"} leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install from Store</Button>
               {!simple && <>
               <Button.Group>
                 <Tooltip label="Create a new empty stack" withArrow>
@@ -319,6 +324,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           boxShadow: active ? `0 0 6px ${dot}` : undefined }} />
                       </Tooltip>
                       <Text fw={600} lineClamp={1}>{s.name}</Text>
+                      {s.fromGit && <Tooltip label="Imported from Git" withArrow><IconBrandGithub size={14} style={{ flexShrink: 0, opacity: 0.55 }} /></Tooltip>}
                     </Group>
                     <Group gap={6} wrap="nowrap">
                       {dep && <Badge size="xs" variant="light" color={hostingColor(dep.state)}>{dep.state === "running" ? "Hosting" : dep.state}</Badge>}
@@ -337,11 +343,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                                 onTerminal={isAdmin ? () => setTerminalFor(dep) : undefined} onFiles={isAdmin ? () => setFilesFor(dep) : undefined}
                                 onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
                               <Menu.Divider />
+                              {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
                             </>
                           ) : (
                             <>
+                              {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
                               <Menu.Item leftSection={<IconServer size={14} />}

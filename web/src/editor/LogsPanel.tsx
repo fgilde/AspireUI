@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Group, TextInput, Switch, Button } from "@mantine/core";
-import { IconAlertTriangle, IconSearch, IconDownload } from "@tabler/icons-react";
+import { IconAlertTriangle, IconSearch, IconDownload, IconCopy, IconCheck } from "@tabler/icons-react";
 import type { RunStatus } from "../model";
 import { isErrorLine } from "../model";
 
@@ -9,6 +9,7 @@ export function LogsPanel({ runStatus }: { runStatus: RunStatus }) {
   const [filter, setFilter] = useState("");
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   const lines = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -20,6 +21,14 @@ export function LogsPanel({ runStatus }: { runStatus: RunStatus }) {
   useEffect(() => {
     if (autoScroll) bottomRef.current?.scrollIntoView({ block: "end" });
   }, [lines.length, autoScroll]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(runStatus.log.join("\n"));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard unavailable */ }
+  };
 
   const download = () => {
     const blob = new Blob([runStatus.log.join("\n")], { type: "text/plain" });
@@ -40,6 +49,9 @@ export function LogsPanel({ runStatus }: { runStatus: RunStatus }) {
           onChange={e => setFilter(e.currentTarget.value)} leftSection={<IconSearch size={13} />} />
         <Switch size="xs" label="Errors" checked={errorsOnly} onChange={e => setErrorsOnly(e.currentTarget.checked)} />
         <Switch size="xs" label="Follow" checked={autoScroll} onChange={e => setAutoScroll(e.currentTarget.checked)} />
+        <Button size="compact-xs" variant="subtle" color={copied ? "green" : undefined}
+          leftSection={copied ? <IconCheck size={12} /> : <IconCopy size={12} />} onClick={copy}
+          disabled={runStatus.log.length === 0}>{copied ? "Copied" : "Copy"}</Button>
         <Button size="compact-xs" variant="subtle" leftSection={<IconDownload size={12} />} onClick={download}
           disabled={runStatus.log.length === 0}>Save</Button>
       </Group>

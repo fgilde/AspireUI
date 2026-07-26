@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker } from "@tabler/icons-react";
+import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
@@ -10,6 +10,23 @@ import { useTitle } from "../useTitle";
 import { useAuth } from "../auth/AuthContext";
 
 function HostingTab() {
+  return (
+    <Tabs defaultValue="general" variant="outline">
+      <Tabs.List mb="lg">
+        <Tabs.Tab value="general" leftSection={<IconServer2 size={14} />}>General</Tabs.Tab>
+        <Tabs.Tab value="proxy" leftSection={<IconWorld size={14} />}>Proxy</Tabs.Tab>
+        <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
+        <Tabs.Tab value="backups" leftSection={<IconDatabase size={14} />}>Backups</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="general"><GeneralHostingSection /></Tabs.Panel>
+      <Tabs.Panel value="proxy"><MStack maw={560}><NpmSettingsSection /></MStack></Tabs.Panel>
+      <Tabs.Panel value="notifications"><MStack maw={560}><NotificationsSection /></MStack></Tabs.Panel>
+      <Tabs.Panel value="backups"><MStack maw={560}><AutoBackupSection /></MStack></Tabs.Panel>
+    </Tabs>
+  );
+}
+
+function GeneralHostingSection() {
   const [host, setHost] = useState(false);
   const [token, setToken] = useState("");
   const [publicHost, setPublicHost] = useState("");
@@ -43,9 +60,6 @@ function HostingTab() {
         </Group>
         <Text size="xs" c="dimmed">Changes apply on the next deploy/re-deploy of a stack.</Text>
       </MStack>
-      <NpmSettingsSection />
-      <NotificationsSection />
-      <AutoBackupSection />
     </MStack>
   );
 }
@@ -239,12 +253,33 @@ function DockerTab() {
   const [containers, setContainers] = useState<DockerContainer[] | null>(null);
   const [images, setImages] = useState<DockerImage[] | null>(null);
   const [volumes, setVolumes] = useState<DockerVolume[] | null>(null);
+  const [cleanOpen, setCleanOpen] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [cleaning, setCleaning] = useState(false);
   const load = () => {
     api.dockerContainers().then(setContainers).catch(() => setContainers([]));
     api.dockerImages().then(setImages).catch(() => setImages([]));
     api.dockerVolumes().then(setVolumes).catch(() => setVolumes([]));
   };
   useEffect(() => { load(); }, []);
+
+  const candidates = [
+    ...(containers ?? []).filter(c => c.state !== "running" && !c.protected)
+      .map(c => ({ key: "c:" + c.id, kind: "containers" as const, id: c.id, label: c.name, sub: `stopped container · ${c.image}` })),
+    ...(images ?? []).filter(i => i.repository === "<none>")
+      .map(i => ({ key: "i:" + i.id, kind: "images" as const, id: i.id, label: `<none>:${i.tag}`, sub: `dangling image · ${i.size}` })),
+  ];
+  const openClean = () => { setSel(new Set(candidates.map(c => c.key))); setCleanOpen(true); };
+  const toggle = (k: string) => setSel(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
+  const runClean = async () => {
+    setCleaning(true);
+    const picked = candidates.filter(c => sel.has(c.key));
+    let ok = 0;
+    for (const c of picked) { try { await api.dockerRemove(c.kind, c.id); ok++; } catch { /* skip failed */ } }
+    setCleaning(false); setCleanOpen(false);
+    toastOk(`Removed ${ok} of ${picked.length} item(s)`);
+    load();
+  };
   const rm = (kind: "images" | "containers" | "volumes", id: string, label: string, warn?: string) =>
     confirmDelete(label, warn ?? "").then(ok => { if (ok) api.dockerRemove(kind, id).then(load).catch(e => toastErr(e, "Remove failed")); });
   const prune = (kind: "images" | "containers") =>
@@ -255,7 +290,36 @@ function DockerTab() {
 
   return (
     <MStack gap="xl" maw={640}>
-      <Text size="xs" c="dimmed">Everything Docker built through AspireUI (dev runs + hosting pull images and create containers/volumes). Clean up here. AspireUI's own container and <Code>aspireui-data</Code> volume are protected.</Text>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Text size="xs" c="dimmed">Everything Docker built through AspireUI (dev runs + hosting pull images and create containers/volumes). Clean up here. AspireUI's own container and <Code>aspireui-data</Code> volume are protected.</Text>
+        <Button size="compact-sm" variant="light" color="orange" leftSection={<IconSparkles size={14} />}
+          onClick={openClean} disabled={candidates.length === 0} style={{ flexShrink: 0 }}>
+          Clean unused{candidates.length ? ` (${candidates.length})` : ""}
+        </Button>
+      </Group>
+
+      <Modal opened={cleanOpen} onClose={() => setCleanOpen(false)} title="Clean unused Docker resources" size="lg">
+        <MStack gap="md">
+          <Alert color="orange" p="xs" icon={<IconAlertTriangle size={15} />}>
+            Stopped containers and dangling images. Anything here that belongs to a <b>hosted app which isn't running</b> will be gone after removal. Volumes (data) are never auto-cleaned — remove those by hand. Pick what to delete:
+          </Alert>
+          {candidates.length === 0 ? <Text size="sm" c="dimmed">Nothing to clean.</Text> : (
+            <ScrollArea.Autosize mah={320}>
+              <MStack gap={6}>
+                {candidates.map(c => (
+                  <Checkbox key={c.key} checked={sel.has(c.key)} onChange={() => toggle(c.key)}
+                    label={<span><Text span fw={600} size="sm">{c.label}</Text> <Text span size="xs" c="dimmed">— {c.sub}</Text></span>} />
+                ))}
+              </MStack>
+            </ScrollArea.Autosize>
+          )}
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setCleanOpen(false)}>Cancel</Button>
+            <Button color="red" leftSection={<IconTrash size={16} />} loading={cleaning}
+              disabled={sel.size === 0} onClick={runClean}>Delete selected ({sel.size})</Button>
+          </Group>
+        </MStack>
+      </Modal>
 
       <MStack gap={6}>
         <Group justify="space-between"><Text fw={600}>Containers</Text><Button size="compact-xs" variant="light" color="orange" onClick={() => prune("containers")}>Prune stopped</Button></Group>

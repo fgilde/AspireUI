@@ -155,8 +155,10 @@ public class CodeGenService
             <IsAspireHost>true</IsAspireHost>
             <AssemblyName>{SafeAssemblyName(s.Name)}</AssemblyName>
             <RootNamespace>{SafeAssemblyName(s.Name)}</RootNamespace>
+            <EnableDefaultItems>false</EnableDefaultItems>
           </PropertyGroup>
           <ItemGroup>
+            <Compile Include="Program.cs" />
             <PackageReference Include="Aspire.Hosting.AppHost" Version="{AspireVersion}" />
         {refs}
           </ItemGroup>
@@ -185,8 +187,9 @@ public class CodeGenService
         }
         File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, env));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-        foreach (var old in Directory.GetFiles(dir, "*.csproj"))
-            try { File.Delete(old); } catch { }
+        if (!s.FromGit)
+            foreach (var old in Directory.GetFiles(dir, "*.csproj"))
+                try { File.Delete(old); } catch { }
         File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, env));
         var positions = s.Nodes.ToDictionary(n => n.Id, n => new[] { n.X, n.Y });
         File.WriteAllText(Path.Combine(dir, "aspireui.json"), JsonSerializer.Serialize(positions));

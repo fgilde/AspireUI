@@ -62,17 +62,6 @@ public static class StackEndpoints
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
 
-        static string AppHostProgram(List<ExtraFile> files, string appHostProject)
-        {
-            var dir = Path.GetDirectoryName(appHostProject)?.Replace('\\', '/') ?? "";
-            var prefix = dir.Length == 0 ? "" : dir + "/";
-            var prog = files.FirstOrDefault(f => f.Name.Equals(prefix + "Program.cs", StringComparison.OrdinalIgnoreCase));
-            if (prog is not null) return prog.Content;
-            var alt = files.FirstOrDefault(f => f.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                && f.Name.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) && f.Content.Contains("CreateBuilder"));
-            return alt?.Content ?? "";
-        }
-
         app2.MapGet("/api-tokens", (HttpContext ctx) => Results.Ok(apiTokens.List(Uid(ctx))));
         app2.MapPost("/api-tokens", (CreateTokenRequest b, HttpContext ctx) =>
         {
@@ -378,18 +367,32 @@ public static class StackEndpoints
             if (cfgRaw is null) return Results.BadRequest(new { message = "this stack was not deployed from Git" });
             var g = System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(cfgRaw, gitJson)!;
             if (store.Get(id) is not { } existing) return Results.NotFound();
-            var (yaml, _, error) = GitService.FetchCompose(g.Url, g.Branch, g.Subdir);
-            if (yaml is null) return Results.UnprocessableEntity(new { message = error });
-            var (stack, err2) = compose.Import(id, existing.Name, yaml);
-            if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
-            var updated = stack with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy };
+            var dir = Dir(id);
+            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+            var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir);
+            if (cerr is not null) return Results.UnprocessableEntity(new { message = cerr });
+
+            StackModel updated;
+            if (existing.RunAsIs)
+            {
+                var appHostProject = GitService.FindAppHostRel(dir) ?? existing.AppHostProject;
+                updated = existing with { AppHostProject = appHostProject, FromGit = true, ExtraFiles = [] };
+            }
+            else
+            {
+                var composePath = GitService.FindCompose(dir);
+                if (composePath is null) return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" });
+                var (stack, err2) = compose.Import(id, existing.Name, File.ReadAllText(composePath));
+                if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
+                updated = stack with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true, ExtraFiles = [] };
+            }
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var redeployed = false;
             if (deployments.GetByStack(id) is not null)
             {
                 var dc = DashCfg();
-                hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token);
+                hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, Path.GetFullPath(Dir(id)));
                 redeployed = true;
             }
             return Results.Ok(new { stackId = id, redeployed });
@@ -400,35 +403,49 @@ public static class StackEndpoints
             return r.Error is not null ? Results.UnprocessableEntity(new { message = r.Error })
                 : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name });
         });
+        app2.MapPost("/git/branches", (GitImportRequest b) =>
+        {
+            var (branches, error) = GitService.ListBranches(b.Url);
+            return branches is null ? Results.UnprocessableEntity(new { message = error })
+                : Results.Ok(new { branches });
+        });
         app2.MapPost("/git/import", (GitImportRequest b, HttpContext ctx) =>
         {
             var mode = string.IsNullOrWhiteSpace(b.Mode) ? "compose" : b.Mode!.ToLowerInvariant();
-            StackModel? stack; string? err2;
             var sid = Guid.NewGuid().ToString("n");
+            var dir = Dir(sid);
+            void RmDir() { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
 
+            var (name, cerr) = GitService.CloneInto(b.Url, b.Branch, b.Subdir, dir);
+            if (cerr is not null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr }); }
+            var stackName = string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!;
+
+            StackModel? stack;
             if (mode is "apphost" or "runasis")
             {
-                var (files, appHostProject, name, error) = GitService.FetchAppHost(b.Url, b.Branch, b.Subdir);
-                if (files is null) return Results.UnprocessableEntity(new { message = error });
-                var stackName = string.IsNullOrWhiteSpace(b.Name) ? (name ?? "aspire app") : b.Name!;
-                var programCs = AppHostProgram(files, appHostProject!);
-                stack = import.Import(sid, stackName, programCs, "{}");
-                stack = stack with { ExtraFiles = files, RunAsIs = mode == "runasis", AppHostProject = mode == "runasis" ? appHostProject : null };
+                var appHostProject = GitService.FindAppHostRel(dir);
+                if (appHostProject is null) { RmDir(); return Results.UnprocessableEntity(new { message = "no .NET Aspire AppHost project found (no .csproj referencing Aspire.Hosting.AppHost)" }); }
+                var progDir = Path.GetDirectoryName(appHostProject.Replace('/', Path.DirectorySeparatorChar)) ?? "";
+                var progPath = Path.Combine(dir, progDir, "Program.cs");
+                var programCs = File.Exists(progPath) ? File.ReadAllText(progPath) : "";
+                stack = import.Import(sid, stackName, programCs, "{}")
+                    with { RunAsIs = mode == "runasis", AppHostProject = mode == "runasis" ? appHostProject : null, FromGit = true, ExtraFiles = [] };
             }
             else
             {
-                var (yaml, name, error) = GitService.FetchCompose(b.Url, b.Branch, b.Subdir);
-                if (yaml is null) return Results.UnprocessableEntity(new { message = error });
-                (stack, err2) = compose.Import(sid, string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!, yaml);
-                if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
+                var composePath = GitService.FindCompose(dir);
+                if (composePath is null) { RmDir(); return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" }); }
+                var (cs, cerr2) = compose.Import(sid, stackName, File.ReadAllText(composePath));
+                if (cs is null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr2 }); }
+                stack = cs with { FromGit = true, ExtraFiles = [] };
             }
 
-            var withMeta = New(stack, ctx);
+            var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            settings.SetValue($"git:{withMeta.Id}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token), gitJson));
-            settings.SetValue($"githook:{token}", withMeta.Id);
+            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token), gitJson));
+            settings.SetValue($"githook:{token}", sid);
             store.Save(withMeta);
-            gen.Materialize(withMeta, Dir(withMeta.Id));
+            gen.Materialize(withMeta, Dir(sid));
             return Results.Ok(withMeta);
         });
         app2.MapGet("/stacks/{id}/git", (string id) =>
@@ -591,7 +608,7 @@ public static class StackEndpoints
             var t = target is not null && PublishService.IsTarget(target) ? target : "compose";
             foreach (var d in new[] { PublishRoot(id), LegacyPublishDir(id) })
                 try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { }
-            return Results.Ok(publish.Publish(s, PublishRoot(id), t));
+            return Results.Ok(publish.Publish(s, PublishRoot(id), t, s.FromGit ? Path.GetFullPath(Dir(id)) : null));
         });
 
         app2.MapPost("/stacks/{id}/deploy", (string id) =>
@@ -639,7 +656,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token));
+            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, s.FromGit ? Path.GetFullPath(Dir(id)) : null));
         });
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
@@ -744,7 +761,7 @@ public static class StackEndpoints
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token));
+            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, updated.FromGit ? Path.GetFullPath(Dir(id)) : null));
         });
         app2.MapGet("/hosting/dashboard-settings", (HttpContext ctx) => Results.Ok(new
         {

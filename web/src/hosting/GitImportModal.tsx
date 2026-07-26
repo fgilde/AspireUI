@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Title, Stack, TextInput, Group, Button, Text, Alert, Radio, Badge } from "@mantine/core";
+import { Modal, Title, Stack, TextInput, Autocomplete, Group, Button, Text, Alert, Radio, Badge } from "@mantine/core";
 import { IconBrandGithub, IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
 import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
@@ -11,45 +11,51 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
   const [branch, setBranch] = useState("");
   const [subdir, setSubdir] = useState("");
   const [busy, setBusy] = useState(false);
-  const [detected, setDetected] = useState<Detected | null>(null);
-  const [mode, setMode] = useState("");
+  const [choice, setChoice] = useState<Detected | null>(null);
+  const [mode, setMode] = useState("apphost");
+  const [branches, setBranches] = useState<string[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
-  const inspect = async () => {
-    if (!url.trim()) { toastErr("Enter a repository URL"); return; }
-    setBusy(true);
-    try {
-      const d = await api.gitInspect({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined });
-      if (!d.hasCompose && !d.hasAppHost) { toastErr("No docker-compose.yml and no .NET Aspire AppHost found in this repo"); return; }
-      setDetected(d);
-      setMode(d.hasAppHost ? "runasis" : "compose");
-    } catch (e) { toastErr(e, "Could not read the repository"); } finally { setBusy(false); }
+  const req = () => ({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined });
+
+  const loadBranches = async () => {
+    if (!url.trim()) return;
+    setLoadingBranches(true);
+    try { setBranches((await api.gitBranches(url.trim())).branches); }
+    catch { setBranches([]); }
+    finally { setLoadingBranches(false); }
   };
 
-  const importRepo = async () => {
+  const doImport = async (m: string) => {
     setBusy(true);
     try {
-      const s = await api.gitImport({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined, mode });
+      const s = await api.gitImport({ ...req(), mode: m });
       toastOk(`Imported "${s.name}" from Git`);
       onImported(s.id);
     } catch (e) { toastErr(e, "Git import failed"); } finally { setBusy(false); }
   };
 
-  const opts: { value: string; label: string; desc: string; badge?: string }[] = [];
-  if (detected?.hasAppHost) {
-    opts.push({ value: "runasis", label: "Run the AppHost as-is", desc: "Keeps the whole project and runs it unchanged. The visual editor is locked (unlock to edit, which regenerates the code).", badge: "recommended" });
-    opts.push({ value: "apphost", label: "Import into the visual builder", desc: "Parses the AppHost into editable nodes. Loops, conditionals and helper methods may be lost — best for simple AppHosts." });
-  }
-  if (detected?.hasCompose) opts.push({ value: "compose", label: "Docker Compose", desc: "Imports docker-compose.yml as AddContainer/AddDockerfile resources." });
+  const inspect = async () => {
+    if (!url.trim()) { toastErr("Enter a repository URL"); return; }
+    setBusy(true);
+    try {
+      const d = await api.gitInspect(req());
+      if (!d.hasCompose && !d.hasAppHost) { toastErr("No .NET Aspire AppHost and no docker-compose.yml found in this repo"); return; }
+      if (d.hasAppHost && d.hasCompose) { setChoice(d); setMode("apphost"); }
+      else await doImport(d.hasAppHost ? "apphost" : "compose");
+    } catch (e) { toastErr(e, "Could not read the repository"); } finally { setBusy(false); }
+  };
 
   return (
     <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconBrandGithub size={18} /><Title order={5}>Import from Git</Title></Group>}>
-      {!detected ? (
+      {!choice ? (
         <Stack gap="md">
-          <Text size="sm" c="dimmed">Clones a public repository. AspireUI detects a <b>docker-compose.yml</b> and/or a <b>.NET Aspire AppHost</b> and lets you choose how to import.</Text>
-          <TextInput label="Repository URL" placeholder="https://github.com/user/repo(.git)" value={url}
-            onChange={e => setUrl(e.currentTarget.value)} data-autofocus />
+          <Text size="sm" c="dimmed">Clones a public repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose.yml</b> to resources.</Text>
+          <TextInput label="Repository URL" placeholder="https://github.com/user/repo" value={url}
+            onChange={e => setUrl(e.currentTarget.value)} onBlur={loadBranches} data-autofocus />
           <Group grow>
-            <TextInput label="Branch" placeholder="default branch" value={branch} onChange={e => setBranch(e.currentTarget.value)} />
+            <Autocomplete label="Branch" placeholder={loadingBranches ? "loading branches…" : "default branch"}
+              data={branches} value={branch} onChange={setBranch} onFocus={() => { if (!branches.length) loadBranches(); }} />
             <TextInput label="Subdirectory" placeholder="repo root" value={subdir} onChange={e => setSubdir(e.currentTarget.value)} />
           </Group>
           <Alert color="gray" p="xs" icon={<IconAlertTriangle size={15} />}>Public repositories only for now.</Alert>
@@ -61,23 +67,22 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
       ) : (
         <Stack gap="md">
           <Group gap={8}>
-            <Text size="sm" fw={600}>{detected.name}</Text>
-            {detected.hasAppHost && <Badge size="sm" variant="light" color="violet">Aspire AppHost</Badge>}
-            {detected.hasCompose && <Badge size="sm" variant="light" color="blue">Compose</Badge>}
+            <Text size="sm" fw={600}>{choice.name}</Text>
+            <Badge size="sm" variant="light" color="violet">Aspire AppHost</Badge>
+            <Badge size="sm" variant="light" color="blue">Compose</Badge>
           </Group>
+          <Text size="sm" c="dimmed">This repo has both — how do you want to import it?</Text>
           <Radio.Group value={mode} onChange={setMode}>
             <Stack gap="xs">
-              {opts.map(o => (
-                <Radio key={o.value} value={o.value}
-                  label={<span><b>{o.label}</b>{o.badge && <Badge size="xs" variant="light" color="teal" ml={6}>{o.badge}</Badge>}<Text size="xs" c="dimmed">{o.desc}</Text></span>} />
-              ))}
+              <Radio value="apphost" label={<span><b>Run the Aspire AppHost</b><Text size="xs" c="dimmed">Keeps and runs the project as-is; the visual editor is locked (unlock to edit).</Text></span>} />
+              <Radio value="compose" label={<span><b>Docker Compose</b><Text size="xs" c="dimmed">Maps docker-compose.yml to AddContainer / AddDockerfile resources you can edit.</Text></span>} />
             </Stack>
           </Radio.Group>
           <Group justify="space-between">
-            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => setDetected(null)}>Back</Button>
+            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => setChoice(null)}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button loading={busy} onClick={importRepo} leftSection={<IconBrandGithub size={16} />}>Import</Button>
+              <Button loading={busy} onClick={() => doImport(mode)} leftSection={<IconBrandGithub size={16} />}>Import</Button>
             </Group>
           </Group>
         </Stack>

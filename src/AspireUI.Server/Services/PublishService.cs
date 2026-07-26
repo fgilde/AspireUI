@@ -45,12 +45,17 @@ public class PublishService
         return psi;
     }
 
-    public PublishResult Publish(StackModel s, string publishRoot, string target = "compose")
+    public PublishResult Publish(StackModel s, string publishRoot, string target = "compose", string? cloneSrc = null)
     {
         var t = Targets.TryGetValue(target, out var td) ? td : Targets["compose"];
         var srcDir = Path.Combine(publishRoot, "src");
         var outDir = Path.Combine(publishRoot, "out");
         Directory.CreateDirectory(outDir);
+        if (cloneSrc is not null && Directory.Exists(cloneSrc))
+        {
+            if (Directory.Exists(srcDir)) try { Directory.Delete(srcDir, true); } catch { }
+            GitService.CopyTree(cloneSrc, srcDir);
+        }
         _gen.Materialize(s, srcDir, t.Env);
         var csproj = Directory.GetFiles(srcDir, "*.csproj").FirstOrDefault()
             ?? throw new InvalidOperationException("no csproj materialized");
