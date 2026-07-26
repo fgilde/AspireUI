@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Modal, Title, Stack, TextInput, Autocomplete, Group, Button, Text, Alert, Radio, Badge } from "@mantine/core";
-import { IconBrandGithub, IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react";
+import { Modal, Title, Stack, TextInput, PasswordInput, Autocomplete, Group, Button, Text, Alert, Radio, Badge } from "@mantine/core";
+import { IconBrandGithub, IconAlertTriangle, IconArrowLeft, IconLock } from "@tabler/icons-react";
 import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
 
@@ -15,13 +15,14 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
   const [mode, setMode] = useState("apphost");
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [authToken, setAuthToken] = useState("");
 
-  const req = () => ({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined });
+  const req = () => ({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined, authToken: authToken.trim() || undefined });
 
   const loadBranches = async () => {
     if (!url.trim()) return;
     setLoadingBranches(true);
-    try { setBranches((await api.gitBranches(url.trim())).branches); }
+    try { setBranches((await api.gitBranches(url.trim(), authToken.trim() || undefined)).branches); }
     catch { setBranches([]); }
     finally { setLoadingBranches(false); }
   };
@@ -58,7 +59,11 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
               data={branches} value={branch} onChange={setBranch} onFocus={() => { if (!branches.length) loadBranches(); }} />
             <TextInput label="Subdirectory" placeholder="repo root" value={subdir} onChange={e => setSubdir(e.currentTarget.value)} />
           </Group>
-          <Alert color="gray" p="xs" icon={<IconAlertTriangle size={15} />}>Public repositories only for now.</Alert>
+          <PasswordInput label="Access token" leftSection={<IconLock size={14} />}
+            placeholder="only for private repos — leave blank for public"
+            value={authToken} onChange={e => setAuthToken(e.currentTarget.value)}
+            description="A read-only personal access token (GitHub/GitLab/Gitea). Stored with the stack for updates. Use a scoped token, not your main one." />
+          <Alert color="gray" p="xs" icon={<IconAlertTriangle size={15} />}>Public repos work without a token. HTTPS only.</Alert>
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>Cancel</Button>
             <Button loading={busy} onClick={inspect}>Continue</Button>

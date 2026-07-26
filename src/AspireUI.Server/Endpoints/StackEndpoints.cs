@@ -369,7 +369,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } existing) return Results.NotFound();
             var dir = Dir(id);
             try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
-            var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir);
+            var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir, g.AuthToken);
             if (cerr is not null) return Results.UnprocessableEntity(new { message = cerr });
 
             StackModel updated;
@@ -399,13 +399,13 @@ public static class StackEndpoints
         }
         app2.MapPost("/git/inspect", (GitImportRequest b) =>
         {
-            var r = GitService.Inspect(b.Url, b.Branch, b.Subdir);
+            var r = GitService.Inspect(b.Url, b.Branch, b.Subdir, b.AuthToken);
             return r.Error is not null ? Results.UnprocessableEntity(new { message = r.Error })
                 : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name });
         });
         app2.MapPost("/git/branches", (GitImportRequest b) =>
         {
-            var (branches, error) = GitService.ListBranches(b.Url);
+            var (branches, error) = GitService.ListBranches(b.Url, b.AuthToken);
             return branches is null ? Results.UnprocessableEntity(new { message = error })
                 : Results.Ok(new { branches });
         });
@@ -416,7 +416,7 @@ public static class StackEndpoints
             var dir = Dir(sid);
             void RmDir() { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
 
-            var (name, cerr) = GitService.CloneInto(b.Url, b.Branch, b.Subdir, dir);
+            var (name, cerr) = GitService.CloneInto(b.Url, b.Branch, b.Subdir, dir, b.AuthToken);
             if (cerr is not null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr }); }
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!;
 
@@ -442,7 +442,7 @@ public static class StackEndpoints
 
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token), gitJson));
+            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken), gitJson));
             settings.SetValue($"githook:{token}", sid);
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
@@ -1008,8 +1008,8 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record ExecRequest(string Container, string Cmd);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
-    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null);
-    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token);
+    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null);
+    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null);
     public record EnabledRequest(bool Enabled);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

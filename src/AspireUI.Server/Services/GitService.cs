@@ -13,12 +13,12 @@ public static class GitService
 
     public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error);
 
-    public static RepoInfo Inspect(string url, string? branch, string? subdir)
+    public static RepoInfo Inspect(string url, string? branch, string? subdir, string? token = null)
     {
         var dir = TempDir();
         try
         {
-            if (Clone(url, branch, dir) is { } err) return new(false, false, null, err);
+            if (Clone(url, branch, dir, token) is { } err) return new(false, false, null, err);
             var root = RootOf(dir, subdir);
             if (!Directory.Exists(root)) return new(false, false, null, $"subdir '{subdir}' not found");
             var hasCompose = ComposeNames.Any(f => File.Exists(Path.Combine(root, f)));
@@ -30,12 +30,12 @@ public static class GitService
     }
 
     // Clone repo (or its subdir) into destDir as real files (byte-exact, incl. binaries), skipping .git/bin/obj/node_modules.
-    public static (string? name, string? error) CloneInto(string url, string? branch, string? subdir, string destDir)
+    public static (string? name, string? error) CloneInto(string url, string? branch, string? subdir, string destDir, string? token = null)
     {
         var tmp = TempDir();
         try
         {
-            if (Clone(url, branch, tmp) is { } err) return (null, err);
+            if (Clone(url, branch, tmp, token) is { } err) return (null, err);
             var root = Path.GetFullPath(RootOf(tmp, subdir));
             if (!Directory.Exists(root)) return (null, $"subdir '{subdir}' not found");
             Directory.CreateDirectory(destDir);
@@ -92,28 +92,41 @@ public static class GitService
         return Run("git", args, 120_000);
     }
 
-    private static string? Clone(string url, string? branch, string dir)
+    private static string? Clone(string url, string? branch, string dir, string? token = null)
     {
         if (string.IsNullOrWhiteSpace(url)) return "no repository URL";
-        var (code, log) = RunClone(url, branch, dir);
+        var (code, log) = RunClone(AuthUrl(url, token), branch, dir);
         if (code == 0) return null;
         if (!url.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
         {
             Cleanup(dir);
-            var (code2, log2) = RunClone(url + ".git", branch, dir);
+            var (code2, log2) = RunClone(AuthUrl(url + ".git", token), branch, dir);
             if (code2 == 0) return null;
-            return $"git clone failed: {Trim(log2)}";
+            return $"git clone failed: {Scrub(Trim(log2), token)}";
         }
-        return $"git clone failed: {Trim(log)}";
+        return $"git clone failed: {Scrub(Trim(log), token)}";
     }
 
-    public static (List<string>? branches, string? error) ListBranches(string url)
+    // Inject a PAT into an https URL for private-repo access: https://<token>@host/… (left as-is if not https or already has creds).
+    private static string AuthUrl(string url, string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return url;
+        const string https = "https://";
+        return url.StartsWith(https, StringComparison.OrdinalIgnoreCase) && !url.Contains('@')
+            ? https + Uri.EscapeDataString(token) + "@" + url[https.Length..]
+            : url;
+    }
+
+    private static string Scrub(string s, string? token) =>
+        string.IsNullOrEmpty(token) ? s : s.Replace(token, "***").Replace(Uri.EscapeDataString(token), "***");
+
+    public static (List<string>? branches, string? error) ListBranches(string url, string? token = null)
     {
         if (string.IsNullOrWhiteSpace(url)) return (null, "no repository URL");
         var urls = url.EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? new[] { url } : new[] { url, url + ".git" };
         foreach (var u in urls)
         {
-            var (code, log) = Run("git", new List<string> { "ls-remote", "--heads", u }, 30_000);
+            var (code, log) = Run("git", new List<string> { "ls-remote", "--heads", AuthUrl(u, token) }, 30_000);
             if (code != 0) continue;
             const string prefix = "refs/heads/";
             var branches = log.Split('\n')
