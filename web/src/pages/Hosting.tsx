@@ -14,6 +14,9 @@ import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal,
 
 // Containers named `aspireui-<stackId[..8]>-<service>-N` by compose.
 export const projectPrefix = (stackId: string) => `aspireui-${stackId.slice(0, 8)}`;
+// This stack's own containers, excluding the bundled aspire-dashboard sidecar (not part of the app's load).
+export const stackContainers = (stats: ContainerStat[], stackId: string) =>
+  stats.filter(s => s.name.startsWith(projectPrefix(stackId)) && !s.name.includes("dashboard"));
 export type AppStat = { cpu: number; memMb: number; hist: number[] };
 // Health hint from docker compose ps status text.
 export const healthOf = (status: string): "healthy" | "unhealthy" | "starting" | null =>
@@ -52,7 +55,7 @@ export function Hosting() {
       setAppStats(prev => {
         const next: Record<string, AppStat> = {};
         for (const d of itemsRef.current) {
-          const mine = stats.filter(s => s.name.startsWith(projectPrefix(d.stackId)));
+          const mine = stackContainers(stats, d.stackId);
           const cpu = Math.round(mine.reduce((a, s) => a + s.cpu, 0) * 10) / 10;
           const memMb = Math.round(mine.reduce((a, s) => a + s.memMb, 0));
           next[d.stackId] = { cpu, memMb, hist: [...(prev[d.stackId]?.hist ?? []), cpu].slice(-20) };

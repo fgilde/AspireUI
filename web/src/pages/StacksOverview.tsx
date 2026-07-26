@@ -19,6 +19,7 @@ import type { TemplateInfo, BundleFile } from "../api";
 import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
+import { stackContainers } from "./Hosting";
 import { InstallAppModal } from "../hosting/InstallAppModal";
 import { GitImportModal } from "../hosting/GitImportModal";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
@@ -88,7 +89,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
       if (stats.length > 0) {
         const agg: Record<string, { cpu: number; memMb: number }> = {};
         for (const s of stacks) {
-          const mine = stats.filter(c => c.name.startsWith(`aspireui-${s.id.slice(0, 8)}`));
+          const mine = stackContainers(stats, s.id);
           if (mine.length) agg[s.id] = {
             cpu: Math.round(mine.reduce((a, c) => a + c.cpu, 0) * 10) / 10,
             memMb: Math.round(mine.reduce((a, c) => a + c.memMb, 0)),

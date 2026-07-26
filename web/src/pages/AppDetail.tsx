@@ -10,7 +10,7 @@ import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
-import { projectPrefix, healthOf, type AppStat } from "./Hosting";
+import { stackContainers, healthOf, type AppStat } from "./Hosting";
 import { toastOk, toastErr } from "../ui";
 
 // Per-app page showing deployment status, containers, health, & actions; deep-linkable.
@@ -50,7 +50,7 @@ export function AppDetail() {
     let alive = true;
     const tick = () => api.hostingStats().then(stats => {
       if (!alive) return;
-      const mine = stats.filter(s => s.name.startsWith(projectPrefix(d.stackId)));
+      const mine = stackContainers(stats, d.stackId);
       const cpu = Math.round(mine.reduce((a, s) => a + s.cpu, 0) * 10) / 10;
       const memMb = Math.round(mine.reduce((a, s) => a + s.memMb, 0));
       setStat(prev => ({ cpu, memMb, hist: [...(prev?.hist ?? []), cpu].slice(-40) }));
