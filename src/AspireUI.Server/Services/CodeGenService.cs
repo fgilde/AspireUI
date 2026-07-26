@@ -187,7 +187,7 @@ public class CodeGenService
         }
         File.WriteAllText(Path.Combine(dir, "Program.cs"), GenerateProgram(s, env));
         var safeName = string.Concat(s.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-        if (!s.FromGit)
+        if (!s.FromGit && !s.HasSource)
             foreach (var old in Directory.GetFiles(dir, "*.csproj"))
                 try { File.Delete(old); } catch { }
         File.WriteAllText(Path.Combine(dir, $"{safeName}.csproj"), GenerateCsproj(s, env));

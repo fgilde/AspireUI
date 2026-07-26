@@ -118,12 +118,9 @@ export const deleteUserTemplate = (id: string): Promise<void> =>
 export const createFromTemplate = (id: string): Promise<Stack> =>
   fetch(`${base}/stacks/from-template/${id}`, { method: "POST" }).then(ok);
 
-export interface BundleFile { path: string; content: string }
-export const importBundle = (name: string, files: BundleFile[], programPath?: string): Promise<Stack> =>
-  fetch(`${base}/stacks/import-bundle`, {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ name, files, programPath }),
-  }).then(ok);
+export interface SourceFile { path: string; content: string }  // content = base64
+export const localImport = (b: { name?: string; mode?: string; sources: SourceFile[]; files?: string[]; services?: string[]; env?: Record<string, string> }): Promise<Stack> =>
+  fetch(`${base}/import/local`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
 
 export const getSettings = (): Promise<AppSettings> => fetch(`${base}/settings`).then(ok);
 export const saveSettings = (s: AppSettings): Promise<void> =>
@@ -136,9 +133,23 @@ export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; erro
 
 export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
+export const getImportSettings = (): Promise<{ maxFileMb: number; respectGitignore: boolean }> =>
+  fetch(`${base}/import/settings`).then(ok);
+export const setImportSettings = (b: { maxFileMb?: number; respectGitignore?: boolean }): Promise<void> =>
+  fetch(`${base}/import/settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(okVoid);
 export const detectIps = (): Promise<string[]> => fetch(`${base}/hosting/detect-ip`).then(ok);
 export const setDashboardSettings = (hostDashboard: boolean, dashboardToken: string, publicHost?: string): Promise<void> =>
   fetch(`${base}/hosting/dashboard-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostDashboard, dashboardToken, publicHost }) }).then(okVoid);
+export const localImportProgress = (b: { name?: string; mode?: string; sources: SourceFile[]; files?: string[]; services?: string[]; env?: Record<string, string> }, onProgress: (pct: number) => void): Promise<Stack> =>
+  new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${base}/import/local`);
+    xhr.setRequestHeader("content-type", "application/json");
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error(xhr.responseText || `HTTP ${xhr.status}`));
+    xhr.onerror = () => reject(new Error("upload failed"));
+    xhr.send(JSON.stringify(b));
+  });
 export const getStoreExclusions = (): Promise<string[]> => fetch(`${base}/store/exclusions`).then(ok);
 export const setStoreExclusions = (ids: string[]): Promise<void> =>
   fetch(`${base}/store/exclusions`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).then(okVoid);

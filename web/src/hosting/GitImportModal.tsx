@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Modal, Title, Stack, TextInput, PasswordInput, Autocomplete, Group, Button, Text, Alert, Radio, Badge, Checkbox } from "@mantine/core";
+import { useState, useEffect } from "react";
+import { Modal, Title, Stack, TextInput, PasswordInput, Autocomplete, Group, Button, Text, Alert, Radio, Badge, Checkbox, Loader, Center, Progress } from "@mantine/core";
 import { IconBrandGithub, IconAlertTriangle, IconArrowLeft, IconLock } from "@tabler/icons-react";
 import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
@@ -36,8 +36,10 @@ const parseServices = (contents: string[]): Service[] => {
 };
 
 const repoName = (u: string) => (u.trim().replace(/\/+$/, "").split("/").pop() ?? "").replace(/\.git$/i, "");
+const b64Text = (b64: string) => { try { return new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))); } catch { return ""; } };
+type LocalSource = { name: string; sources: { path: string; content: string }[] };
 
-export function GitImportModal({ onClose, onImported }: { onClose: () => void; onImported: (stackId: string) => void }) {
+export function GitImportModal({ onClose, onImported, local }: { onClose: () => void; onImported: (stackId: string) => void; local?: LocalSource }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
@@ -55,6 +57,7 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
   const [selServices, setSelServices] = useState<string[]>([]);
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [envVals, setEnvVals] = useState<Record<string, string>>({});
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
 
   const req = () => ({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined, authToken: authToken.trim() || undefined });
   const contentsOf = (files: string[]) => (detected?.composeFiles ?? []).filter(f => files.includes(f.path)).map(f => f.content);
@@ -70,10 +73,12 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
   const doImport = async (m: string, files?: string[], env?: Record<string, string>, svcs?: string[]) => {
     setBusy(true);
     try {
-      const s = await api.gitImport({ ...req(), name: name.trim() || undefined, mode: m, files, env, services: svcs });
-      toastOk(`Imported "${s.name}" from Git`);
+      const s = local
+        ? await api.localImportProgress({ name: name.trim() || local.name, mode: m, sources: local.sources, files, services: svcs, env }, setUploadPct)
+        : await api.gitImport({ ...req(), name: name.trim() || undefined, mode: m, files, env, services: svcs });
+      toastOk(`Imported "${s.name}"`);
       onImported(s.id);
-    } catch (e) { toastErr(e, "Git import failed"); } finally { setBusy(false); }
+    } catch (e) { toastErr(e, "Import failed"); } finally { setBusy(false); setUploadPct(null); }
   };
 
   const toEnv = (files: string[], svcNames: string[]) => {
@@ -115,12 +120,35 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
     } catch (e) { toastErr(e, "Could not read the repository"); } finally { setBusy(false); }
   };
 
-  const backFromServices = () => setStep((detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
-  const backFromEnv = () => setStep(services.length > 1 ? "services" : (detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
+  const backTo = (target: Step) => { if (target === "form" && local) onClose(); else setStep(target); };
+  const backFromServices = () => backTo((detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
+  const backFromEnv = () => backTo(services.length > 1 ? "services" : (detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
+
+  // Local (folder/zip) source: detect right away, no clone — then the same steps as git.
+  useEffect(() => {
+    if (!local) return;
+    setName(local.name);
+    const composeFiles = local.sources.filter(s => !s.path.includes("/") && /compose.*\.ya?ml$/i.test(s.path)).map(s => ({ path: s.path, content: b64Text(s.content) }));
+    const hasAppHost = local.sources.some(s => /\.csproj$/i.test(s.path) && /(Aspire\.AppHost\.Sdk|<IsAspireHost>\s*true)/i.test(b64Text(s.content)));
+    if (composeFiles.length === 0 && !hasAppHost) { toastErr("No .NET Aspire AppHost and no docker-compose file found in these files"); onClose(); return; }
+    const d = { hasCompose: composeFiles.length > 0, hasAppHost, name: local.name, composeFiles };
+    setDetected(d);
+    if (d.hasAppHost && d.hasCompose) { setMode("apphost"); setStep("choice"); }
+    else if (d.hasAppHost) doImport("apphost");
+    else startCompose(d.composeFiles);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconBrandGithub size={18} /><Title order={5}>Import from Git</Title></Group>}>
-      {step === "form" && (
+    <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconBrandGithub size={18} /><Title order={5}>{local ? "Import files" : "Import from Git"}</Title></Group>}>
+      {uploadPct !== null && (
+        <Stack gap={4} mb="md">
+          <Text size="sm">{uploadPct < 100 ? `Uploading ${uploadPct}%…` : "Importing…"}</Text>
+          <Progress value={uploadPct} animated={uploadPct >= 100} />
+        </Stack>
+      )}
+      {local && !detected && <Center py={40}><Loader /></Center>}
+      {step === "form" && !local && (
         <Stack gap="md">
           <Text size="sm" c="dimmed">Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file to resources.</Text>
           <TextInput label="Stack name" placeholder="auto from repo name if blank" value={name}
@@ -159,7 +187,7 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
             </Stack>
           </Radio.Group>
           <Group justify="space-between">
-            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => setStep("form")}>Back</Button>
+            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => backTo("form")}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
               <Button loading={busy} onClick={() => mode === "compose" ? startCompose(detected.composeFiles) : doImport("apphost")}>Continue</Button>
@@ -175,7 +203,7 @@ export function GitImportModal({ onClose, onImported }: { onClose: () => void; o
             <Stack gap={6}>{detected.composeFiles.map(f => <Checkbox key={f.path} value={f.path} label={f.path} />)}</Stack>
           </Checkbox.Group>
           <Group justify="space-between">
-            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => setStep(detected.hasAppHost ? "choice" : "form")}>Back</Button>
+            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => backTo(detected.hasAppHost ? "choice" : "form")}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
               <Button loading={busy} disabled={selFiles.length === 0} onClick={() => toServices(selFiles)}>Continue</Button>

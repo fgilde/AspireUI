@@ -71,93 +71,68 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
         Assert.Equal(System.Net.HttpStatusCode.NotFound, resp.StatusCode);
     }
 
+    private static string B64(string s) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(s));
+
     [Fact]
-    public async Task ImportBundle_ParsesProgramCsprojAndExtraFiles()
+    public async Task LocalImport_AppHost_ParsesProgramAndWritesFiles()
     {
-        var files = new List<BundleFile>
+        var sources = new List<SourceFileDto>
         {
-            new("Program.cs", """
+            new("Program.cs", B64("""
                 var builder = DistributedApplication.CreateBuilder(args);
                 builder.AddRedis("cache");
                 builder.Build().Run();
-                """),
-            new("Demo.csproj", """
+                """)),
+            new("Demo.csproj", B64("""
                 <Project Sdk="Microsoft.NET.Sdk">
+                  <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.6" />
                   <ItemGroup>
                     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
-                    <PackageReference Include="Some.Pkg" Version="1.2.3" />
                   </ItemGroup>
                 </Project>
-                """),
-            new("Helpers.cs", "public static class Helpers { }"),
+                """)),
+            new("Helpers.cs", B64("public static class Helpers { }")),
         };
 
-        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
-            new ImportBundleRequestDto("BundleStack", files, null));
+        var resp = await _c.PostAsJsonAsync("/api/import/local", new LocalImportRequestDto("BundleStack", "apphost", sources));
         resp.EnsureSuccessStatusCode();
         var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
 
         Assert.Contains(stack!.Nodes, n => n.AddMethod == "AddRedis" && n.ResourceName == "cache");
-        Assert.Contains(stack.ExtraPackages, p => p.Id == "Some.Pkg" && p.Version == "1.2.3");
-        Assert.Contains(stack.ExtraFiles, f => f.Name == "Helpers.cs");
-
         var workspace = Path.Combine(_f.WorkspaceDir, stack.Id);
-        var csprojFile = Directory.GetFiles(workspace, "*.csproj").Single();
-        Assert.Contains("Some.Pkg", await File.ReadAllTextAsync(csprojFile));
         Assert.True(File.Exists(Path.Combine(workspace, "Helpers.cs")));
+        Assert.True(File.Exists(Path.Combine(workspace, "Demo.csproj")));
     }
 
     [Fact]
-    public async Task ImportBundle_MsBuildPropertyVersion_FallsBackToAspireVersion()
+    public async Task LocalImport_NoAppHostNoCompose_Returns422()
     {
-        var files = new List<BundleFile>
-        {
-            new("Program.cs", """
-                var builder = DistributedApplication.CreateBuilder(args);
-                builder.AddRedis("cache");
-                builder.Build().Run();
-                """),
-            new("Demo.csproj", """
-                <Project Sdk="Microsoft.NET.Sdk">
-                  <ItemGroup>
-                    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
-                    <PackageReference Include="Foo" Version="$(AspireVersion)" />
-                  </ItemGroup>
-                </Project>
-                """),
-        };
-
-        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
-            new ImportBundleRequestDto("BundleStack2", files, null));
-        resp.EnsureSuccessStatusCode();
-        var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
-
-        Assert.Contains(stack!.ExtraPackages, p => p.Id == "Foo" && p.Version == "13.4.6");
-        Assert.DoesNotContain(stack.ExtraPackages, p => p.Id == "Foo" && p.Version == "$(AspireVersion)");
-    }
-
-    [Fact]
-    public async Task ImportBundle_NoAppHostProgram_Returns422()
-    {
-        var files = new List<BundleFile> { new("Foo.cs", "public class Foo { }") };
-        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
-            new ImportBundleRequestDto("NoProgram", files, null));
+        var sources = new List<SourceFileDto> { new("Foo.cs", B64("public class Foo { }")) };
+        var resp = await _c.PostAsJsonAsync("/api/import/local", new LocalImportRequestDto("NoProgram", null, sources));
         Assert.Equal(System.Net.HttpStatusCode.UnprocessableEntity, resp.StatusCode);
     }
 
     [Fact]
-    public async Task ImportBundle_OverSizeLimit_Returns413WithMessage()
+    public async Task LocalImport_Compose_MapsServices()
     {
-        var files = new List<BundleFile> { new("Big.cs", new string('a', 6 * 1024 * 1024)) };
-        var resp = await _c.PostAsJsonAsync("/api/stacks/import-bundle",
-            new ImportBundleRequestDto("TooBig", files, null));
-        Assert.Equal(System.Net.HttpStatusCode.RequestEntityTooLarge, resp.StatusCode);
-        var body = await resp.Content.ReadAsStringAsync();
-        Assert.False(string.IsNullOrWhiteSpace(body));
+        var sources = new List<SourceFileDto>
+        {
+            new("docker-compose.yml", B64("""
+                services:
+                  cache:
+                    image: redis:7
+                    ports:
+                      - "6379:6379"
+                """)),
+        };
+        var resp = await _c.PostAsJsonAsync("/api/import/local", new LocalImportRequestDto("ComposeLocal", "compose", sources));
+        resp.EnsureSuccessStatusCode();
+        var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
+        Assert.Contains(stack!.Nodes, n => n.AddMethod == "AddContainer" && n.ResourceName == "cache");
     }
 
     public record ResourceTypeDto(string AddMethod, string Label);
     public record PackageDto(string Id, string Version, List<string> Resources);
-    public record BundleFile(string Path, string Content);
-    public record ImportBundleRequestDto(string Name, List<BundleFile> Files, string? ProgramPath);
+    public record SourceFileDto(string Path, string Content);
+    public record LocalImportRequestDto(string? Name, string? Mode, List<SourceFileDto> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null);
 }

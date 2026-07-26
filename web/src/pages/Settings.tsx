@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle } from "@tabler/icons-react";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
@@ -249,6 +249,24 @@ function ApiTab() {
 
 // Docker housekeeping (admin) — see + clean up the images/containers/volumes AspireUI created via the
 // socket (dev-run + hosting). AspireUI's own container + data volume are protected (no remove button).
+function ImportTab() {
+  const [maxMb, setMaxMb] = useState(20);
+  const [gitignore, setGitignore] = useState(true);
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { api.getImportSettings().then(s => { setMaxMb(s.maxFileMb); setGitignore(s.respectGitignore); }).catch(() => {}); }, []);
+  const save = async () => { await api.setImportSettings({ maxFileMb: maxMb, respectGitignore: gitignore }); setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  return (
+    <MStack gap="md" maw={560}>
+      <Text size="sm" c="dimmed">Settings for importing stacks from a folder or ZIP archive.</Text>
+      <NumberInput label="Max file size (MB)" value={maxMb} onChange={v => setMaxMb(Number(v) || 20)} min={1} max={1024} maw={220}
+        description="Files larger than this are skipped during folder/ZIP import." />
+      <Switch checked={gitignore} onChange={e => setGitignore(e.currentTarget.checked)} label="Respect .gitignore"
+        description="When a folder/ZIP contains .gitignore files, skip the files they ignore (root and nested)." />
+      <Group><Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button></Group>
+    </MStack>
+  );
+}
+
 function DockerTab() {
   const [containers, setContainers] = useState<DockerContainer[] | null>(null);
   const [images, setImages] = useState<DockerImage[] | null>(null);
@@ -464,6 +482,7 @@ export function Settings() {
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
               {isAdmin && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
               {isAdmin && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
+              {isAdmin && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
               <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
@@ -549,6 +568,11 @@ export function Settings() {
             {isAdmin && (
               <Tabs.Panel value="docker" style={{ flex: 1 }}>
                 <DockerTab />
+              </Tabs.Panel>
+            )}
+            {isAdmin && (
+              <Tabs.Panel value="import" style={{ flex: 1 }}>
+                <ImportTab />
               </Tabs.Panel>
             )}
             <Tabs.Panel value="api" style={{ flex: 1 }}>

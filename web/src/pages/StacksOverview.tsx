@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
+import ignore from "ignore";
 import {
   Group, Title, Text, Button, SimpleGrid, Card, ActionIcon, Divider, Anchor,
   Modal, TextInput, Badge, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select,
@@ -11,11 +12,11 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub,
 } from "@tabler/icons-react";
-import { pickAppHost, runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
+import { runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
-import type { TemplateInfo, BundleFile } from "../api";
+import type { TemplateInfo } from "../api";
 import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
@@ -25,16 +26,56 @@ import { GitImportModal } from "../hosting/GitImportModal";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
-const isImportable = (path: string) => /\.(cs|csproj)$/i.test(path);
+type Src = { path: string; content: string };
+const SKIP_DIRS = new Set([".git", "node_modules", "bin", "obj", "dist", ".vs", ".idea", "TestResults", "packages"]);
+const skipPath = (p: string) => p.split("/").some(s => SKIP_DIRS.has(s));
+const bufToB64 = (buf: ArrayBuffer) => {
+  let bin = ""; const b = new Uint8Array(buf);
+  for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(bin);
+};
+// GitHub-style zips wrap everything in one top folder; strip it so paths match a git clone's root.
+const stripCommonRoot = (src: Src[]): Src[] => {
+  if (src.length === 0) return src;
+  const firsts = new Set(src.map(s => s.path.split("/")[0]));
+  if (firsts.size !== 1 || !src.every(s => s.path.includes("/"))) return src;
+  const pre = `${[...firsts][0]}/`;
+  return src.map(s => ({ ...s, path: s.path.slice(pre.length) }));
+};
+type Matcher = { dir: string; ig: ReturnType<typeof ignore> };
+const mkMatcher = (dir: string, text: string): Matcher => ({ dir, ig: ignore().add(text) });
+// A path is ignored if any applicable .gitignore ignores it; deeper .gitignore can re-include it via negation (!pattern).
+const makeIsIgnored = (matchers: Matcher[]) => {
+  const sorted = [...matchers].sort((a, b) => a.dir.length - b.dir.length);
+  return (path: string) => {
+    let hit = false;
+    for (const { dir, ig } of sorted) {
+      if (dir && path !== dir && !path.startsWith(`${dir}/`)) continue;
+      const rel = dir ? path.slice(dir.length + 1) : path;
+      if (!rel) continue;
+      const r = ig.test(rel);
+      if (r.ignored) hit = true; else if (r.unignored) hit = false;
+    }
+    return hit;
+  };
+};
 
-async function walkDirectory(dir: any, prefix = ""): Promise<BundleFile[]> {
-  const files: BundleFile[] = [];
-  for await (const entry of dir.values()) {
-    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (entry.kind === "directory") files.push(...await walkDirectory(entry, path));
-    else if (isImportable(entry.name)) files.push({ path, content: await (await entry.getFile()).text() });
+type Handle = { path: string; getFile: () => Promise<File> };
+// Enumerate a folder into file handles, applying .gitignore (root + nested) live so ignored files are never read.
+async function collectFolder(dir: any, matchers: Matcher[], gi: boolean, prefix: string, out: Handle[]) {
+  let local = matchers;
+  if (gi) {
+    for await (const e of dir.values())
+      if (e.kind === "file" && e.name === ".gitignore") { local = [...matchers, mkMatcher(prefix, await (await e.getFile()).text())]; break; }
   }
-  return files;
+  const isIgnored = makeIsIgnored(local);
+  for await (const e of dir.values()) {
+    const path = prefix ? `${prefix}/${e.name}` : e.name;
+    if (skipPath(path)) continue;
+    if (gi && isIgnored(path)) continue;
+    if (e.kind === "directory") await collectFolder(e, local, gi, path, out);
+    else out.push({ path, getFile: () => e.getFile() });
+  }
 }
 
 export function StacksOverview({ simple = false }: { simple?: boolean }) {
@@ -53,6 +94,8 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const [filesFor, setFilesFor] = useState<Deployment | null>(null);
   const [installOpen, setInstallOpen] = useState(false);
   const [gitOpen, setGitOpen] = useState(false);
+  const [importLocal, setImportLocal] = useState<{ name: string; sources: Src[] } | null>(null);
+  const [readProg, setReadProg] = useState<{ label: string; done: number; total: number } | null>(null);
   const openStack = (s: Stack) => nav(deps[s.id] ? `/app/${s.id}` : simple ? "/hosting" : `/editor/${s.id}`);
   const hostedCount = stacks.filter(s => deps[s.id]).length;
   const loadDeps = () => api.listHosting().then(list => setDeps(Object.fromEntries(list.map(d => [d.stackId, d])))).catch(() => {});
@@ -137,14 +180,18 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     catch (e) { toastErr(e, "Git update failed"); }
   };
 
-  const finishImport = async (bundleName: string, files: BundleFile[]) => {
-    if (files.length === 0) { toastErr("No .cs/.csproj files found to import.", "Nothing to import"); return; }
-    try {
-      const s = await api.importBundle(bundleName, files, pickAppHost(files));
-      nav(`/editor/${s.id}`);
-    } catch (e) {
-      toastErr(e, "Import failed");
-    }
+  const openLocal = (name: string, sources: Src[]) => {
+    const s = stripCommonRoot(sources);
+    if (s.length === 0) { toastErr("No files found to import"); return; }
+    setImportLocal({ name, sources: s });
+  };
+  const importSettings = async () => {
+    const s = await api.getImportSettings().catch(() => ({ maxFileMb: 20, respectGitignore: true }));
+    return { limit: (s.maxFileMb || 20) * 1024 * 1024, gitignore: s.respectGitignore };
+  };
+  const doneReading = (skipped: number, limit: number) => {
+    setReadProg(null);
+    if (skipped > 0) toastOk(`Skipped ${skipped} file(s) over ${Math.round(limit / 1024 / 1024)} MB`);
   };
 
   const onComposePicked = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -161,27 +208,54 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const zip = await JSZip.loadAsync(file);
-    const files: BundleFile[] = [];
-    for (const entry of Object.values(zip.files)) {
-      if (entry.dir || !isImportable(entry.name)) continue;
-      files.push({ path: entry.name, content: await entry.async("string") });
-    }
-    await finishImport(file.name.replace(/\.zip$/i, ""), files);
+    try {
+      const { limit, gitignore } = await importSettings();
+      const zip = await JSZip.loadAsync(file);
+      let entries = Object.values(zip.files).filter((en: any) => !en.dir && !skipPath(en.name));
+      if (gitignore) {
+        const gis: Matcher[] = [];
+        for (const en of entries) if ((en as any).name.split("/").pop() === ".gitignore") {
+          const nm = (en as any).name as string;
+          gis.push(mkMatcher(nm.includes("/") ? nm.slice(0, nm.lastIndexOf("/")) : "", await (en as any).async("string")));
+        }
+        if (gis.length) { const isIg = makeIsIgnored(gis); entries = entries.filter((en: any) => !isIg(en.name)); }
+      }
+      const sources: Src[] = []; let skipped = 0;
+      setReadProg({ label: "", done: 0, total: entries.length });
+      for (let i = 0; i < entries.length; i++) {
+        const en: any = entries[i];
+        setReadProg({ label: en.name, done: i + 1, total: entries.length });
+        const b64 = await en.async("base64");
+        if (b64.length * 0.75 > limit) { skipped++; continue; }
+        sources.push({ path: en.name, content: b64 });
+      }
+      doneReading(skipped, limit);
+      openLocal(file.name.replace(/\.zip$/i, ""), sources);
+    } catch (err) { setReadProg(null); toastErr(err, "Zip import failed"); }
   };
 
   const onFolderFallbackPicked = async (e: ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files;
     e.target.value = "";
     if (!picked || picked.length === 0) return;
-    const files: BundleFile[] = [];
-    for (const file of Array.from(picked)) {
-      if (!isImportable(file.name)) continue;
-      files.push({ path: file.webkitRelativePath || file.name, content: await file.text() });
+    const { limit, gitignore } = await importSettings();
+    let all = Array.from(picked).filter(f => !skipPath(f.webkitRelativePath || f.name));
+    if (gitignore) {
+      const gis: Matcher[] = [];
+      for (const f of all) { const p = f.webkitRelativePath || f.name; if (p.split("/").pop() === ".gitignore") gis.push(mkMatcher(p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "", await f.text())); }
+      if (gis.length) { const isIg = makeIsIgnored(gis); all = all.filter(f => !isIg(f.webkitRelativePath || f.name)); }
     }
-    toastErr("Folder picking isn't supported in this browser — some referenced files may be missing.", "Heads up");
-    const folderName = files.find(f => f.path.includes("/"))?.path.split("/")[0] ?? "Imported";
-    await finishImport(folderName, files);
+    const sources: Src[] = []; let skipped = 0;
+    setReadProg({ label: "", done: 0, total: all.length });
+    for (let i = 0; i < all.length; i++) {
+      const file = all[i]; const path = file.webkitRelativePath || file.name;
+      setReadProg({ label: path, done: i + 1, total: all.length });
+      if (file.size > limit) { skipped++; continue; }
+      sources.push({ path, content: bufToB64(await file.arrayBuffer()) });
+    }
+    doneReading(skipped, limit);
+    const folderName = sources.find(f => f.path.includes("/"))?.path.split("/")[0] ?? "Imported";
+    openLocal(folderName, sources);
   };
 
   const pickFolder = async () => {
@@ -189,9 +263,21 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     if (!showDirectoryPicker) { folderInputRef.current?.click(); return; }
     try {
       const dirHandle = await showDirectoryPicker();
-      const files = await walkDirectory(dirHandle);
-      await finishImport(dirHandle.name, files);
+      const { limit, gitignore } = await importSettings();
+      setReadProg({ label: "", done: 0, total: 0 });
+      const handles: Handle[] = [];
+      await collectFolder(dirHandle, [], gitignore, "", handles);
+      const sources: Src[] = []; let skipped = 0;
+      for (let i = 0; i < handles.length; i++) {
+        setReadProg({ label: handles[i].path, done: i + 1, total: handles.length });
+        const file = await handles[i].getFile();
+        if (file.size > limit) { skipped++; continue; }
+        sources.push({ path: handles[i].path, content: bufToB64(await file.arrayBuffer()) });
+      }
+      doneReading(skipped, limit);
+      openLocal(dirHandle.name, sources);
     } catch (e) {
+      setReadProg(null);
       if (e instanceof DOMException && e.name === "AbortError") return; // user cancelled the picker
       toastErr(e);
     }
@@ -582,6 +668,15 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
       {filesFor && <VolumesModal d={filesFor} onClose={() => setFilesFor(null)} />}
       {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => { load(); loadDeps(); }} />}
       {gitOpen && <GitImportModal onClose={() => setGitOpen(false)} onImported={(id) => { setGitOpen(false); load(); nav(`/editor/${id}`); }} />}
+      {importLocal && <GitImportModal local={importLocal} onClose={() => setImportLocal(null)} onImported={(id) => { setImportLocal(null); load(); nav(`/editor/${id}`); }} />}
+      <Modal opened={readProg !== null} onClose={() => {}} withCloseButton={false} closeOnClickOutside={false} title="Reading files…" size="md" centered>
+        {readProg && (
+          <MStack gap="xs">
+            <Group gap="sm" wrap="nowrap"><Loader size="sm" /><Text size="sm">{readProg.done}{readProg.total ? ` / ${readProg.total}` : ""} files</Text></Group>
+            <Text size="xs" c="dimmed" style={{ wordBreak: "break-all" }}>{readProg.label}</Text>
+          </MStack>
+        )}
+      </Modal>
     </PageShell>
   );
 }
