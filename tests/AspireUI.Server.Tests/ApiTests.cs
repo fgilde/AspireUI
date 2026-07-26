@@ -74,34 +74,39 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
     private static string B64(string s) => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(s));
 
     [Fact]
-    public async Task LocalImport_AppHost_ParsesProgramAndWritesFiles()
+    public async Task LocalImport_AppHost_RunAsIs_KeepsFilesVerbatim()
     {
+        // Modern Aspire (9+) uses AppHost.cs (not Program.cs) as the entry point, in a subfolder.
         var sources = new List<SourceFileDto>
         {
-            new("Program.cs", B64("""
+            new("aspire/Demo.AppHost/AppHost.cs", B64("""
                 var builder = DistributedApplication.CreateBuilder(args);
                 builder.AddRedis("cache");
                 builder.Build().Run();
                 """)),
-            new("Demo.csproj", B64("""
+            new("aspire/Demo.AppHost/Demo.AppHost.csproj", B64("""
                 <Project Sdk="Microsoft.NET.Sdk">
                   <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.6" />
                   <ItemGroup>
                     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+                    <PackageReference Include="Some.Real.Pkg" Version="1.2.3" />
                   </ItemGroup>
                 </Project>
                 """)),
-            new("Helpers.cs", B64("public static class Helpers { }")),
         };
 
-        var resp = await _c.PostAsJsonAsync("/api/import/local", new LocalImportRequestDto("BundleStack", "apphost", sources));
+        var resp = await _c.PostAsJsonAsync("/api/import/local", new LocalImportRequestDto("AppHostStack", "apphost", sources));
         resp.EnsureSuccessStatusCode();
         var stack = await resp.Content.ReadFromJsonAsync<StackModel>();
 
-        Assert.Contains(stack!.Nodes, n => n.AddMethod == "AddRedis" && n.ResourceName == "cache");
+        Assert.True(stack!.RunAsIs);
+        Assert.Equal("aspire/Demo.AppHost/Demo.AppHost.csproj", stack.AppHostProject);
+        Assert.Contains(stack.Nodes, n => n.AddMethod == "AddRedis" && n.ResourceName == "cache");
+
         var workspace = Path.Combine(_f.WorkspaceDir, stack.Id);
-        Assert.True(File.Exists(Path.Combine(workspace, "Helpers.cs")));
-        Assert.True(File.Exists(Path.Combine(workspace, "Demo.csproj")));
+        // Original files kept verbatim (real package refs preserved), no generated project overwriting them.
+        Assert.Contains("Some.Real.Pkg", await File.ReadAllTextAsync(Path.Combine(workspace, "aspire/Demo.AppHost/Demo.AppHost.csproj")));
+        Assert.True(File.Exists(Path.Combine(workspace, "aspire/Demo.AppHost/AppHost.cs")));
     }
 
     [Fact]

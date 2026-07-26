@@ -199,10 +199,13 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   const canHttp = rt?.withs.some(w => w.method === "WithHttpEndpoint") ?? false;
   const isExternal = draft.withCalls.some(w => w.method === "WithExternalHttpEndpoints");
   const httpRows = readWithRows(draft, "WithHttpEndpoint");
-  const portArg = httpRows[0]?.find(a => a.trim().startsWith("port:"));
+  // Containers/Dockerfiles need targetPort (the port INSIDE the container); .NET projects use port (host). Aspire rejects a container endpoint without targetPort.
+  const isContainer = draft.addMethod === "AddContainer" || draft.addMethod === "AddDockerfile";
+  const portKey = isContainer ? "targetPort" : "port";
+  const portArg = httpRows[0]?.find(a => a.trim().startsWith(`${portKey}:`));
   const port = portArg ? portArg.split(":")[1].trim() : "";
   const setPort = (v: string) =>
-    commit(writeWithRows(draft, "WithHttpEndpoint", v.trim() ? [[`port: ${parseInt(v, 10) || 0}`]] : []));
+    commit(writeWithRows(draft, "WithHttpEndpoint", v.trim() ? [[`${portKey}: ${parseInt(v, 10) || 0}`]] : []));
   const setExternal = (on: boolean) =>
     commit(writeWithRows(draft, "WithExternalHttpEndpoints", on ? [[]] : []));
 
@@ -223,8 +226,9 @@ export function PropertyGrid({ stack, node, rt, setStack }:
               onChange={e => setExternal(e.currentTarget.checked)} />
           )}
           {canHttp && (
-            <NumberInput label="HTTP port" placeholder="auto" value={port === "" ? "" : Number(port)}
-              description="Fixed host port for the HTTP endpoint. Leave empty for an auto-assigned port."
+            <NumberInput label={isContainer ? "Container port (targetPort)" : "HTTP port"} placeholder="auto"
+              value={port === "" ? "" : Number(port)}
+              description={isContainer ? "The port the app listens on INSIDE the container (e.g. 3000 for Next.js). Required for imported containers." : "Fixed host port for the HTTP endpoint. Leave empty for an auto-assigned port."}
               min={0} max={65535} onChange={v => setPort(String(v ?? ""))} />
           )}
           {isExternal && <Text size="xs" c="dimmed" mt={4}>A public URL is assigned at deploy time; custom domains are configured per deploy target.</Text>}

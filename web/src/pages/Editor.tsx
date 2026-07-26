@@ -147,12 +147,26 @@ export function Editor() {
   const locked = stack?.deployment?.state === "running" || stack?.deployment?.state === "deploying";
   const runAsIs = !!stack?.runAsIs;
   const [editWarn, setEditWarn] = useState(false);
+  const runAsIsRef = useRef(false);
+  useEffect(() => { runAsIsRef.current = runAsIs; }, [runAsIs]);
+  const guardResolve = useRef<((ok: boolean) => void) | null>(null);
+  // While run-as-is, any graph mutation is intercepted: confirm (unlock+regenerate) or cancel the change. Editor stays usable (run/deploy/navigate).
+  useEffect(() => {
+    api.setMutationGuard(() => runAsIsRef.current
+      ? new Promise<boolean>(res => { guardResolve.current = res; setEditWarn(true); })
+      : Promise.resolve(true));
+    return () => api.setMutationGuard(null);
+  }, []);
+  const resolveGuard = (ok: boolean) => { guardResolve.current?.(ok); guardResolve.current = null; };
+  const keepAsIs = () => { resolveGuard(false); setEditWarn(false); };
   const unlockForEdit = async () => {
     if (!stack) return;
+    runAsIsRef.current = false;           // let the unlock save (and further edits) through the guard
+    resolveGuard(false);                  // the change that triggered the prompt is dropped; user redoes it unlocked
+    setEditWarn(false);
     const saved = await api.saveStack({ ...stack, runAsIs: false, appHostProject: null });
     setStackState(saved);
-    setEditWarn(false);
-    toastOk("Editing unlocked — the code will regenerate from the graph");
+    toastOk("Editing unlocked — the code now regenerates from the graph");
   };
   const [hostingBusy, setHostingBusy] = useState(false);
   const deployToHosting = useCallback(async () => {
@@ -295,30 +309,18 @@ export function Editor() {
           <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
             <LoadingOverlay visible={hostingBusy} zIndex={400} overlayProps={{ blur: 2 }}
               loaderProps={{ children: <Text fw={600}>Deploying to hosting…</Text> }} />
-            {runAsIs && (
-              <div onClick={() => setEditWarn(true)}
-                style={{ position: "absolute", inset: 0, zIndex: 350, cursor: "pointer",
-                  background: "light-dark(rgba(255,255,255,.35), rgba(0,0,0,.45))", backdropFilter: "blur(1px)",
-                  display: "grid", placeItems: "center" }}>
-                <MStack gap={6} align="center" style={{ background: "var(--mantine-color-body)", border: "1px solid var(--mantine-color-default-border)", borderRadius: 12, padding: "18px 24px", boxShadow: "var(--mantine-shadow-md)" }}>
-                  <IconLock size={26} />
-                  <Text fw={600}>Editing locked</Text>
-                  <Text size="xs" c="dimmed" ta="center" maw={320}>This is an imported project running as-is. Click to edit — it will be regenerated from the visual graph.</Text>
-                </MStack>
-              </div>
-            )}
             <DockLayout ref={dockRef} />
           </div>
         </AppShell.Main>
       </AppShell>
-      <Modal opened={editWarn} onClose={() => setEditWarn(false)} title={<Group gap={8}><IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" /><Text fw={600}>Edit this imported project?</Text></Group>} centered>
+      <Modal opened={editWarn} onClose={keepAsIs} title={<Group gap={8}><IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" /><Text fw={600}>Edit this imported project?</Text></Group>} centered>
         <MStack gap="md">
           <Alert color="orange" icon={<IconAlertTriangle size={16} />}>
-            AspireUI regenerates the AppHost code from the visual graph. Custom C# — loops, conditionals, helper methods, your own extensions — that couldn't be parsed into nodes will be <b>lost</b> once you edit and save.
+            This project runs <b>as-is</b> from its original code. Editing switches to AspireUI's generated code — custom C# (loops, conditionals, helper methods, your own extensions) that couldn't be parsed into the graph will be <b>lost</b>.
           </Alert>
-          <Text size="sm" c="dimmed">You can keep running it as-is instead. Only unlock if the graph fully represents your project.</Text>
+          <Text size="sm" c="dimmed">Unlock to edit (this change isn't applied — make your edits afterwards), or keep it as-is.</Text>
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setEditWarn(false)}>Keep as-is</Button>
+            <Button variant="default" onClick={keepAsIs}>Keep as-is</Button>
             <Button color="orange" leftSection={<IconLockOpen size={16} />} onClick={unlockForEdit}>Unlock &amp; edit</Button>
           </Group>
         </MStack>

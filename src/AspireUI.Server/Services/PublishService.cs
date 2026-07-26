@@ -57,8 +57,12 @@ public class PublishService
             GitService.CopyTree(cloneSrc, srcDir);
         }
         _gen.Materialize(s, srcDir, t.Env);
-        var csproj = Directory.GetFiles(srcDir, "*.csproj").FirstOrDefault()
-            ?? throw new InvalidOperationException("no csproj materialized");
+        // Run-as-is imports keep their real AppHost in a subfolder; generated stacks put one .csproj at the src root.
+        var csproj = s.RunAsIs && !string.IsNullOrEmpty(s.AppHostProject)
+            ? Path.Combine(srcDir, s.AppHostProject.Replace('/', Path.DirectorySeparatorChar))
+            : Directory.GetFiles(srcDir, "*.csproj").FirstOrDefault();
+        if (csproj is null || !File.Exists(csproj))
+            throw new InvalidOperationException("no csproj materialized");
 
         var psi = _commandFactory(target, Path.GetFullPath(csproj), Path.GetFullPath(outDir));
         psi.RedirectStandardOutput = true;

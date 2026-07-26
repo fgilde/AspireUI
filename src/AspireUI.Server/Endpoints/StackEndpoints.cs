@@ -200,6 +200,7 @@ public static class StackEndpoints
             store.Get(id) is { } s
                 ? Results.Ok(new { s.Id, s.Name, s.TargetFramework, s.Nodes, s.Edges, s.RawStatements,
                     s.ExtraFiles, s.ExtraPackages, s.Notes, s.Groups, s.CreatedAt, s.CreatedBy,
+                    s.HostingUrlPath, s.RunAsIs, s.AppHostProject, s.FromGit, s.HasSource,
                     deployment = deployments.GetByStack(id) })
                 : Results.NotFound());
 
@@ -277,7 +278,17 @@ public static class StackEndpoints
         });
 
         app2.MapGet("/stacks/{id}/preview", (string id) =>
-            store.Get(id) is { } s ? Results.Text(gen.GenerateProgram(s), "text/plain") : Results.NotFound());
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            // Run-as-is imports run their original AppHost verbatim — show the real entry file, never a regenerated one.
+            if (s.RunAsIs && s.AppHostProject is { } ahp)
+            {
+                var progDir = Path.Combine(Dir(id), Path.GetDirectoryName(ahp.Replace('/', Path.DirectorySeparatorChar)) ?? "");
+                var real = ReadAppHostEntry(progDir);
+                if (!string.IsNullOrEmpty(real)) return Results.Text(real, "text/plain");
+            }
+            return Results.Text(gen.GenerateProgram(s), "text/plain");
+        });
 
         app2.MapGet("/stacks/{id}/packages", (string id) =>
             store.Get(id) is { } s ? Results.Ok(gen.GetPackages(s)) : Results.NotFound());
@@ -340,7 +351,11 @@ public static class StackEndpoints
             {
                 var (okr, reason, newCode) = await assist.RewriteCodeAsync(gen.GenerateProgram(s), body.Prompt, appSettings);
                 if (!okr || newCode is null) return Results.UnprocessableEntity(new { reply = reason ?? "Could not apply." });
-                var updated = import.Import(id, s.Name, newCode, "") with { ExtraFiles = s.ExtraFiles, ExtraPackages = s.ExtraPackages };
+                var updated = import.Import(id, s.Name, newCode, "")
+                    with { ExtraFiles = s.ExtraFiles, ExtraPackages = s.ExtraPackages,
+                        HasSource = s.HasSource, FromGit = s.FromGit, AppHostProject = s.AppHostProject,
+                        RunAsIs = s.RunAsIs, HostingUrlPath = s.HostingUrlPath,
+                        CreatedAt = s.CreatedAt, CreatedBy = s.CreatedBy };
                 var persisted = Persist(updated);
                 if (persisted is IStatusCodeHttpResult { StatusCode: StatusCodes.Status422UnprocessableEntity })
                     return Results.UnprocessableEntity(new { reply = "Applied, but the code didn't compile — reverted.", errors = (persisted as IValueHttpResult)?.Value });
@@ -372,6 +387,23 @@ public static class StackEndpoints
             return ComposeImporter.ResolveEnv(ComposeImporter.Merge(paths.Select(File.ReadAllText).ToList()), env);
         }
 
+        // AppHost entry point: Program.cs (classic) or AppHost.cs (Aspire 9+), else the first .cs that builds the app.
+        static string ReadAppHostEntry(string projDir)
+        {
+            if (!Directory.Exists(projDir)) return "";
+            foreach (var name in new[] { "Program.cs", "AppHost.cs" })
+            {
+                var p = Path.Combine(projDir, name);
+                if (File.Exists(p)) return File.ReadAllText(p);
+            }
+            foreach (var cs in Directory.EnumerateFiles(projDir, "*.cs"))
+            {
+                var text = File.ReadAllText(cs);
+                if (text.Contains("CreateBuilder") || text.Contains("DistributedApplication")) return text;
+            }
+            return "";
+        }
+
         // Shared import core: a directory already populated with source files (via git clone or a local upload)
         // becomes a stack. Same logic for both — only how the dir gets filled differs.
         (StackModel? stack, string? error) BuildFromDir(string sid, string dir, string? mode, string name, string[]? files, string[]? services, Dictionary<string, string>? env)
@@ -383,11 +415,12 @@ public static class StackEndpoints
             {
                 var appHostProject = GitService.FindAppHostRel(dir);
                 if (appHostProject is null) return (null, "no .NET Aspire AppHost project found (no .csproj referencing Aspire.Hosting.AppHost)");
-                var progDir = Path.GetDirectoryName(appHostProject.Replace('/', Path.DirectorySeparatorChar)) ?? "";
-                var progPath = Path.Combine(dir, progDir, "Program.cs");
-                var programCs = File.Exists(progPath) ? File.ReadAllText(progPath) : "";
+                var progDir = Path.Combine(dir, Path.GetDirectoryName(appHostProject.Replace('/', Path.DirectorySeparatorChar)) ?? "");
+                var programCs = ReadAppHostEntry(progDir);
+                // An imported AppHost runs verbatim (RunAsIs): keep the original files, lock the editor. Nodes are a best-effort
+                // parse for display only — real projects use patterns codegen can't round-trip, so we never regenerate over them.
                 var s = import.Import(sid, name, programCs, "{}")
-                    with { RunAsIs = m == "runasis", AppHostProject = m == "runasis" ? appHostProject : null, HasSource = true, ExtraFiles = [] };
+                    with { RunAsIs = true, AppHostProject = appHostProject, HasSource = true, ExtraFiles = [] };
                 return (s, null);
             }
             var yaml = MergeComposeYaml(dir, files, env);
@@ -674,10 +707,14 @@ public static class StackEndpoints
         {
             if (LockGuard(id) is { } lg) return lg;
             if (store.Get(id) is not { } cur) return Results.NotFound();
-            // Import only reconstructs nodes/edges/raws from the code; carry over the parts the code
-            // model can't represent (bundle-imported extra files + package refs) so a save doesn't wipe them.
+            // Import only reconstructs nodes/edges/raws from the code; carry over everything the code model
+            // can't represent (extra files/packages) AND the import provenance (source dir, git, apphost) so
+            // a code save doesn't strip it — otherwise deploy loses the copied source (Dockerfile, etc.).
             return Persist(import.Import(id, r.Name, r.Code, "")
-                with { ExtraFiles = cur.ExtraFiles, ExtraPackages = cur.ExtraPackages });
+                with { ExtraFiles = cur.ExtraFiles, ExtraPackages = cur.ExtraPackages,
+                    HasSource = cur.HasSource, FromGit = cur.FromGit, AppHostProject = cur.AppHostProject,
+                    RunAsIs = cur.RunAsIs, HostingUrlPath = cur.HostingUrlPath,
+                    CreatedAt = cur.CreatedAt, CreatedBy = cur.CreatedBy });
         });
 
         app2.MapPost("/stacks/{id}/deploy/down", (string id) =>

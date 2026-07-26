@@ -7,8 +7,10 @@ import { modals } from "@mantine/modals";
 export const toastOk = (message: string, title = "Done") =>
   notifications.show({ title, message, color: "green" });
 
-export const toastErr = (err: unknown, title = "Something went wrong") =>
+export const toastErr = (err: unknown, title = "Something went wrong") => {
+  if (err instanceof Error && err.name === "MutationCancelled") return; // user declined a guarded edit — not an error
   notifications.show({ title, message: err instanceof Error ? err.message : String(err), color: "red" });
+};
 
 export function confirmDelete(what: string, detail?: string): Promise<boolean> {
   return new Promise(resolve => {

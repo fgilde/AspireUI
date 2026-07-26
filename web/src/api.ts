@@ -59,12 +59,24 @@ export const listStacks = () => fetch(`${base}/stacks`).then(ok);
 export const getStack = (id: string): Promise<Stack> => fetch(`${base}/stacks/${id}`).then(ok);
 export const createStack = (s: Partial<Stack>): Promise<Stack> =>
   fetch(`${base}/stacks`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
-export const saveStack = (s: Stack): Promise<Stack> =>
-  fetch(`${base}/stacks/${s.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
-export const patchNode = (id: string, node: Node): Promise<Stack> =>
-  fetch(`${base}/stacks/${id}/nodes/${node.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(node) }).then(ok);
-export const addEdge = (id: string, edge: Partial<Edge>): Promise<Stack> =>
-  fetch(`${base}/stacks/${id}/edges`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(edge) }).then(ok);
+// A guard the editor registers to intercept graph mutations (used for run-as-is imports: confirm before changing).
+export class MutationCancelled extends Error { constructor() { super("cancelled"); this.name = "MutationCancelled"; } }
+let _mutationGuard: (() => Promise<boolean>) | null = null;
+export const setMutationGuard = (g: (() => Promise<boolean>) | null) => { _mutationGuard = g; };
+const guardMutation = async () => { if (_mutationGuard && !(await _mutationGuard())) throw new MutationCancelled(); };
+
+export const saveStack = async (s: Stack): Promise<Stack> => {
+  await guardMutation();
+  return fetch(`${base}/stacks/${s.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(s) }).then(ok);
+};
+export const patchNode = async (id: string, node: Node): Promise<Stack> => {
+  await guardMutation();
+  return fetch(`${base}/stacks/${id}/nodes/${node.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(node) }).then(ok);
+};
+export const addEdge = async (id: string, edge: Partial<Edge>): Promise<Stack> => {
+  await guardMutation();
+  return fetch(`${base}/stacks/${id}/edges`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(edge) }).then(ok);
+};
 
 export const previewStack = (id: string): Promise<string> => fetch(`${base}/stacks/${id}/preview`).then(r => r.text());
 export const exportStackZip = (id: string): Promise<Blob> => fetch(`${base}/stacks/${id}/export`).then(r => r.blob());
@@ -95,7 +107,7 @@ export const codeComplete = (id: string, code: string, offset: number): Promise<
 export const codeHover = (id: string, code: string, offset: number): Promise<{ contents: string | null }> => codePost(id, "hover", { code, offset });
 export const codeSignature = (id: string, code: string, offset: number): Promise<SignatureInfo | null> => codePost(id, "signature", { code, offset });
 export const codeDiagnostics = (id: string, code: string): Promise<CodeDiagnostic[]> => codePost(id, "diagnostics", { code, offset: 0 });
-export const codeSave = (id: string, name: string, code: string): Promise<Stack> => codePost(id, "save", { name, code });
+export const codeSave = async (id: string, name: string, code: string): Promise<Stack> => { await guardMutation(); return codePost(id, "save", { name, code }); };
 export const validateStack = (id: string): Promise<CodeDiagnostic[]> => fetch(`${base}/stacks/${id}/validate`).then(ok);
 
 export type PublishTarget = "compose" | "manifest" | "kubernetes" | "bicep";
@@ -103,8 +115,10 @@ export const publishStack = (id: string, target: PublishTarget = "compose"): Pro
   fetch(`${base}/stacks/${id}/publish?target=${target}`, { method: "POST" }).then(ok);
 export const deployStack = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy`, { method: "POST" }).then(ok);
 export const deployDown = (id: string): Promise<DeployResult> => fetch(`${base}/stacks/${id}/deploy/down`, { method: "POST" }).then(ok);
-export const deleteEdge = (id: string, edgeId: string): Promise<void> =>
-  fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" }).then(() => undefined);
+export const deleteEdge = async (id: string, edgeId: string): Promise<void> => {
+  await guardMutation();
+  await fetch(`${base}/stacks/${id}/edges/${edgeId}`, { method: "DELETE" });
+};
 
 export const explainStack = (id: string): Promise<{ reply: string }> =>
   fetch(`${base}/stacks/${id}/explain`, { method: "POST" }).then(ok);
