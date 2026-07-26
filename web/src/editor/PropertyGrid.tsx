@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { TextInput, NumberInput, Switch, Select, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
-import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload } from "@tabler/icons-react";
+import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload, IconVariable } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
 import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier, rid } from "../model";
 import { toastOk, toastErr } from "../ui";
@@ -107,6 +107,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
   const envRows = readWithRows(draft, ENV_METHOD);
   const otherNodes = stack.nodes.filter(n => n.id !== node.id);
+  const paramNodes = stack.nodes.filter(n => n.addMethod === "AddParameter");
 
   const envFileRef = useRef<HTMLInputElement>(null);
   const importSecret = useRef(false);
@@ -236,6 +237,26 @@ export function PropertyGrid({ stack, node, rt, setStack }:
                     </Menu.Dropdown>
                   </Menu>
                 )}
+                <Menu position="bottom-end" withArrow width={280}>
+                  <Menu.Target>
+                    <Tooltip label="Use a parameter" withArrow><ActionIcon variant="subtle"><IconVariable size={15} /></ActionIcon></Tooltip>
+                  </Menu.Target>
+                  <Menu.Dropdown mah={320} style={{ overflowY: "auto" }}>
+                    {paramNodes.length > 0 && <Menu.Label>Use existing parameter</Menu.Label>}
+                    {paramNodes.map(p => (
+                      <Menu.Item key={p.id} leftSection={<IconVariable size={14} />} onClick={() => setVal(p.varName)}>
+                        {p.resourceName} <Text span size="xs" c="dimmed">({p.varName})</Text>
+                      </Menu.Item>
+                    ))}
+                    {paramNodes.length > 0 && <Menu.Divider />}
+                    <Menu.Item leftSection={<IconPlus size={14} />} onClick={() => {
+                      const paramRt = catalog.find(r => r.addMethod === "AddParameter");
+                      if (!paramRt) { toastErr("Parameter resource not in catalog"); return; }
+                      setAddTarget({ onPick: v => { setVal(v); setAddTarget(null); setAddRt(null); } });
+                      setAddRt(paramRt);
+                    }}>Replace with new parameter…</Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
                 <ActionIcon variant="subtle" color="red" onClick={() => commit(writeWithRows(draft, ENV_METHOD, envRows.filter((_, x) => x !== ri)))}>
                   <IconX size={14} />
                 </ActionIcon>

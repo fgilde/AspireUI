@@ -11,7 +11,8 @@ public static class GitService
     private static readonly HashSet<string> SkipDirs =
         new(StringComparer.OrdinalIgnoreCase) { ".git", "bin", "obj", "node_modules", ".vs", ".idea", "packages", "dist", "TestResults" };
 
-    public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error);
+    public record ComposeFileDto(string Path, string Content);
+    public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error, List<ComposeFileDto>? ComposeFiles = null);
 
     public static RepoInfo Inspect(string url, string? branch, string? subdir, string? token = null)
     {
@@ -21,13 +22,24 @@ public static class GitService
             if (Clone(url, branch, dir, token) is { } err) return new(false, false, null, err);
             var root = RootOf(dir, subdir);
             if (!Directory.Exists(root)) return new(false, false, null, $"subdir '{subdir}' not found");
-            var hasCompose = ComposeNames.Any(f => File.Exists(Path.Combine(root, f)));
+            var composeFiles = FindComposeFiles(root)
+                .Select(f => new ComposeFileDto(f, TryRead(System.IO.Path.Combine(root, f))))
+                .ToList();
             var hasAppHost = FindAppHost(root) is not null;
-            return new(hasCompose, hasAppHost, RepoName(url), null);
+            return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles);
         }
         catch (Exception e) { return new(false, false, null, e.Message); }
         finally { Cleanup(dir); }
     }
+
+    public static List<string> FindComposeFiles(string dir) =>
+        !Directory.Exists(dir) ? new() : Directory.EnumerateFiles(dir, "*.y*ml")
+            .Where(f => System.IO.Path.GetFileName(f).Contains("compose", StringComparison.OrdinalIgnoreCase))
+            .Select(f => System.IO.Path.GetFileName(f))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static string TryRead(string p) { try { return File.ReadAllText(p); } catch { return ""; } }
 
     // Clone repo (or its subdir) into destDir as real files (byte-exact, incl. binaries), skipping .git/bin/obj/node_modules.
     public static (string? name, string? error) CloneInto(string url, string? branch, string? subdir, string destDir, string? token = null)

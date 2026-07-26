@@ -361,6 +361,17 @@ public static class StackEndpoints
         });
 
         var gitJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+        static string? MergeComposeYaml(string dir, string[]? files, Dictionary<string, string>? env)
+        {
+            var paths = files is { Length: > 0 }
+                ? files.Select(f => Path.Combine(dir, f)).ToList()
+                : (GitService.FindCompose(dir) is { } one ? new List<string> { one } : new List<string>());
+            paths = paths.Where(File.Exists).ToList();
+            if (paths.Count == 0) return null;
+            if (env is { Count: > 0 })
+                try { File.WriteAllText(Path.Combine(dir, ".env"), string.Join("\n", env.Select(kv => $"{kv.Key}={kv.Value}"))); } catch { }
+            return ComposeImporter.ResolveEnv(ComposeImporter.Merge(paths.Select(File.ReadAllText).ToList()), env);
+        }
         IResult GitPullRedeploy(string id, HttpContext ctx)
         {
             var cfgRaw = settings.GetValue($"git:{id}");
@@ -380,9 +391,9 @@ public static class StackEndpoints
             }
             else
             {
-                var composePath = GitService.FindCompose(dir);
-                if (composePath is null) return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" });
-                var (stack, err2) = compose.Import(id, existing.Name, File.ReadAllText(composePath));
+                var yaml = MergeComposeYaml(dir, g.Files, g.Env);
+                if (yaml is null) return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" });
+                var (stack, err2) = compose.Import(id, existing.Name, yaml, g.Services is { Length: > 0 } ? g.Services.ToHashSet() : null);
                 if (stack is null) return Results.UnprocessableEntity(new { message = err2 });
                 updated = stack with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true, ExtraFiles = [] };
             }
@@ -401,7 +412,7 @@ public static class StackEndpoints
         {
             var r = GitService.Inspect(b.Url, b.Branch, b.Subdir, b.AuthToken);
             return r.Error is not null ? Results.UnprocessableEntity(new { message = r.Error })
-                : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name });
+                : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name, composeFiles = r.ComposeFiles ?? new() });
         });
         app2.MapPost("/git/branches", (GitImportRequest b) =>
         {
@@ -433,16 +444,16 @@ public static class StackEndpoints
             }
             else
             {
-                var composePath = GitService.FindCompose(dir);
-                if (composePath is null) { RmDir(); return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" }); }
-                var (cs, cerr2) = compose.Import(sid, stackName, File.ReadAllText(composePath));
+                var yaml = MergeComposeYaml(dir, b.Files, b.Env);
+                if (yaml is null) { RmDir(); return Results.UnprocessableEntity(new { message = "no docker-compose file found in the repository" }); }
+                var (cs, cerr2) = compose.Import(sid, stackName, yaml, b.Services is { Length: > 0 } ? b.Services.ToHashSet() : null);
                 if (cs is null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr2 }); }
                 stack = cs with { FromGit = true, ExtraFiles = [] };
             }
 
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken), gitJson));
+            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services), gitJson));
             settings.SetValue($"githook:{token}", sid);
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
@@ -1008,8 +1019,8 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record ExecRequest(string Container, string Cmd);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
-    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null);
-    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null);
+    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
+    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
     public record EnabledRequest(bool Enabled);
     public record ImportBundleRequest(string Name, List<BundleFile> Files, string? ProgramPath);
 }

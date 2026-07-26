@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AspireUI.Server.Models;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -7,12 +8,50 @@ namespace AspireUI.Server.Services;
 // Import docker-compose.yml into stack: each service→AddContainer; ports→WithHttpEndpoint; depends_on→WaitFor.
 public class ComposeImporter
 {
+    // Overlay-merge multiple compose files (later wins), like `docker compose -f a -f b`. Keeps original short/long syntax.
+    public static string Merge(IReadOnlyList<string> yamls)
+    {
+        if (yamls.Count <= 1) return yamls.Count == 1 ? yamls[0] : "";
+        var des = new DeserializerBuilder().Build();
+        var ser = new SerializerBuilder().Build();
+        object? acc = null;
+        foreach (var y in yamls)
+        {
+            object? cur;
+            try { cur = des.Deserialize<object>(y); } catch { continue; }
+            if (cur is null) continue;
+            acc = acc is null ? cur : DeepMerge(acc, cur);
+        }
+        return acc is null ? yamls[0] : ser.Serialize(acc);
+    }
+
+    private static object DeepMerge(object a, object b)
+    {
+        if (a is IDictionary<object, object> da && b is IDictionary<object, object> db)
+        {
+            foreach (var (k, v) in db)
+                da[k] = da.TryGetValue(k, out var ex) && ex is not null && v is not null ? DeepMerge(ex, v) : v;
+            return da;
+        }
+        return b;
+    }
+
+    // Interpolate ${VAR} / ${VAR:-default} with supplied values (blank/missing → default → empty).
+    public static string ResolveEnv(string yaml, IReadOnlyDictionary<string, string>? env) =>
+        Regex.Replace(yaml, @"\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}", m =>
+        {
+            var name = m.Groups[1].Value;
+            if (env is not null && env.TryGetValue(name, out var v) && !string.IsNullOrEmpty(v)) return v;
+            return m.Groups[2].Success ? m.Groups[2].Value : "";
+        });
+
     private sealed class ComposeFile { public Dictionary<string, ComposeService>? Services { get; set; } }
     private sealed class ComposeService
     {
         public string? Image { get; set; }
         public object? Build { get; set; }
         public List<string>? Ports { get; set; }
+        public List<object>? Expose { get; set; }
         public object? Environment { get; set; }
         public object? DependsOn { get; set; }
         public object? Command { get; set; }
@@ -28,7 +67,7 @@ public class ComposeImporter
         _ => (null, null),
     };
 
-    public (StackModel? stack, string? error) Import(string id, string name, string yaml)
+    public (StackModel? stack, string? error) Import(string id, string name, string yaml, IReadOnlySet<string>? include = null)
     {
         ComposeFile? file;
         try
@@ -49,8 +88,10 @@ public class ComposeImporter
         int i = 0;
         foreach (var (svc, def) in file.Services)
         {
+            if (include is not null && !include.Contains(svc)) continue;
             var varName = UniqueVar(Sanitize(svc), used);
             var withs = new List<WithCall>();
+            var endpointTargets = new HashSet<string>(StringComparer.Ordinal);
             foreach (var p in def.Ports ?? [])
             {
                 var (host, target) = SplitPort(p);
@@ -58,7 +99,11 @@ public class ComposeImporter
                 var args = new List<string> { $"targetPort: {target}" };
                 if (host is not null && host != target) args.Insert(0, $"port: {host}");
                 withs.Add(new WithCall("WithHttpEndpoint", args));
+                endpointTargets.Add(target);
             }
+            foreach (var e in ReadExpose(def.Expose))
+                if (endpointTargets.Add(e))
+                    withs.Add(new WithCall("WithHttpEndpoint", [$"targetPort: {e}"]));
             foreach (var (k, v) in ReadEnv(def.Environment))
                 withs.Add(new WithCall("WithEnvironment", [Quote(k), Quote(v)]));
             foreach (var vol in def.Volumes ?? [])
@@ -131,6 +176,15 @@ public class ComposeImporter
     {
         if (dep is List<object> list) foreach (var d in list) yield return d?.ToString() ?? "";
         else if (dep is Dictionary<object, object> map) foreach (var k in map.Keys) yield return k?.ToString() ?? "";
+    }
+
+    private static IEnumerable<string> ReadExpose(List<object>? expose)
+    {
+        foreach (var e in expose ?? [])
+        {
+            var s = (e?.ToString() ?? "").Split('/')[0].Trim();
+            if (s.Length > 0 && int.TryParse(s, out _)) yield return s;
+        }
     }
 
     private static List<string> ReadCommand(object? cmd) => cmd switch
