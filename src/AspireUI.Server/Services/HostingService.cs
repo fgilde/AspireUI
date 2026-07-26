@@ -62,6 +62,34 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
+    // Aspire publishes AddDockerfile resources as `image: ${X_IMAGE}` with no build section; add one so compose builds locally instead of trying to pull.
+    public static string InjectDockerfileBuilds(string yaml, StackModel stack, string srcDir)
+    {
+        var builds = new Dictionary<string, (string ctx, string? df)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var n in stack.Nodes.Where(n => n.AddMethod == "AddDockerfile"))
+        {
+            var key = Regex.Replace(n.ResourceName.ToUpperInvariant(), "[^A-Z0-9]", "_") + "_IMAGE";
+            var args = n.AddArgs ?? new();
+            var ctx = args.Count > 0 ? args[0].Trim().Trim('"') : ".";
+            var df = args.Count > 1 ? args[1].Trim().Trim('"') : null;
+            builds[key] = (ctx, df);
+        }
+        if (builds.Count == 0) return yaml;
+
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var m = Regex.Match(lines[i], @"^    image:\s*""?\$\{([A-Za-z0-9_]+)\}""?\s*$");
+            if (!m.Success || !builds.TryGetValue(m.Groups[1].Value, out var b)) continue;
+            var abs = Path.GetFullPath(Path.Combine(srcDir, b.ctx.Replace('/', Path.DirectorySeparatorChar))).Replace('\\', '/');
+            var ins = new List<string> { "    build:", $"      context: \"{abs}\"" };
+            if (b.df is not null) ins.Add($"      dockerfile: \"{b.df}\"");
+            lines.InsertRange(i + 1, ins);
+            i += ins.Count;
+        }
+        return string.Join("\n", lines);
+    }
+
     public static List<int> ExposedAppPorts(string yaml)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
@@ -286,7 +314,8 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose", cloneSrc);
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var raw = EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken));
+            var raw = InjectDockerfileBuilds(EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken)), stack, Path.Combine(publishRoot, "src"));
+            var needsBuild = stack.Nodes.Any(n => n.AddMethod == "AddDockerfile");
             var used = new HashSet<int>(store.List().Where(x => x.Id != id)
                 .SelectMany(x => (x.Ports ?? new()).Where(p => p.Public).Select(p => p.Host)));
             var prev = (existing?.Ports ?? new()).ToDictionary(p => p.Container);
@@ -303,7 +332,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var processed = PublishExposedPorts(raw, portMap, keepInternal);
             File.WriteAllText(path, processed);
             FillParameterEnv(stack, Path.Combine(pub.OutputDir, ".env"));
-            var up = deploy.UpProject(pub.OutputDir, project);
+            var up = deploy.UpProject(pub.OutputDir, project, needsBuild);
             var urls = up.Ok ? UrlsFromServices(ParseServices(deploy.Ps(pub.OutputDir, project).Log), host) : new();
             if (urls.Count == 0) urls = ParseUrls(processed, host);
             if (!string.IsNullOrWhiteSpace(stack.HostingUrlPath))

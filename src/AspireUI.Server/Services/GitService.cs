@@ -73,8 +73,7 @@ public static class GitService
         {
             if (csproj.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(SkipDirs.Contains)) continue;
             var text = File.ReadAllText(csproj);
-            if (text.Contains("Aspire.Hosting.AppHost", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("Aspire.AppHost.Sdk", StringComparison.OrdinalIgnoreCase)
+            if (text.Contains("Aspire.AppHost.Sdk", StringComparison.OrdinalIgnoreCase)
                 || text.Contains("<IsAspireHost>true", StringComparison.OrdinalIgnoreCase))
                 return csproj;
         }

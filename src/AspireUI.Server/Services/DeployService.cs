@@ -23,7 +23,7 @@ public class DeployService
     public DeployResult Down(string outputDir) => Run(outputDir, "compose down");
 
     // Project-scoped variants: stop/start/ps/logs target the same compose project deterministically.
-    public DeployResult UpProject(string dir, string project) => Run(dir, $"compose -p {project} up -d");
+    public DeployResult UpProject(string dir, string project, bool build = false) => Run(dir, $"compose -p {project} up -d{(build ? " --build" : "")}");
     public DeployResult StopProject(string dir, string project) => Run(dir, $"compose -p {project} stop");
     public DeployResult StartProject(string dir, string project) => Run(dir, $"compose -p {project} start");
     public DeployResult RestartProject(string dir, string project) => Run(dir, $"compose -p {project} restart");
