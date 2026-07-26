@@ -300,6 +300,19 @@ child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*`
   </tr>
 
   <tr>
+    <td align="center"><b>Install from Marketplace</b></td>
+    <td align="center"><b>Git import</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img width="2560" height="1385" alt="image" src="https://github.com/user-attachments/assets/53138c7a-57b6-4365-b8f7-18031be50182" />
+    </td>
+    <td>
+      <img width="2560" height="1385" alt="image" src="https://github.com/user-attachments/assets/e06f6b55-a2ba-4bc7-8a9b-5a8254ca3818" />
+    </td>
+  </tr>
+
+  <tr>
     <td align="center"><b>Hosting Treeview</b></td>
     <td align="center"><b>Settings</b></td>
   </tr>
