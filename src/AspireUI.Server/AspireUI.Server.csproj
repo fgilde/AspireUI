@@ -10,69 +10,75 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.4.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="5.6.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.*" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="*-*" />
-    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ollama" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="YamlDotNet" />
     <!-- gRPC client for the Aspire "resource service" (aspire.v1.DashboardService) — live per-resource
          status/urls/relationships + console logs of a running stack. Proto is compiled here (Aspire
          ships it only inside Aspire.Hosting.dll as internal types, so we generate our own client). -->
-    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.80.0" PrivateAssets="All" />
-    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.2" />
-    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.6" />
-    <PackageReference Include="Aspire.Hosting.Redis" Version="13.4.6" />
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Redis" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <!-- Catalog breadth: the server references these purely so reflection can surface their AddX
          resources; a generated stack only references the packages for resources it actually uses. -->
-    <PackageReference Include="Aspire.Hosting.SqlServer" Version="*" />
-    <PackageReference Include="Aspire.Hosting.MySql" Version="*" />
-    <PackageReference Include="Aspire.Hosting.MongoDB" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Kafka" Version="*" />
-    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Nats" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Elasticsearch" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6" />
-    <PackageReference Include="Aspire.Hosting.Seq" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Valkey" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Garnet" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Qdrant" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Milvus" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.CosmosDB" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Yarp" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Oracle" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Python" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.KeyVault" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" Version="*" />
-    <PackageReference Include="Aspire.Hosting.Maui" Version="13.4.6-preview.1.26319.6" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Java" Version="13.4.1-beta.686" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" Version="13.4.1-beta.686" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.1-beta.686" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.4.1-beta.686" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MinIO" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Meilisearch" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.RavenDB" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Adminer" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ngrok" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Bun" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Deno" Version="*" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Rust" Version="*" />
-    <PackageReference Include="Nextended.Aspire" Version="10.1.18" />
-    <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.18" />
-    <PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.18" />
-    <PackageReference Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.18" />
-    <PackageReference Include="Nextended.Aspire.Hosting.Grafana" Version="10.1.18" />
-    <PackageReference Include="Nextended.Aspire.Hosting.AspireUI" Version="10.1.18" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" />
+    <PackageReference Include="Aspire.Hosting.MySql" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
+    <PackageReference Include="Aspire.Hosting.Kafka" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
+    <PackageReference Include="Aspire.Hosting.Nats" />
+    <PackageReference Include="Aspire.Hosting.Elasticsearch" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" />
+    <PackageReference Include="Aspire.Hosting.Seq" />
+    <PackageReference Include="Aspire.Hosting.Valkey" />
+    <PackageReference Include="Aspire.Hosting.Garnet" />
+    <PackageReference Include="Aspire.Hosting.Qdrant" />
+    <PackageReference Include="Aspire.Hosting.Milvus" />
+    <PackageReference Include="Aspire.Hosting.Azure.CosmosDB" />
+    <PackageReference Include="Aspire.Hosting.Yarp" />
+    <PackageReference Include="Aspire.Hosting.Oracle" />
+    <PackageReference Include="Aspire.Hosting.Python" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" />
+    <PackageReference Include="Aspire.Hosting.Azure.ServiceBus" />
+    <PackageReference Include="Aspire.Hosting.Azure.KeyVault" />
+    <PackageReference Include="Aspire.Hosting.Azure.ApplicationInsights" />
+    <PackageReference Include="Aspire.Hosting.Azure.CognitiveServices" />
+    <PackageReference Include="Aspire.Hosting.Maui" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Java" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Golang" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MinIO" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Meilisearch" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.RavenDB" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Adminer" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Ngrok" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Bun" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Deno" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Rust" />
+    <PackageReference Include="Nextended.Aspire" />
+    <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" />
+    <PackageReference Include="Nextended.Aspire.Hosting.N8n" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Supabase" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Grafana" />
+    <PackageReference Include="Nextended.Aspire.Hosting.AspireUI" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Central package versions (single source of truth). Copied to output so codegen can stamp the
+         same versions into generated stack .csproj files at runtime. -->
+    <None Include="../../Directory.Packages.props" Link="Directory.Packages.props" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

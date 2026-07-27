@@ -1,0 +1,73 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.CognitiveServices" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.CosmosDB" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.KeyVault" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ServiceBus" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.3.0" />
+    <PackageVersion Include="Aspire.Hosting.Garnet" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Kafka" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6" />
+    <PackageVersion Include="Aspire.Hosting.Maui" Version="13.4.6-preview.1.26319.6" />
+    <PackageVersion Include="Aspire.Hosting.Milvus" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.MySql" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Nats" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Oracle" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Python" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Qdrant" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Seq" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Valkey" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Hosting.Yarp" Version="13.4.6" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.ActiveMQ" Version="13.4.1-beta.686" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Adminer" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Bun" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.4.1-beta.686" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Deno" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Golang" Version="13.4.1-beta.686" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Java" Version="13.4.1-beta.686" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MailPit" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Meilisearch" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.MinIO" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ngrok" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Ollama" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.RavenDB" Version="13.4.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Rust" Version="13.4.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Google.Protobuf" Version="3.34.1" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.80.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.80.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Features" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.0.0-preview.3" />
+    <PackageVersion Include="Nextended.Aspire" Version="10.1.20" />
+    <PackageVersion Include="Nextended.Aspire.Hosting.AspireUI" Version="10.1.20" />
+    <PackageVersion Include="Nextended.Aspire.Hosting.Grafana" Version="10.1.20" />
+    <PackageVersion Include="Nextended.Aspire.Hosting.LocalAI" Version="10.1.20" />
+    <PackageVersion Include="Nextended.Aspire.Hosting.N8n" Version="10.1.20" />
+    <PackageVersion Include="Nextended.Aspire.Hosting.Supabase" Version="10.1.20" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.16.16" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+
+</Project>

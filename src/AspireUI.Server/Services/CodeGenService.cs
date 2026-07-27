@@ -13,7 +13,8 @@ public class CodeGenService
 {
     public const string Begin = "// >>> aspireui:begin (edit carefully — this block round-trips back into the visual graph)";
     public const string End = "// <<< aspireui:end";
-    internal const string AspireVersion = "13.4.6";
+    internal static readonly string AspireVersion =
+        CatalogService.PackageVersions().TryGetValue("Aspire.Hosting.AppHost", out var v) ? v : "13.4.6";
 
     private readonly IReadOnlyDictionary<string, (string Id, string? Version)> _resourcePackages;
 

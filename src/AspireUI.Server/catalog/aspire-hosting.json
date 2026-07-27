@@ -3,7 +3,6 @@
     "label": "AspireUI",
     "group": "AspireUI",
     "package": "Nextended.Aspire.Hosting.AspireUI",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire.Hosting.AspireUI"
     ],
@@ -40,7 +39,6 @@
     "icon": "supabase",
     "group": "Backend",
     "package": "Nextended.Aspire.Hosting.Supabase",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire.Hosting.Supabase.Builders",
       "Nextended.Aspire.Hosting.Observability"
@@ -52,7 +50,6 @@
     "icon": "grafana",
     "group": "Observability",
     "package": "Nextended.Aspire.Hosting.Grafana",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire.Hosting.Grafana"
     ],
@@ -63,7 +60,6 @@
     "icon": "n8n",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.N8n",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire.Hosting.N8n.Builders"
     ],
@@ -74,18 +70,16 @@
     "icon": "localai",
     "group": "AI",
     "package": "Nextended.Aspire.Hosting.LocalAI",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire.Hosting.LocalAI"
     ],
-    "description": "LocalAI \u2014 self-hosted, OpenAI-compatible inference."
+    "description": "LocalAI — self-hosted, OpenAI-compatible inference."
   },
   "AddOllama": {
     "label": "Ollama",
     "icon": "ollama",
     "group": "AI",
     "package": "CommunityToolkit.Aspire.Hosting.Ollama",
-    "packageVersion": "13.4.0",
     "description": "Ollama LLM runtime. Pull models with AddModel."
   },
   "AddGithubRepository": {
@@ -93,7 +87,6 @@
     "icon": "github",
     "group": "Source",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire"
     ],
@@ -103,7 +96,6 @@
     "label": "MinIO (S3 on NFS)",
     "group": "Storage",
     "package": "Nextended.Aspire",
-    "packageVersion": "10.1.18",
     "usings": [
       "Nextended.Aspire"
     ]
@@ -113,7 +105,6 @@
     "icon": "sqlserver",
     "group": "Database",
     "package": "Aspire.Hosting.SqlServer",
-    "packageVersion": "13.4.6",
     "description": "Microsoft SQL Server (containerized)."
   },
   "AddMySql": {
@@ -121,7 +112,6 @@
     "icon": "mysql",
     "group": "Database",
     "package": "Aspire.Hosting.MySql",
-    "packageVersion": "13.4.6",
     "description": "MySQL database server."
   },
   "AddMongoDB": {
@@ -129,7 +119,6 @@
     "icon": "mongodb",
     "group": "Database",
     "package": "Aspire.Hosting.MongoDB",
-    "packageVersion": "13.4.6",
     "description": "MongoDB document database."
   },
   "AddAzureCosmosDB": {
@@ -137,7 +126,6 @@
     "icon": "cosmos",
     "group": "Database",
     "package": "Aspire.Hosting.Azure.CosmosDB",
-    "packageVersion": "13.4.6",
     "description": "Azure Cosmos DB (uses the emulator locally, real service on Azure)."
   },
   "AddValkey": {
@@ -145,23 +133,20 @@
     "icon": "valkey",
     "group": "Cache",
     "package": "Aspire.Hosting.Valkey",
-    "packageVersion": "13.4.6",
-    "description": "Valkey \u2014 a Redis-compatible in-memory store (open-source fork)."
+    "description": "Valkey — a Redis-compatible in-memory store (open-source fork)."
   },
   "AddGarnet": {
     "label": "Garnet",
     "icon": "garnet",
     "group": "Cache",
     "package": "Aspire.Hosting.Garnet",
-    "packageVersion": "13.4.6",
-    "description": "Microsoft Garnet \u2014 a high-performance Redis-compatible cache."
+    "description": "Microsoft Garnet — a high-performance Redis-compatible cache."
   },
   "AddKafka": {
     "label": "Kafka",
     "icon": "kafka",
     "group": "Messaging",
     "package": "Aspire.Hosting.Kafka",
-    "packageVersion": "13.4.6",
     "description": "Apache Kafka event streaming broker."
   },
   "AddRabbitMQ": {
@@ -169,7 +154,6 @@
     "icon": "rabbitmq",
     "group": "Messaging",
     "package": "Aspire.Hosting.RabbitMQ",
-    "packageVersion": "13.4.6",
     "description": "RabbitMQ message broker (AMQP)."
   },
   "AddNats": {
@@ -177,7 +161,6 @@
     "icon": "nats",
     "group": "Messaging",
     "package": "Aspire.Hosting.Nats",
-    "packageVersion": "13.4.6",
     "description": "NATS lightweight messaging system."
   },
   "AddActiveMQ": {
@@ -185,7 +168,6 @@
     "icon": "activemq",
     "group": "Messaging",
     "package": "CommunityToolkit.Aspire.Hosting.ActiveMQ",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Apache ActiveMQ message broker."
   },
   "AddActiveMQArtemis": {
@@ -193,7 +175,6 @@
     "icon": "activemq",
     "group": "Messaging",
     "package": "CommunityToolkit.Aspire.Hosting.ActiveMQ",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Apache ActiveMQ Artemis (next-gen broker)."
   },
   "AddElasticsearch": {
@@ -201,7 +182,6 @@
     "icon": "elasticsearch",
     "group": "Search",
     "package": "Aspire.Hosting.Elasticsearch",
-    "packageVersion": "13.3.0",
     "description": "Elasticsearch full-text search & analytics engine."
   },
   "AddQdrant": {
@@ -209,7 +189,6 @@
     "icon": "qdrant",
     "group": "Vector",
     "package": "Aspire.Hosting.Qdrant",
-    "packageVersion": "13.4.6",
     "description": "Qdrant vector database for embeddings/similarity search."
   },
   "AddMilvus": {
@@ -217,7 +196,6 @@
     "icon": "milvus",
     "group": "Vector",
     "package": "Aspire.Hosting.Milvus",
-    "packageVersion": "13.4.6",
     "description": "Milvus vector database for AI/embeddings."
   },
   "AddKeycloak": {
@@ -225,7 +203,6 @@
     "icon": "keycloak",
     "group": "Identity",
     "package": "Aspire.Hosting.Keycloak",
-    "packageVersion": "13.4.6-preview.1.26319.6",
     "description": "Keycloak identity & access management (OAuth/OIDC)."
   },
   "AddSeq": {
@@ -233,7 +210,6 @@
     "icon": "seq",
     "group": "Observability",
     "package": "Aspire.Hosting.Seq",
-    "packageVersion": "13.4.6",
     "description": "Seq structured-log server. Point apps at it for searchable logs."
   },
   "AddDaprComponent": {
@@ -241,15 +217,13 @@
     "icon": "dapr",
     "group": "Integration",
     "package": "CommunityToolkit.Aspire.Hosting.Dapr",
-    "packageVersion": "13.4.1-beta.686",
-    "description": "Register a Dapr component (state, pubsub, bindings\u2026)."
+    "description": "Register a Dapr component (state, pubsub, bindings…)."
   },
   "AddDaprPubSub": {
     "label": "Dapr Pub/Sub",
     "icon": "dapr",
     "group": "Integration",
     "package": "CommunityToolkit.Aspire.Hosting.Dapr",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Dapr publish/subscribe component."
   },
   "AddDaprStateStore": {
@@ -257,7 +231,6 @@
     "icon": "dapr",
     "group": "Integration",
     "package": "CommunityToolkit.Aspire.Hosting.Dapr",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Dapr state-store component."
   },
   "AddJavaApp": {
@@ -265,7 +238,6 @@
     "icon": "java",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Java",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Run a Java application as a resource."
   },
   "AddJavaContainerApp": {
@@ -273,7 +245,6 @@
     "icon": "java",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Java",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Run a Java app from a container image."
   },
   "AddSpringApp": {
@@ -281,7 +252,6 @@
     "icon": "spring",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Java",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Run a Spring Boot application."
   },
   "AddGolangApp": {
@@ -289,7 +259,6 @@
     "icon": "go",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Golang",
-    "packageVersion": "13.4.1-beta.686",
     "description": "Run a Go application as a resource."
   },
   "AddPythonApp": {
@@ -297,29 +266,25 @@
     "icon": "python",
     "group": "Compute",
     "package": "Aspire.Hosting.Python",
-    "packageVersion": "13.4.6",
     "description": "Run a Python application."
   },
   "AddPythonModule": {
     "label": "Python Module",
     "icon": "python",
     "group": "Compute",
-    "package": "Aspire.Hosting.Python",
-    "packageVersion": "13.4.6"
+    "package": "Aspire.Hosting.Python"
   },
   "AddPythonExecutable": {
     "label": "Python Executable",
     "icon": "python",
     "group": "Compute",
-    "package": "Aspire.Hosting.Python",
-    "packageVersion": "13.4.6"
+    "package": "Aspire.Hosting.Python"
   },
   "AddUvicornApp": {
     "label": "Uvicorn (Python)",
     "icon": "python",
     "group": "Compute",
     "package": "Aspire.Hosting.Python",
-    "packageVersion": "13.4.6",
     "description": "Run a Python ASGI app via Uvicorn (FastAPI etc.)."
   },
   "AddMauiProject": {
@@ -327,7 +292,6 @@
     "icon": "maui",
     "group": "Compute",
     "package": "Aspire.Hosting.Maui",
-    "packageVersion": "13.4.6-preview.1.26319.6",
     "description": ".NET MAUI client app as an Aspire resource."
   },
   "AddOracle": {
@@ -335,7 +299,6 @@
     "icon": "oracle",
     "group": "Database",
     "package": "Aspire.Hosting.Oracle",
-    "packageVersion": "13.4.6",
     "description": "Oracle Database (containerized)."
   },
   "AddYarp": {
@@ -343,23 +306,20 @@
     "icon": "yarp",
     "group": "Networking",
     "package": "Aspire.Hosting.Yarp",
-    "packageVersion": "13.4.6",
-    "description": "YARP reverse proxy \u2014 route/aggregate traffic to your services."
+    "description": "YARP reverse proxy — route/aggregate traffic to your services."
   },
   "AddAzureStorage": {
     "label": "Azure Storage",
     "icon": "azure",
     "group": "Storage",
     "package": "Aspire.Hosting.Azure.Storage",
-    "packageVersion": "13.4.6",
-    "description": "Azure Storage (blobs/queues/tables) \u2014 emulator locally."
+    "description": "Azure Storage (blobs/queues/tables) — emulator locally."
   },
   "AddAzureServiceBus": {
     "label": "Azure Service Bus",
     "icon": "azure",
     "group": "Messaging",
     "package": "Aspire.Hosting.Azure.ServiceBus",
-    "packageVersion": "13.4.6",
     "description": "Azure Service Bus enterprise messaging."
   },
   "AddAzureKeyVault": {
@@ -367,7 +327,6 @@
     "icon": "azure",
     "group": "Security",
     "package": "Aspire.Hosting.Azure.KeyVault",
-    "packageVersion": "13.4.6",
     "description": "Azure Key Vault for secrets."
   },
   "AddAzureApplicationInsights": {
@@ -375,7 +334,6 @@
     "icon": "azure",
     "group": "Observability",
     "package": "Aspire.Hosting.Azure.ApplicationInsights",
-    "packageVersion": "13.4.6",
     "description": "Azure Application Insights telemetry."
   },
   "AddAzureOpenAI": {
@@ -383,7 +341,6 @@
     "icon": "openai",
     "group": "AI",
     "package": "Aspire.Hosting.Azure.CognitiveServices",
-    "packageVersion": "13.4.6",
     "description": "Azure OpenAI service (deploy models, chat/embeddings)."
   },
   "AddProject": {
@@ -445,7 +402,6 @@
     "icon": "minio",
     "group": "Storage",
     "package": "CommunityToolkit.Aspire.Hosting.MinIO",
-    "packageVersion": "13.4.0",
     "description": "MinIO S3-compatible object storage."
   },
   "AddMeilisearch": {
@@ -453,15 +409,13 @@
     "icon": "meilisearch",
     "group": "Search",
     "package": "CommunityToolkit.Aspire.Hosting.Meilisearch",
-    "packageVersion": "13.4.0",
-    "description": "Meilisearch \u2014 fast, typo-tolerant full-text search."
+    "description": "Meilisearch — fast, typo-tolerant full-text search."
   },
   "AddRavenDB": {
     "label": "RavenDB",
     "icon": "ravendb",
     "group": "Database",
     "package": "CommunityToolkit.Aspire.Hosting.RavenDB",
-    "packageVersion": "13.4.0",
     "description": "RavenDB document database."
   },
   "AddMailPit": {
@@ -469,23 +423,20 @@
     "icon": "mail",
     "group": "Tools",
     "package": "CommunityToolkit.Aspire.Hosting.MailPit",
-    "packageVersion": "13.4.0",
-    "description": "MailPit \u2014 a dev SMTP server with a web UI to catch outgoing mail."
+    "description": "MailPit — a dev SMTP server with a web UI to catch outgoing mail."
   },
   "AddAdminer": {
     "label": "Adminer",
     "icon": "adminer",
     "group": "Tools",
     "package": "CommunityToolkit.Aspire.Hosting.Adminer",
-    "packageVersion": "13.4.0",
-    "description": "Adminer \u2014 a lightweight web UI for your databases."
+    "description": "Adminer — a lightweight web UI for your databases."
   },
   "AddNgrok": {
     "label": "ngrok",
     "icon": "ngrok",
     "group": "Networking",
     "package": "CommunityToolkit.Aspire.Hosting.Ngrok",
-    "packageVersion": "13.4.0",
     "description": "Expose a local endpoint publicly via an ngrok tunnel."
   },
   "AddBunApp": {
@@ -493,7 +444,6 @@
     "icon": "bun",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Bun",
-    "packageVersion": "13.4.0",
     "description": "Run a Bun (JavaScript/TypeScript) application."
   },
   "AddDenoApp": {
@@ -501,7 +451,6 @@
     "icon": "deno",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Deno",
-    "packageVersion": "13.4.0",
     "description": "Run a Deno application."
   },
   "AddDenoTask": {
@@ -509,7 +458,6 @@
     "icon": "deno",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Deno",
-    "packageVersion": "13.4.0",
     "description": "Run a Deno task from deno.json."
   },
   "AddRustApp": {
@@ -517,7 +465,6 @@
     "icon": "rust",
     "group": "Compute",
     "package": "CommunityToolkit.Aspire.Hosting.Rust",
-    "packageVersion": "13.4.0",
     "description": "Run a Rust application."
   },
   "AddBaconApp": {

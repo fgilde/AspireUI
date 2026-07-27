@@ -69,16 +69,40 @@ public class CatalogService
         _overlay = LoadOverlays();
     }
 
-    // Resource→NuGet mapping from overlay JSON; used by CodeGenService for version overrides.
+    // Single source of truth for NuGet versions: Directory.Packages.props (CPM), copied next to the app.
+    // Nextended assemblies report AssemblyVersion 1.0.0, so reflection can't give the package version —
+    // parsing the props file is the only reliable source, and keeps codegen versions from ever drifting.
+    private static IReadOnlyDictionary<string, string>? _pkgVersions;
+    public static IReadOnlyDictionary<string, string> PackageVersions()
+    {
+        if (_pkgVersions is not null) return _pkgVersions;
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            var file = Path.Combine(AppContext.BaseDirectory, "Directory.Packages.props");
+            var doc = System.Xml.Linq.XDocument.Load(file);
+            foreach (var pv in doc.Descendants("PackageVersion"))
+            {
+                var id = pv.Attribute("Include")?.Value;
+                var v = pv.Attribute("Version")?.Value;
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(v)) map[id] = v;
+            }
+        }
+        catch { }
+        return _pkgVersions = map;
+    }
+
+    // Resource→NuGet mapping from overlay JSON; version resolved from Directory.Packages.props.
     public static IReadOnlyDictionary<string, (string Id, string? Version)> ResourcePackages()
     {
+        var versions = PackageVersions();
         var map = new Dictionary<string, (string, string?)>();
         foreach (var (name, entry) in LoadOverlays())
         {
             if (entry.TryGetProperty("package", out var pkg))
             {
-                var version = entry.TryGetProperty("packageVersion", out var v) ? v.GetString() : null;
-                map[name] = (pkg.GetString()!, version);
+                var id = pkg.GetString()!;
+                map[name] = (id, versions.TryGetValue(id, out var v) ? v : null);
             }
         }
         return map;
