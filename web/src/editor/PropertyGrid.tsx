@@ -11,6 +11,8 @@ import { AddResourceDialog } from "./AddResourceDialog";
 import * as api from "../api";
 
 const ENV_METHOD = "WithEnvironment";
+// Methods with a dedicated editor above — kept out of the generic positional capability list.
+const QUICK_METHODS = new Set([ENV_METHOD, "WithExternalHttpEndpoints"]);
 
 interface FieldOpts {
   nodes?: Node[];
@@ -32,7 +34,7 @@ function labelWith(text: string, info: string) {
 
 function field(p: CatalogParam, value: string, onChange: (v: string) => void, opts: FieldOpts = {}) {
   const nodes = opts.nodes ?? [];
-  if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required}
+  if (p.type === "int" || p.type === "number") return <NumberInput key={p.name} label={p.label} withAsterisk={p.required || p.name === "targetPort"}
     allowDecimal={p.type === "number"} value={value === "" ? "" : Number(value)} onChange={v => onChange(String(v ?? ""))} />;
   if (p.type === "bool") return <Switch key={p.name} label={p.label}
     checked={value === "true"} onChange={e => onChange(e.currentTarget.checked ? "true" : "false")} />;
@@ -71,7 +73,8 @@ function field(p: CatalogParam, value: string, onChange: (v: string) => void, op
 }
 
 function blankArgs(params: CatalogParam[]): string[] {
-  return params.map(p => toLiteral(p.default ?? (p.type === "enum" ? p.options?.[0] ?? "" : ""), p.type, p.enumTypeName));
+  // Optionals start as literal null (emitted as null, not 0/""); bools use their default.
+  return params.map(p => p.type === "bool" ? (String(p.default) === "true" ? "true" : "false") : "null");
 }
 
 export function PropertyGrid({ stack, node, rt, setStack }:
@@ -87,9 +90,9 @@ export function PropertyGrid({ stack, node, rt, setStack }:
 
   const hasEnv = rt?.withs.some(w => w.method === ENV_METHOD) ?? false;
   const methodsInUse = useMemo(
-    () => Array.from(new Set(draft.withCalls.map(w => w.method))).filter(m => m !== ENV_METHOD),
+    () => Array.from(new Set(draft.withCalls.map(w => w.method))).filter(m => !QUICK_METHODS.has(m)),
     [draft.withCalls]);
-  const available = (rt?.withs ?? []).filter(w => w.method !== ENV_METHOD && !methodsInUse.includes(w.method));
+  const available = (rt?.withs ?? []).filter(w => !QUICK_METHODS.has(w.method) && !methodsInUse.includes(w.method));
 
   const addCapability = (method: string) => {
     const w = rt?.withs.find(x => x.method === method);
@@ -196,16 +199,7 @@ export function PropertyGrid({ stack, node, rt, setStack }:
   }, [catalog, addTarget, refIntent]);
 
   const canExternal = rt?.withs.some(w => w.method === "WithExternalHttpEndpoints") ?? false;
-  const canHttp = rt?.withs.some(w => w.method === "WithHttpEndpoint") ?? false;
   const isExternal = draft.withCalls.some(w => w.method === "WithExternalHttpEndpoints");
-  const httpRows = readWithRows(draft, "WithHttpEndpoint");
-  // Containers/Dockerfiles need targetPort (the port INSIDE the container); .NET projects use port (host). Aspire rejects a container endpoint without targetPort.
-  const isContainer = draft.addMethod === "AddContainer" || draft.addMethod === "AddDockerfile";
-  const portKey = isContainer ? "targetPort" : "port";
-  const portArg = httpRows[0]?.find(a => a.trim().startsWith(`${portKey}:`));
-  const port = portArg ? portArg.split(":")[1].trim() : "";
-  const setPort = (v: string) =>
-    commit(writeWithRows(draft, "WithHttpEndpoint", v.trim() ? [[`${portKey}: ${parseInt(v, 10) || 0}`]] : []));
   const setExternal = (on: boolean) =>
     commit(writeWithRows(draft, "WithExternalHttpEndpoints", on ? [[]] : []));
 
@@ -216,21 +210,13 @@ export function PropertyGrid({ stack, node, rt, setStack }:
       {matchOverloadByArity(rt?.addOverloads ?? [], draft.addArgs.length)?.params.map((p, i) => field(p, fromLiteral(draft.addArgs[i] ?? '""'),
         v => commit(setAddArg(draft, i, toLiteral(v, p.type, p.enumTypeName))), fieldOpts))}
 
-      {(canExternal || canHttp) && (
+      {canExternal && (
         <div>
           <Divider my="xs" labelPosition="left" label={labelWith("Quick settings",
-            "The most common endpoint settings. 'Publicly accessible' emits WithExternalHttpEndpoints(); 'HTTP port' emits WithHttpEndpoint(port:). Full detail is in the capabilities below.")} />
-          {canExternal && (
-            <Switch mb="xs" label="Publicly accessible" checked={isExternal}
-              description="Exposes an external HTTP endpoint (WithExternalHttpEndpoints). Off = internal only."
-              onChange={e => setExternal(e.currentTarget.checked)} />
-          )}
-          {canHttp && (
-            <NumberInput label={isContainer ? "Container port (targetPort)" : "HTTP port"} placeholder="auto"
-              value={port === "" ? "" : Number(port)}
-              description={isContainer ? "The port the app listens on INSIDE the container (e.g. 3000 for Next.js). Required for imported containers." : "Fixed host port for the HTTP endpoint. Leave empty for an auto-assigned port."}
-              min={0} max={65535} onChange={v => setPort(String(v ?? ""))} />
-          )}
+            "'Publicly accessible' emits WithExternalHttpEndpoints(). Endpoints and ports are edited in the capabilities below.")} />
+          <Switch mb="xs" label="Publicly accessible" checked={isExternal}
+            description="Exposes an external HTTP endpoint (WithExternalHttpEndpoints). Off = internal only."
+            onChange={e => setExternal(e.currentTarget.checked)} />
           {isExternal && <Text size="xs" c="dimmed" mt={4}>A public URL is assigned at deploy time; custom domains are configured per deploy target.</Text>}
         </div>
       )}
@@ -337,9 +323,11 @@ export function PropertyGrid({ stack, node, rt, setStack }:
               return (
                 <Group key={ri} align="end" gap="xs" mb={4}>
                   {rowParams.length > 0
-                    ? rowParams.map((p, pi) => field(p, fromLiteral(row[pi] ?? '""'), v => {
-                        const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push('""');
-                        nr[ri][pi] = toLiteral(v, p.type, p.enumTypeName); commit(writeWithRows(draft, method, nr));
+                    ? rowParams.map((p, pi) => field(p, (row[pi] == null || row[pi] === "null") ? "" : fromLiteral(row[pi]), v => {
+                        const nr = rows.map(r => [...r]); while (nr[ri].length <= pi) nr[ri].push("null");
+                        // Empty optional arg → literal null (not 0 / "" / NaN); only filled values are emitted positionally.
+                        nr[ri][pi] = v === "" ? "null" : toLiteral(v, p.type, p.enumTypeName);
+                        commit(writeWithRows(draft, method, nr));
                       }, fieldOpts))
                     : <TextInput style={{ flex: 1 }} label="Args (raw)" placeholder='"--gpus", "all"'
                         value={row.join(", ")}

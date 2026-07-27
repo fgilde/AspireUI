@@ -150,6 +150,17 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const composeInputRef = useRef<HTMLInputElement>(null);
 
+  const [busy, setBusy] = useState<Set<string>>(new Set());
+  const isBusy = (id: string) => busy.has(id);
+  // Runs a card action with a per-stack busy lock (blocks double-clicks), a spinner, and error toasting.
+  const withBusy = async (id: string, fn: () => Promise<unknown>, okMsg?: string) => {
+    if (busy.has(id)) return;
+    setBusy(p => new Set(p).add(id));
+    try { await fn(); if (okMsg) toastOk(okMsg); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(p => { const n = new Set(p); n.delete(id); return n; }); }
+  };
+
   const creators = Array.from(new Set(stacks.map(s => s.createdBy).filter(Boolean))) as string[];
   const load = () => api.listStacks().then((s: Stack[]) => { setStacks(s); setLoading(false); });
   useEffect(() => { load(); }, []);
@@ -439,15 +450,15 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                               {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
-                              <Menu.Item leftSection={<IconServer size={14} />}
-                                onClick={() => { toastOk(`Deploying "${s.name}" to hosting…`); api.hostingDeploy(s.id).then(() => { loadDeps(); nav("/hosting"); }).catch(toastErr); }}>
+                              <Menu.Item leftSection={<IconServer size={14} />} disabled={isBusy(s.id)}
+                                onClick={() => withBusy(s.id, async () => { toastOk(`Deploying "${s.name}" to hosting…`); await api.hostingDeploy(s.id); loadDeps(); nav("/hosting"); })}>
                                 Deploy to hosting
                               </Menu.Item>
                               <Menu.Divider />
-                              <Menu.Item color="red" leftSection={<IconTrash size={14} />}
+                              <Menu.Item color="red" leftSection={<IconTrash size={14} />} disabled={isBusy(s.id)}
                                 onClick={async () => {
                                   if (!(await confirmDelete(`stack "${s.name}"`))) return;
-                                  await api.deleteStack(s.id); load(); toastOk(`Stack "${s.name}" deleted`);
+                                  await withBusy(s.id, async () => { toastOk(`Deleting "${s.name}"…`); await api.deleteStack(s.id); load(); }, `Stack "${s.name}" deleted`);
                                 }}>Delete</Menu.Item>
                             </>
                           )}
@@ -491,13 +502,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                     <Group gap={4} onClick={e => e.stopPropagation()}>
                       {dep ? (
                         <>
-                          {dep.state === "deploying"
-                            ? <Tooltip label="Deploying — pulling images &amp; starting…" withArrow><Loader size="xs" color="yellow" /></Tooltip>
+                          {dep.state === "deploying" || isBusy(s.id)
+                            ? <Tooltip label={isBusy(s.id) ? "Working…" : "Deploying — pulling images &amp; starting…"} withArrow><Loader size="xs" color="yellow" /></Tooltip>
                             : active
-                            ? <Tooltip label="Stop (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="red"
-                                onClick={() => { toastOk(`Stopping "${s.name}"…`); api.stopHosting(s.id).then(loadDeps).catch(toastErr); }}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
-                            : <Tooltip label={dep.state === "failed" ? "Retry (hosting)" : "Start (hosting)"} withArrow><ActionIcon size="sm" variant="subtle" color="green"
-                                onClick={() => { toastOk(`${dep.state === "failed" ? "Retrying" : "Starting"} "${s.name}"…`); api.startHosting(s.id).then(loadDeps).catch(toastErr); }}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
+                            ? <Tooltip label="Stop (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="red" disabled={isBusy(s.id)}
+                                onClick={() => withBusy(s.id, async () => { toastOk(`Stopping "${s.name}"…`); await api.stopHosting(s.id); loadDeps(); })}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                            : <Tooltip label={dep.state === "failed" ? "Retry (hosting)" : "Start (hosting)"} withArrow><ActionIcon size="sm" variant="subtle" color="green" disabled={isBusy(s.id)}
+                                onClick={() => withBusy(s.id, async () => { toastOk(`${dep.state === "failed" ? "Retrying" : "Starting"} "${s.name}"…`); await api.startHosting(s.id); loadDeps(); })}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
                           {hostUrl && (
                             <Tooltip label="Open app" withArrow><ActionIcon size="sm" variant="subtle" component="a"
                               href={hostUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
@@ -505,12 +516,14 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                         </>
                       ) : (
                         <>
-                          {active ? (
+                          {isBusy(s.id) ? (
+                            <Loader size="xs" />
+                          ) : active ? (
                             <Tooltip label="Stop" withArrow><ActionIcon size="sm" variant="subtle" color="red"
-                              onClick={() => api.stopStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e))}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
+                              onClick={() => withBusy(s.id, async () => setStatus(s.id, await api.stopStack(s.id)))}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
                           ) : (
                             <Tooltip label="Start" withArrow><ActionIcon size="sm" variant="subtle" color="green"
-                              onClick={() => api.runStack(s.id).then(rs => setStatus(s.id, rs)).catch(e => toastErr(e, "Could not start"))}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>
+                              onClick={() => withBusy(s.id, async () => setStatus(s.id, await api.runStack(s.id)))}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>
                           )}
                           {state === "Running" && (st?.dashboardUrl || openable.length > 0) && (
                             <Menu position="bottom-end" withArrow>

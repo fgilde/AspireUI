@@ -147,6 +147,13 @@ export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; erro
 
 export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
+export interface CloneHook { token: string; expireDays: number; bindDomain: boolean; domainFormat?: string | null; webhookPath: string }
+export const listCloneHooks = (id: string): Promise<{ npmConfigured: boolean; hooks: CloneHook[] }> =>
+  fetch(`${base}/stacks/${id}/clone-hooks`).then(ok);
+export const createCloneHook = (id: string, b: { expireDays: number; bindDomain: boolean; domainFormat?: string }): Promise<{ token: string; webhookPath: string }> =>
+  fetch(`${base}/stacks/${id}/clone-hooks`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const deleteCloneHook = (id: string, token: string): Promise<void> =>
+  fetch(`${base}/stacks/${id}/clone-hooks/${token}`, { method: "DELETE" }).then(() => undefined);
 export const getImportSettings = (): Promise<{ maxFileMb: number; respectGitignore: boolean }> =>
   fetch(`${base}/import/settings`).then(ok);
 export const setImportSettings = (b: { maxFileMb?: number; respectGitignore?: boolean }): Promise<void> =>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton } from "@mantine/core";
-import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub } from "@tabler/icons-react";
+import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton, NumberInput, Switch, TextInput, Divider } from "@mantine/core";
+import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
 import { canOpenEditor } from "../model";
@@ -147,6 +147,8 @@ export function AppDetail() {
           </Card>
         )}
 
+        <CloneHooksCard stackId={d.stackId} />
+
         <div>
           <Text fw={600} mb="xs">Containers</Text>
           {svcs.length === 0
@@ -190,5 +192,51 @@ export function AppDetail() {
       {terminal && <TerminalModal d={d} onClose={() => setTerminal(false)} />}
       {files && <VolumesModal d={d} onClose={() => setFiles(false)} />}
     </PageShell>
+  );
+}
+
+function CloneHooksCard({ stackId }: { stackId: string }) {
+  const [data, setData] = useState<{ npmConfigured: boolean; hooks: api.CloneHook[] } | null>(null);
+  const [expireDays, setExpireDays] = useState(7);
+  const [bindDomain, setBindDomain] = useState(false);
+  const [domainFormat, setDomainFormat] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = () => api.listCloneHooks(stackId).then(setData).catch(() => {});
+  useEffect(() => { load(); }, [stackId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const create = async () => {
+    setBusy(true);
+    try { await api.createCloneHook(stackId, { expireDays, bindDomain, domainFormat: bindDomain ? domainFormat.trim() : undefined }); load(); toastOk("Clone hook created"); }
+    catch (e) { toastErr(e); } finally { setBusy(false); }
+  };
+  const full = (p: string) => `${window.location.origin}${p}`;
+  return (
+    <Card withBorder padding="lg">
+      <Group gap={8} mb={4}><IconCopyPlus size={18} /><Text fw={600}>Clone hooks</Text></Group>
+      <Text size="xs" c="dimmed" mb="sm">POST the URL to spin up an auto-expiring copy of this app{data?.npmConfigured ? " (optionally on its own domain)" : ""}. The response contains the new app URL and expiry date.</Text>
+      {(data?.hooks ?? []).map(h => (
+        <Group key={h.token} gap={6} mb={4} wrap="nowrap">
+          <Text size="xs" ff="monospace" truncate style={{ flex: 1 }}>{full(h.webhookPath)}</Text>
+          <Badge size="xs" variant="light" color={h.expireDays < 0 ? "gray" : "blue"}>{h.expireDays < 0 ? "never expires" : `${h.expireDays}d`}</Badge>
+          {h.bindDomain && <Badge size="xs" variant="light" color="grape">{h.domainFormat}</Badge>}
+          <CopyButton value={full(h.webhookPath)}>{({ copied, copy }) => <Button size="compact-xs" variant="subtle" onClick={copy}>{copied ? "Copied" : "Copy"}</Button>}</CopyButton>
+          <ActionIcon size="sm" variant="subtle" color="red" onClick={() => api.deleteCloneHook(stackId, h.token).then(load).catch(toastErr)} aria-label="Delete"><IconX size={14} /></ActionIcon>
+        </Group>
+      ))}
+      <Divider my="sm" label="New clone hook" labelPosition="left" />
+      <MStack gap="xs" maw={420}>
+        <NumberInput label="Auto-delete after (days)" description="-1 = keep forever" value={expireDays}
+          onChange={v => setExpireDays(Number(v) ?? 7)} min={-1} max={365} w={220} />
+        {data?.npmConfigured && (
+          <>
+            <Switch label="Bind a domain via Nginx Proxy Manager" checked={bindDomain} onChange={e => setBindDomain(e.currentTarget.checked)} />
+            {bindDomain && (
+              <TextInput label="Domain pattern" placeholder="my-app-{id}.example.com" value={domainFormat}
+                description="{id} and {name} are substituted per clone." onChange={e => setDomainFormat(e.currentTarget.value)} />
+            )}
+          </>
+        )}
+        <Group><Button size="xs" loading={busy} disabled={bindDomain && !domainFormat.trim()} onClick={create}>Create hook</Button></Group>
+      </MStack>
+    </Card>
   );
 }

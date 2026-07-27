@@ -60,6 +60,7 @@ public static class StackEndpoints
 
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        var gitJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
 
         app2.MapGet("/api-tokens", (HttpContext ctx) => Results.Ok(apiTokens.List(Uid(ctx))));
         app2.MapPost("/api-tokens", (CreateTokenRequest b, HttpContext ctx) =>
@@ -222,11 +223,18 @@ public static class StackEndpoints
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
             LockGuard(id) ?? (store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id })));
 
-        app2.MapDelete("/stacks/{id}", (string id) =>
+        void DeleteStackFully(string id)
         {
-            if (LockGuard(id) is { } r) return r;
             run.Stop(id);
-            if (deployments.GetByStack(id) is { } dep) hosting.Undeploy(dep.Id);
+            if (deployments.GetByStack(id) is { } dep) hosting.Undeploy(dep.Id, wipe: true);
+            RemoveCloneHooks(id);
+            RemoveAllDomainHosts(id);
+            if (settings.GetValue($"clonedomain:{id}") is { } pidRaw && int.TryParse(pidRaw, out var proxyId))
+            {
+                var c = NpmCfg();
+                if (c.Enabled) { try { NpmService.DeleteAsync(c, proxyId).GetAwaiter().GetResult(); } catch { } }
+                settings.SetValue($"clonedomain:{id}", null);
+            }
             store.Delete(id);
             void Rm(string d) { try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { } }
             Rm(Dir(id));
@@ -236,12 +244,16 @@ public static class StackEndpoints
             {
                 try
                 {
-                    var opts = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
-                    if (System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(cfgRaw, opts) is { } g) settings.SetValue($"githook:{g.Token}", null);
+                    if (System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(cfgRaw, gitJson) is { } g) settings.SetValue($"githook:{g.Token}", null);
                 }
                 catch { }
                 settings.SetValue($"git:{id}", null);
             }
+        }
+        app2.MapDelete("/stacks/{id}", (string id) =>
+        {
+            if (LockGuard(id) is { } r) return r;
+            DeleteStackFully(id);
             return Results.NoContent();
         });
 
@@ -374,7 +386,6 @@ public static class StackEndpoints
             return stack is null ? Results.UnprocessableEntity(error) : Persist(New(stack, ctx));
         });
 
-        var gitJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
         static string? MergeComposeYaml(string dir, string[]? files, Dictionary<string, string>? env)
         {
             var paths = files is { Length: > 0 }
@@ -502,6 +513,109 @@ public static class StackEndpoints
             return string.IsNullOrEmpty(sid) ? Results.NotFound() : GitPullRedeploy(sid, ctx);
         }).AllowAnonymous();
 
+        // --- Clone hooks: a webhook that spins up an auto-expiring, optionally domain-bound copy of any hosted app ---
+        List<string> CloneHookTokens(string stackId) =>
+            settings.GetValue($"clonehooks:{stackId}") is { } raw
+                ? (System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw, gitJson) ?? new()) : new();
+        void SaveCloneHookTokens(string stackId, List<string> toks) =>
+            settings.SetValue($"clonehooks:{stackId}", System.Text.Json.JsonSerializer.Serialize(toks, gitJson));
+        void RemoveCloneHooks(string stackId)
+        {
+            foreach (var tok in CloneHookTokens(stackId)) settings.SetValue($"clonehook:{tok}", null);
+            settings.SetValue($"clonehooks:{stackId}", null);
+        }
+        // Track NPM proxy hosts bound to a stack so we can remove them when the app leaves hosting.
+        List<int> DomainHosts(string id) => settings.GetValue($"domainhosts:{id}") is { } raw
+            ? (System.Text.Json.JsonSerializer.Deserialize<List<int>>(raw, gitJson) ?? new()) : new();
+        void SaveDomainHosts(string id, List<int> ids) => settings.SetValue($"domainhosts:{id}", System.Text.Json.JsonSerializer.Serialize(ids, gitJson));
+        void AddDomainHost(string id, int proxyId) { var ids = DomainHosts(id); if (!ids.Contains(proxyId)) { ids.Add(proxyId); SaveDomainHosts(id, ids); } }
+        void RemoveDomainHost(string id, int proxyId) { var ids = DomainHosts(id); if (ids.Remove(proxyId)) SaveDomainHosts(id, ids); }
+        void RemoveAllDomainHosts(string id)
+        {
+            var c = NpmCfg();
+            foreach (var pid in DomainHosts(id)) if (c.Enabled) { try { NpmService.DeleteAsync(c, pid).GetAwaiter().GetResult(); } catch { } }
+            settings.SetValue($"domainhosts:{id}", null);
+        }
+
+        app2.MapGet("/stacks/{id}/clone-hooks", (string id) => Results.Ok(new
+        {
+            npmConfigured = NpmCfg().Enabled,
+            hooks = CloneHookTokens(id).Select(tok =>
+            {
+                var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(settings.GetValue($"clonehook:{tok}") ?? "{}", gitJson)!;
+                return new { token = tok, cfg.ExpireDays, cfg.BindDomain, cfg.DomainFormat, webhookPath = $"/api/clone-hook/{tok}" };
+            }).ToList(),
+        }));
+        app2.MapPost("/stacks/{id}/clone-hooks", (string id, CloneHookCfg b) =>
+        {
+            if (store.Get(id) is null) return Results.NotFound();
+            var tok = Guid.NewGuid().ToString("n");
+            settings.SetValue($"clonehook:{tok}", System.Text.Json.JsonSerializer.Serialize(b with { SourceStackId = id }, gitJson));
+            var toks = CloneHookTokens(id); toks.Add(tok); SaveCloneHookTokens(id, toks);
+            return Results.Ok(new { token = tok, webhookPath = $"/api/clone-hook/{tok}" });
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapDelete("/stacks/{id}/clone-hooks/{token}", (string id, string token) =>
+        {
+            settings.SetValue($"clonehook:{token}", null);
+            var toks = CloneHookTokens(id); toks.Remove(token); SaveCloneHookTokens(id, toks);
+            return Results.NoContent();
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+
+        app2.MapPost("/clone-hook/{token}", async (string token, HttpContext ctx) =>
+        {
+            if (settings.GetValue($"clonehook:{token}") is not { } raw) return Results.NotFound();
+            var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(raw, gitJson)!;
+            if (store.Get(cfg.SourceStackId) is not { } src) return Results.NotFound(new { message = "source stack no longer exists" });
+
+            var newId = Guid.NewGuid().ToString("n");
+            var shortId = newId[..8];
+            var expireAt = cfg.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(cfg.ExpireDays).ToString("O") : (string?)null;
+            var clone = src with { Id = newId, Name = $"{src.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = "clone-hook", ExpireAt = expireAt, ClonedFrom = src.Id };
+            try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
+            store.Save(clone);
+            gen.Materialize(clone, Dir(newId));
+
+            var dc = DashCfg();
+            var host = PublicHost(ctx);
+            var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token, (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null);
+            var url = dep.Urls.FirstOrDefault();
+
+            if (cfg.BindDomain && !string.IsNullOrWhiteSpace(cfg.DomainFormat))
+            {
+                var c = NpmCfg();
+                var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
+                if (c.Enabled && port > 0)
+                {
+                    var domain = cfg.DomainFormat!.Replace("{id}", shortId)
+                        .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(src.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
+                    try
+                    {
+                        var pr = await NpmService.UpsertAsync(c, null, new List<string> { domain }, "http", ForwardHost(ctx), port, true);
+                        settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
+                        url = $"http://{domain}";
+                    }
+                    catch { /* domain binding failed — clone still runs on its port */ }
+                }
+            }
+            return Results.Ok(new { stackId = newId, url, expireDate = expireAt });
+        }).AllowAnonymous();
+
+        // Sweep expired clones (auto-delete): on startup + every 30 min.
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                try
+                {
+                    foreach (var s in store.List())
+                        if (s.ExpireAt is { } e && DateTime.TryParse(e, null, System.Globalization.DateTimeStyles.RoundtripKind, out var due) && due <= DateTime.UtcNow)
+                            DeleteStackFully(s.Id);
+                }
+                catch { }
+                await Task.Delay(TimeSpan.FromMinutes(30));
+            }
+        });
+
         app2.MapPost("/stacks/{id}/import", (string id, ImportRequest req) =>
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
@@ -579,6 +693,14 @@ public static class StackEndpoints
         {
             var cfg = settings.GetValue("PublicHost");
             return !string.IsNullOrWhiteSpace(cfg) ? cfg! : ctx.Request.Host.Host;
+        }
+        // NPM forwards from ITS host to the target, so the target must never be loopback (localhost = NPM's own box).
+        string ForwardHost(HttpContext ctx)
+        {
+            var h = PublicHost(ctx);
+            return string.IsNullOrEmpty(h) || h == "localhost" || h.StartsWith("127.") || h == "::1"
+                ? HostUrls.CandidateIPs().FirstOrDefault() ?? h
+                : h;
         }
         RunStatus WithHost(RunStatus s, HttpContext ctx) =>
             s.DashboardUrl is null ? s : s with { DashboardUrl = HostUrls.Rewrite(s.DashboardUrl, PublicHost(ctx)) };
@@ -753,8 +875,10 @@ public static class StackEndpoints
         });
         app2.MapPost("/stacks/{id}/hosting/undeploy", (string id, bool? wipe) =>
         {
-            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
-            hosting.Undeploy(d.Id, wipe == true);
+            // Idempotent: no deployment = already undeployed, not an error.
+            if (deployments.GetByStack(id) is { } d) hosting.Undeploy(d.Id, wipe == true);
+            RemoveCloneHooks(id); // app left hosting → its clone-hooks go (already-spun-up clones stay)
+            RemoveAllDomainHosts(id); // and its bound NPM domains (dead target otherwise)
             return Results.NoContent();
         });
         app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
@@ -922,7 +1046,7 @@ public static class StackEndpoints
             var c = NpmCfg();
             if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
             var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-            var fwdHost = PublicHost(ctx);
+            var fwdHost = ForwardHost(ctx);
             NpmProxyHost? existing = null; string? error = null;
             try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
             catch (Exception e) { error = e.Message; }
@@ -947,7 +1071,9 @@ public static class StackEndpoints
                     if (string.IsNullOrWhiteSpace(c.Email)) return Results.BadRequest(new { message = "Set the NPM account email (Settings → Hosting) — Let's Encrypt needs it." });
                     certId = await NpmService.RequestCertAsync(c, list, c.Email);
                 }
-                return Results.Ok(await NpmService.UpsertAsync(c, b.Id, list, b.Scheme ?? "http", b.ForwardHost, b.ForwardPort, b.Websockets, certId, b.Ssl && certId > 0));
+                var pr = await NpmService.UpsertAsync(c, b.Id, list, b.Scheme ?? "http", b.ForwardHost, b.ForwardPort, b.Websockets, certId, b.Ssl && certId > 0);
+                AddDomainHost(id, pr.Id);
+                return Results.Ok(pr);
             }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
@@ -955,7 +1081,7 @@ public static class StackEndpoints
         {
             var c = NpmCfg();
             if (!c.Enabled) return Results.BadRequest(new { message = "Nginx Proxy Manager isn't configured." });
-            try { await NpmService.DeleteAsync(c, proxyId); return Results.NoContent(); }
+            try { await NpmService.DeleteAsync(c, proxyId); RemoveDomainHost(id, proxyId); return Results.NoContent(); }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
         app2.MapPost("/stacks/{id}/hosting/domain/{proxyId:int}/enabled", async (string id, int proxyId, EnabledRequest b) =>
@@ -1086,6 +1212,7 @@ public static class StackEndpoints
     public record BackupSettingsRequest(int IntervalHours, int Retain);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
+    public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null);
     public record EnabledRequest(bool Enabled);
     public record SourceFile(string Path, string Content);
     public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null);

@@ -17,7 +17,9 @@ public record StackModel(
     bool RunAsIs = false,
     string? AppHostProject = null,
     bool FromGit = false,
-    bool HasSource = false);
+    bool HasSource = false,
+    string? ExpireAt = null,
+    string? ClonedFrom = null);
 
 public record StackNote(string Id, string Text, double X, double Y);
 public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);
