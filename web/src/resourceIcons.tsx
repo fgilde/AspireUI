@@ -64,6 +64,7 @@ const MAP: Record<string, Visual> = {
   comfyui:             { tabler: IconPhoto, color: "#7C3AED" },
   sdnext:              { tabler: IconPhoto, color: "#EC4899" },
   acestep:             { tabler: IconMusic, color: "#F59E0B" },
+  museforge:           { img: "/media/museforge/logo.webp", color: "#7C3AED" },
   flowise:             { tabler: IconSitemap, color: "#14B8A6" },
   whisper:             { tabler: IconMicrophone, color: "#6366F1" },
   vscode:              { tabler: IconBrandVscode, color: "#007ACC" },

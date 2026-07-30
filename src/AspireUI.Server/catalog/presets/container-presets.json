@@ -182,6 +182,144 @@
     ]
   },
   {
+    "id": "maestro",
+    "label": "Maestro",
+    "group": "AI Apps",
+    "image": "ghcr.io/fgilde/maestro:latest",
+    "port": 7860,
+    "description": "All-in-one, 100% local AI video, image and music studio with a Director mode that plans music videos and short films from a prompt. GPU strongly recommended.",
+    "gpu": true,
+    "env": [
+      [
+        "HF_HOME",
+        "/data/huggingface"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/data/config"
+      ],
+      [
+        "hf-cache",
+        "/data/huggingface"
+      ],
+      [
+        "settings",
+        "/workspace/app/settings"
+      ],
+      [
+        "ckpts",
+        "/workspace/app/ckpts"
+      ],
+      [
+        "loras",
+        "/workspace/app/loras"
+      ],
+      [
+        "loras_i2v",
+        "/workspace/app/loras_i2v"
+      ],
+      [
+        "loras_metadata",
+        "/workspace/app/loras_metadata"
+      ],
+      [
+        "outputs",
+        "/workspace/app/outputs"
+      ],
+      [
+        "uploads",
+        "/workspace/app/uploads"
+      ]
+    ],
+    "website": "https://github.com/fgilde/Maestro",
+    "github": "https://github.com/fgilde/Maestro",
+    "license": "WanGP Non-Commercial Evaluation License 1.1",
+    "language": "Python",
+    "topics": [
+      "ai",
+      "video",
+      "image",
+      "music",
+      "gpu"
+    ],
+    "card": "/media/maestro/card.webp",
+    "screenshots": [
+      "/media/maestro/screenshot_1.webp"
+    ]
+  },
+  {
+    "id": "museforge",
+    "label": "MuseForge",
+    "group": "AI Apps",
+    "image": "ghcr.io/fgilde/museforge:latest",
+    "port": 7860,
+    "description": "Self-hosted AI media studio: video, image, audio, long-form text and audiobooks, with an LLM-planned Director mode. Drivable from the browser, a script or an AI agent over MCP. GPU strongly recommended.",
+    "gpu": true,
+    "env": [
+      [
+        "HF_HOME",
+        "/data/huggingface"
+      ]
+    ],
+    "volumes": [
+      [
+        "config",
+        "/data/config"
+      ],
+      [
+        "hf-cache",
+        "/data/huggingface"
+      ],
+      [
+        "settings",
+        "/workspace/app/settings"
+      ],
+      [
+        "ckpts",
+        "/workspace/app/ckpts"
+      ],
+      [
+        "loras",
+        "/workspace/app/loras"
+      ],
+      [
+        "loras_i2v",
+        "/workspace/app/loras_i2v"
+      ],
+      [
+        "loras_metadata",
+        "/workspace/app/loras_metadata"
+      ],
+      [
+        "outputs",
+        "/workspace/app/outputs"
+      ],
+      [
+        "uploads",
+        "/workspace/app/uploads"
+      ]
+    ],
+    "website": "https://github.com/fgilde/MuseForge",
+    "github": "https://github.com/fgilde/MuseForge",
+    "language": "Python",
+    "topics": [
+      "ai",
+      "video",
+      "image",
+      "music",
+      "audiobook",
+      "gpu",
+      "mcp"
+    ],
+    "card": "/media/museforge/banner.webp",
+    "screenshots": [
+      "/media/museforge/screenshot_1.webp"
+    ],
+    "icon": "museforge"
+  },
+  {
     "id": "langflow",
     "label": "Langflow",
     "group": "AI Apps",
