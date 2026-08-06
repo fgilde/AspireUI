@@ -1092,11 +1092,19 @@ public static class StackEndpoints
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
 
-        app2.MapGet("/hosting", (HttpContext ctx) =>
+        app2.MapGet("/hosting", async (HttpContext ctx) =>
         {
             var host = PublicHost(ctx);
+            var c = NpmCfg();
+            var proxyHosts = new List<NpmProxyHost>();
+            if (c.Enabled && !string.IsNullOrWhiteSpace(c.BaseUrl))
+                try { proxyHosts = await NpmService.ListCachedAsync(c); } catch { }
             return Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)
-                .Select(d => d with { Urls = d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList() }));
+                .Select(d => d with
+                {
+                    Urls = d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList(),
+                    Domains = HostingService.DomainUrls(proxyHosts, d),
+                }));
         });
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {

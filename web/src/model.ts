@@ -54,6 +54,7 @@ export interface Deployment {
   state: "deploying" | "running" | "stopped" | "failed";
   urls: string[]; createdAt: string; updatedAt: string; lastError?: string | null;
   ports?: PortMapping[] | null;
+  domains?: string[] | null;
 }
 
 // Container of running deployment for the hosting resource tree.

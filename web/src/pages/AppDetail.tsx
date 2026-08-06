@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton, NumberInput, Switch, TextInput, Divider } from "@mantine/core";
-import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX } from "@tabler/icons-react";
+import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
 import { canOpenEditor } from "../model";
@@ -109,8 +109,9 @@ export function AppDetail() {
                 : <Button size="xs" variant="light" color="green" leftSection={<IconPlayerPlay size={14} />} onClick={start}>{d.state === "failed" ? "Retry" : "Start"}</Button>}
             </Group>
           </Group>
-          {d.urls.length > 0 && (
+          {(d.urls.length > 0 || (d.domains ?? []).length > 0) && (
             <Group gap="sm" mt="md">
+              {(d.domains ?? []).map(u => <Anchor key={u} href={u} target="_blank" size="sm" c="grape">{u} <IconWorld size={12} /></Anchor>)}
               {d.urls.map(u => <Anchor key={u} href={u} target="_blank" size="sm">{u} <IconExternalLink size={12} /></Anchor>)}
             </Group>
           )}

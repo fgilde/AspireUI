@@ -10,7 +10,7 @@ import {
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld,
 } from "@tabler/icons-react";
 import { runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
@@ -400,6 +400,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                   : state === "Failed" ? (st!.log.slice(-6).join("\n") || "Run failed") : null;
                 const active = dep ? dep.state === "running" : (state === "Running" || state === "Starting");
                 const hostUrl = dep?.state === "running" ? dep.urls[0] : undefined;
+                const domainUrl = dep?.state === "running" ? dep.domains?.[0] : undefined;
                 const live = liveByStack[s.id] ?? [];
                 // Match an icon-group (by its resource names) to a live resource; used for click-to-open + glow.
                 const liveFor = (names: string[]) => live.find(l => names.some(nm => l.name === nm || l.name.startsWith(nm + "-") || nm.startsWith(l.name)));
@@ -509,8 +510,12 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                                 onClick={() => withBusy(s.id, async () => { toastOk(`Stopping "${s.name}"…`); await api.stopHosting(s.id); loadDeps(); })}><IconPlayerStop size={15} /></ActionIcon></Tooltip>
                             : <Tooltip label={dep.state === "failed" ? "Retry (hosting)" : "Start (hosting)"} withArrow><ActionIcon size="sm" variant="subtle" color="green" disabled={isBusy(s.id)}
                                 onClick={() => withBusy(s.id, async () => { toastOk(`${dep.state === "failed" ? "Retrying" : "Starting"} "${s.name}"…`); await api.startHosting(s.id); loadDeps(); })}><IconPlayerPlay size={15} /></ActionIcon></Tooltip>}
+                          {domainUrl && (
+                            <Tooltip label={`Open via domain (${domainUrl})`} withArrow><ActionIcon size="sm" variant="subtle" color="grape" component="a"
+                              href={domainUrl} target="_blank"><IconWorld size={15} /></ActionIcon></Tooltip>
+                          )}
                           {hostUrl && (
-                            <Tooltip label="Open app" withArrow><ActionIcon size="sm" variant="subtle" component="a"
+                            <Tooltip label={domainUrl ? `Open internally (${hostUrl})` : "Open app"} withArrow><ActionIcon size="sm" variant="subtle" component="a"
                               href={hostUrl} target="_blank"><IconExternalLink size={15} /></ActionIcon></Tooltip>
                           )}
                         </>

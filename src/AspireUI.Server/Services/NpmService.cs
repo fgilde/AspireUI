@@ -87,8 +87,21 @@ public static class NpmService
         return list;
     }
 
+    private static (DateTime At, List<NpmProxyHost> Hosts)? _listCache;
+
+    public static async Task<List<NpmProxyHost>> ListCachedAsync(NpmConfig c, int ttlSeconds = 30)
+    {
+        if (_listCache is { } k && (DateTime.UtcNow - k.At).TotalSeconds < ttlSeconds) return k.Hosts;
+        var list = await ListAsync(c);
+        _listCache = (DateTime.UtcNow, list);
+        return list;
+    }
+
+    public static void InvalidateCache() => _listCache = null;
+
     public static async Task DeleteAsync(NpmConfig c, int id)
     {
+        InvalidateCache();
         var token = await TokenAsync(c) ?? throw new InvalidOperationException("NPM authentication failed");
         var res = await Http.SendAsync(Req(HttpMethod.Delete, c, $"/api/nginx/proxy-hosts/{id}", token));
         if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"NPM delete failed ({(int)res.StatusCode}): {await res.Content.ReadAsStringAsync()}");
@@ -96,6 +109,7 @@ public static class NpmService
 
     public static async Task SetEnabledAsync(NpmConfig c, int id, bool enabled)
     {
+        InvalidateCache();
         var token = await TokenAsync(c) ?? throw new InvalidOperationException("NPM authentication failed");
         var res = await Http.SendAsync(Req(HttpMethod.Post, c, $"/api/nginx/proxy-hosts/{id}/{(enabled ? "enable" : "disable")}", token));
         if (!res.IsSuccessStatusCode) throw new InvalidOperationException($"NPM {(enabled ? "enable" : "disable")} failed ({(int)res.StatusCode})");
@@ -119,6 +133,7 @@ public static class NpmService
 
     public static async Task<NpmProxyHost> UpsertAsync(NpmConfig c, int? id, List<string> domains, string scheme, string host, int port, bool websockets, int certificateId = 0, bool sslForced = false)
     {
+        InvalidateCache();
         var token = await TokenAsync(c) ?? throw new InvalidOperationException("NPM authentication failed");
         var body = new Dictionary<string, object?>
         {

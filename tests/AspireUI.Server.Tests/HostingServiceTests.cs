@@ -113,6 +113,20 @@ public class HostingServiceTests
     }
 
 
+    [Fact]
+    public void DomainUrls_matches_enabled_proxy_hosts_by_published_port()
+    {
+        var d = new Deployment("d1", "s1", "App", "dir", "proj", "running",
+            new() { "http://10.0.0.5:20000" }, "", "", null, new() { new PortMapping(80, 20000, true) });
+        var hosts = new List<NpmProxyHost>
+        {
+            new(1, new() { "app.example.com" }, "http", "10.0.0.5", 20000, true, true, 3, true),
+            new(2, new() { "plain.example.com" }, "http", "10.0.0.5", 20001, true, true),
+            new(3, new() { "off.example.com" }, "http", "10.0.0.5", 20000, true, false),
+        };
+        Assert.Equal(new[] { "https://app.example.com" }, HostingService.DomainUrls(hosts, d));
+    }
+
     private const string Compose = """
         services:
           web:

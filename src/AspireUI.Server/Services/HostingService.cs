@@ -197,6 +197,17 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             .Select(p => $"http://{host}:{p}")
             .ToList();
 
+    public static List<string> DomainUrls(IEnumerable<NpmProxyHost> hosts, Deployment d)
+    {
+        var ports = (d.Ports ?? new()).Where(p => p.Public && p.Host > 0).Select(p => p.Host).ToHashSet();
+        foreach (var u in d.Urls)
+            if (Uri.TryCreate(u, UriKind.Absolute, out var uri)) ports.Add(uri.Port);
+        return hosts.Where(h => h.Enabled && ports.Contains(h.ForwardPort))
+            .SelectMany(h => h.DomainNames.Select(n => $"{(h.SslForced || h.CertificateId > 0 ? "https" : "http")}://{n}"))
+            .Distinct()
+            .ToList();
+    }
+
     public static string ConfigureDashboard(string yaml, bool host, string? token)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();

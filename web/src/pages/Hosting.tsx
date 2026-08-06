@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Tooltip } from "@mantine/core";
-import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText } from "@tabler/icons-react";
+import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
 import { canOpenEditor } from "../model";
@@ -140,7 +140,10 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, o
             </Tooltip>
           ) : <Text size="xs" c="dimmed">—</Text>}
         </Table.Td>
-        <Table.Td>{d.urls.map(u => <Anchor key={u} href={u} target="_blank" mr="sm" size="sm">{u} <IconExternalLink size={12} /></Anchor>)}</Table.Td>
+        <Table.Td>
+          {(d.domains ?? []).map(u => <Anchor key={u} href={u} target="_blank" mr="sm" size="sm" c="grape">{u} <IconWorld size={12} /></Anchor>)}
+          {d.urls.map(u => <Anchor key={u} href={u} target="_blank" mr="sm" size="sm">{u} <IconExternalLink size={12} /></Anchor>)}
+        </Table.Td>
         <Table.Td>
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
