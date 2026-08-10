@@ -32,6 +32,7 @@
   <Screenshot>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/overview.png</Screenshot>
   <Screenshot>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/editor.png</Screenshot>
   <MinVer>6.10</MinVer>
+  <License>AGPL-3.0</License>
   <Config Name="WebUI" Target="8080" Default="8080" Mode="tcp" Description="AspireUI web interface." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
   <Config Name="Data" Target="/data" Default="/mnt/user/appdata/aspireui" Mode="rw" Description="Database, workspace and stack sources." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/aspireui</Config>
   <Config Name="Docker socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Required: lets AspireUI run and host container stacks on this server (root-equivalent access)." Type="Path" Display="always" Required="true" Mask="false">/var/run/docker.sock</Config>

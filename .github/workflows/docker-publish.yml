@@ -5,11 +5,11 @@ name: Publish Docker image
 # without building locally. Pushes :latest for master, a version tag for git tags, and a
 # short-sha tag for every build.
 #
-# amd64 only. arm64 is currently blocked: the arm64 `protoc` bundled with Grpc.Tools 2.80.0
-# segfaults (exit 139) while compiling the Aspire dashboard proto — under QEMU emulation AND
-# natively on ubuntu-24.04-arm. Our deploy target (Proxmox) is x86_64, so amd64 is what matters.
-# To restore arm64 later: bump Grpc.Tools (test that the dashboard proto still compiles), then add
-# a native-arm64 matrix leg that pushes by digest + a merge job for the multi-arch manifest.
+# Multi-arch (amd64 + arm64). The arm64 `protoc` bundled with Grpc.Tools 2.80.0 segfaults
+# (exit 139) on the Aspire dashboard proto, under QEMU and natively on ubuntu-24.04-arm alike,
+# so the Dockerfile compiles on $BUILDPLATFORM (amd64) and only the runtime stage is built for
+# the target arch — the publish output is portable IL. Emulated arm64 apt/dotnet-tool steps make
+# that leg slow (~2-3x), which is why the layer cache below matters.
 on:
   push:
     branches: [master]
@@ -25,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
       - uses: docker/setup-buildx-action@v3
 
@@ -46,12 +50,38 @@ jobs:
             type=sha,format=short
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+  # Real arm64 hardware, because QEMU cannot verify this: the emulated .NET runtime aborts
+  # (AccessViolation / signal 6) on any non-trivial app, so a passing local emulated build says
+  # nothing about the arm64 image actually running.
+  smoke-arm64:
+    needs: build-push
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Start the arm64 image and wait for the web UI
+        run: |
+          set -euo pipefail
+          image="ghcr.io/fgilde/aspireui@${{ needs.build-push.outputs.digest }}"
+          docker run -d --name aspireui -p 8080:8080 "$image"
+          for i in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 http://localhost:8080/ || true)"
+            case "$code" in 200|302) echo "serving (HTTP $code)"; break ;; esac
+            if [ "$i" = 60 ]; then docker logs aspireui; echo "no HTTP response" >&2; exit 1; fi
+            sleep 5
+          done
+          docker exec aspireui aspire --version
+          docker exec aspireui docker compose version
+          docker exec aspireui dotnet --version

@@ -354,3 +354,9 @@ child resources they spawned (`supabase-db`, `supabase-auth`, the `monitoring-*`
 
 
 More detail: **https://fgilde.github.io/AspireUI/**
+
+## License
+
+AGPL-3.0 — see [LICENSE](LICENSE). Self-hosting, private changes and commercial use are fine; if you
+offer AspireUI (or a modified version) to others over a network, you have to make your source
+available to those users. The in-app GitHub link in the header serves as that source offer.

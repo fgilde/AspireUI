@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 
 # ---- build: SDK + Node (SPA build) + publish ------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Pinned to the BUILD platform on purpose: the publish output is portable IL, and the
+# arm64 `protoc` bundled with Grpc.Tools segfaults (exit 139) on the dashboard proto — both
+# under QEMU and on native arm64. Building on the host arch keeps multi-arch images working.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 # Node is only needed here to build the web/ SPA (csproj's BuildSpa target
 # runs `npm install && npm run build` for Release configuration).
@@ -25,18 +28,37 @@ RUN dotnet publish src/AspireUI.Server -c Release -o /app -p:IsPublishable=true
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS runtime
 
 ARG COMPOSE_VERSION=v2.32.4
+ARG TARGETARCH
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io \
+    && apt-get install -y --no-install-recommends docker.io unzip \
     && rm -rf /var/lib/apt/lists/* \
     # docker.io ships the CLI but NOT the compose v2 plugin — drop the plugin binary in.
     && mkdir -p /usr/local/lib/docker/cli-plugins \
-    && curl -fSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-x86_64" \
+    && case "${TARGETARCH:-amd64}" in \
+         amd64) COMPOSE_ARCH=x86_64 ;; \
+         arm64) COMPOSE_ARCH=aarch64 ;; \
+         *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+       esac \
+    && curl -fSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}" \
          -o /usr/local/lib/docker/cli-plugins/docker-compose \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-# The Aspire CLI (matches the Aspire.Hosting.* package version) — Hosting's compose publish shells it.
-RUN dotnet tool install --global Aspire.Cli --version 13.4.6
-ENV PATH="$PATH:/root/.dotnet/tools"
+# The Aspire CLI (keep in sync with the Aspire.Hosting.* version in Directory.Packages.props) —
+# Hosting's compose publish shells it. Taken from the RID-specific NuGet package (a single
+# self-contained binary) instead of `dotnet tool install`, because the SDK's tool installer runs
+# emulated on the arm64 leg and aborts there (QEMU + .NET TLS), while curl/unzip do not.
+ARG ASPIRE_CLI_VERSION=13.4.6
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) CLI_RID=linux-x64 ;; \
+      arm64) CLI_RID=linux-arm64 ;; \
+      *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fSL "https://api.nuget.org/v3-flatcontainer/aspire.cli.${CLI_RID}/${ASPIRE_CLI_VERSION}/aspire.cli.${CLI_RID}.${ASPIRE_CLI_VERSION}.nupkg" \
+         -o /tmp/aspire-cli.nupkg \
+    && unzip -j -o /tmp/aspire-cli.nupkg "tools/*/${CLI_RID}/aspire" -d /usr/local/bin \
+    && chmod +x /usr/local/bin/aspire \
+    && rm /tmp/aspire-cli.nupkg \
+    && aspire --version
 
 WORKDIR /app
 COPY --from=build /app .
