@@ -267,6 +267,7 @@ export const setNotifySettings = (b: NotifySettings): Promise<void> =>
   fetch(`${base}/hosting/notify-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(okVoid);
 export const testNotify = (b: NotifySettings): Promise<{ ok: boolean; error?: string }> =>
   fetch(`${base}/hosting/notify/test`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const npmConfigured = (): Promise<{ configured: boolean }> => fetch(`${base}/hosting/npm-configured`).then(ok);
 export const getDomain = (stackId: string): Promise<import("./model").DomainInfo> =>
   fetch(`${base}/stacks/${stackId}/hosting/domain`).then(ok);
 export const setDomain = (stackId: string, b: { id?: number | null; domainNames: string[]; scheme: string; forwardHost: string; forwardPort: number; websockets: boolean; ssl?: boolean; certificateId?: number }): Promise<import("./model").NpmProxyHost> =>

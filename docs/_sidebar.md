@@ -6,5 +6,6 @@
 - [Running & Deploying](running-and-deploying.md)
 - [Hosting (install & forget)](hosting.md)
 - [App Catalog](apps.md)
+- [Umbrel & Unraid stores](app-stores.md)
 - [Live Resources & Logs](live-resources.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)

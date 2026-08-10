@@ -304,6 +304,25 @@ describe("buildPresetNodes", () => {
     expect(nodes).toHaveLength(1);
     expect(edges).toHaveLength(0);
   });
+
+  const secretPreset: ContainerPreset = {
+    id: "app", label: "App", group: "Tools", image: "app:latest", port: 3000,
+    params: [{ key: "app-secret", env: "APP_SECRET", default: "", secret: true }],
+  };
+
+  it("a secret param without a default becomes a fresh random parameter value", () => {
+    const first = buildPresetNodes(secretPreset, []).nodes.find(n => n.addMethod === "AddParameter")!;
+    const second = buildPresetNodes(secretPreset, []).nodes.find(n => n.addMethod === "AddParameter")!;
+    expect(JSON.parse(first.addArgs[0]).length).toBeGreaterThanOrEqual(32);
+    expect(first.addArgs[0]).not.toBe(second.addArgs[0]);
+  });
+
+  it("a param value from the install dialog is used as a literal env value", () => {
+    const { nodes } = buildPresetNodes(secretPreset, [], { "param:app-secret": { mode: "value", value: "s3cret" } });
+    expect(nodes.some(n => n.addMethod === "AddParameter")).toBe(false);
+    const env = nodes[0].withCalls.find(w => w.method === "WithEnvironment" && w.args[0] === '"APP_SECRET"');
+    expect(env!.args[1]).toBe('"s3cret"');
+  });
 });
 
 describe("orphanableDeps", () => {

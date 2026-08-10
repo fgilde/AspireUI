@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, Stack as MStack } from "@mantine/core";
-import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX } from "@tabler/icons-react";
-import type { ContainerPreset, Snippet, ResourceType, Node, Edge } from "../model";
+import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub } from "@tabler/icons-react";
+import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice } from "../model";
 import { buildPresetNodes, instantiateSnippet } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { AppInfoModal, type AppInfo } from "../components/AppInfoModal";
@@ -9,6 +9,9 @@ import { AddResourceDialog } from "../editor/AddResourceDialog";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
+import { InstallOptionsModal, type InstallOptions } from "./InstallOptionsModal";
+import { GitImportModal } from "./GitImportModal";
+import { DomainModal } from "./HostingActions";
 
 const FEATURED = new Set([
   "immich", "nextcloud", "vaultwarden", "jellyfin", "plex", "emby", "paperless-ngx", "homeassistant",
@@ -25,6 +28,7 @@ interface Item {
   id: string; kind: Kind; label: string; group: string; icon: string; description?: string | null;
   info: AppInfo; featured: boolean;
   rt?: ResourceType;
+  preset?: ContainerPreset;
   install?: () => Promise<{ id: string }>;
 }
 
@@ -36,8 +40,17 @@ const presetItem = (p: ContainerPreset): Item => ({
   featured: FEATURED.has(p.id),
   info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App",
     logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics },
-  install: () => { const { nodes, edges } = buildPresetNodes(p, []); return api.createStack({ name: p.label, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: p.files ?? [], extraPackages: [], hostingUrlPath: p.urlPath ?? null }); },
+  preset: p,
+  install: () => createPresetStack(p),
 });
+
+const createPresetStack = (p: ContainerPreset, opts?: InstallOptions) => {
+  const choices: Record<string, CompanionChoice> = Object.fromEntries(
+    Object.entries(opts?.params ?? {}).map(([key, value]) => [`param:${key}`, { mode: "value", value } as CompanionChoice]));
+  const { nodes, edges } = buildPresetNodes(p, [], Object.keys(choices).length ? choices : undefined);
+  return api.createStack({ name: opts?.name || p.label, targetFramework: "net10.0", nodes, edges,
+    rawStatements: [], extraFiles: p.files ?? [], extraPackages: [], hostingUrlPath: p.urlPath ?? null });
+};
 const snippetItem = (s: Snippet): Item => ({
   id: `snippet:${s.id}`, kind: "snippet", label: s.name, group: s.group || "Custom", icon: s.icon || (s.nodes[0]?.icon ?? s.nodes[0]?.addMethod ?? ""), featured: false,
   info: { label: s.name, group: s.group || "Custom", icon: s.icon, description: `A saved snippet with ${s.nodes.length} resource${s.nodes.length === 1 ? "" : "s"}.`, custom: true, kindLabel: "Snippet" },
@@ -64,6 +77,12 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   const [installing, setInstalling] = useState<string | null>(null);
   const [infoItem, setInfoItem] = useState<Item | null>(null);
   const [pkgItem, setPkgItem] = useState<Item | null>(null);
+  const [optionsFor, setOptionsFor] = useState<ContainerPreset | null>(null);
+  const [gitOpen, setGitOpen] = useState(false);
+  const [domainFor, setDomainFor] = useState<Deployment | null>(null);
+  const [npm, setNpm] = useState(false);
+
+  useEffect(() => { api.npmConfigured().then(r => setNpm(r.configured)).catch(() => {}); }, []);
 
   useEffect(() => {
     Promise.all([
@@ -86,19 +105,41 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
     try { await api.setStoreExclusions([...next]); } catch (e) { toastErr(e, "Could not save"); }
   };
 
+  const done = () => { onInstalled(); onClose(); };
+
+  const deployThen = async (stackId: string, label: string) => {
+    const dep = await api.hostingDeploy(stackId);
+    toastOk(`Installing ${label}…`);
+    if (npm) { setDomainFor(dep); onInstalled(); } else done();
+  };
+
   const finishInstall = async (label: string, mk: () => Promise<{ id: string }>) => {
     try {
       const stack = await mk();
-      await api.hostingDeploy(stack.id);
-      toastOk(`Installing ${label}…`);
-      onInstalled(); onClose();
-    } catch (e) { toastErr(e, "Install failed"); }
+      await deployThen(stack.id, label);
+      return true;
+    } catch (e) { toastErr(e, "Install failed"); return false; }
   };
 
   const install = async (it: Item) => {
     if (it.kind === "package") { setPkgItem(it); return; }   // configure via the add dialog first
+    if (it.preset) { setOptionsFor(it.preset); return; }
     setInstalling(it.id);
     await finishInstall(it.label, it.install!);
+    setInstalling(null);
+  };
+
+  const installPreset = async (p: ContainerPreset, opts: InstallOptions) => {
+    setInstalling(`preset:${p.id}`);
+    const okd = await finishInstall(opts.name || p.label, () => createPresetStack(p, opts));
+    setInstalling(null);
+    if (okd) setOptionsFor(null);
+  };
+
+  const installFromGit = async (stackId: string, label: string) => {
+    setGitOpen(false);
+    setInstalling("git");
+    try { await deployThen(stackId, label); } catch (e) { toastErr(e, "Deploy failed"); }
     setInstalling(null);
   };
 
@@ -180,8 +221,14 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   return (
     <Modal opened onClose={onClose} size="85%" title={<Group gap={8}><IconApps size={18} /><Title order={5}>App store</Title></Group>}
       styles={{ body: { display: "flex", flexDirection: "column", minHeight: "68vh" } }}>
-      <TextInput mb="md" placeholder="Search apps, packages, snippets…" value={q} onChange={e => setQ(e.currentTarget.value)}
-        leftSection={<IconSearch size={14} />} autoFocus />
+      <Group mb="md" gap="xs" wrap="nowrap">
+        <TextInput style={{ flex: 1 }} placeholder="Search apps, packages, snippets…" value={q} onChange={e => setQ(e.currentTarget.value)}
+          leftSection={<IconSearch size={14} />} autoFocus />
+        <Tooltip label="Install any repo with a docker-compose file (or an Aspire AppHost) straight into hosting" withArrow multiline w={260}>
+          <Button variant="default" leftSection={<IconBrandGithub size={16} />} loading={installing === "git"}
+            onClick={() => setGitOpen(true)}>From Git</Button>
+        </Tooltip>
+      </Group>
 
       <Group align="stretch" wrap="nowrap" gap={0} style={{ flex: 1, minHeight: 0 }}>
         <ScrollArea w={196} style={{ flexShrink: 0, borderRight: "1px solid var(--mantine-color-default-border)" }} type="hover">
@@ -220,6 +267,15 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
         <AddResourceDialog rt={pkgItem.rt!} existingCount={0} totalCount={0} nodes={[]}
           onCreate={onPackageCreate} onClose={() => setPkgItem(null)} />
       )}
+      {optionsFor && (
+        <InstallOptionsModal preset={optionsFor} npm={npm} busy={installing === `preset:${optionsFor.id}`}
+          onClose={() => setOptionsFor(null)} onInstall={o => installPreset(optionsFor, o)} />
+      )}
+      {gitOpen && (
+        <GitImportModal hosting onClose={() => setGitOpen(false)}
+          onImported={stackId => { installFromGit(stackId, "app from Git"); }} />
+      )}
+      {domainFor && <DomainModal d={domainFor} onClose={() => { setDomainFor(null); done(); }} />}
 
       <style>{`
         .store-card{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}

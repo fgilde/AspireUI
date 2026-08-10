@@ -6320,5 +6320,139 @@
       "/media/runtipi/screenshot_2.webp",
       "/media/runtipi/screenshot_3.webp"
     ]
+  },
+  {
+    "id": "yuvomi",
+    "label": "Yuvomi",
+    "group": "Tools",
+    "image": "ghcr.io/ulsklyc/yuvomi:latest",
+    "port": 3000,
+    "icon": "yuvomi",
+    "description": "Yuvomi — self-hosted family planner as a fast PWA: shared calendar (CalDAV/Google/ICS sync), tasks, shopping lists, meal planner, contacts, budget and housekeeping. Create the first household in the browser after install.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ],
+      [
+        "backups",
+        "/backups"
+      ]
+    ],
+    "env": [
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "PORT",
+        "3000"
+      ],
+      [
+        "DB_PATH",
+        "/data/yuvomi.db"
+      ],
+      [
+        "BACKUP_DIR",
+        "/backups"
+      ],
+      [
+        "SESSION_SECURE",
+        "false"
+      ]
+    ],
+    "params": [
+      {
+        "key": "session-secret",
+        "env": "SESSION_SECRET",
+        "default": "",
+        "secret": true
+      },
+      {
+        "key": "db-encryption-key",
+        "env": "DB_ENCRYPTION_KEY",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "tags": [
+      "family",
+      "calendar",
+      "tasks",
+      "pwa",
+      "self-hosted"
+    ],
+    "website": "https://github.com/ulsklyc/yuvomi",
+    "github": "https://github.com/ulsklyc/yuvomi",
+    "license": "MIT",
+    "language": "JavaScript"
+  },
+  {
+    "id": "lx-family-planner",
+    "label": "LX Family Planner",
+    "group": "Tools",
+    "image": "ghcr.io/laxxx-lab/lx-family-planner:latest",
+    "port": 3001,
+    "icon": "lx-family-planner",
+    "description": "LX Family — self-hosted \"Family OS\": calendars, chores, meal and shopping planning, chat, cloud files and child-friendly profiles. The first family is created in the browser after install; further registration stays closed.",
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ],
+      [
+        "backups",
+        "/app/backups"
+      ]
+    ],
+    "env": [
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "PORT",
+        "3001"
+      ],
+      [
+        "TZ",
+        "Europe/Berlin"
+      ],
+      [
+        "SESSION_COOKIE_SECURE",
+        "auto"
+      ],
+      [
+        "REGISTRATION_MODE",
+        "first-family"
+      ],
+      [
+        "DATABASE_FILE",
+        "/app/data/family_planner.sqlite"
+      ],
+      [
+        "LEGACY_DATABASE_FILE",
+        "/app/data/family_db.json"
+      ]
+    ],
+    "params": [
+      {
+        "key": "app-secret",
+        "env": "APP_SECRET",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "tags": [
+      "family",
+      "calendar",
+      "chores",
+      "meals",
+      "self-hosted"
+    ],
+    "website": "https://github.com/laxxx-lab/lx-family-planner",
+    "github": "https://github.com/laxxx-lab/lx-family-planner",
+    "license": "MIT",
+    "language": "JavaScript"
   }
 ]

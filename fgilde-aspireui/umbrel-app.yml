@@ -1,0 +1,59 @@
+manifestVersion: 1
+id: fgilde-aspireui
+category: developer
+name: AspireUI
+version: "0.1.0"
+tagline: Visual app store, builder and host for container stacks and .NET Aspire
+description: >-
+  AspireUI turns your server into a self-hosted app platform: install apps from a
+  built-in store, deploy any docker-compose repo straight from Git, and manage
+  everything that runs — logs, env vars, ports, volumes, backups and domains.
+
+
+  It is also a visual editor for .NET Aspire AppHost projects: drag resources onto a
+  canvas, generate real C# code, run the stack, or publish it to Docker Compose.
+
+
+  ⚠️ HOST ACCESS
+
+
+  AspireUI starts and manages other containers, so it mounts the host Docker socket.
+  That is root-equivalent access to this device — only install it if you want AspireUI
+  to control Docker on this machine.
+
+
+  ✨ FEATURES
+
+
+  - App store with 140+ ready-to-run apps, plus install-from-Git (any docker-compose repo)
+
+  - Hosting: start/stop/update/restart, live CPU + memory, container health, log streaming
+
+  - Env-var and port editor, volume file browser, one-shot container terminal
+
+  - Scheduled volume backups with restore, notifications via webhook or Telegram
+
+  - Own domains + Let's Encrypt HTTPS through your Nginx Proxy Manager
+
+  - Visual .NET Aspire builder with code generation, run and compose publish
+
+  - REST API, OpenAPI reference and an MCP server for agents
+releaseNotes: ""
+
+developer: Florian Gilde
+website: https://github.com/fgilde/AspireUI
+dependencies: []
+repo: https://github.com/fgilde/AspireUI
+support: https://github.com/fgilde/AspireUI/issues
+
+port: 5158
+gallery: []
+path: ""
+icon: https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/aspireui.svg
+
+defaultUsername: "umbrel"
+defaultPassword: ""
+deterministicPassword: true
+
+submitter: Florian Gilde
+submission: ""

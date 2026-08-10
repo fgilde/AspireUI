@@ -39,7 +39,7 @@ const repoName = (u: string) => (u.trim().replace(/\/+$/, "").split("/").pop() ?
 const b64Text = (b64: string) => { try { return new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))); } catch { return ""; } };
 type LocalSource = { name: string; sources: { path: string; content: string }[] };
 
-export function GitImportModal({ onClose, onImported, local }: { onClose: () => void; onImported: (stackId: string) => void; local?: LocalSource }) {
+export function GitImportModal({ onClose, onImported, local, hosting }: { onClose: () => void; onImported: (stackId: string) => void; local?: LocalSource; hosting?: boolean }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [branch, setBranch] = useState("");
@@ -140,7 +140,8 @@ export function GitImportModal({ onClose, onImported, local }: { onClose: () => 
   }, []);
 
   return (
-    <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconBrandGithub size={18} /><Title order={5}>{local ? "Import files" : "Import from Git"}</Title></Group>}>
+    <Modal opened onClose={onClose} size="lg" zIndex={400}
+      title={<Group gap={8}><IconBrandGithub size={18} /><Title order={5}>{local ? "Import files" : hosting ? "Install from Git" : "Import from Git"}</Title></Group>}>
       {uploadPct !== null && (
         <Stack gap={4} mb="md">
           <Text size="sm">{uploadPct < 100 ? `Uploading ${uploadPct}%…` : "Importing…"}</Text>
@@ -150,7 +151,11 @@ export function GitImportModal({ onClose, onImported, local }: { onClose: () => 
       {local && !detected && <Center py={40}><Loader /></Center>}
       {step === "form" && !local && (
         <Stack gap="md">
-          <Text size="sm" c="dimmed">Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file to resources.</Text>
+          <Text size="sm" c="dimmed">
+            {hosting
+              ? <>Clones a repository and deploys it straight to hosting — a <b>docker-compose</b> file or an existing <b>.NET Aspire AppHost</b>. No editor, and you can put it on a domain right after.</>
+              : <>Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file to resources.</>}
+          </Text>
           <TextInput label="Stack name" placeholder="auto from repo name if blank" value={name}
             onChange={e => setName(e.currentTarget.value)} />
           <TextInput label="Repository URL" placeholder="https://github.com/user/repo" value={url}
@@ -248,7 +253,7 @@ export function GitImportModal({ onClose, onImported, local }: { onClose: () => 
             <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={backFromEnv}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button loading={busy} leftSection={<IconBrandGithub size={16} />} onClick={() => doImport("compose", selFiles, envVals, selServices)}>Import</Button>
+              <Button loading={busy} leftSection={<IconBrandGithub size={16} />} onClick={() => doImport("compose", selFiles, envVals, selServices)}>{hosting ? "Install" : "Import"}</Button>
             </Group>
           </Group>
         </Stack>

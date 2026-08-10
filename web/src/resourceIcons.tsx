@@ -65,6 +65,8 @@ const MAP: Record<string, Visual> = {
   sdnext:              { tabler: IconPhoto, color: "#EC4899" },
   acestep:             { tabler: IconMusic, color: "#F59E0B" },
   museforge:           { img: "/media/museforge/logo.webp", color: "#7C3AED" },
+  yuvomi:              { img: "https://raw.githubusercontent.com/ulsklyc/yuvomi/main/deploy/umbrel/icon.svg", color: "#0EA5E9" },
+  "lx-family-planner": { img: "https://raw.githubusercontent.com/laxxx-lab/lx-family-planner/main/public/icon.svg", color: "#7C3AED" },
   flowise:             { tabler: IconSitemap, color: "#14B8A6" },
   whisper:             { tabler: IconMicrophone, color: "#6366F1" },
   vscode:              { tabler: IconBrandVscode, color: "#007ACC" },

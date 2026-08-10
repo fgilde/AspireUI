@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **139 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **143 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -117,7 +117,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(66)</sub>
+## Tools <sub>(68)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -160,6 +160,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkding.png" width="22" height="22" alt=""> | **[linkding](https://linkding.link)** | A self-hosted bookmark manager designed to be minimal, fast, and easy to set up. ... Automatically fetches titles, descriptions, icons… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkstack.png" width="22" height="22" alt=""> | **[LinkStack](https://linkstack.org)** | LinkStack — self-hosted 'link in bio' page. Complete admin + setup via the web wizard on first run. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkwarden.png" width="22" height="22" alt=""> | **[Linkwarden](https://linkwarden.app)** | Linkwarden is a self-hosted, open-source collaborative bookmark manager to collect, read, annotate, and fully preserve what matters, all… |
+| <img src="https://raw.githubusercontent.com/laxxx-lab/lx-family-planner/main/public/icon.svg" width="22" height="22" alt=""> | **[LX Family Planner](https://github.com/laxxx-lab/lx-family-planner)** | LX Family — self-hosted "Family OS": calendars, chores, meal and shopping planning, chat, cloud files and child-friendly profiles. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mattermost.png" width="22" height="22" alt=""> | **[Mattermost](https://mattermost.com)** | Mattermost — self-hosted team chat (Slack alternative). Postgres companion. Create the admin account on first run. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mealie.png" width="22" height="22" alt=""> | **[Mealie](https://mealie.io)** | Mealie is a self hosted recipe manager and meal planner with a RestAPI backend and a reactive frontend application built in Vue for a… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/memos.png" width="22" height="22" alt=""> | **[Memos](https://www.usememos.com)** | Memos — lightweight, privacy-first note/memo hub. |
@@ -187,8 +188,9 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallos.png" width="22" height="22" alt=""> | **[Wallos](https://github.com/ellite/Wallos)** | Wallos — self-hosted subscription tracker & budget overview (SQLite). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/whoogle.png" width="22" height="22" alt=""> | **[Whoogle](https://github.com/benbusby/whoogle-search)** | Whoogle — private, ad-free Google search proxy (no JS, no tracking). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wikijs.png" width="22" height="22" alt=""> | **[Wiki.js](https://js.wiki)** | Wiki.js — modern, powerful wiki. Postgres companion included. |
+| <img src="https://raw.githubusercontent.com/ulsklyc/yuvomi/main/deploy/umbrel/icon.svg" width="22" height="22" alt=""> | **[Yuvomi](https://github.com/ulsklyc/yuvomi)** | Yuvomi — self-hosted family planner as a PWA: shared calendar (CalDAV/Google/ICS sync), tasks, shopping, meals, contacts and budget. |
 
 
 ---
 
-*139 apps across 8 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*
+*143 apps across 8 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*

@@ -106,6 +106,15 @@ export type CompanionChoice =
   | { mode: "add"; addMethod: string }
   | { mode: "value"; value: string };
 
+export function randomSecret(bytes = 24): string {
+  const b = new Uint8Array(bytes);
+  crypto.getRandomValues(b);
+  return [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+export function presetParamDefault(p: PresetParam): string {
+  return p.default ? p.default : p.secret ? randomSecret() : "";
+}
+
 function iconForImage(img?: string | null): string | undefined {
   const i = (img ?? "").toLowerCase();
   if (/postgres|pgvecto|vectorchord/.test(i)) return "AddPostgres";
@@ -172,7 +181,7 @@ export function buildPresetNodes(
     return { param, mode: "new", varName: sanitizeIdentifier(pname), targetId: nid(), name: pname };
   });
   const paramEnvCalls = paramPlans.map(p => p.mode === "value"
-    ? { method: "WithEnvironment", args: [JSON.stringify(p.param.env), JSON.stringify(p.value ?? p.param.default ?? "")] }
+    ? { method: "WithEnvironment", args: [JSON.stringify(p.param.env), JSON.stringify(p.value || presetParamDefault(p.param))] }
     : { method: "WithEnvironment", args: [JSON.stringify(p.param.env), p.varName!] });
 
   // Pass 2: build nodes.
@@ -196,7 +205,7 @@ export function buildPresetNodes(
   paramPlans.filter(p => p.mode === "new").forEach((p, i) => {
     nodes.push({
       id: p.targetId!, varName: p.varName!, resourceName: p.name!, addMethod: "AddParameter",
-      addArgs: [JSON.stringify(p.param.default ?? ""), "true", "false"],
+      addArgs: [JSON.stringify(presetParamDefault(p.param)), "true", "false"],
       withCalls: [], x: 380, y: 40 + (companions.length + i) * 130, spawnedBy: mainId, icon: undefined,
     });
   });

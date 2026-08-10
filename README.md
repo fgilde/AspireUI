@@ -102,6 +102,13 @@ see the security note in `docker-compose.yml` and [Self-hosting](#run-on-a-serve
 > Docker socket mount (what powers Run/Hosting) is **root-equivalent on the host**, so run AspireUI on
 > an isolated, disposable box.
 
+### Umbrel / Unraid
+
+This repo doubles as an **Umbrel community app store** and an **Unraid CA template repo**: add
+`https://github.com/fgilde/AspireUI` as a community app store in umbrelOS, or point Unraid at
+[`templates/aspireui.xml`](templates/aspireui.xml). Details and the official-store submission steps are
+in [Umbrel & Unraid stores](docs/app-stores.md).
+
 ### Proxmox VE (one command)
 
 On a Proxmox host, [`deploy/pve-install-aspireui.sh`](deploy/pve-install-aspireui.sh) sets up a clean

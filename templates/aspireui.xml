@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>AspireUI</Name>
+  <Repository>ghcr.io/fgilde/aspireui:latest</Repository>
+  <Registry>https://github.com/fgilde/AspireUI/pkgs/container/aspireui</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Icon>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/aspireui.png</Icon>
+  <WebUI>http://[IP]:[PORT:8080]</WebUI>
+  <Overview>
+    AspireUI is a self-hosted app platform and visual builder for container stacks. Install apps from a
+    built-in store of 140+ apps, deploy any docker-compose repository straight from Git, and manage what
+    runs: logs, env vars, ports, volumes, scheduled backups, notifications and your own domains (with
+    Let's Encrypt HTTPS via Nginx Proxy Manager). It is also a visual editor for .NET Aspire AppHost
+    projects - drag resources onto a canvas, generate real C# code, run it, or publish Docker Compose.
+
+    AspireUI drives the host Docker daemon, so the /var/run/docker.sock mapping is required for the Run
+    and Hosting features. That is root-equivalent access to this server: keep the WebUI off the public
+    internet and set an admin password on first start.
+
+    A first-run wizard creates the admin user. Set ASPIREUI_ADMIN_USERNAME / ASPIREUI_ADMIN_PASSWORD to
+    skip the wizard.
+  </Overview>
+  <Project>https://github.com/fgilde/AspireUI</Project>
+  <Support>https://github.com/fgilde/AspireUI/issues</Support>
+  <TemplateURL>https://raw.githubusercontent.com/fgilde/AspireUI/master/templates/aspireui.xml</TemplateURL>
+  <ReadMe>https://raw.githubusercontent.com/fgilde/AspireUI/master/README.md</ReadMe>
+  <Category>Tools:Utilities Productivity:</Category>
+  <ExtraSearchTerms>aspire dotnet docker compose app store hosting builder</ExtraSearchTerms>
+  <Requires>Access to the host Docker socket (/var/run/docker.sock).</Requires>
+  <Screenshot>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/overview.png</Screenshot>
+  <Screenshot>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/editor.png</Screenshot>
+  <MinVer>6.10</MinVer>
+  <Config Name="WebUI" Target="8080" Default="8080" Mode="tcp" Description="AspireUI web interface." Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/aspireui" Mode="rw" Description="Database, workspace and stack sources." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/aspireui</Config>
+  <Config Name="Docker socket" Target="/var/run/docker.sock" Default="/var/run/docker.sock" Mode="rw" Description="Required: lets AspireUI run and host container stacks on this server (root-equivalent access)." Type="Path" Display="always" Required="true" Mask="false">/var/run/docker.sock</Config>
+  <Config Name="Admin username" Target="ASPIREUI_ADMIN_USERNAME" Default="admin" Description="Seeds the admin account on first start (skips the setup wizard)." Type="Variable" Display="always" Required="false" Mask="false">admin</Config>
+  <Config Name="Admin password" Target="ASPIREUI_ADMIN_PASSWORD" Default="" Description="Password for the seeded admin account. Leave empty to create the account in the browser instead." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Public host" Target="ASPIREUI_SET_PublicHost" Default="" Description="Hostname or IP used in links to hosted apps, e.g. tower.local. Leave empty to use the browser host." Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

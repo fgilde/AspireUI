@@ -983,6 +983,7 @@ public static class StackEndpoints
             (settings.GetValue("NpmEnabled") ?? "false") == "true",
             settings.GetValue("NpmBaseUrl") ?? "", settings.GetValue("NpmEmail") ?? "",
             settings.GetValue("NpmPassword") ?? "", settings.GetValue("NpmForwardHost") ?? "");
+        app2.MapGet("/hosting/npm-configured", () => Results.Ok(new { configured = NpmCfg().Enabled }));
         app2.MapGet("/hosting/npm-settings", () => { var c = NpmCfg(); return Results.Ok(new
         {
             enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email,

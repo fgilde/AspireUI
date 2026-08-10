@@ -18,10 +18,18 @@ Two entry points, same result:
 
 - **App store** (Simple mode → **Install app**): a browsable store of curated **Apps**, catalog
   **Packages** (n8n, Adminer, Postgres, …), and your saved **Snippets**. Filter by category/type,
-  read the details dialog, click **Install**. Packages ask for any required configuration first (the
-  same add dialog as the canvas), then deploy.
+  read the details dialog, click **Install**. Apps then ask for the things that matter up front — the
+  name and any required secret (session/app secrets are generated for you, editable before install).
+  Packages ask for their configuration in the same add dialog as the canvas, then deploy.
+- **App store → From Git**: paste any repository with a `docker-compose` file (or an Aspire AppHost).
+  Same steps as [Import from Git](importing.md) — branch, compose file, services, env vars — but it
+  deploys straight to hosting instead of opening the editor.
 - **Editor → Deploy** (advanced): build/import any stack, then use the **Deploy** button (or the
   Publish panel's **Hosting** card) to deploy that exact stack.
+
+When a Nginx Proxy Manager is connected (**Settings → Hosting**), the domain dialog opens right after
+an install, so the app can go on your own domain (with Let's Encrypt HTTPS) in the same flow. A hosted
+app with a domain shows two open buttons: the domain and the internal `host:port` URL.
 
 Installed apps show up on the overview (Simple mode: "My apps") and on the **Hosting** page.
 

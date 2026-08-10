@@ -13,6 +13,11 @@ public static class PresetBuilder
         var s = Regex.IsMatch(c, "^[0-9]") ? "_" + c : c;
         return s.Length == 0 ? "resource" : s;
     }
+    public static string ParamDefault(PresetParam p) =>
+        !string.IsNullOrEmpty(p.Default) ? p.Default!
+        : p.Secret ? Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24)).ToLowerInvariant()
+        : "";
+
     private static string? IconForImage(string? img)
     {
         var i = (img ?? "").ToLowerInvariant();
@@ -72,7 +77,7 @@ public static class PresetBuilder
             var varName = Sanitize(pname);
             paramEnvCalls.Add(new WithCall("WithEnvironment", new() { J(param.Env), varName }));
             paramNodes.Add(new NodeModel(Nid(), varName, "AddParameter", pname, new(), 380, 40 + (companions.Count + i) * 130,
-                new() { J(param.Default ?? ""), "true", "false" }, SpawnedBy: mainId));
+                new() { J(ParamDefault(param)), "true", "false" }, SpawnedBy: mainId));
         }
 
         var main = new List<WithCall>

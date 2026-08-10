@@ -1,0 +1,26 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      # <app-id>_<compose-service-name>_1
+      APP_HOST: fgilde-aspireui_server_1
+      APP_PORT: 8080
+      # AspireUI has its own login (first-run wizard + admin user) and serves its
+      # REST/MCP API to clients that cannot send Umbrel's auth cookie.
+      PROXY_AUTH_ADD: "false"
+
+  server:
+    image: ghcr.io/fgilde/aspireui:latest@sha256:8fed0df18209b70506efc22ca33d4e230de6218f0f59cc9974e3a6c5d4b9a8cc
+    restart: on-failure
+    stop_grace_period: 1m
+    volumes:
+      - ${APP_DATA_DIR}/data:/data
+      # AspireUI runs and hosts other container stacks, so it drives the host Docker
+      # daemon. This is root-equivalent access to the device — see the app description.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      ASPIREUI_ADMIN_USERNAME: umbrel
+      ASPIREUI_ADMIN_PASSWORD: ${APP_PASSWORD}
+      # Hosted apps get host ports, so their links must point at the device, not the container.
+      ASPIREUI_SET_PublicHost: ${DEVICE_DOMAIN_NAME}

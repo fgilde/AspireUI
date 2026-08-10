@@ -1,0 +1,19 @@
+<CommunityApplications>
+  <Profile>
+    **AspireUI** — a self-hosted app platform and visual builder for container stacks.
+
+    Install apps from a built-in store of 140+ apps, deploy any `docker-compose` repository
+    straight from Git, and manage everything that runs: logs, env vars, ports, volumes,
+    scheduled backups, notifications and your own domains (with Let's Encrypt HTTPS through
+    Nginx Proxy Manager). It doubles as a visual editor for .NET Aspire AppHost projects —
+    drag resources onto a canvas, generate real C# code, run it, or publish Docker Compose.
+
+    AspireUI needs the host Docker socket, because starting and hosting other containers is
+    what it does. That is root-equivalent access to the server, so run it on a machine you
+    trust and keep its port off the public internet.
+
+    Support: https://github.com/fgilde/AspireUI/issues
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/aspireui.png</Icon>
+  <WebPage>https://github.com/fgilde/AspireUI</WebPage>
+</CommunityApplications>
