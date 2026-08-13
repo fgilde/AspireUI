@@ -142,7 +142,7 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
                       placeholder={pm.public ? "auto" : "—"} disabled={!pm.public} min={1} max={65535} hideControls
                       onChange={v => setPorts(ps => ps.map((p, j) => j === i ? { ...p, host: Number(v) || 0 } : p))} />
                     <Switch size="xs" checked={pm.public} label={pm.public ? "public" : "internal"}
-                      onChange={e => setPorts(ps => ps.map((p, j) => j === i ? { ...p, public: e.currentTarget.checked } : p))} />
+                      onChange={e => { const on = e.currentTarget.checked; setPorts(ps => ps.map((p, j) => j === i ? { ...p, public: on } : p)); }} />
                   </Group>
                 ))}
               </Stack>

@@ -7,6 +7,7 @@ import { IconAlertCircle, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, 
 import { PageShell } from "../components/PageShell";
 import type { UserDto } from "../model";
 import { canOpenEditor, PERM_OPEN_EDITOR } from "../model";
+import { VIEW_MODE_SWITCH } from "../viewMode";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 
@@ -167,12 +168,16 @@ export function Users() {
 
           <Modal opened={!!vmTarget} onClose={() => setVmTarget(null)} title={`Permissions — ${vmTarget?.username}`} centered>
             <MStack gap="md">
-              <Text size="sm" fw={600}>View modes</Text>
-              <Text size="xs" c="dimmed" mt={-8}>Which UI modes may this user use? Both = they get an in-app toggle.</Text>
-              <Checkbox label="Full (builder / canvas)" checked={vmFull} onChange={e => setVmFull(e.currentTarget.checked)} />
-              <Checkbox label="Simple (app store)" checked={vmSimple} onChange={e => setVmSimple(e.currentTarget.checked)} />
-              <Text size="sm" fw={600} mt="xs">Capabilities</Text>
-              <Checkbox label="May open the builder/editor" description="Off = the 'Open in editor' action is hidden and editor routes are blocked (simple/appliance user)." checked={vmEditor} onChange={e => setVmEditor(e.currentTarget.checked)} />
+              {VIEW_MODE_SWITCH && <>
+                <Text size="sm" fw={600}>View modes</Text>
+                <Text size="xs" c="dimmed" mt={-8}>Which UI modes may this user use? Both = they get an in-app toggle.</Text>
+                <Checkbox label="Full (builder / canvas)" checked={vmFull} onChange={e => setVmFull(e.currentTarget.checked)} />
+                <Checkbox label="Simple (app store)" checked={vmSimple} onChange={e => setVmSimple(e.currentTarget.checked)} />
+                <Text size="sm" fw={600} mt="xs">Capabilities</Text>
+              </>}
+              <Checkbox label="May open the builder/editor"
+                description="On = this user works in the builder (canvas, stacks). Off = the app-store view only; the 'Open in editor' action is hidden and editor routes are blocked."
+                checked={vmEditor} onChange={e => setVmEditor(e.currentTarget.checked)} />
               <Group justify="flex-end"><Button onClick={submitPermissions} disabled={!vmFull && !vmSimple}>Save</Button></Group>
             </MStack>
           </Modal>

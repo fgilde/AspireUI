@@ -40,8 +40,9 @@ public class UserStore
     }
 
     private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password, view_modes, permissions";
+    // NULL = never set (legacy user, everything allowed); "" = explicitly emptied (nothing allowed).
     private static List<string>? Csv(SqliteDataReader r, int i) =>
-        r.IsDBNull(i) || string.IsNullOrWhiteSpace(r.GetString(i))
+        r.IsDBNull(i)
             ? null
             : r.GetString(i).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
     private static User Read(SqliteDataReader r) => new(

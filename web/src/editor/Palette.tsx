@@ -457,7 +457,8 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
             {sel[`param:${p.key}`] === "value" && (
               <TextInput style={{ flex: 1 }} size="xs" placeholder={p.env}
                 type={p.secret ? "password" : undefined}
-                value={vals[p.key] ?? ""} onChange={e => setVals(s => ({ ...s, [p.key]: e.currentTarget.value }))} />
+                value={vals[p.key] ?? ""}
+                onChange={e => { const v = e.currentTarget.value; setVals(s => ({ ...s, [p.key]: v })); }} />
             )}
           </Group>
         ))}
