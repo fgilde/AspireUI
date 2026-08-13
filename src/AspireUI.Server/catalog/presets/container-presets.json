@@ -6454,5 +6454,48 @@
     "github": "https://github.com/laxxx-lab/lx-family-planner",
     "license": "MIT",
     "language": "JavaScript"
+  },
+  {
+    "id": "videola",
+    "label": "Videola",
+    "group": "Media",
+    "image": "ghcr.io/fgilde/videola:latest",
+    "port": 7331,
+    "icon": "videola",
+    "description": "Videola — a browser-based video editor on a Rust core: import, cut and trim on the timeline, effects, transitions, masks, keyframes, colour scopes, an audio mixing desk with EBU R128 loudness, subtitles and export. Works on desktop, tablet and phone, and ships an HTTP API plus an MCP server for agents. The editor opens without a login; the API and the server-side storage root need the access token below.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "params": [
+      {
+        "key": "token",
+        "env": "VIDEOLA_TOKEN",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "tags": [
+      "video",
+      "editor",
+      "media",
+      "rust",
+      "mcp",
+      "self-hosted"
+    ],
+    "website": "https://fgilde.github.io/videola/",
+    "github": "https://github.com/fgilde/videola",
+    "license": "GNU General Public License v3.0",
+    "language": "Rust",
+    "logo": "https://fgilde.github.io/videola/videola-logo.webp",
+    "card": "https://fgilde.github.io/videola/editor-desktop.webp",
+    "screenshots": [
+      "https://fgilde.github.io/videola/editor-effects.webp",
+      "https://fgilde.github.io/videola/editor-templates.webp",
+      "https://fgilde.github.io/videola/editor-tablet.webp",
+      "https://fgilde.github.io/videola/editor-phone.webp"
+    ]
   }
 ]

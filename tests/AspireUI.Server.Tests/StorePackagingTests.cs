@@ -13,7 +13,8 @@ public class StorePackagingTests
     [Theory]
     [InlineData("yuvomi", "ghcr.io/ulsklyc/yuvomi:latest", 3000, "SESSION_SECRET")]
     [InlineData("lx-family-planner", "ghcr.io/laxxx-lab/lx-family-planner:latest", 3001, "APP_SECRET")]
-    public void Family_planner_presets_are_installable(string id, string image, int port, string secretEnv)
+    [InlineData("videola", "ghcr.io/fgilde/videola:latest", 7331, "VIDEOLA_TOKEN")]
+    public void Secret_backed_app_presets_are_installable(string id, string image, int port, string secretEnv)
     {
         var p = Assert.Single(new CatalogService().GetPresets(), x => x.Id == id);
         Assert.Equal(image, p.Image);

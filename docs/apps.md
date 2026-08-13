@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **143 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **144 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -54,7 +54,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/lnbits.png" width="22" height="22" alt=""> | **[LNbits](https://lnbits.com)** | LNbits, free and open-source Lightning wallet and accounts system. ... # LNbits — The most powerful Bitcoin & Lightning toolkit ...… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/rtl.png" width="22" height="22" alt=""> | **[Ride The Lightning](https://github.com/Ride-The-Lightning/RTL)** | RTL — web UI for LND / Core Lightning / Eclair nodes. Needs an existing LN node: mount its macaroon + point RTLConfig at the node. |
 
-## Media <sub>(25)</sub>
+## Media <sub>(26)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -83,6 +83,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/radarr.png" width="22" height="22" alt=""> | **[Radarr](https://radarr.video)** | Movie organizer/manager for usenet and torrent users. ... Radarr is a movie collection manager for Usenet and BitTorrent users. It can… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/sonarr.png" width="22" height="22" alt=""> | **[Sonarr](https://sonarr.tv)** | ## Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is supported… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tautulli.png" width="22" height="22" alt=""> | **[Tautulli](https://tautulli.com)** | Tautulli is the best web application to monitor, view analytics, and receive notifications about your Plex Media Server. ... Tautulli is… |
+| <img src="https://fgilde.github.io/videola/videola-icon.png" width="22" height="22" alt=""> | **[Videola](https://fgilde.github.io/videola/)** | Videola — browser-based video editor on a Rust core: timeline editing, effects, keyframes, audio mixing, subtitles and export, plus an HTTP API and MCP server. |
 
 ## Network <sub>(6)</sub>
 
@@ -193,4 +194,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*143 apps across 8 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*
+*144 apps across 8 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*
