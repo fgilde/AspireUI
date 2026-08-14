@@ -184,6 +184,25 @@ public static class StackEndpoints
             settings.SetValue("StoreExclusions", string.Join(",", (body.Ids ?? new()).Distinct()));
             return Results.NoContent();
         }).RequireAuthorization(p => p.RequireRole("Admin"));
+
+        // Extra app sources: admin-managed manifest URLs, fetched on demand and cached on disk.
+        var appSources = new AppSourceService(settings, CatalogService.AppSourceCacheDir());
+        app2.MapGet("/store/sources", () => Results.Ok(appSources.List()))
+            .RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapPost("/store/sources", async (AppSourceRequest b) =>
+        {
+            var (source, error) = appSources.Add(b.Name ?? "", b.Url ?? "");
+            if (source is null) return Results.BadRequest(new { message = error });
+            var refreshed = await appSources.RefreshAsync(source);
+            var all = appSources.List().Select(s => s.Id == refreshed.Id ? refreshed : s).ToList();
+            settings.SetValue("AppSources", System.Text.Json.JsonSerializer.Serialize(all, gitJson));
+            return Results.Ok(refreshed);
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapDelete("/store/sources/{id}", (string id) =>
+            appSources.Remove(id) ? Results.NoContent() : Results.NotFound())
+            .RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapPost("/store/sources/refresh", async () => Results.Ok(await appSources.RefreshAllAsync()))
+            .RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapGet("/templates", () => templates.List()
             .Concat(userTemplates.List().Select(t => new TemplateInfo("user:" + t.Id, t.Name, t.Description)))
             .ToList());
@@ -1225,6 +1244,7 @@ public static class StackEndpoints
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
     public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
     public record StoreExclusionsRequest(List<string>? Ids);
+    public record AppSourceRequest(string? Name, string? Url);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken, string? PublicHost = null);
     public record ImportSettingsRequest(int? MaxFileMb = null, bool? RespectGitignore = null);
     public record CreateTokenRequest(string? Name);

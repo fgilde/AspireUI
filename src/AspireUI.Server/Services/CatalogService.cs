@@ -41,6 +41,12 @@ public class CatalogService
     private readonly Dictionary<string, JsonElement> _overlay;
 
     // Merge every *.json in built-in presets + optional EXTRA_PRESETS_DIR, keyed by preset id.
+    // Where refreshed app sources are cached (see AppSourceService) — part of the store like the built-ins.
+    public static string AppSourceCacheDir() =>
+        Path.Combine(Environment.GetEnvironmentVariable("WORKSPACE_DIR")
+            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI", "workspace"),
+            "_appsources");
+
     public IReadOnlyList<ContainerPreset> GetPresets()
     {
         var byId = new Dictionary<string, ContainerPreset>(StringComparer.OrdinalIgnoreCase);
@@ -63,6 +69,7 @@ public class CatalogService
                          .OrderBy(x => x, StringComparer.Ordinal)) Load(f);
         }
         LoadDir(Path.Combine(AppContext.BaseDirectory, "catalog", "presets"));
+        LoadDir(AppSourceCacheDir());
         LoadDir(Environment.GetEnvironmentVariable("EXTRA_PRESETS_DIR"));
         return byId.Values.ToList();
     }

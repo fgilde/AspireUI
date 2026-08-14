@@ -27,6 +27,7 @@ type Kind = "app" | "package" | "snippet";
 interface Item {
   id: string; kind: Kind; label: string; group: string; icon: string; description?: string | null;
   info: AppInfo; featured: boolean;
+  submitter?: string | null;      // set = came from a submitted app / app source, shown as provenance
   rt?: ResourceType;
   preset?: ContainerPreset;
   install?: () => Promise<{ id: string }>;
@@ -40,6 +41,7 @@ const presetItem = (p: ContainerPreset): Item => ({
   featured: FEATURED.has(p.id),
   info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App",
     logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics, submitter: p.submitter, source: p.source },
+  submitter: p.submitter,
   preset: p,
   install: () => createPresetStack(p),
 });
@@ -190,6 +192,11 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
             <Highlight component={Text} highlight={q} fw={600} size="sm" truncate>{it.label}</Highlight>
             <Group gap={5} mt={2}>
               <Badge size="xs" variant="light" color={KIND_COLOR[it.kind]}>{KIND_LABEL[it.kind]}</Badge>
+              {it.submitter && (
+                <Tooltip label={`Submitted by ${it.submitter} — not maintained by AspireUI`} withArrow>
+                  <Badge size="xs" variant="light" color="orange">Community</Badge>
+                </Tooltip>
+              )}
               <Text size="10px" c="dimmed" truncate>{it.group}</Text>
               {hidden && <Badge size="xs" variant="light" color="gray">Hidden</Badge>}
             </Group>

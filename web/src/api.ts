@@ -171,6 +171,14 @@ export const localImportProgress = (b: { name?: string; mode?: string; sources: 
     xhr.onerror = () => reject(new Error("upload failed"));
     xhr.send(JSON.stringify(b));
   });
+export interface AppSource { id: string; name: string; url: string; addedAt: string; lastRefresh?: string | null; apps: number; error?: string | null }
+export const listAppSources = (): Promise<AppSource[]> => fetch(`${base}/store/sources`).then(ok);
+export const addAppSource = (name: string, url: string): Promise<AppSource> =>
+  fetch(`${base}/store/sources`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, url }) }).then(ok);
+export const deleteAppSource = (id: string): Promise<void> =>
+  fetch(`${base}/store/sources/${id}`, { method: "DELETE" }).then(okVoid);
+export const refreshAppSources = (): Promise<AppSource[]> =>
+  fetch(`${base}/store/sources/refresh`, { method: "POST" }).then(ok);
 export const getStoreExclusions = (): Promise<string[]> => fetch(`${base}/store/exclusions`).then(ok);
 export const setStoreExclusions = (ids: string[]): Promise<void> =>
   fetch(`${base}/store/exclusions`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) }).then(okVoid);

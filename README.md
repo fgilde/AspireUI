@@ -200,12 +200,17 @@ Full field reference: **[app manifest](docs/app-manifest.md)**.
    *Install from Store → From Git*, paste your URL, and AspireUI installs the app the way you defined
    it — your image, ports, volumes, env, and a freshly generated secret per install. Nothing to merge,
    no release of ours to wait for.
-2. **Submit it to the store.** Open a pull request that adds
+2. **Publish it as an app source.** Serve the file (or an array of several apps) at any http(s) URL —
+   a raw file in your repository does it. An admin adds the URL once under
+   *Settings → Hosting → App sources*, and your apps appear in that instance's store, marked
+   **Community** with your name on them. Sources are admin-only and refreshed only on request, so
+   nothing changes behind anyone's back.
+3. **Submit it to the store.** Open a pull request that adds
    `src/AspireUI.Server/catalog/presets/community/<id>.json` (same JSON, plus `submitter`/`source`,
    which the store shows as provenance). `dotnet test tests/AspireUI.Server.Tests` validates every
    app: required fields, that each `${companion}` reference resolves, and that the resource builds.
    One app per pull request.
-3. **Keep it private.** Point `EXTRA_PRESETS_DIR` at a folder of such files and your instance shows
+4. **Keep it private.** Point `EXTRA_PRESETS_DIR` at a folder of such files and your instance shows
    them without touching this repository.
 
 Rules of thumb: publicly pullable image with a real tag, `port` is the port *inside* the container

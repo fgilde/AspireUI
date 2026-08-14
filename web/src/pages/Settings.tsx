@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport } from "@tabler/icons-react";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
@@ -17,12 +17,95 @@ function HostingTab() {
         <Tabs.Tab value="proxy" leftSection={<IconWorld size={14} />}>Proxy</Tabs.Tab>
         <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
         <Tabs.Tab value="backups" leftSection={<IconDatabase size={14} />}>Backups</Tabs.Tab>
+        <Tabs.Tab value="sources" leftSection={<IconApps size={14} />}>App sources</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="general"><GeneralHostingSection /></Tabs.Panel>
       <Tabs.Panel value="proxy"><MStack maw={560}><NpmSettingsSection /></MStack></Tabs.Panel>
       <Tabs.Panel value="notifications"><MStack maw={560}><NotificationsSection /></MStack></Tabs.Panel>
       <Tabs.Panel value="backups"><MStack maw={560}><AutoBackupSection /></MStack></Tabs.Panel>
+      <Tabs.Panel value="sources"><AppSourcesSection /></Tabs.Panel>
     </Tabs>
+  );
+}
+
+// Admin-managed manifest URLs that add apps to the store. Fetching happens on demand only.
+function AppSourcesSection() {
+  const [sources, setSources] = useState<api.AppSource[] | null>(null);
+  const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = () => api.listAppSources().then(setSources).catch(() => setSources([]));
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    setBusy(true);
+    try {
+      const s = await api.addAppSource(name.trim(), url.trim());
+      toastOk(s.error ? `Added, but the fetch failed: ${s.error}` : `Added — ${s.apps} app${s.apps === 1 ? "" : "s"} from this source`);
+      setName(""); setUrl(""); load();
+    } catch (e) { toastErr(e, "Could not add the source"); } finally { setBusy(false); }
+  };
+  const refresh = async () => {
+    setBusy(true);
+    try { const list = await api.refreshAppSources(); setSources(list); toastOk("Sources refreshed"); }
+    catch (e) { toastErr(e, "Refresh failed"); } finally { setBusy(false); }
+  };
+  const remove = async (s: api.AppSource) => {
+    if (!await confirmDelete(`the source "${s.name}"`, "Its apps disappear from the store. Already installed apps keep running.")) return;
+    try { await api.deleteAppSource(s.id); load(); } catch (e) { toastErr(e, "Could not remove"); }
+  };
+
+  return (
+    <MStack gap="md" maw={720}>
+      <Text size="sm" c="dimmed">
+        A source is a URL serving <Anchor href="https://fgilde.github.io/AspireUI/#/app-manifest" target="_blank">app manifests</Anchor>
+        {" "}— one app or an array of them, the same JSON as an <Code>aspireui-app.json</Code>. Its apps join the
+        store for everyone on this instance, marked with where they came from.
+      </Text>
+      <Alert color="yellow" p="xs" icon={<IconAlertTriangle size={16} />}>
+        Installing an app runs someone else's container image on this host. Sources are fetched only when
+        you press <b>Refresh</b>, never on their own, and only admins can add them — so nothing changes
+        behind your back. Add sources you trust.
+      </Alert>
+
+      {sources === null ? <Loader size="sm" /> : sources.length === 0 ? (
+        <Text size="sm" c="dimmed">No extra sources — the store shows the built-in apps only.</Text>
+      ) : (
+        <Table verticalSpacing="xs" fz="sm">
+          <Table.Thead><Table.Tr>
+            <Table.Th>Source</Table.Th><Table.Th w={80}>Apps</Table.Th><Table.Th w={170}>Last refresh</Table.Th><Table.Th w={40} />
+          </Table.Tr></Table.Thead>
+          <Table.Tbody>
+            {sources.map(s => (
+              <Table.Tr key={s.id}>
+                <Table.Td>
+                  <Text size="sm" fw={500}>{s.name}</Text>
+                  <Anchor href={s.url} target="_blank" size="xs" c="dimmed" style={{ wordBreak: "break-all" }}>{s.url}</Anchor>
+                  {s.error && <Text size="xs" c="red">{s.error}</Text>}
+                </Table.Td>
+                <Table.Td>{s.error ? <Badge size="sm" color="red" variant="light">failed</Badge> : <Badge size="sm" variant="light">{s.apps}</Badge>}</Table.Td>
+                <Table.Td c="dimmed">{s.lastRefresh ? new Date(s.lastRefresh).toLocaleString() : "never"}</Table.Td>
+                <Table.Td>
+                  <ActionIcon variant="subtle" color="red" size="sm" onClick={() => remove(s)} aria-label={`Remove ${s.name}`}><IconTrash size={15} /></ActionIcon>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      )}
+
+      <Group align="flex-end" gap="xs">
+        <TextInput label="Name" placeholder="Acme apps" value={name} onChange={e => setName(e.currentTarget.value)} w={180} />
+        <TextInput label="Manifest URL" style={{ flex: 1 }} placeholder="https://raw.githubusercontent.com/acme/apps/main/apps.json"
+          value={url} onChange={e => setUrl(e.currentTarget.value)} />
+        <Button leftSection={<IconPlus size={16} />} loading={busy} disabled={!name.trim() || !url.trim()} onClick={add}>Add</Button>
+      </Group>
+      {(sources?.length ?? 0) > 0 && (
+        <Group>
+          <Button variant="default" leftSection={<IconRefresh size={16} />} loading={busy} onClick={refresh}>Refresh sources</Button>
+        </Group>
+      )}
+    </MStack>
   );
 }
 

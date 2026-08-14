@@ -5,6 +5,7 @@ An AspireUI app is one JSON object. The same object works in three places:
 | Where | What it does |
 |-------|--------------|
 | `aspireui-app.json` in **your own repository** | **Install from Git** finds it and installs the app exactly as you defined it — no detour through your `docker-compose.yml`, nothing for us to merge |
+| any URL, added as an **app source** | the apps behind that URL show up in the store of every instance that added it — see [App sources](#app-sources) |
 | `catalog/presets/community/<id>.json` in a **pull request** to AspireUI | your app ships in the store for everyone |
 | any `*.json` in `EXTRA_PRESETS_DIR` | private apps on your own instance, no fork needed |
 
@@ -99,6 +100,34 @@ With `aspireui-app.json` committed, anyone can run **Install from Store → From
 *Import → Git repository* in the builder), paste your repository URL, and AspireUI offers your
 manifest as the way in — next to the compose file or Aspire AppHost it may also find. Your defaults,
 your volumes, your secrets, nothing rewritten.
+
+## App sources
+
+Anything reachable over http(s) that returns app JSON can be an **app source** — a single app, or an
+array of them as your own little store. A raw file in a Git repository is enough:
+
+```
+https://raw.githubusercontent.com/acme/apps/main/apps.json
+```
+
+An admin adds it under **Settings → Hosting → App sources** (name + URL). AspireUI fetches it once,
+right there, and tells you how many apps it found. Those apps then sit in the store next to the
+built-ins, each marked **Community** with your name and URL as provenance.
+
+Rules that keep this boring and safe:
+
+- **Admins only.** Adding and removing sources is an admin action.
+- **Manual refresh.** A source is fetched when it is added and when someone presses *Refresh
+  sources* — never on a timer, never in the background. What is installable today stays installable
+  tomorrow unless an admin asks for the update.
+- **Cached on disk.** Every fetch is written to `<workspace>/_appsources/<id>.json`, so the store
+  works offline and a source that goes away doesn't empty your store.
+- **Bounded.** 20-second timeout, responses over 2 MB are rejected, only `http`/`https` URLs, and a
+  broken or unreachable source shows its error in the table instead of failing the store.
+- Admins can still hide individual apps from the store with the eye toggle on the app card.
+
+If you maintain several apps, one array file is the least work for everyone: you push, your users
+press Refresh.
 
 ## Submitting to the store
 
