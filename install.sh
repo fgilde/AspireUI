@@ -32,9 +32,17 @@ else
     git -C "$DIR" pull --ff-only
   else
     echo "Cloning AspireUI into $DIR ..."
-    git clone --depth 1 "$REPO" "$DIR"
+    # Full commit history (blobs on demand) — the SPA version is 0.1.<commit count>.
+    git clone --filter=blob:none "$REPO" "$DIR" || git clone "$REPO" "$DIR"
   fi
   cd "$DIR"
+fi
+
+# The image build has no .git, so hand the version to it (see docker-compose.yml build args).
+if git rev-parse HEAD >/dev/null 2>&1; then
+  APP_VERSION="0.1.$(git rev-list --count HEAD)"
+  APP_BUILD="$(git rev-parse --short HEAD) · $(git show -s --format=%cs HEAD)"
+  export APP_VERSION APP_BUILD
 fi
 
 docker compose up -d --build

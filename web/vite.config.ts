@@ -7,8 +7,10 @@ import { execSync } from 'node:child_process'
 function git(cmd: string, fallback: string): string {
   try { return execSync(cmd).toString().trim() } catch { return fallback }
 }
-const APP_VERSION = `0.1.${git('git rev-list --count HEAD', '0')}`
-const BUILD = `${git('git rev-parse --short HEAD', 'dev')} · ${new Date().toISOString().slice(0, 10)}`
+// APP_VERSION / APP_BUILD from the environment win: the container image builds without a .git
+// directory (see .dockerignore), so the image build passes them in as build args.
+const APP_VERSION = process.env.APP_VERSION || `0.1.${git('git rev-list --count HEAD', '0')}`
+const BUILD = process.env.APP_BUILD || `${git('git rev-parse --short HEAD', 'dev')} · ${new Date().toISOString().slice(0, 10)}`
 
 // https://vite.dev/config/
 export default defineConfig({

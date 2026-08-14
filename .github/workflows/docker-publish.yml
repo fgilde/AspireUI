@@ -25,6 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # the SPA version is 0.1.<commit count>
+
+      - name: Version
+        id: ver
+        run: |
+          echo "app=0.1.$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "build=$(git rev-parse --short HEAD) · $(git show -s --format=%cs HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
         with:
@@ -56,6 +64,9 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.app }}
+            APP_BUILD=${{ steps.ver.outputs.build }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

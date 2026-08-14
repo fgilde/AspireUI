@@ -1,6 +1,11 @@
 services:
   aspireui:
-    build: .
+    build:
+      context: .
+      args:
+        # install.sh exports these from the checkout; empty = the footer shows 0.1.0 / dev.
+        APP_VERSION: ${APP_VERSION:-}
+        APP_BUILD: ${APP_BUILD:-}
     ports:
       - "8080:8080"
     volumes:

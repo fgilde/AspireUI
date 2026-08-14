@@ -14,6 +14,14 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 
 WORKDIR /src
 COPY . .
+
+# The build context has no .git (.dockerignore), so the SPA cannot derive its version itself —
+# whoever builds the image passes it in. Without these the footer falls back to 0.1.0 / dev.
+ARG APP_VERSION
+ARG APP_BUILD
+ENV APP_VERSION=$APP_VERSION \
+    APP_BUILD=$APP_BUILD
+
 # -p:IsPublishable=true: the AspireUI.Server project references Aspire.Hosting.AppHost,
 # whose build props default IsPublishable to false for AppHost-style projects. That's
 # wrong here (AspireUI.Server is the actual web server we deploy), so force it back on.
