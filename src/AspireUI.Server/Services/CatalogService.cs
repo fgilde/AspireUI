@@ -27,7 +27,8 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     List<string>? Screenshots = null,
     string? UrlPath = null,
     string? Logo = null, string? Card = null, string? Github = null,
-    int? Stars = null, string? License = null, string? Language = null, List<string>? Topics = null);
+    int? Stars = null, string? License = null, string? Language = null, List<string>? Topics = null,
+    string? Submitter = null, string? Source = null);
 public record PresetFile(string Name, string Content);
 // Companion node in preset; wires env references and offers resource alternatives.
 public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role);
@@ -42,21 +43,24 @@ public class CatalogService
     // Merge every *.json in built-in presets + optional EXTRA_PRESETS_DIR, keyed by preset id.
     public IReadOnlyList<ContainerPreset> GetPresets()
     {
-        var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         var byId = new Dictionary<string, ContainerPreset>(StringComparer.OrdinalIgnoreCase);
+        // A file holds one app or an array of them — same manifest an author ships in their own repo.
         void Load(string file)
         {
             try
             {
-                foreach (var p in JsonSerializer.Deserialize<List<ContainerPreset>>(File.ReadAllText(file), opts) ?? [])
+                foreach (var p in ManifestImporter.Parse(File.ReadAllText(file)).apps)
                     if (!string.IsNullOrWhiteSpace(p.Id)) byId[p.Id] = p;
             }
             catch { }
         }
+        // Recursive so submitted apps can live in their own folder (catalog/presets/community/<id>.json).
         void LoadDir(string? dir)
         {
             if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return;
-            foreach (var f in Directory.GetFiles(dir, "*.json").OrderBy(x => x, StringComparer.Ordinal)) Load(f);
+            foreach (var f in Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories)
+                         .Where(f => !Path.GetFileName(f).EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase))
+                         .OrderBy(x => x, StringComparer.Ordinal)) Load(f);
         }
         LoadDir(Path.Combine(AppContext.BaseDirectory, "catalog", "presets"));
         LoadDir(Environment.GetEnvironmentVariable("EXTRA_PRESETS_DIR"));

@@ -5,6 +5,10 @@ Bring an existing Aspire AppHost into AspireUI as an editable stack, from a **.c
 
 Use the **Import** menu on the Stacks overview (next to New Stack / demos).
 
+A repository may also carry an [**`aspireui-app.json`**](app-manifest.md) — the app manifest its
+author wrote. Import from Git then offers that as the way in (next to a compose file or AppHost it
+finds), and installs the app with the author's own image, ports, volumes and generated secrets.
+
 ## Docker Compose → Aspire
 
 The Import menu's **docker-compose.yml** option converts a Compose file into a stack of

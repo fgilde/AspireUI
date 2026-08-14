@@ -219,4 +219,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*159 apps across 10 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*
+*159 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

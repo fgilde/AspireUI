@@ -139,7 +139,8 @@ public class CodeGenTests
         var m = new StackModel("s", "Demo", "net10.0",
             [ new NodeModel("n1", "wf", "AddN8n", "wf", [], 0, 0, []) ], [], [], [], []);
         var csproj = new CodeGenService().GenerateCsproj(m);
-        Assert.Contains("""<PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="10.1.20" />""", csproj);
+        var version = CatalogService.PackageVersions()["Nextended.Aspire.Hosting.N8n"];
+        Assert.Contains($"""<PackageReference Include="Nextended.Aspire.Hosting.N8n" Version="{version}" />""", csproj);
     }
 
     [Fact]

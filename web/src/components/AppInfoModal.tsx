@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, Anchor, Box, UnstyledButton } from "@mantine/core";
-import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode } from "@tabler/icons-react";
+import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode, IconUserCheck } from "@tabler/icons-react";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 
 // Normalized view of store/palette resources; only `label` required, rest is optional.
@@ -10,6 +10,7 @@ export interface AppInfo {
   screenshots?: string[] | null; tags?: string[] | null; custom?: boolean; kindLabel?: string | null;
   logo?: string | null; card?: string | null; github?: string | null;
   stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null;
+  submitter?: string | null; source?: string | null;
 }
 
 const fmtStars = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
@@ -82,6 +83,13 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
             <Anchor href={info.github} target="_blank" size="sm" c="dimmed">
               <Group gap={5} wrap="nowrap"><IconBrandGithub size={15} />GitHub</Group>
             </Anchor>
+          )}
+          {info.submitter && (
+            info.source
+              ? <Anchor href={info.source} target="_blank" size="sm" c="dimmed">
+                  <Group gap={5} wrap="nowrap"><IconUserCheck size={15} />Submitted by {info.submitter}<IconExternalLink size={11} /></Group>
+                </Anchor>
+              : <Group gap={5} wrap="nowrap"><IconUserCheck size={15} /><Text size="sm" c="dimmed">Submitted by {info.submitter}</Text></Group>
           )}
         </Group>
 

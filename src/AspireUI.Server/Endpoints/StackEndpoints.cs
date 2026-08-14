@@ -420,8 +420,16 @@ public static class StackEndpoints
         (StackModel? stack, string? error) BuildFromDir(string sid, string dir, string? mode, string name, string[]? files, string[]? services, Dictionary<string, string>? env)
         {
             var m = string.IsNullOrWhiteSpace(mode)
-                ? (GitService.FindComposeFiles(dir).Count > 0 ? "compose" : "apphost")
+                ? (GitService.FindManifest(dir) is not null ? "manifest"
+                    : GitService.FindComposeFiles(dir).Count > 0 ? "compose" : "apphost")
                 : mode!.ToLowerInvariant();
+            if (m is "manifest")
+            {
+                if (GitService.FindManifest(dir) is not { } json) return (null, $"no {GitService.ManifestName} in this repository");
+                // No name typed by the user → the app's own label wins over the repo/folder name.
+                var (ms, merr) = ManifestImporter.ToStack(sid, string.IsNullOrWhiteSpace(name) ? null : name, json);
+                return ms is null ? (null, merr) : (ms, null);
+            }
             if (m is "apphost" or "runasis")
             {
                 var appHostProject = GitService.FindAppHostRel(dir);
@@ -467,8 +475,13 @@ public static class StackEndpoints
         app2.MapPost("/git/inspect", (GitImportRequest b) =>
         {
             var r = GitService.Inspect(b.Url, b.Branch, b.Subdir, b.AuthToken);
-            return r.Error is not null ? Results.UnprocessableEntity(new { message = r.Error })
-                : Results.Ok(new { r.HasCompose, r.HasAppHost, r.Name, composeFiles = r.ComposeFiles ?? new() });
+            if (r.Error is not null) return Results.UnprocessableEntity(new { message = r.Error });
+            var apps = r.Manifest is null ? new List<ContainerPreset>() : ManifestImporter.Parse(r.Manifest).apps;
+            return Results.Ok(new
+            {
+                r.HasCompose, r.HasAppHost, r.Name, composeFiles = r.ComposeFiles ?? new(),
+                manifest = apps.Count == 0 ? null : new { file = GitService.ManifestName, app = apps[0].Label, apps[0].Image, apps[0].Port },
+            });
         });
         app2.MapPost("/git/branches", (GitImportRequest b) =>
         {
@@ -478,14 +491,16 @@ public static class StackEndpoints
         });
         app2.MapPost("/git/import", (GitImportRequest b, HttpContext ctx) =>
         {
-            var mode = string.IsNullOrWhiteSpace(b.Mode) ? "compose" : b.Mode!.ToLowerInvariant();
+            // No mode = let the clone decide (aspireui-app.json, then compose, then AppHost).
+            var mode = string.IsNullOrWhiteSpace(b.Mode) ? "" : b.Mode!.ToLowerInvariant();
             var sid = Guid.NewGuid().ToString("n");
             var dir = Dir(sid);
             void RmDir() { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
 
             var (name, cerr) = GitService.CloneInto(b.Url, b.Branch, b.Subdir, dir, b.AuthToken);
             if (cerr is not null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr }); }
-            var stackName = string.IsNullOrWhiteSpace(b.Name) ? (name ?? "git app") : b.Name!;
+            var manifestMode = mode == "manifest" || (mode.Length == 0 && GitService.FindManifest(dir) is not null);
+            var stackName = string.IsNullOrWhiteSpace(b.Name) ? (manifestMode ? "" : name ?? "git app") : b.Name!;
 
             var (stack, err) = BuildFromDir(sid, dir, mode, stackName, b.Files, b.Services, b.Env);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }

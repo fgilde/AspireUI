@@ -11,8 +11,18 @@ public static class GitService
     private static readonly HashSet<string> SkipDirs =
         new(StringComparer.OrdinalIgnoreCase) { ".git", "bin", "obj", "node_modules", ".vs", ".idea", "packages", "dist", "TestResults" };
 
+    // An app author's own AspireUI manifest, next to their code (same JSON as a store preset).
+    public const string ManifestName = "aspireui-app.json";
+
     public record ComposeFileDto(string Path, string Content);
-    public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error, List<ComposeFileDto>? ComposeFiles = null);
+    public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error, List<ComposeFileDto>? ComposeFiles = null,
+        string? Manifest = null);
+
+    public static string? FindManifest(string dir)
+    {
+        var p = Path.Combine(dir, ManifestName);
+        return File.Exists(p) ? TryRead(p) : null;
+    }
 
     public static RepoInfo Inspect(string url, string? branch, string? subdir, string? token = null)
     {
@@ -26,7 +36,7 @@ public static class GitService
                 .Select(f => new ComposeFileDto(f, TryRead(System.IO.Path.Combine(root, f))))
                 .ToList();
             var hasAppHost = FindAppHost(root) is not null;
-            return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles);
+            return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles, FindManifest(root));
         }
         catch (Exception e) { return new(false, false, null, e.Message); }
         finally { Cleanup(dir); }

@@ -162,14 +162,56 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
   `aspire publish`): view the generated artifact, download the bundle, or deploy Compose locally
 - **Hosting**: deploy a stack as a persistent, tracked appliance with a URL, complete with
   start/stop/update/backup and a one-click app store (Umbrel/CasaOS style); see [Hosting](docs/hosting.md)
-- **139+ preconfigured container apps** (Immich, Jellyfin, Nextcloud, Gitea, n8n, Pi-hole, …), ready
-  to drop on the canvas or install from the store; see the [App Catalog](docs/apps.md)
+- **159 preconfigured container apps** (Immich, Jellyfin, Nextcloud, WordPress, Gitea, n8n, Pi-hole, …),
+  ready to drop on the canvas or install from the store; see the [App Catalog](docs/apps.md), and
+  [add your own](#bring-your-own-app-to-the-store) with one JSON file
 - NuGet packages panel for the AppHost project
 - Import an existing AppHost from `.cs`, `.csproj`, or a `.zip`, or from a `docker-compose.yml`
 - Demo templates to start from a working example
 - Built-in AI assistant to help build and modify stacks
 - Themes, command palette (Ctrl/⌘+K), saveable dock layouts, undo/redo
 - Dockable panels, arrange the workspace the way you like
+
+## Bring your own app to the store
+
+An app is one JSON file — the same file works in three places, so you pick how far you want to go.
+Full field reference: **[app manifest](docs/app-manifest.md)**.
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/fgilde/AspireUI/master/src/AspireUI.Server/catalog/presets/aspireui-app.schema.json",
+  "id": "my-app",
+  "label": "My App",
+  "group": "Tools",
+  "image": "ghcr.io/acme/my-app:1.4.0",
+  "port": 8080,
+  "description": "What it is, and how the first login works.",
+  "volumes": [["data", "/app/data"]],
+  "params": [{ "key": "app-secret", "env": "APP_SECRET", "default": "", "secret": true }],
+  "website": "https://example.com",
+  "github": "https://github.com/acme/my-app",
+  "license": "MIT",
+  "submitter": "acme",
+  "source": "https://github.com/acme/my-app"
+}
+```
+
+1. **Ship it with your app.** Commit it as `aspireui-app.json` in your repository. Users then run
+   *Install from Store → From Git*, paste your URL, and AspireUI installs the app the way you defined
+   it — your image, ports, volumes, env, and a freshly generated secret per install. Nothing to merge,
+   no release of ours to wait for.
+2. **Submit it to the store.** Open a pull request that adds
+   `src/AspireUI.Server/catalog/presets/community/<id>.json` (same JSON, plus `submitter`/`source`,
+   which the store shows as provenance). `dotnet test tests/AspireUI.Server.Tests` validates every
+   app: required fields, that each `${companion}` reference resolves, and that the resource builds.
+   One app per pull request.
+3. **Keep it private.** Point `EXTRA_PRESETS_DIR` at a folder of such files and your instance shows
+   them without touching this repository.
+
+Rules of thumb: publicly pullable image with a real tag, `port` is the port *inside* the container
+(AspireUI publishes a free host port itself), everything worth keeping on a named `volume`, secrets
+as `params` with an empty default so each install generates its own, and a description that says what
+happens on first login.
 
 ## Quick start (development)
 

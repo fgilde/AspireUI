@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/fgilde/AspireUI/master/src/AspireUI.Server/catalog/presets/aspireui-app.schema.json",
+  "title": "AspireUI app manifest",
+  "description": "One app for the AspireUI app store. The same JSON works as aspireui-app.json in your own repository, as a file submitted to catalog/presets/community/, and in an EXTRA_PRESETS_DIR.",
+  "oneOf": [
+    { "$ref": "#/definitions/app" },
+    { "type": "array", "items": { "$ref": "#/definitions/app" }, "minItems": 1 }
+  ],
+  "definitions": {
+    "envPair": {
+      "type": "array",
+      "description": "[KEY, value]. A value may reference a companion as ${key} — AspireUI substitutes the companion's resource name.",
+      "items": { "type": "string" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "app": {
+      "type": "object",
+      "required": ["id", "label", "group", "image", "port"],
+      "additionalProperties": false,
+      "properties": {
+        "$schema": { "type": "string" },
+        "id": {
+          "type": "string",
+          "description": "Stable, unique, lowercase kebab-case id. Also the resource name prefix and the volume prefix.",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "label": { "type": "string", "description": "Name shown in the store." },
+        "group": { "type": "string", "description": "Store category, e.g. Tools, Media, CMS, Database, AI Apps." },
+        "image": { "type": "string", "description": "Publicly pullable image with a tag, e.g. ghcr.io/acme/app:latest." },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "description": "The port the app listens on INSIDE the container. AspireUI publishes a free host port itself." },
+        "fixedPort": { "type": "boolean", "description": "Publish exactly `port` on the host as well. Only for apps that break on any other port." },
+        "icon": { "type": "string", "description": "Icon key: a slug from github.com/homarr-labs/dashboard-icons, or an AspireUI resource icon." },
+        "description": { "type": "string", "description": "What it is, plus first-run notes (default credentials, browser setup steps)." },
+        "urlPath": { "type": "string", "description": "Path appended to the app URL, e.g. /web." },
+        "env": { "type": "array", "items": { "$ref": "#/definitions/envPair" }, "description": "Literal environment values." },
+        "params": {
+          "type": "array",
+          "description": "Values the user should own: secrets, keys, public URLs. Shown in the install dialog; a secret with an empty default is generated per install.",
+          "items": {
+            "type": "object",
+            "required": ["key", "env"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+              "env": { "type": "string", "description": "Environment variable it is written to." },
+              "default": { "type": ["string", "null"] },
+              "secret": { "type": "boolean", "description": "Masked in the UI; an empty default is filled with a random 48-char hex value." },
+              "name": { "type": ["string", "null"], "description": "Resource name of the generated Aspire parameter." }
+            }
+          }
+        },
+        "companions": {
+          "type": "array",
+          "description": "Services the app needs (database, cache, …). Reference them from env as ${key}.",
+          "items": {
+            "type": "object",
+            "required": ["key", "addMethod", "resourceName"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+              "addMethod": { "type": "string", "description": "Usually AddContainer." },
+              "resourceName": { "type": "string" },
+              "image": { "type": ["string", "null"] },
+              "port": { "type": ["integer", "null"] },
+              "env": { "type": ["array", "null"], "items": { "$ref": "#/definitions/envPair" } },
+              "role": {
+                "type": ["string", "null"],
+                "description": "Lets AspireUI offer an existing resource on the canvas instead of a second one.",
+                "enum": ["postgres", "mysql", "mariadb", "mongo", "redis", "meilisearch", "llm", null]
+              }
+            }
+          }
+        },
+        "volumes": {
+          "type": "array",
+          "description": "[name, containerPath] — a named volume per entry, prefixed with the resource name. Everything the user must keep belongs here.",
+          "items": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 2 }
+        },
+        "bindMounts": {
+          "type": "array",
+          "description": "[hostPath, containerPath, \"ro\"?]. Avoid in submitted apps — host paths do not exist on someone else's machine.",
+          "items": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 3 }
+        },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Container command arguments." },
+        "runtimeArgs": { "type": "array", "items": { "type": "string" }, "description": "Container runtime arguments (docker run flags)." },
+        "gpu": { "type": "boolean", "description": "Requests --gpus all." },
+        "hostNetwork": { "type": "boolean" },
+        "files": {
+          "type": "array",
+          "description": "Extra files written next to the generated AppHost project.",
+          "items": {
+            "type": "object",
+            "required": ["name", "content"],
+            "additionalProperties": false,
+            "properties": { "name": { "type": "string" }, "content": { "type": "string" } }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "website": { "type": "string" },
+        "github": { "type": "string" },
+        "license": { "type": "string" },
+        "language": { "type": "string" },
+        "stars": { "type": ["integer", "null"] },
+        "logo": { "type": "string", "description": "URL (or /media path) of the app logo." },
+        "card": { "type": "string", "description": "URL of the wide image on the details dialog." },
+        "screenshots": { "type": "array", "items": { "type": "string" } },
+        "submitter": { "type": "string", "description": "Who submitted this app — shown as provenance in the store." },
+        "source": { "type": "string", "description": "Link behind the submitter, e.g. the repository or profile." }
+      }
+    }
+  }
+}

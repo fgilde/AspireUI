@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using AspireUI.Server.Models;
+using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 [Collection("ServerIntegration")]
@@ -61,7 +62,8 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
 
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == "13.4.6" && p.Resources.Count == 0);
         Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == "13.4.6" && p.Resources.SequenceEqual(["cache"]));
-        Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == "10.1.20" && p.Resources.SequenceEqual(["flow"]));
+        var n8nVersion = CatalogService.PackageVersions()["Nextended.Aspire.Hosting.N8n"];
+        Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == n8nVersion && p.Resources.SequenceEqual(["flow"]));
     }
 
     [Fact]

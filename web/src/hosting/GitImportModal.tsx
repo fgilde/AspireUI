@@ -5,7 +5,8 @@ import * as api from "../api";
 import { toastOk, toastErr } from "../ui";
 
 type ComposeFile = { path: string; content: string };
-type Detected = { hasCompose: boolean; hasAppHost: boolean; name?: string; composeFiles: ComposeFile[] };
+type Manifest = { file: string; app: string; image: string; port: number };
+type Detected = { hasCompose: boolean; hasAppHost: boolean; name?: string; composeFiles: ComposeFile[]; manifest?: Manifest | null };
 type EnvVar = { name: string; def: string; secret: boolean };
 type Service = { name: string; image: string; proxy: boolean };
 type Step = "form" | "choice" | "files" | "services" | "env";
@@ -33,6 +34,14 @@ const parseServices = (contents: string[]): Service[] => {
     }
   }
   return [...images].map(([name, image]) => ({ name, image, proxy: /(caddy|nginx|traefik|haproxy|envoy)/i.test(image) }));
+};
+
+const parseManifest = (text: string): Manifest | null => {
+  try {
+    const j = JSON.parse(text);
+    const app = Array.isArray(j) ? j[0] : j;
+    return app?.image && app?.port ? { file: "aspireui-app.json", app: app.label || app.id, image: app.image, port: app.port } : null;
+  } catch { return null; }
 };
 
 const repoName = (u: string) => (u.trim().replace(/\/+$/, "").split("/").pop() ?? "").replace(/\.git$/i, "");
@@ -112,9 +121,11 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     setBusy(true);
     try {
       const d = await api.gitInspect(req());
-      if (!d.hasCompose && !d.hasAppHost) { toastErr("No .NET Aspire AppHost and no docker-compose file found in this repo"); return; }
+      if (!d.hasCompose && !d.hasAppHost && !d.manifest) { toastErr(`No ${"aspireui-app.json"}, no .NET Aspire AppHost and no docker-compose file found in this repo`); return; }
       setDetected(d);
-      if (d.hasAppHost && d.hasCompose) { setMode("apphost"); setStep("choice"); }
+      const alternatives = [!!d.manifest, d.hasAppHost, d.hasCompose].filter(Boolean).length;
+      if (alternatives > 1) { setMode(d.manifest ? "manifest" : "apphost"); setStep("choice"); }
+      else if (d.manifest) await doImport("manifest");
       else if (d.hasAppHost) await doImport("apphost");
       else startCompose(d.composeFiles);
     } catch (e) { toastErr(e, "Could not read the repository"); } finally { setBusy(false); }
@@ -130,10 +141,14 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     setName(local.name);
     const composeFiles = local.sources.filter(s => !s.path.includes("/") && /compose.*\.ya?ml$/i.test(s.path)).map(s => ({ path: s.path, content: b64Text(s.content) }));
     const hasAppHost = local.sources.some(s => /\.csproj$/i.test(s.path) && /(Aspire\.AppHost\.Sdk|<IsAspireHost>\s*true)/i.test(b64Text(s.content)));
-    if (composeFiles.length === 0 && !hasAppHost) { toastErr("No .NET Aspire AppHost and no docker-compose file found in these files"); onClose(); return; }
-    const d = { hasCompose: composeFiles.length > 0, hasAppHost, name: local.name, composeFiles };
+    const manifestSrc = local.sources.find(s => s.path === "aspireui-app.json");
+    const manifest = manifestSrc ? parseManifest(b64Text(manifestSrc.content)) : null;
+    if (composeFiles.length === 0 && !hasAppHost && !manifest) { toastErr("No aspireui-app.json, no .NET Aspire AppHost and no docker-compose file found in these files"); onClose(); return; }
+    const d = { hasCompose: composeFiles.length > 0, hasAppHost, name: local.name, composeFiles, manifest };
     setDetected(d);
-    if (d.hasAppHost && d.hasCompose) { setMode("apphost"); setStep("choice"); }
+    const alternatives = [!!manifest, hasAppHost, d.hasCompose].filter(Boolean).length;
+    if (alternatives > 1) { setMode(manifest ? "manifest" : "apphost"); setStep("choice"); }
+    else if (manifest) doImport("manifest");
     else if (d.hasAppHost) doImport("apphost");
     else startCompose(d.composeFiles);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,21 +196,26 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
         <Stack gap="md">
           <Group gap={8}>
             <Text size="sm" fw={600}>{detected.name}</Text>
-            <Badge size="sm" variant="light" color="violet">Aspire AppHost</Badge>
-            <Badge size="sm" variant="light" color="blue">Compose</Badge>
+            {detected.manifest && <Badge size="sm" variant="light" color="teal">aspireui-app.json</Badge>}
+            {detected.hasAppHost && <Badge size="sm" variant="light" color="violet">Aspire AppHost</Badge>}
+            {detected.hasCompose && <Badge size="sm" variant="light" color="blue">Compose</Badge>}
           </Group>
-          <Text size="sm" c="dimmed">This repo has both — how do you want to import it?</Text>
+          <Text size="sm" c="dimmed">This repo offers more than one way in — pick one.</Text>
           <Radio.Group value={mode} onChange={setMode}>
             <Stack gap="xs">
-              <Radio value="apphost" label={<span><b>Run the Aspire AppHost</b><Text size="xs" c="dimmed">Keeps and runs the project; edit later via the visual editor.</Text></span>} />
-              <Radio value="compose" label={<span><b>Docker Compose</b><Text size="xs" c="dimmed">Maps compose services to AddContainer / AddDockerfile resources you can edit.</Text></span>} />
+              {detected.manifest && (
+                <Radio value="manifest" label={<span><b>App manifest</b> — {detected.manifest.app}
+                  <Text size="xs" c="dimmed">The author's own definition: {detected.manifest.image} on port {detected.manifest.port}, with its volumes, env and secrets.</Text></span>} />
+              )}
+              {detected.hasAppHost && <Radio value="apphost" label={<span><b>Run the Aspire AppHost</b><Text size="xs" c="dimmed">Keeps and runs the project; edit later via the visual editor.</Text></span>} />}
+              {detected.hasCompose && <Radio value="compose" label={<span><b>Docker Compose</b><Text size="xs" c="dimmed">Maps compose services to AddContainer / AddDockerfile resources you can edit.</Text></span>} />}
             </Stack>
           </Radio.Group>
           <Group justify="space-between">
             <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => backTo("form")}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button loading={busy} onClick={() => mode === "compose" ? startCompose(detected.composeFiles) : doImport("apphost")}>Continue</Button>
+              <Button loading={busy} onClick={() => mode === "compose" ? startCompose(detected.composeFiles) : doImport(mode)}>Continue</Button>
             </Group>
           </Group>
         </Stack>
