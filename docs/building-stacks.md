@@ -29,6 +29,17 @@ work generically. The generated project only references the packages for resourc
 Click a palette entry to open its add dialog. Switch to the **Custom** tab for one-click **app
 presets** (see below) and your own saved snippets.
 
+### PHP in a .NET stack
+
+**PHP** (`AddPhp`, from `Nextended.Aspire.Hosting.Php`) serves a folder as docroot or a single `.php`
+file as router script in the official `php:cli` image, so a PHP endpoint sits in the stack like any
+other resource and `WithReference` makes it reachable as `http://<name>`. The dialog exposes the path
+(with a browse button), an optional port/image/tag, and the fluent options: `WithPhpIni` /
+`WithPhpIniConfiguration` (typed `php.ini` directives — memory limit, timezone, error reporting, …),
+`WithPhpIniFile`, `WithComposer` (runs `composer install` before PHP starts) and `WithWorkers`.
+It is PHP's built-in dev server — for a packaged PHP *application* take the store apps instead
+(WordPress, Joomla, Drupal, Matomo, Kimai, …), which ship as production images with their database.
+
 ### Setup / composite extensions
 
 The catalog also surfaces **macro extensions** — methods that take the builder and wire up *several*

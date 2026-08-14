@@ -8,7 +8,7 @@ import {
   siBun, siDeno, siRust, siNgrok, siMeilisearch, siGrafana,
   siJellyfin, siGitea, siNextcloud, siHomeassistant, siSonarr, siRadarr, siQbittorrent,
   siImmich, siPihole, siExcalidraw, siSearxng, siPaperlessngx, siVaultwarden, siMetabase,
-  siLangflow, siNodered, siJaeger, siOnlyoffice, siActualbudget, siFreshrss,
+  siLangflow, siNodered, siJaeger, siOnlyoffice, siActualbudget, siFreshrss, siPhp, siWordpress,
 } from "simple-icons";
 
 import aspireuiLogo from "./assets/logo.svg";
@@ -25,6 +25,9 @@ const MAP: Record<string, Visual> = {
   AddAspireUI:         { img: aspireuiLogo, color: "#10B981" },
   AddRedis:            { si: siRedis, color: "#FF4438" },
   AddPostgres:         { si: siPostgresql, color: "#4169E1" },
+  AddPhp:              { si: siPhp, color: "#777BB4" },
+  php:                 { si: siPhp, color: "#777BB4" },
+  wordpress:           { si: siWordpress, color: "#21759B" },
   AddContainer:        { si: siDocker, color: "#2496ED" },
   AddDockerfile:       { si: siDocker, color: "#2496ED" },
   AddGithubRepository: { si: siGithub, color: TEXT },

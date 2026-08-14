@@ -342,6 +342,7 @@ public class CatalogService
                  {
                      "Nextended.Aspire.Hosting.Supabase",
                      "Nextended.Aspire.Hosting.N8n",
+                     "Nextended.Aspire.Hosting.Php",
                      "Nextended.Aspire.Hosting.LocalAI",
                      "Nextended.Aspire.Hosting.Grafana",
                      "Nextended.Aspire.Hosting.AspireUI",

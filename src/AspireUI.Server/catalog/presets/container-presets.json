@@ -6497,5 +6497,1073 @@
       "https://fgilde.github.io/videola/editor-tablet.webp",
       "https://fgilde.github.io/videola/editor-phone.webp"
     ]
+  },
+  {
+    "id": "wordpress",
+    "label": "WordPress",
+    "group": "CMS",
+    "image": "wordpress:latest",
+    "port": 80,
+    "icon": "wordpress",
+    "description": "WordPress — the classic PHP blog/CMS (official Apache image). Comes with a MariaDB companion; the famous five-minute install runs in the browser on first visit.",
+    "env": [
+      [
+        "WORDPRESS_DB_HOST",
+        "${db}"
+      ],
+      [
+        "WORDPRESS_DB_NAME",
+        "wordpress"
+      ],
+      [
+        "WORDPRESS_DB_USER",
+        "wordpress"
+      ],
+      [
+        "WORDPRESS_DB_PASSWORD",
+        "wordpress"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "wordpress-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "wordpress"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "wordpress"
+          ],
+          [
+            "MYSQL_USER",
+            "wordpress"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "wordpress"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "html",
+        "/var/www/html"
+      ]
+    ],
+    "tags": [
+      "php",
+      "cms",
+      "blog",
+      "self-hosted"
+    ],
+    "website": "https://wordpress.org",
+    "github": "https://github.com/WordPress/WordPress",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "cms",
+      "blog",
+      "wordpress"
+    ]
+  },
+  {
+    "id": "joomla",
+    "label": "Joomla",
+    "group": "CMS",
+    "image": "joomla:latest",
+    "port": 80,
+    "icon": "joomla",
+    "description": "Joomla — PHP CMS for sites and portals (official Apache image). MariaDB companion included; fill in the admin account below and the installer runs unattended on first start.",
+    "env": [
+      [
+        "JOOMLA_DB_HOST",
+        "${db}"
+      ],
+      [
+        "JOOMLA_DB_NAME",
+        "joomla"
+      ],
+      [
+        "JOOMLA_DB_USER",
+        "joomla"
+      ],
+      [
+        "JOOMLA_DB_PASSWORD",
+        "joomla"
+      ],
+      [
+        "JOOMLA_SITE_NAME",
+        "Joomla"
+      ],
+      [
+        "JOOMLA_ADMIN_USER",
+        "Administrator"
+      ],
+      [
+        "JOOMLA_ADMIN_USERNAME",
+        "admin"
+      ],
+      [
+        "JOOMLA_ADMIN_EMAIL",
+        "admin@example.com"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-password",
+        "env": "JOOMLA_ADMIN_PASSWORD",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "joomla-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "joomla"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "joomla"
+          ],
+          [
+            "MYSQL_USER",
+            "joomla"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "joomla"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "html",
+        "/var/www/html"
+      ]
+    ],
+    "tags": [
+      "php",
+      "cms",
+      "self-hosted"
+    ],
+    "website": "https://www.joomla.org",
+    "github": "https://github.com/joomla/joomla-cms",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "cms",
+      "joomla"
+    ]
+  },
+  {
+    "id": "drupal",
+    "label": "Drupal",
+    "group": "CMS",
+    "image": "drupal:latest",
+    "port": 80,
+    "icon": "drupal",
+    "description": "Drupal — PHP CMS/framework for structured content (official Apache image). Comes with a Postgres companion; the browser installer asks for the database — host drupal-db, name/user/password all \"drupal\".",
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "drupal-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_DB",
+            "drupal"
+          ],
+          [
+            "POSTGRES_USER",
+            "drupal"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "drupal"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "sites",
+        "/var/www/html/sites"
+      ],
+      [
+        "modules",
+        "/var/www/html/modules"
+      ],
+      [
+        "themes",
+        "/var/www/html/themes"
+      ],
+      [
+        "profiles",
+        "/var/www/html/profiles"
+      ]
+    ],
+    "tags": [
+      "php",
+      "cms",
+      "self-hosted"
+    ],
+    "website": "https://www.drupal.org",
+    "github": "https://github.com/drupal/drupal",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "cms",
+      "drupal"
+    ]
+  },
+  {
+    "id": "grav",
+    "label": "Grav",
+    "group": "CMS",
+    "image": "lscr.io/linuxserver/grav:latest",
+    "port": 80,
+    "icon": "grav",
+    "description": "Grav — flat-file PHP CMS: no database, content is Markdown on disk. Create the admin account in the browser on first visit.",
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "tags": [
+      "php",
+      "cms",
+      "flat-file",
+      "self-hosted"
+    ],
+    "website": "https://getgrav.org",
+    "github": "https://github.com/getgrav/grav",
+    "license": "MIT",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "cms",
+      "markdown",
+      "flat-file"
+    ]
+  },
+  {
+    "id": "matomo",
+    "label": "Matomo",
+    "group": "Tools",
+    "image": "matomo:apache",
+    "port": 80,
+    "icon": "matomo",
+    "description": "Matomo — self-hosted web analytics (the Google Analytics alternative), official Apache image. MariaDB companion included; the browser installer picks up the database settings, then you create the super user.",
+    "env": [
+      [
+        "MATOMO_DATABASE_HOST",
+        "${db}"
+      ],
+      [
+        "MATOMO_DATABASE_ADAPTER",
+        "mysql"
+      ],
+      [
+        "MATOMO_DATABASE_DBNAME",
+        "matomo"
+      ],
+      [
+        "MATOMO_DATABASE_USERNAME",
+        "matomo"
+      ],
+      [
+        "MATOMO_DATABASE_PASSWORD",
+        "matomo"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "matomo-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "matomo"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "matomo"
+          ],
+          [
+            "MYSQL_USER",
+            "matomo"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "matomo"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "html",
+        "/var/www/html"
+      ]
+    ],
+    "tags": [
+      "php",
+      "analytics",
+      "privacy",
+      "self-hosted"
+    ],
+    "website": "https://matomo.org",
+    "github": "https://github.com/matomo-org/matomo",
+    "license": "GPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "analytics",
+      "matomo",
+      "privacy"
+    ]
+  },
+  {
+    "id": "kimai",
+    "label": "Kimai",
+    "group": "Tools",
+    "image": "kimai/kimai2:apache",
+    "port": 8001,
+    "icon": "kimai",
+    "description": "Kimai — self-hosted time tracking for teams and freelancers. MariaDB companion included; the first admin account is created from the mail address and password below.",
+    "env": [
+      [
+        "DATABASE_URL",
+        "mysql://kimai:kimai@${db}:3306/kimai?charset=utf8mb4&serverVersion=10.11.0-MariaDB"
+      ],
+      [
+        "ADMINMAIL",
+        "admin@example.com"
+      ],
+      [
+        "TRUSTED_HOSTS",
+        "localhost"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-password",
+        "env": "ADMINPASS",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "kimai-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "kimai"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "kimai"
+          ],
+          [
+            "MYSQL_USER",
+            "kimai"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "kimai"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/opt/kimai/var/data"
+      ]
+    ],
+    "tags": [
+      "php",
+      "time-tracking",
+      "invoicing",
+      "self-hosted"
+    ],
+    "website": "https://www.kimai.org",
+    "github": "https://github.com/kimai/kimai",
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "time-tracking",
+      "kimai"
+    ]
+  },
+  {
+    "id": "snipe-it",
+    "label": "Snipe-IT",
+    "group": "Tools",
+    "image": "snipe/snipe-it:latest",
+    "port": 80,
+    "icon": "snipe-it",
+    "description": "Snipe-IT — IT asset and license management. MariaDB companion included. APP_KEY is generated for you and must stay stable; set APP_URL to the address you reach it on, then finish the setup in the browser.",
+    "env": [
+      [
+        "MYSQL_PORT_3306_TCP_ADDR",
+        "${db}"
+      ],
+      [
+        "MYSQL_PORT_3306_TCP_PORT",
+        "3306"
+      ],
+      [
+        "MYSQL_DATABASE",
+        "snipeit"
+      ],
+      [
+        "MYSQL_USER",
+        "snipeit"
+      ],
+      [
+        "MYSQL_PASSWORD",
+        "snipeit"
+      ],
+      [
+        "APP_ENV",
+        "production"
+      ],
+      [
+        "APP_DEBUG",
+        "false"
+      ],
+      [
+        "PRIVATE_FILESYSTEM_DISK",
+        "local"
+      ],
+      [
+        "PUBLIC_FILESYSTEM_DISK",
+        "local_public"
+      ]
+    ],
+    "params": [
+      {
+        "key": "app-url",
+        "env": "APP_URL",
+        "default": "http://localhost"
+      },
+      {
+        "key": "app-key",
+        "env": "APP_KEY",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "snipeit-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "snipeit"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "snipeit"
+          ],
+          [
+            "MYSQL_USER",
+            "snipeit"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "snipeit"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/var/lib/snipeit"
+      ]
+    ],
+    "tags": [
+      "php",
+      "assets",
+      "inventory",
+      "itsm",
+      "self-hosted"
+    ],
+    "website": "https://snipeitapp.com",
+    "github": "https://github.com/snipe/snipe-it",
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "asset-management",
+      "inventory",
+      "laravel"
+    ]
+  },
+  {
+    "id": "kanboard",
+    "label": "Kanboard",
+    "group": "Tools",
+    "image": "kanboard/kanboard:latest",
+    "port": 80,
+    "icon": "kanboard",
+    "description": "Kanboard — lean kanban project management. Single container, SQLite on a volume, no database needed. First login: admin / admin — change it.",
+    "volumes": [
+      [
+        "data",
+        "/var/www/app/data"
+      ],
+      [
+        "plugins",
+        "/var/www/app/plugins"
+      ]
+    ],
+    "tags": [
+      "php",
+      "kanban",
+      "project-management",
+      "self-hosted"
+    ],
+    "website": "https://kanboard.org",
+    "github": "https://github.com/kanboard/kanboard",
+    "license": "MIT",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "kanban",
+      "project-management"
+    ]
+  },
+  {
+    "id": "limesurvey",
+    "label": "LimeSurvey",
+    "group": "Tools",
+    "image": "martialblog/limesurvey:6-apache",
+    "port": 8080,
+    "icon": "limesurvey",
+    "description": "LimeSurvey — full-featured survey and questionnaire tool. MariaDB companion included; the admin account below is created on first start.",
+    "env": [
+      [
+        "DB_TYPE",
+        "mysql"
+      ],
+      [
+        "DB_HOST",
+        "${db}"
+      ],
+      [
+        "DB_PORT",
+        "3306"
+      ],
+      [
+        "DB_NAME",
+        "limesurvey"
+      ],
+      [
+        "DB_USERNAME",
+        "limesurvey"
+      ],
+      [
+        "DB_PASSWORD",
+        "limesurvey"
+      ],
+      [
+        "ADMIN_USER",
+        "admin"
+      ],
+      [
+        "ADMIN_NAME",
+        "Administrator"
+      ],
+      [
+        "ADMIN_EMAIL",
+        "admin@example.com"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-password",
+        "env": "ADMIN_PASSWORD",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "limesurvey-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "limesurvey"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "limesurvey"
+          ],
+          [
+            "MYSQL_USER",
+            "limesurvey"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "limesurvey"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "upload",
+        "/var/www/html/upload"
+      ]
+    ],
+    "tags": [
+      "php",
+      "survey",
+      "forms",
+      "self-hosted"
+    ],
+    "website": "https://www.limesurvey.org",
+    "github": "https://github.com/LimeSurvey/LimeSurvey",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "survey",
+      "forms",
+      "limesurvey"
+    ]
+  },
+  {
+    "id": "dolibarr",
+    "label": "Dolibarr",
+    "group": "Tools",
+    "image": "dolibarr/dolibarr:latest",
+    "port": 80,
+    "icon": "dolibarr",
+    "description": "Dolibarr — open-source ERP and CRM (invoices, orders, stock, projects). MariaDB companion included; the admin account below is created on first start.",
+    "env": [
+      [
+        "DOLI_DB_HOST",
+        "${db}"
+      ],
+      [
+        "DOLI_DB_NAME",
+        "dolibarr"
+      ],
+      [
+        "DOLI_DB_USER",
+        "dolibarr"
+      ],
+      [
+        "DOLI_DB_PASSWORD",
+        "dolibarr"
+      ],
+      [
+        "DOLI_ADMIN_LOGIN",
+        "admin"
+      ],
+      [
+        "DOLI_INSTALL_AUTO",
+        "1"
+      ]
+    ],
+    "params": [
+      {
+        "key": "admin-password",
+        "env": "DOLI_ADMIN_PASSWORD",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "dolibarr-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "dolibarr"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "dolibarr"
+          ],
+          [
+            "MYSQL_USER",
+            "dolibarr"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "dolibarr"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "html",
+        "/var/www/html"
+      ],
+      [
+        "documents",
+        "/var/www/documents"
+      ]
+    ],
+    "tags": [
+      "php",
+      "erp",
+      "crm",
+      "invoicing",
+      "self-hosted"
+    ],
+    "website": "https://www.dolibarr.org",
+    "github": "https://github.com/Dolibarr/dolibarr",
+    "license": "GPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "erp",
+      "crm",
+      "dolibarr"
+    ]
+  },
+  {
+    "id": "monica",
+    "label": "Monica",
+    "group": "Tools",
+    "image": "monica:apache",
+    "port": 80,
+    "icon": "monica",
+    "description": "Monica — a personal CRM: remember everything about your friends and family. MariaDB companion included; APP_KEY is generated for you (32 chars, keep it stable), then register the first account in the browser.",
+    "env": [
+      [
+        "DB_HOST",
+        "${db}"
+      ],
+      [
+        "DB_PORT",
+        "3306"
+      ],
+      [
+        "DB_DATABASE",
+        "monica"
+      ],
+      [
+        "DB_USERNAME",
+        "monica"
+      ],
+      [
+        "DB_PASSWORD",
+        "monica"
+      ]
+    ],
+    "params": [
+      {
+        "key": "app-key",
+        "env": "APP_KEY",
+        "default": "",
+        "secret": true
+      },
+      {
+        "key": "app-url",
+        "env": "APP_URL",
+        "default": "http://localhost"
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "monica-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "monica"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "monica"
+          ],
+          [
+            "MYSQL_USER",
+            "monica"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "monica"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "storage",
+        "/var/www/html/storage"
+      ]
+    ],
+    "tags": [
+      "php",
+      "crm",
+      "contacts",
+      "self-hosted"
+    ],
+    "website": "https://www.monicahq.com",
+    "github": "https://github.com/monicahq/monica",
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "crm",
+      "laravel",
+      "contacts"
+    ]
+  },
+  {
+    "id": "piwigo",
+    "label": "Piwigo",
+    "group": "Media",
+    "image": "lscr.io/linuxserver/piwigo:latest",
+    "port": 80,
+    "icon": "piwigo",
+    "description": "Piwigo — photo gallery manager for large collections. MariaDB companion included; the browser installer asks for the database — host piwigo-db, name/user/password all \"piwigo\".",
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "piwigo-db",
+        "image": "lscr.io/linuxserver/mariadb:latest",
+        "role": "mysql",
+        "env": [
+          [
+            "MYSQL_ROOT_PASSWORD",
+            "piwigo"
+          ],
+          [
+            "MYSQL_DATABASE",
+            "piwigo"
+          ],
+          [
+            "MYSQL_USER",
+            "piwigo"
+          ],
+          [
+            "MYSQL_PASSWORD",
+            "piwigo"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ],
+      [
+        "gallery",
+        "/gallery"
+      ]
+    ],
+    "tags": [
+      "php",
+      "photos",
+      "gallery",
+      "self-hosted"
+    ],
+    "website": "https://piwigo.org",
+    "github": "https://github.com/Piwigo/Piwigo",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "photos",
+      "gallery",
+      "piwigo"
+    ]
+  },
+  {
+    "id": "wallabag",
+    "label": "wallabag",
+    "group": "Tools",
+    "image": "wallabag/wallabag:latest",
+    "port": 80,
+    "icon": "wallabag",
+    "description": "wallabag — save and read articles later, ad-free (the self-hosted Pocket). Runs on SQLite in a single container. First login: wallabag / wallabag — change it right away.",
+    "env": [
+      [
+        "SYMFONY__ENV__DATABASE_DRIVER",
+        "pdo_sqlite"
+      ],
+      [
+        "SYMFONY__ENV__DATABASE_PATH",
+        "/var/www/wallabag/data/db/wallabag.sqlite"
+      ],
+      [
+        "SYMFONY__ENV__MAILER_DSN",
+        "smtp://127.0.0.1"
+      ],
+      [
+        "SYMFONY__ENV__FROM_EMAIL",
+        "wallabag@example.com"
+      ],
+      [
+        "POPULATE_DATABASE",
+        "true"
+      ]
+    ],
+    "params": [
+      {
+        "key": "domain",
+        "env": "SYMFONY__ENV__DOMAIN_NAME",
+        "default": "http://localhost"
+      },
+      {
+        "key": "secret",
+        "env": "SYMFONY__ENV__SECRET",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/var/www/wallabag/data"
+      ],
+      [
+        "images",
+        "/var/www/wallabag/web/assets/images"
+      ]
+    ],
+    "tags": [
+      "php",
+      "read-it-later",
+      "bookmarks",
+      "self-hosted"
+    ],
+    "website": "https://wallabag.org",
+    "github": "https://github.com/wallabag/wallabag",
+    "license": "MIT",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "bookmarks",
+      "read-it-later",
+      "symfony"
+    ]
+  },
+  {
+    "id": "shaarli",
+    "label": "Shaarli",
+    "group": "Tools",
+    "image": "ghcr.io/shaarli/shaarli:latest",
+    "port": 80,
+    "icon": "shaarli",
+    "description": "Shaarli — a minimalist, database-free bookmark manager (personal link log with RSS). Create the admin account in the browser on first visit.",
+    "volumes": [
+      [
+        "data",
+        "/var/www/shaarli/data"
+      ],
+      [
+        "cache",
+        "/var/www/shaarli/cache"
+      ]
+    ],
+    "tags": [
+      "php",
+      "bookmarks",
+      "flat-file",
+      "self-hosted"
+    ],
+    "website": "https://shaarli.readthedocs.io",
+    "github": "https://github.com/shaarli/Shaarli",
+    "license": "Zlib",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "bookmarks",
+      "shaarli",
+      "rss"
+    ]
+  },
+  {
+    "id": "phpmyadmin",
+    "label": "phpMyAdmin",
+    "group": "Database",
+    "image": "phpmyadmin:latest",
+    "port": 80,
+    "icon": "phpmyadmin",
+    "description": "phpMyAdmin — the web UI for MySQL/MariaDB. Arbitrary-server mode is on, so you type the database host at login (e.g. another resource in your stack) instead of wiring it up front.",
+    "env": [
+      [
+        "PMA_ARBITRARY",
+        "1"
+      ],
+      [
+        "UPLOAD_LIMIT",
+        "256M"
+      ]
+    ],
+    "tags": [
+      "php",
+      "database",
+      "admin",
+      "mysql"
+    ],
+    "website": "https://www.phpmyadmin.net",
+    "github": "https://github.com/phpmyadmin/phpmyadmin",
+    "license": "GPL-2.0",
+    "language": "PHP",
+    "topics": [
+      "php",
+      "mysql",
+      "mariadb",
+      "database"
+    ]
   }
 ]

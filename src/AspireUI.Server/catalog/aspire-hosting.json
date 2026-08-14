@@ -20,6 +20,16 @@
     "group": "Generic",
     "description": "Build and run a container from a local Dockerfile."
   },
+  "AddPhp": {
+    "label": "PHP",
+    "icon": "php",
+    "group": "Compute",
+    "package": "Nextended.Aspire.Hosting.Php",
+    "usings": [
+      "Nextended.Aspire.Hosting.Php"
+    ],
+    "description": "Serve PHP from a folder (docroot) or a single .php router script in the official php:cli container — PHP's built-in web server, php.ini directives as options, optional composer install and extensions (mysqli, pdo_mysql, …). A dev server: for production PHP apps use a packaged image (see the WordPress/Matomo/… apps in the store)."
+  },
   "AddPostgres": {
     "label": "Postgres",
     "icon": "postgres",

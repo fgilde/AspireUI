@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **144 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **159 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -9,7 +9,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 > Auto-generated from `catalog/presets/container-presets.json`. Icons via
 > [dashboard-icons](https://github.com/homarr-labs/dashboard-icons).
 
-## AI Apps <sub>(18)</sub>
+## AI Apps <sub>(20)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -46,6 +46,21 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/joinstr.png" width="22" height="22" alt=""> | **[Joinstr](https://github.com/1440000bytes/joinstr)** | Joinstr — Nostr-based coinjoin wallet UI. Requires an external Bitcoin Core node over RPC (set the RPC params) — useless without a node. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mempool.png" width="22" height="22" alt=""> | **[mempool](https://github.com/mempool/mempool)** | mempool.space self-hosted explorer/visualizer. Frontend + backend + MariaDB. Point the backend at an external Bitcoin Core (CORE_RPC_*)… |
 
+## CMS <sub>(4)</sub>
+
+| | App | What it is |
+|---|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/drupal.png" width="22" height="22" alt=""> | **[Drupal](https://www.drupal.org)** | Drupal — PHP CMS/framework for structured content (official Apache image). Comes with a Postgres companion; the browser installer asks for the database — host… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/grav.png" width="22" height="22" alt=""> | **[Grav](https://getgrav.org)** | Grav — flat-file PHP CMS: no database, content is Markdown on disk. Create the admin account in the browser on first visit. |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/joomla.png" width="22" height="22" alt=""> | **[Joomla](https://www.joomla.org)** | Joomla — PHP CMS for sites and portals (official Apache image). MariaDB companion included; fill in the admin account below and the installer runs unattended on… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wordpress.png" width="22" height="22" alt=""> | **[WordPress](https://wordpress.org)** | WordPress — the classic PHP blog/CMS (official Apache image). Comes with a MariaDB companion; the famous five-minute install runs in the browser on first visit. |
+
+## Database <sub>(1)</sub>
+
+| | App | What it is |
+|---|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/phpmyadmin.png" width="22" height="22" alt=""> | **[phpMyAdmin](https://www.phpmyadmin.net)** | phpMyAdmin — the web UI for MySQL/MariaDB. Arbitrary-server mode is on, so you type the database host at login (e.g. another resource in your stack) instead of… |
+
 ## Lightning <sub>(3)</sub>
 
 | | App | What it is |
@@ -54,7 +69,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/lnbits.png" width="22" height="22" alt=""> | **[LNbits](https://lnbits.com)** | LNbits, free and open-source Lightning wallet and accounts system. ... # LNbits — The most powerful Bitcoin & Lightning toolkit ...… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/rtl.png" width="22" height="22" alt=""> | **[Ride The Lightning](https://github.com/Ride-The-Lightning/RTL)** | RTL — web UI for LND / Core Lightning / Eclair nodes. Needs an existing LN node: mount its macaroon + point RTLConfig at the node. |
 
-## Media <sub>(26)</sub>
+## Media <sub>(27)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -77,6 +92,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/navidrome.png" width="22" height="22" alt=""> | **[Navidrome](https://www.navidrome.org)** | Navidrome — self-hosted music streaming (Subsonic-compatible). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/overseerr.png" width="22" height="22" alt=""> | **[Overseerr](https://overseerr.dev)** | Overseerr — media request & discovery for Plex (Radarr/Sonarr integration). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/photoprism.png" width="22" height="22" alt=""> | **[PhotoPrism](https://www.photoprism.app)** | PhotoPrism® Pro provides your organization with access to additional configuration and deployment options — all fully GDPR-compliant,… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/piwigo.png" width="22" height="22" alt=""> | **[Piwigo](https://piwigo.org)** | Piwigo — photo gallery manager for large collections. MariaDB companion included; the browser installer asks for the database — host piwigo-db,… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/plex.png" width="22" height="22" alt=""> | **[Plex](https://www.plex.tv)** | Plex Media Server — movies/TV/music. Open the UI at http://<host>:32400/web (the bare URL returns "Bad Request"). Published on fixed… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prowlarr.png" width="22" height="22" alt=""> | **[Prowlarr](https://prowlarr.com)** | Prowlarr is an indexer manager/proxy built on the popular *arr .net/reactjs base stack to integrate with your various PVR apps,… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/qbittorrent.png" width="22" height="22" alt=""> | **[qBittorrent](https://www.qbittorrent.org)** | qBittorrent is a free, open-source BitTorrent client with a built-in web UI. It’s the most popular self-hosted torrent client —… |
@@ -118,7 +134,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(68)</sub>
+## Tools <sub>(77)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -132,6 +148,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dashy.png" width="22" height="22" alt=""> | **[Dashy](https://dashy.to)** | 🚀 A self-hostable personal dashboard built for you. Includes status-checking, widgets, themes, icon packs, a UI editor and tons more! |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dockge.png" width="22" height="22" alt=""> | **[Dockge](https://github.com/louislam/dockge)** | A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/docuseal.png" width="22" height="22" alt=""> | **[DocuSeal](https://www.docuseal.com)** | DocuSeal — open-source document signing (DocuSign alternative). SQLite by default (set DATABASE_URL for Postgres/MySQL). Create the… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dolibarr.png" width="22" height="22" alt=""> | **[Dolibarr](https://www.dolibarr.org)** | Dolibarr — open-source ERP and CRM (invoices, orders, stock, projects). MariaDB companion included; the admin account below is created on first start. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/drawio.png" width="22" height="22" alt=""> | **[Draw.io](https://www.drawio.com)** | draw.io is a JavaScript, client-side editor for general diagramming. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/duplicati.png" width="22" height="22" alt=""> | **[Duplicati](https://www.duplicati.com)** | Store securely encrypted backups in the cloud! |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/etherpad.png" width="22" height="22" alt=""> | **[Etherpad](https://etherpad.org)** | Etherpad: A modern really-real-time collaborative document editor. Admin UI (/admin) login admin + the seeded ADMIN_PASSWORD. |
@@ -156,17 +173,22 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/immich.png" width="22" height="22" alt=""> | **[Immich](https://immich.app)** | Immich — self-hosted photo & video backup. Comes with Immich's VectorChord Postgres + Redis + the ML container (scaffold — add a media… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ittools.png" width="22" height="22" alt=""> | **[IT-Tools](https://it-tools.tech)** | IT-Tools — a big box of handy dev utilities (encoders, converters, generators…). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jupyter.png" width="22" height="22" alt=""> | **[JupyterLab](https://jupyter.org)** | JupyterLab — notebooks for data science / Python. Access needs the token (?token=...), seeded as a parameter. Use scipy/datascience… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/kanboard.png" width="22" height="22" alt=""> | **[Kanboard](https://kanboard.org)** | Kanboard — lean kanban project management. Single container, SQLite on a volume, no database needed. First login: admin / admin — change it. |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/kimai.png" width="22" height="22" alt=""> | **[Kimai](https://www.kimai.org)** | Kimai — self-hosted time tracking for teams and freelancers. MariaDB companion included; the first admin account is created from the mail address and password below. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/leafwiki.png" width="22" height="22" alt=""> | **[LeafWiki](https://leafwiki.com)** | LeafWiki — lightweight self-hosted wiki (single Go binary + SQLite, Markdown on disk). Set ALLOW_INSECURE=true for plain HTTP. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/librespeed.png" width="22" height="22" alt=""> | **[LibreSpeed](https://librespeed.org)** | LibreSpeed — self-hosted network speed test (no Flash/Java, single container). |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/limesurvey.png" width="22" height="22" alt=""> | **[LimeSurvey](https://www.limesurvey.org)** | LimeSurvey — full-featured survey and questionnaire tool. MariaDB companion included; the admin account below is created on first start. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkding.png" width="22" height="22" alt=""> | **[linkding](https://linkding.link)** | A self-hosted bookmark manager designed to be minimal, fast, and easy to set up. ... Automatically fetches titles, descriptions, icons… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkstack.png" width="22" height="22" alt=""> | **[LinkStack](https://linkstack.org)** | LinkStack — self-hosted 'link in bio' page. Complete admin + setup via the web wizard on first run. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linkwarden.png" width="22" height="22" alt=""> | **[Linkwarden](https://linkwarden.app)** | Linkwarden is a self-hosted, open-source collaborative bookmark manager to collect, read, annotate, and fully preserve what matters, all… |
 | <img src="https://raw.githubusercontent.com/laxxx-lab/lx-family-planner/main/public/icon.svg" width="22" height="22" alt=""> | **[LX Family Planner](https://github.com/laxxx-lab/lx-family-planner)** | LX Family — self-hosted "Family OS": calendars, chores, meal and shopping planning, chat, cloud files and child-friendly profiles. |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/matomo.png" width="22" height="22" alt=""> | **[Matomo](https://matomo.org)** | Matomo — self-hosted web analytics (the Google Analytics alternative), official Apache image. MariaDB companion included; the browser installer picks up the… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mattermost.png" width="22" height="22" alt=""> | **[Mattermost](https://mattermost.com)** | Mattermost — self-hosted team chat (Slack alternative). Postgres companion. Create the admin account on first run. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mealie.png" width="22" height="22" alt=""> | **[Mealie](https://mealie.io)** | Mealie is a self hosted recipe manager and meal planner with a RestAPI backend and a reactive frontend application built in Vue for a… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/memos.png" width="22" height="22" alt=""> | **[Memos](https://www.usememos.com)** | Memos — lightweight, privacy-first note/memo hub. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/metabase.png" width="22" height="22" alt=""> | **[Metabase](https://www.metabase.com)** | Metabase — BI dashboards & ad-hoc analytics over your databases. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/minio.png" width="22" height="22" alt=""> | **[MinIO](https://min.io)** | MinIO — S3-compatible object storage; console on :9001 (S3 API :9000). Pinned to the last release with a full browser console. Root… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/monica.png" width="22" height="22" alt=""> | **[Monica](https://www.monicahq.com)** | Monica — a personal CRM: remember everything about your friends and family. MariaDB companion included; APP_KEY is generated for you (32 chars, keep it stable),… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nextcloud.png" width="22" height="22" alt=""> | **[Nextcloud](https://nextcloud.com)** | Nextcloud — self-hosted files, calendar, collaboration. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nocodb.png" width="22" height="22" alt=""> | **[NocoDB](https://nocodb.com)** | NocoDB — turn any database into a smart spreadsheet (Airtable-style). SQLite by default, no DB setup needed. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ntfy.png" width="22" height="22" alt=""> | **[ntfy](https://ntfy.sh)** | ntfy — simple pub/sub push notifications to your phone/desktop via HTTP. Runs the 'serve' subcommand (bare ntfy just prints help and exits). |
@@ -177,8 +199,10 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/penpot.png" width="22" height="22" alt=""> | **[Penpot](https://penpot.app)** | Penpot — open-source design & prototyping (Figma alternative). Frontend + backend + exporter + Postgres + Redis. Register the first… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/planka.png" width="22" height="22" alt=""> | **[Planka](https://planka.app)** | Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Login = the seeded… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/portainer.png" width="22" height="22" alt=""> | **[Portainer](https://www.portainer.io)** | **Portainer Community Edition** is a lightweight service delivery platform for containerized applications that can be used to manage… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/shaarli.png" width="22" height="22" alt=""> | **[Shaarli](https://shaarli.readthedocs.io)** | Shaarli — a minimalist, database-free bookmark manager (personal link log with RSS). Create the admin account in the browser on first visit. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/shiori.png" width="22" height="22" alt=""> | **[Shiori](https://github.com/go-shiori/shiori)** | Shiori — simple bookmarks manager (Pocket-like). First-run login is shiori / gopher — change it after logging in (Shiori has no env for… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/skybro.png" width="22" height="22" alt=""> | **[SkyBro](https://github.com/xdeekay/skybro)** | SkyBro — overhead flight tracker with alerts (uses OpenSky/Open-Meteo, no API key). Ships a tracker companion; both share /data on… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/snipe-it.png" width="22" height="22" alt=""> | **[Snipe-IT](https://snipeitapp.com)** | Snipe-IT — IT asset and license management. MariaDB companion included. APP_KEY is generated for you and must stay stable; set APP_URL to the address you reach… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/stirlingpdf.png" width="22" height="22" alt=""> | **[Stirling-PDF](https://www.stirlingpdf.com)** | Stirling PDF is a locally hosted web application that allows you to perform various operations on PDF files. With 60+ tools, flexible… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/syncthing.png" width="22" height="22" alt=""> | **[Syncthing](https://syncthing.net)** | Syncthing — continuous, peer-to-peer file synchronization (web UI on 8384). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/transmute.png" width="22" height="22" alt=""> | **[Transmute](https://transmute.sh)** | Self hosted file converter for images, video, audio, json, excel and more. Supports close to 3,000 conversions! ... **Transmute** is a… |
@@ -186,6 +210,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/valorgrid.png" width="22" height="22" alt=""> | **[ValorGrid](https://github.com/aivm23/valorgrid)** | Add ValorGrid to the CasaOS AppStore. ... ValorGrid is a private, single-user local portfolio dashboard with SQLite persistence, local… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/vaultwarden.png" width="22" height="22" alt=""> | **[Vaultwarden](https://github.com/dani-garcia/vaultwarden)** | Vaultwarden — lightweight Bitwarden-compatible password manager server. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/vikunja.png" width="22" height="22" alt=""> | **[Vikunja](https://vikunja.io)** | Vikunja — self-hosted to-do / task & project management. CORS disabled (single container); runs as root so it can create its files dir… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallabag.png" width="22" height="22" alt=""> | **[wallabag](https://wallabag.org)** | wallabag — save and read articles later, ad-free (the self-hosted Pocket). Runs on SQLite in a single container. First login: wallabag / wallabag — change it… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallos.png" width="22" height="22" alt=""> | **[Wallos](https://github.com/ellite/Wallos)** | Wallos — self-hosted subscription tracker & budget overview (SQLite). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/whoogle.png" width="22" height="22" alt=""> | **[Whoogle](https://github.com/benbusby/whoogle-search)** | Whoogle — private, ad-free Google search proxy (no JS, no tracking). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wikijs.png" width="22" height="22" alt=""> | **[Wiki.js](https://js.wiki)** | Wiki.js — modern, powerful wiki. Postgres companion included. |
@@ -194,4 +219,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*144 apps across 8 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*
+*159 apps across 10 categories. Missing one? Add a preset to `catalog/presets/container-presets.json` or ask the AI assistant to scaffold it from a URL.*

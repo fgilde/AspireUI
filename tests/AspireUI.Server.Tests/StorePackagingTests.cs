@@ -31,6 +31,34 @@ public class StorePackagingTests
     }
 
     [Fact]
+    public void Every_store_preset_builds_a_usable_resource()
+    {
+        var presets = new CatalogService().GetPresets();
+        Assert.True(presets.Count > 100);
+        foreach (var p in presets)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(p.Image), $"{p.Id}: no image");
+            Assert.False(string.IsNullOrWhiteSpace(p.Label), $"{p.Id}: no label");
+            Assert.True(p.Port > 0, $"{p.Id}: no port");
+
+            var (nodes, edges) = PresetBuilder.Build(p);
+            var main = nodes[0];
+            Assert.Equal("AddContainer", main.AddMethod);
+            Assert.Contains($"\"{p.Image}\"", main.AddArgs);
+            Assert.Contains(main.WithCalls, w => w.Method == "WithHttpEndpoint");
+
+            // every ${key} in env must resolve to a companion, otherwise the pair is silently dropped
+            foreach (var pair in p.Env ?? new())
+                foreach (var m in System.Text.RegularExpressions.Regex.Matches(pair[1], @"\$\{([^}]+)\}").Cast<System.Text.RegularExpressions.Match>())
+                    Assert.Contains(m.Groups[1].Value, (p.Companions ?? new()).Select(c => c.Key));
+
+            Assert.Equal((p.Companions ?? new()).Count, edges.Count);
+            foreach (var param in p.Params ?? new())
+                Assert.Contains(nodes, n => n.AddMethod == "AddParameter");
+        }
+    }
+
+    [Fact]
     public void Empty_secret_param_gets_a_random_value()
     {
         var p = new PresetParam("secret", "APP_SECRET", "", Secret: true);

@@ -70,6 +70,7 @@
     <PackageReference Include="Nextended.Aspire" />
     <PackageReference Include="Nextended.Aspire.Hosting.LocalAI" />
     <PackageReference Include="Nextended.Aspire.Hosting.N8n" />
+    <PackageReference Include="Nextended.Aspire.Hosting.Php" />
     <PackageReference Include="Nextended.Aspire.Hosting.Supabase" />
     <PackageReference Include="Nextended.Aspire.Hosting.Grafana" />
     <PackageReference Include="Nextended.Aspire.Hosting.AspireUI" />
