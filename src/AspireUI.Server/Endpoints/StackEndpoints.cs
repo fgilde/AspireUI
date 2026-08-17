@@ -972,12 +972,28 @@ public static class StackEndpoints
         app2.MapPost("/hosting/{id}/exec", (string id, ExecRequest b) =>
         {
             if (deployments.Get(id) is not { } d) return Results.NotFound();
+            if (string.IsNullOrWhiteSpace(b.Cmd)) return Results.BadRequest(new { message = "empty command" });
+            // Fresh: a one-off container from the service's image — the only way into a service that
+            // crash-loops or is stopped, since `docker exec` needs a running container.
+            if (b.Fresh == true)
+            {
+                if (string.IsNullOrWhiteSpace(b.Service) || !System.Text.RegularExpressions.Regex.IsMatch(b.Service, @"^[A-Za-z0-9][A-Za-z0-9._-]*$"))
+                    return Results.BadRequest(new { message = "pick a compose service" });
+                var one = deploy.RunOneOff(d.ComposeDir, d.Project, b.Service!, b.Cmd);
+                return Results.Ok(new { ok = one.Ok, output = one.Log });
+            }
             if (string.IsNullOrWhiteSpace(b.Container) || !b.Container.StartsWith(d.Project, StringComparison.Ordinal))
                 return Results.BadRequest(new { message = "container is not part of this app" });
-            if (string.IsNullOrWhiteSpace(b.Cmd)) return Results.BadRequest(new { message = "empty command" });
             var r = deploy.Exec(b.Container, b.Cmd);
             return Results.Ok(new { ok = r.Ok, output = r.Log });
         }).RequireAuthorization(p => p.RequireRole("Admin"));
+        // Compose services of an app, running or not — the terminal needs them for a one-off repair container.
+        app2.MapGet("/hosting/{id}/compose-services", (string id) =>
+            deployments.Get(id) is { } d
+                ? Results.Ok(deploy.Docker(d.ComposeDir, $"compose -p {d.Project} config --services").Log
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())
+                    .Where(s => s.Length > 0 && !s.Contains(' ') && !s.Contains("dashboard")).ToList())
+                : Results.NotFound()).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapGet("/stacks/{id}/hosting/config", (string id) =>
             store.Get(id) is { } s ? Results.Ok(HostingService.NodeConfigs(s)) : Results.NotFound());
         app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
@@ -1253,7 +1269,7 @@ public static class StackEndpoints
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets, bool Ssl = false, int CertificateId = 0);
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
-    public record ExecRequest(string Container, string Cmd);
+    public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);

@@ -34,6 +34,12 @@ public class DeployService
     public DeployResult Logs(string dir, string project, int tail = 200) => Run(dir, $"compose -p {project} logs --tail {tail}");
     public DeployResult Docker(string dir, string args) => Run(dir, args);
 
+    // A one-off container from a service's own image, env and volumes, with the entrypoint replaced by a
+    // shell. The only way to repair a service that crash-loops or is stopped: `docker exec` needs a
+    // running container, this does not. --no-deps so a broken app can be fixed without starting the rest.
+    public DeployResult RunOneOff(string dir, string project, string service, string cmd, int timeoutMs = 120_000) =>
+        RunArgvIn(dir, timeoutMs, "compose", "-p", project, "run", "--rm", "--no-deps", "--entrypoint", "sh", service, "-c", cmd);
+
     // Run shell command in container via docker exec; ponytail: no PTY (non-interactive), WS+PTY when needed.
     public DeployResult Exec(string container, string cmd, int timeoutMs = 30_000)
     {
@@ -78,6 +84,23 @@ public class DeployService
             return p.ExitCode == 0 ? (ms.ToArray(), null) : (null, errp.Result.Trim());
         }
         catch (Exception e) { return (null, e.Message); }
+    }
+
+    private DeployResult RunArgvIn(string workdir, int timeoutMs, params string[] argv)
+    {
+        var psi = new ProcessStartInfo("docker")
+        { WorkingDirectory = workdir, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+        foreach (var a in argv) psi.ArgumentList.Add(a);
+        try
+        {
+            using var p = Process.Start(psi);
+            if (p is null) return new(false, "could not start docker");
+            var outp = p.StandardOutput.ReadToEndAsync();
+            var errp = p.StandardError.ReadToEndAsync();
+            if (!p.WaitForExit(timeoutMs)) { try { p.Kill(entireProcessTree: true); } catch { } return new(false, $"timed out after {timeoutMs / 1000}s"); }
+            return new(p.ExitCode == 0, (outp.Result + errp.Result).TrimEnd());
+        }
+        catch (Exception e) { return new(false, e.Message); }
     }
 
     private DeployResult RunArgv(int timeoutMs, params string[] argv)

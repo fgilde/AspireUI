@@ -41,10 +41,11 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, o
       {d.state === "running" && <Menu.Item leftSection={<IconReload size={14} />} onClick={restart}>Restart</Menu.Item>}
       <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
-      {onTerminal && d.state === "running" && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
+      {/* Also when stopped or crash-looping: that is exactly when a repair command is needed. */}
+      {onTerminal && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
       <Menu.Item leftSection={<IconSearch size={14} />} onClick={checkUpdates}>Check for updates</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
-      {onFiles && d.state === "running" && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
+      {onFiles && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
       {onBackups && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
@@ -395,7 +396,10 @@ export function DomainModal({ d, onClose }: { d: Deployment; onClose: () => void
 // Web console: pick container, run one shell command at a time; not a full TTY.
 export function TerminalModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
   const [containers, setContainers] = useState<string[]>([]);
+  const [services, setServices] = useState<string[]>([]);
   const [container, setContainer] = useState("");
+  const [service, setService] = useState("");
+  const [fresh, setFresh] = useState(false);
   const [cmd, setCmd] = useState("");
   const [log, setLog] = useState<{ cmd: string; output: string; ok: boolean }[]>([]);
   const [busy, setBusy] = useState(false);
@@ -406,16 +410,27 @@ export function TerminalModal({ d, onClose }: { d: Deployment; onClose: () => vo
     api.hostingServices(d.id).then(s => {
       const names = s.map(x => x.name).filter(Boolean);
       setContainers(names);
-      setContainer(c => c || names[0] || "");
+      // default to the app's own container, not our dashboard sidecar
+      setContainer(c => c || names.find(n => !n.includes("dashboard")) || names[0] || "");
+      // Nothing to exec into (crash loop or stopped) → offer the one-off container instead.
+      if (names.length === 0) setFresh(true);
+    }).catch(() => setFresh(true));
+    api.composeServices(d.id).then(list => {
+      setServices(list);
+      setService(s => s || list[0] || "");
     }).catch(() => {});
   }, [d.id]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [log, busy]);
 
+  const target = fresh ? service : container;
   const run = async () => {
     const c = cmd.trim();
-    if (!c || !container) return;
+    if (!c || !target) return;
     setBusy(true); setCmd(""); setHist(h => [...h, c]); setHistIdx(-1);
-    try { const r = await api.execInContainer(d.id, container, c); setLog(l => [...l, { cmd: c, output: r.output, ok: r.ok }]); }
+    try {
+      const r = fresh ? await api.execFreshContainer(d.id, service, c) : await api.execInContainer(d.id, container, c);
+      setLog(l => [...l, { cmd: c, output: r.output, ok: r.ok }]);
+    }
     catch (e: unknown) { setLog(l => [...l, { cmd: c, output: e instanceof Error ? e.message : String(e), ok: false }]); }
     finally { setBusy(false); }
   };
@@ -429,10 +444,21 @@ export function TerminalModal({ d, onClose }: { d: Deployment; onClose: () => vo
     <Modal opened onClose={onClose} size="xl" title={<Group gap={8}><IconTerminal2 size={18} /><Title order={5}>Terminal · {d.name}</Title></Group>}>
       <Stack gap="sm">
         <Group gap="xs" align="flex-end">
-          <Select label="Container" data={containers} value={container} onChange={v => setContainer(v ?? "")} allowDeselect={false} style={{ minWidth: 260 }}
-            placeholder={containers.length ? undefined : "no running containers"} />
-          <Text size="xs" c="dimmed">One command per run — not an interactive shell.</Text>
+          {fresh
+            ? <Select label="Service (fresh container)" data={services} value={service} onChange={v => setService(v ?? "")} allowDeselect={false} style={{ minWidth: 260 }}
+                placeholder={services.length ? undefined : "no services"} />
+            : <Select label="Container" data={containers} value={container} onChange={v => setContainer(v ?? "")} allowDeselect={false} style={{ minWidth: 260 }}
+                placeholder={containers.length ? undefined : "no running containers"} />}
+          <Switch checked={fresh} onChange={e => setFresh(e.currentTarget.checked)} label="fresh container" mb={6} />
+          <Text size="xs" c="dimmed" style={{ flex: 1 }}>One command per run — not an interactive shell.</Text>
         </Group>
+        {fresh && (
+          <Alert color="blue" p="xs" icon={<IconAlertTriangle size={16} />}>
+            Runs your command in a <b>new</b> container from that service's image, with its env and volumes but
+            without its entrypoint (<code>compose run --rm --no-deps</code>). Use this to repair a service that
+            crash-loops or is stopped — <code>docker exec</code> needs a running container. It is removed afterwards.
+          </Alert>
+        )}
         <ScrollArea h={340} style={{ background: "#0b0e14", borderRadius: 6 }} p="sm">
           {log.length === 0
             ? <Text size="xs" c="dimmed" ff="monospace">Run a command to see its output…</Text>
@@ -445,7 +471,7 @@ export function TerminalModal({ d, onClose }: { d: Deployment; onClose: () => vo
           {busy && <Loader size="xs" color="teal" />}
           <div ref={bottomRef} />
         </ScrollArea>
-        <TextInput value={cmd} onChange={e => setCmd(e.currentTarget.value)} onKeyDown={onKey} disabled={!container || busy}
+        <TextInput value={cmd} onChange={e => setCmd(e.currentTarget.value)} onKeyDown={onKey} disabled={!target || busy}
           placeholder="e.g. ls -la /  ·  cat /etc/os-release  ·  ps aux" data-autofocus
           leftSection={<Text span c="teal" ff="monospace">$</Text>}
           rightSection={<ActionIcon variant="subtle" onClick={run} disabled={!cmd.trim() || busy} aria-label="Run"><IconPlayerPlay size={16} /></ActionIcon>} />

@@ -220,6 +220,10 @@ export const checkUpdates = (id: string): Promise<{ images: { image: string; upd
   fetch(`${base}/stacks/${id}/hosting/check-updates`, { method: "POST" }).then(ok);
 export const execInContainer = (depId: string, container: string, cmd: string): Promise<{ ok: boolean; output: string }> =>
   fetch(`${base}/hosting/${depId}/exec`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ container, cmd }) }).then(ok);
+// One-off container from a service's image — reaches a service that crash-loops or is stopped.
+export const execFreshContainer = (depId: string, service: string, cmd: string): Promise<{ ok: boolean; output: string }> =>
+  fetch(`${base}/hosting/${depId}/exec`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ container: "", service, cmd, fresh: true }) }).then(ok);
+export const composeServices = (depId: string): Promise<string[]> => fetch(`${base}/hosting/${depId}/compose-services`).then(ok);
 export const gitInspect = (b: { url: string; branch?: string; subdir?: string; authToken?: string }): Promise<{ hasCompose: boolean; hasAppHost: boolean; name?: string; composeFiles: { path: string; content: string }[]; manifest?: { file: string; app: string; image: string; port: number } | null }> =>
   fetch(`${base}/git/inspect`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
 export const gitImport = (b: { url: string; branch?: string; subdir?: string; name?: string; mode?: string; authToken?: string; files?: string[]; env?: Record<string, string>; services?: string[]; servicePorts?: Record<string, number> }): Promise<import("./model").Stack> =>
