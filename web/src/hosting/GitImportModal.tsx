@@ -57,6 +57,7 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
   const [busy, setBusy] = useState(false);
   const [branches, setBranches] = useState<string[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [branchError, setBranchError] = useState<string | null>(null);
 
   const [step, setStep] = useState<Step>("form");
   const [detected, setDetected] = useState<Detected | null>(null);
@@ -74,10 +75,23 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
   const loadBranches = async () => {
     if (!url.trim()) return;
     setLoadingBranches(true);
-    try { setBranches((await api.gitBranches(url.trim(), authToken.trim() || undefined)).branches); }
-    catch { setBranches([]); }
+    setBranchError(null);
+    try {
+      const list = (await api.gitBranches(url.trim(), authToken.trim() || undefined)).branches;
+      setBranches(list);
+      if (list.length === 0) setBranchError("no branches reported — the default branch is used");
+    }
+    catch (e) { setBranches([]); setBranchError(e instanceof Error && e.message ? e.message : "could not read the branches"); }
     finally { setLoadingBranches(false); }
   };
+
+  // Read them while the URL is still being typed, so the list is there before the field is used.
+  useEffect(() => {
+    if (local || url.trim().length < 5) return;
+    const t = setTimeout(loadBranches, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, authToken]);
 
   const doImport = async (m: string, files?: string[], env?: Record<string, string>, svcs?: string[]) => {
     setBusy(true);
@@ -177,7 +191,11 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
             onChange={e => setUrl(e.currentTarget.value)} onBlur={() => { loadBranches(); if (!name.trim()) setName(repoName(url)); }} data-autofocus />
           <Group grow>
             <Autocomplete label="Branch" placeholder={loadingBranches ? "loading branches…" : "default branch"}
-              data={branches} value={branch} onChange={setBranch} onFocus={() => { if (!branches.length) loadBranches(); }} />
+              data={branches} value={branch} onChange={setBranch} onFocus={() => { if (!branches.length) loadBranches(); }}
+              rightSection={loadingBranches ? <Loader size={14} /> : undefined}
+              error={branchError}
+              // above this modal's own z-index, or the suggestions render behind it
+              comboboxProps={{ zIndex: 500, withinPortal: true }} />
             <TextInput label="Subdirectory" placeholder="repo root" value={subdir} onChange={e => setSubdir(e.currentTarget.value)} />
           </Group>
           <PasswordInput label="Access token" leftSection={<IconLock size={14} />}

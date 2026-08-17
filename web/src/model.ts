@@ -349,7 +349,9 @@ export interface EnvHealth {
 // Routes unauthenticated/fresh-install status to setup or login; null allows the app.
 export function routeForStatus(s: AuthStatus): "/setup" | "/login" | null {
   if (s.needsSetup) return "/setup";
-  if (!s.authenticated) return "/login";
+  // Authenticated without a user is a dead session (cookie of a user that is gone): log in again
+  // instead of showing a UI with no account and no permissions.
+  if (!s.authenticated || !s.user) return "/login";
   return null;
 }
 

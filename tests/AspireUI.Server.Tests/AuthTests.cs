@@ -88,6 +88,28 @@ public class AuthTests : IClassFixture<NoAuthTestFactory>
         Assert.False(afterLogout!.Authenticated);
     }
 
+    // A cookie whose user is gone (deleted, or a different database behind the same host) must end the
+    // session — not leave the UI "logged in" with no user, no menu and no permissions.
+    [Fact]
+    public async Task Status_SignsOutWhenTheUsersRecordIsGone()
+    {
+        var users = new UserStore(_f.DbPath);
+        var hash = new PasswordHasher<User>().HashPassword(new User("", "", "", false, ""), "supersecret1");
+        var ghost = users.Create("ghost-" + Guid.NewGuid().ToString("n")[..6], hash, isAdmin: false);
+
+        var client = _f.CreateClient();
+        var login = await client.PostAsJsonAsync("/api/auth/login", new { username = ghost.Username, password = "supersecret1" });
+        login.EnsureSuccessStatusCode();
+        Assert.True((await client.GetFromJsonAsync<AuthStatusDto>("/api/auth/status"))!.Authenticated);
+
+        users.Delete(ghost.Id);
+
+        var status = await client.GetFromJsonAsync<AuthStatusDto>("/api/auth/status");
+        Assert.False(status!.Authenticated);
+        Assert.Null(status.User);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/stacks")).StatusCode);
+    }
+
     [Fact]
     public async Task EnvHealth_DotnetOk_OnThisBox()
     {

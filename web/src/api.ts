@@ -7,20 +7,28 @@ export interface PackageInfo { id: string; version: string; resources: string[] 
 let onUnauthorized: () => void = () => {};
 export const setOnUnauthorized = (fn: () => void) => { onUnauthorized = fn; };
 
+// The API answers errors as { message }; show that, not the raw body with a status code glued on.
+async function fail(r: Response): Promise<never> {
+  const text = await r.text();
+  let message = text;
+  try { const j = JSON.parse(text); if (typeof j?.message === "string" && j.message) message = j.message; } catch { /* not JSON */ }
+  throw new Error(message.trim() || `${r.status} ${r.statusText}`.trim());
+}
+
 async function ok(r: Response) {
   if (r.status === 401) onUnauthorized();
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  if (!r.ok) await fail(r);
   return r.json();
 }
 
 async function okAuth(r: Response) {
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  if (!r.ok) await fail(r);
   return r.json();
 }
 
 async function okVoid(r: Response) {
   if (r.status === 401) onUnauthorized();
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  if (!r.ok) await fail(r);
 }
 
 export const authStatus = (): Promise<AuthStatus> => fetch(`${base}/auth/status`).then(okAuth);

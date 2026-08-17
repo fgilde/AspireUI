@@ -146,6 +146,10 @@ describe("routeForStatus", () => {
     const s: AuthStatus = { needsSetup: true, authenticated: true, user: admin };
     expect(routeForStatus(s)).toBe("/setup");
   });
+  it("treats authenticated-without-user as logged out", () => {
+    const s: AuthStatus = { needsSetup: false, authenticated: true, user: null };
+    expect(routeForStatus(s)).toBe("/login");
+  });
 });
 
 describe("pickAppHost", () => {

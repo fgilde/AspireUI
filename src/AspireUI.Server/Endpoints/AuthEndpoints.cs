@@ -43,14 +43,21 @@ public static class AuthEndpoints
         static IResult InvalidCredentials() =>
             Results.Json(new { message = "invalid credentials" }, statusCode: StatusCodes.Status401Unauthorized);
 
-        api.MapGet("/auth/status", (HttpContext ctx) =>
+        api.MapGet("/auth/status", async (HttpContext ctx) =>
         {
             var authenticated = ctx.User.Identity?.IsAuthenticated ?? false;
             UserDto? dto = null;
             if (authenticated)
             {
                 var id = ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (id is not null && store.Get(id) is { } u) dto = ToDto(u);
+                if (id is not null && store.Get(id) is { Disabled: false } u) dto = ToDto(u);
+                else
+                {
+                    // Cookie without a live user (deleted, disabled, or a different database behind the
+                    // same host): sign out instead of leaving a session with no user and no permissions.
+                    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    authenticated = false;
+                }
             }
             return Results.Ok(new { needsSetup = store.Count() == 0, authenticated, user = dto });
         });
