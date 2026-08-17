@@ -7565,5 +7565,220 @@
       "mariadb",
       "database"
     ]
+  },
+  {
+    "id": "coworkee",
+    "label": "Coworkee",
+    "group": "Tools",
+    "image": "ghcr.io/fgilde/coworkeenextjs:latest",
+    "port": 3000,
+    "icon": "coworkee",
+    "description": "Coworkee — the self-hosted HR platform for a whole team: employees with org chart, absence and leave with an approval workflow, time tracking, documents, onboarding checklists, performance reviews, analytics, a recruiting pipeline and announcements. Nine modules in one app, German and English, light and dark, role-based permissions (RBAC), GDPR-friendly because it stays on your own server. A setup wizard creates the admin account on first visit — or set DEMO to 1 to seed demo data and show the demo logins.",
+    "env": [
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "AUTH_TRUST_HOST",
+        "true"
+      ],
+      [
+        "DATABASE_URL",
+        "postgresql://coworkee:coworkee@${db}:5432/coworkee?schema=public"
+      ]
+    ],
+    "params": [
+      {
+        "key": "auth-secret",
+        "env": "AUTH_SECRET",
+        "default": "",
+        "secret": true
+      },
+      {
+        "key": "demo",
+        "env": "DEMO",
+        "default": "0"
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "coworkee-db",
+        "image": "postgres:16",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_USER",
+            "coworkee"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "coworkee"
+          ],
+          [
+            "POSTGRES_DB",
+            "coworkee"
+          ]
+        ],
+        "volumes": [
+          [
+            "data",
+            "/var/lib/postgresql/data"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "storage",
+        "/app/storage"
+      ]
+    ],
+    "tags": [
+      "hr",
+      "employees",
+      "absence",
+      "time-tracking",
+      "recruiting",
+      "self-hosted"
+    ],
+    "topics": [
+      "hr",
+      "human-resources",
+      "nextjs",
+      "selfhosted",
+      "rbac"
+    ],
+    "website": "https://coworkee.de",
+    "github": "https://github.com/fgilde/CoworkeeNextJs",
+    "license": "MIT",
+    "language": "TypeScript",
+    "logo": "/media/coworkee/logo.png",
+    "card": "https://coworkee.de/marketing/screens/dashboard-dark.png",
+    "screenshots": [
+      "https://coworkee.de/marketing/screens/employees-dark.png",
+      "https://coworkee.de/marketing/screens/absences-dark.png",
+      "https://coworkee.de/marketing/screens/time-dark.png",
+      "https://coworkee.de/marketing/screens/org-dark.png",
+      "https://coworkee.de/marketing/screens/performance-dark.png",
+      "https://coworkee.de/marketing/screens/recruiting-dark.png",
+      "https://coworkee.de/marketing/screens/analytics-dark.png",
+      "https://coworkee.de/marketing/screens/onboarding-dark.png"
+    ]
+  },
+  {
+    "id": "havewa",
+    "label": "HaVeWa",
+    "group": "Tools",
+    "image": "ghcr.io/fgilde/hausverwaltung:latest",
+    "port": 3000,
+    "icon": "havewa",
+    "description": "HaVeWa — property management for rentals and German condominium associations (WEG) in one system: properties, units, people and meters, rental contracts with staggered and index rent, receivables with SEPA mandates and a three-stage dunning process, operating-cost statements per BetrKV with a flexible allocation-key engine and the 30/70 split of the HeizkostenV, camt.053 bank import plus DATEV and SEPA export. For WEG: co-ownership shares, business plan, annual statement, maintenance reserves, owners' meeting with resolution collection per §24 WEG, an owner self-service portal and the asset report. Plus calendar and deadlines, tickets, documents and an AI assistant. GDPR- and GoBD-oriented. Set SEED_DEMO to true for a demo dataset, or give the admin account below and log straight in.",
+    "env": [
+      [
+        "AUTH_TRUST_HOST",
+        "true"
+      ],
+      [
+        "DATABASE_URL",
+        "postgresql://havewa:havewa@${db}:5432/havewa?schema=public"
+      ]
+    ],
+    "params": [
+      {
+        "key": "auth-secret",
+        "env": "AUTH_SECRET",
+        "default": "",
+        "secret": true
+      },
+      {
+        "key": "admin-email",
+        "env": "ADMIN_EMAIL",
+        "default": "admin@example.com"
+      },
+      {
+        "key": "admin-password",
+        "env": "ADMIN_PASSWORD",
+        "default": "",
+        "secret": true
+      },
+      {
+        "key": "tenant-name",
+        "env": "TENANT_NAME",
+        "default": "My property management"
+      },
+      {
+        "key": "seed-demo",
+        "env": "SEED_DEMO",
+        "default": ""
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "havewa-db",
+        "image": "postgres:16-alpine",
+        "role": "postgres",
+        "env": [
+          [
+            "POSTGRES_USER",
+            "havewa"
+          ],
+          [
+            "POSTGRES_PASSWORD",
+            "havewa"
+          ],
+          [
+            "POSTGRES_DB",
+            "havewa"
+          ]
+        ],
+        "volumes": [
+          [
+            "data",
+            "/var/lib/postgresql/data"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "storage",
+        "/app/storage"
+      ]
+    ],
+    "tags": [
+      "property-management",
+      "real-estate",
+      "weg",
+      "accounting",
+      "self-hosted"
+    ],
+    "topics": [
+      "property-management",
+      "real-estate",
+      "nextjs",
+      "selfhosted",
+      "weg"
+    ],
+    "website": "https://havewa.app",
+    "github": "https://github.com/fgilde/hausverwaltung",
+    "license": "MIT",
+    "language": "TypeScript",
+    "logo": "/media/havewa/logo.png",
+    "card": "https://havewa.app/marketing/screenshots/dashboard.png",
+    "screenshots": [
+      "https://havewa.app/marketing/screenshots/properties.png",
+      "https://havewa.app/marketing/screenshots/finances.png",
+      "https://havewa.app/marketing/screenshots/statements.png",
+      "https://havewa.app/marketing/screenshots/meetings.png",
+      "https://havewa.app/marketing/screenshots/portal.png",
+      "https://havewa.app/marketing/screenshots/documents.png",
+      "https://havewa.app/marketing/screenshots/tickets.png",
+      "https://havewa.app/marketing/screenshots/calendar.png"
+    ]
   }
 ]

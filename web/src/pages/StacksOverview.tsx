@@ -12,14 +12,14 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld,
 } from "@tabler/icons-react";
-import { runStateColor, canOpenEditor, type Stack, type RunStatus, type Deployment } from "../model";
+import { runStateColor, canOpenEditor, hostingBroken, hostingHealthLabel, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import type { TemplateInfo } from "../api";
 import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
-import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
+import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 import { stackContainers } from "./Hosting";
 import { InstallAppModal } from "../hosting/InstallAppModal";
 import { GitImportModal } from "../hosting/GitImportModal";
@@ -387,7 +387,8 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const visible = stacks.filter(passesFilters);
   const hostingStacks = visible.filter(s => deps[s.id]);              // has a hosting deployment
   const buildStacks = simple ? [] : visible.filter(s => !deps[s.id]); // dev/build stacks (hidden in appliance view)
-  const runningHosted = hostingStacks.filter(s => deps[s.id]?.state === "running").length;
+  const runningHosted = hostingStacks.filter(s => deps[s.id]?.state === "running" && !hostingBroken(deps[s.id])).length;
+  const brokenHosted = hostingStacks.filter(s => hostingBroken(deps[s.id])).length;
 
   const renderCard = (s: typeof stacks[number]) => {
                 const st = statuses[s.id];
@@ -426,7 +427,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                       {s.fromGit && <Tooltip label="Imported from Git" withArrow><IconBrandGithub size={14} style={{ flexShrink: 0, opacity: 0.55 }} /></Tooltip>}
                     </Group>
                     <Group gap={6} wrap="nowrap">
-                      {dep && <Badge size="xs" variant="light" color={hostingColor(dep.state)}>{dep.state === "running" ? "Hosting" : dep.state}</Badge>}
+                      {dep && (
+                        <Tooltip label={dep.healthDetail ?? ""} withArrow disabled={!dep.healthDetail} multiline maw={320}>
+                          <Badge size="xs" variant="light" color={deploymentColor(dep)}>
+                            {dep.state === "running" ? (hostingHealthLabel(dep) ?? "Hosting") : dep.state}
+                          </Badge>
+                        </Tooltip>
+                      )}
                       <Menu position="bottom-end" withArrow>
                         <Menu.Target>
                           <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
@@ -649,6 +656,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                       <IconServer size={16} />
                       <Title order={5} fw={600}>{simple ? "My apps" : "Hosting"}</Title>
                       <Badge variant="light" color="teal" size="sm">{runningHosted}/{hostingStacks.length} running</Badge>
+                      {brokenHosted > 0 && (
+                        <Tooltip label="Containers are crash-looping or unhealthy — open the app to see why" withArrow>
+                          <Badge variant="light" color="red" size="sm">{brokenHosted} broken</Badge>
+                        </Tooltip>
+                      )}
                     </Group>
                     {!simple && <Anchor size="sm" onClick={() => nav("/hosting")}>Manage hosting →</Anchor>}
                   </Group>

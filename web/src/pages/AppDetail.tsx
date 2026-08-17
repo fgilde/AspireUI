@@ -4,12 +4,12 @@ import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, But
 import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
-import { canOpenEditor } from "../model";
+import { canOpenEditor, hostingBroken, hostingHealthLabel } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
-import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
+import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 import { stackContainers, healthOf, type AppStat } from "./Hosting";
 import { toastOk, toastErr } from "../ui";
 
@@ -88,7 +88,7 @@ export function AppDetail() {
             <Group gap="md">
               <Group gap={8}>
                 {d.state === "deploying" && <Loader size={14} color="yellow" />}
-                <Badge size="lg" color={hostingColor(d.state)} variant="light">{d.state}</Badge>
+                <Badge size="lg" color={deploymentColor(d)} variant="light">{hostingHealthLabel(d) ?? d.state}</Badge>
               </Group>
               {stat && active && (
                 <Tooltip label={`CPU ${stat.cpu}% · ${stat.memMb} MB`} withArrow>
@@ -114,6 +114,13 @@ export function AppDetail() {
               {(d.domains ?? []).map(u => <Anchor key={u} href={u} target="_blank" size="sm" c="grape">{u} <IconWorld size={12} /></Anchor>)}
               {d.urls.map(u => <Anchor key={u} href={u} target="_blank" size="sm">{u} <IconExternalLink size={12} /></Anchor>)}
             </Group>
+          )}
+          {hostingBroken(d) && (
+            <Alert color={d.health === "failing" ? "red" : "orange"} icon={<IconAlertTriangle size={14} />} p="xs" mt="md"
+              title={d.health === "failing" ? "The app is not running properly" : "The app reports unhealthy"}>
+              <Text size="xs">{d.healthDetail ?? "One of its containers is not healthy."}</Text>
+              <Anchor size="xs" onClick={() => { setLogsSvc(undefined); setLogsOpen(true); }}>Open the logs</Anchor>
+            </Alert>
           )}
           {d.state === "failed" && d.lastError && (
             <Alert color="red" icon={<IconAlertTriangle size={14} />} p="xs" mt="md" title="Deploy failed">

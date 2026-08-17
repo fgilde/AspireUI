@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **159 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **161 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -134,7 +134,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(77)</sub>
+## Tools <sub>(79)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -144,6 +144,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bookstack.png" width="22" height="22" alt=""> | **[BookStack](https://www.bookstackapp.com)** | NOW MANAGED ON CODEBERG MariaDB companion. APP_KEY seeded (base64). Set APP_URL to how you reach it (default http://localhost). Built-in… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/changedetection.png" width="22" height="22" alt=""> | **[changedetection.io](https://changedetection.io)** | changedetection.io — watch web pages for changes and get notified. (Add a Playwright/browserless companion later for JS-heavy pages.) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/vscode.png" width="22" height="22" alt=""> | **[code-server](https://github.com/coder/code-server)** | code-server — VS Code in the browser. Login password seeded as a parameter (change it); without it code-server generates a random one… |
+| <img src="https://raw.githubusercontent.com/fgilde/AspireUI/master/src/AspireUI.Server/catalog/media/coworkee/logo.png" width="22" height="22" alt=""> | **[Coworkee](https://coworkee.de)** | Coworkee — the self-hosted HR platform for a whole team: employees with org chart, absence and leave with an approval workflow, time tracking, documents,… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cyberchef.png" width="22" height="22" alt=""> | **[CyberChef](https://gchq.github.io/CyberChef/)** | The Cyber Swiss Army Knife - a web app for encryption, encoding, compression and data analysis |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dashy.png" width="22" height="22" alt=""> | **[Dashy](https://dashy.to)** | 🚀 A self-hostable personal dashboard built for you. Includes status-checking, widgets, themes, icon packs, a UI editor and tons more! |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dockge.png" width="22" height="22" alt=""> | **[Dockge](https://github.com/louislam/dockge)** | A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager |
@@ -164,6 +165,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gokapi.png" width="22" height="22" alt=""> | **[Gokapi](https://github.com/Forceu/Gokapi)** | Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gotify.png" width="22" height="22" alt=""> | **[Gotify](https://gotify.net)** | A simple server for sending and receiving messages in real-time per WebSocket. (Includes a sleek web-ui) Gotify — simple self-hosted… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/grocy.png" width="22" height="22" alt=""> | **[Grocy](https://grocy.info)** | ERP beyond your fridge - Grocy is a web-based self-hosted groceries & household management solution for your home Grocy — ERP for your… |
+| <img src="https://raw.githubusercontent.com/fgilde/AspireUI/master/src/AspireUI.Server/catalog/media/havewa/logo.png" width="22" height="22" alt=""> | **[HaVeWa](https://havewa.app)** | HaVeWa — property management for rentals and German condominium associations (WEG) in one system: properties, units, people and meters, rental contracts with… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/hedgedoc.png" width="22" height="22" alt=""> | **[HedgeDoc](https://hedgedoc.org)** | HedgeDoc - Ideas grow better together Postgres companion. Set CMD_DOMAIN to your host (default localhost) — CMD_URL_ADDPORT keeps the… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/heimdall.png" width="22" height="22" alt=""> | **[Heimdall](https://heimdall.site)** | An Application dashboard and launcher |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/homarr.png" width="22" height="22" alt=""> | **[Homarr](https://homarr.dev)** | Customizable browser's home page to interact with your homeserver's Docker containers (e.g. Sonarr/Radarr) Requires… |
@@ -219,4 +221,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*159 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*161 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

@@ -67,7 +67,26 @@ public class ComposeImporter
         _ => (null, null),
     };
 
-    public (StackModel? stack, string? error) Import(string id, string name, string yaml, IReadOnlySet<string>? include = null)
+    // Last resort for a service that declares no ports and no expose: the EXPOSE of the Dockerfile it
+    // builds from. Without any port the imported app runs but is unreachable — compose files that put
+    // the app behind their own reverse proxy (Caddy/nginx) look exactly like that.
+    public static int? DockerfilePort(string? srcDir, string? context, string? dockerfile)
+    {
+        if (string.IsNullOrWhiteSpace(srcDir)) return null;
+        var dir = Path.GetFullPath(Path.Combine(srcDir, (context ?? ".").Replace('\\', '/').TrimStart('.', '/')));
+        var file = Path.Combine(dir, string.IsNullOrWhiteSpace(dockerfile) ? "Dockerfile" : dockerfile!);
+        if (!File.Exists(file)) return null;
+        int? port = null;
+        foreach (var line in File.ReadLines(file))
+        {
+            var m = Regex.Match(line.Trim(), @"^EXPOSE\s+(\d{2,5})", RegexOptions.IgnoreCase);
+            if (m.Success) port ??= int.Parse(m.Groups[1].Value);   // first EXPOSE wins
+        }
+        return port;
+    }
+
+    public (StackModel? stack, string? error) Import(string id, string name, string yaml, IReadOnlySet<string>? include = null,
+        string? srcDir = null, IReadOnlyDictionary<string, int>? servicePorts = null)
     {
         ComposeFile? file;
         try
@@ -120,6 +139,7 @@ public class ComposeImporter
 
             string addMethod;
             List<string> addArgs;
+            var (buildContext, buildFile) = ReadBuild(def.Build);
             if (!string.IsNullOrWhiteSpace(def.Image))
             {
                 addMethod = "AddContainer";
@@ -127,10 +147,17 @@ public class ComposeImporter
             }
             else
             {
-                var (context, dockerfile) = ReadBuild(def.Build);
-                if (context is null) continue;
+                if (buildContext is null) continue;
                 addMethod = "AddDockerfile";
-                addArgs = dockerfile is null ? [Quote(context)] : [Quote(context), Quote(dockerfile)];
+                addArgs = buildFile is null ? [Quote(buildContext)] : [Quote(buildContext), Quote(buildFile)];
+            }
+
+            if (endpointTargets.Count == 0)
+            {
+                var fallback = servicePorts is not null && servicePorts.TryGetValue(svc, out var chosen) && chosen > 0
+                    ? chosen
+                    : DockerfilePort(srcDir, buildContext, buildFile);
+                if (fallback is > 0) withs.Insert(0, new WithCall("WithHttpEndpoint", [$"targetPort: {fallback}"]));
             }
 
             var id2 = "n" + Guid.NewGuid().ToString("n")[..8];

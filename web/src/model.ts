@@ -55,7 +55,20 @@ export interface Deployment {
   urls: string[]; createdAt: string; updatedAt: string; lastError?: string | null;
   ports?: PortMapping[] | null;
   domains?: string[] | null;
+  health?: "ok" | "starting" | "unhealthy" | "failing" | "unknown" | null;
+  healthDetail?: string | null;
 }
+
+// A deployment whose containers crash-loop or report unhealthy is "running" for compose but broken for
+// the user — the overview shows that instead of a green light.
+export const hostingBroken = (d?: Deployment | null): boolean =>
+  !!d && d.state === "running" && (d.health === "failing" || d.health === "unhealthy");
+export const hostingHealthLabel = (d?: Deployment | null): string | null =>
+  !d || d.state !== "running" ? null
+    : d.health === "failing" ? "failing"
+    : d.health === "unhealthy" ? "unhealthy"
+    : d.health === "starting" ? "starting"
+    : null;
 
 // Container of running deployment for the hosting resource tree.
 export interface ServiceStatus { name: string; service: string; image: string; state: string; status: string; ports: string }
@@ -67,7 +80,7 @@ export interface CatalogOverload { params: CatalogParam[] }
 export interface CatalogMethod { method: string; label: string; overloads: CatalogOverload[] }
 export interface ResourceType { addMethod: string; label: string; icon?: string | null; group?: string | null; description?: string | null; addOverloads: CatalogOverload[]; withs: CatalogMethod[]; composite?: boolean; usings?: string[] | null; package?: string | null; packageVersion?: string | null; resourceTypeName?: string | null; supportsConnectionString?: boolean; supportsEndpoints?: boolean }
 // Curated one-click app preset; preconfigured AddContainer node.
-export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null }
+export interface PresetCompanion { key: string; addMethod: string; resourceName: string; image?: string | null; port?: number | null; env?: string[][] | null; role?: string | null; volumes?: string[][] | null }
 // Preset parameter: password, key, or setting; can be a new AddParameter, reused, or literal value.
 export interface PresetParam { key: string; env: string; default?: string | null; secret?: boolean; name?: string | null }
 export interface ContainerPreset { id: string; label: string; group: string; image: string; port: number; icon?: string | null; description?: string | null; env?: string[][] | null; params?: PresetParam[] | null; companions?: PresetCompanion[] | null; volumes?: string[][] | null; bindMounts?: string[][] | null; files?: ExtraFile[] | null; args?: string[] | null; runtimeArgs?: string[] | null; tags?: string[] | null; gpu?: boolean; hostNetwork?: boolean; fixedPort?: boolean; website?: string | null; screenshots?: string[] | null; urlPath?: string | null; logo?: string | null; card?: string | null; github?: string | null; stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null; submitter?: string | null; source?: string | null }
@@ -216,7 +229,9 @@ export function buildPresetNodes(
         id: p.targetId, varName: sanitizeIdentifier(p.name), resourceName: p.name,
         addMethod: isAdd ? (p.choice as { addMethod: string }).addMethod : p.c.addMethod,
         addArgs: isAdd ? [] : (p.c.image ? [JSON.stringify(p.c.image)] : []),
-        withCalls: isAdd ? [] : [...(p.c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${p.c.port}`] }] : []), ...expandEnv(p.c.env)],
+        withCalls: isAdd ? [] : [...(p.c.port ? [{ method: "WithHttpEndpoint", args: [`targetPort: ${p.c.port}`] }] : []),
+          ...(p.c.volumes ?? []).map(([n, target]) => ({ method: "WithVolume", args: [JSON.stringify(`${p.name}-${n}`), JSON.stringify(target)] })),
+          ...expandEnv(p.c.env)],
         x: 380, y: 40 + i * 130, spawnedBy: mainId, icon: isAdd ? undefined : iconForImage(p.c.image),
       });
     }

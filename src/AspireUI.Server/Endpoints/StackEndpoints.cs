@@ -436,7 +436,8 @@ public static class StackEndpoints
 
         // Shared import core: a directory already populated with source files (via git clone or a local upload)
         // becomes a stack. Same logic for both — only how the dir gets filled differs.
-        (StackModel? stack, string? error) BuildFromDir(string sid, string dir, string? mode, string name, string[]? files, string[]? services, Dictionary<string, string>? env)
+        (StackModel? stack, string? error) BuildFromDir(string sid, string dir, string? mode, string name, string[]? files, string[]? services, Dictionary<string, string>? env,
+            Dictionary<string, int>? ports = null)
         {
             var m = string.IsNullOrWhiteSpace(mode)
                 ? (GitService.FindManifest(dir) is not null ? "manifest"
@@ -463,7 +464,7 @@ public static class StackEndpoints
             }
             var yaml = MergeComposeYaml(dir, files, env);
             if (yaml is null) return (null, "no docker-compose file found");
-            var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null);
+            var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null, dir, ports);
             return cs is null ? (null, cerr) : (cs with { HasSource = true, ExtraFiles = [] }, null);
         }
         IResult GitPullRedeploy(string id, HttpContext ctx)
@@ -477,7 +478,7 @@ public static class StackEndpoints
             var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir, g.AuthToken);
             if (cerr is not null) return Results.UnprocessableEntity(new { message = cerr });
 
-            var (rebuilt, err) = BuildFromDir(id, dir, existing.RunAsIs ? "runasis" : "compose", existing.Name, g.Files, g.Services, g.Env);
+            var (rebuilt, err) = BuildFromDir(id, dir, existing.RunAsIs ? "runasis" : "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts);
             if (rebuilt is null) return Results.UnprocessableEntity(new { message = err });
             var updated = rebuilt with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true };
             store.Save(updated);
@@ -521,13 +522,13 @@ public static class StackEndpoints
             var manifestMode = mode == "manifest" || (mode.Length == 0 && GitService.FindManifest(dir) is not null);
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? (manifestMode ? "" : name ?? "git app") : b.Name!;
 
-            var (stack, err) = BuildFromDir(sid, dir, mode, stackName, b.Files, b.Services, b.Env);
+            var (stack, err) = BuildFromDir(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             stack = stack with { FromGit = true };
 
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services), gitJson));
+            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services, b.ServicePorts), gitJson));
             settings.SetValue($"githook:{token}", sid);
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
@@ -690,7 +691,7 @@ public static class StackEndpoints
             catch (Exception ex) { RmDir(); return Results.UnprocessableEntity(new { message = ex.Message }); }
 
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? "imported app" : b.Name!;
-            var (stack, err) = BuildFromDir(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env);
+            var (stack, err) = BuildFromDir(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             store.Save(withMeta);
@@ -1254,10 +1255,10 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record ExecRequest(string Container, string Cmd);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
-    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
-    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null);
+    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
+    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
     public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null);
     public record EnabledRequest(bool Enabled);
     public record SourceFile(string Path, string Content);
-    public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null);
+    public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null, Dictionary<string, int>? ServicePorts = null);
 }

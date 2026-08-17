@@ -107,6 +107,7 @@ public static class PresetBuilder
             var (c, name, targetId) = plans[i];
             var wc = new List<WithCall>();
             if (c.Port is int port) wc.Add(new WithCall("WithHttpEndpoint", new() { $"targetPort: {port}" }));
+            foreach (var v in c.Volumes ?? new()) if (v.Count >= 2) wc.Add(new WithCall("WithVolume", new() { J($"{name}-{v[0]}"), J(v[1]) }));
             wc.AddRange(ExpandEnv(c.Env));
             nodes.Add(new NodeModel(targetId, Sanitize(name), c.AddMethod, name, wc, 380, 40 + i * 130,
                 c.Image != null ? new() { J(c.Image) } : new(), SpawnedBy: mainId, Icon: IconForImage(c.Image)));

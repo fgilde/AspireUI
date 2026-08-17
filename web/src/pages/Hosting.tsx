@@ -4,13 +4,13 @@ import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Too
 import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
-import { canOpenEditor } from "../model";
+import { canOpenEditor, hostingHealthLabel, hostingBroken } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import type { ContainerStat } from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
-import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor } from "../hosting/HostingActions";
+import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 
 // Containers named `aspireui-<stackId[..8]>-<service>-N` by compose.
 export const projectPrefix = (stackId: string) => `aspireui-${stackId.slice(0, 8)}`;
@@ -68,7 +68,8 @@ export function Hosting() {
     return () => { alive = false; clearInterval(t); };
   }, []);
 
-  const runningCount = items.filter(d => d.state === "running").length;
+  const runningCount = items.filter(d => d.state === "running" && !hostingBroken(d)).length;
+  const brokenCount = items.filter(hostingBroken).length;
   const diskPct = summary && summary.diskTotalGb > 0 ? Math.round((1 - summary.diskFreeGb / summary.diskTotalGb) * 100) : null;
 
   return (
@@ -76,6 +77,9 @@ export function Hosting() {
           {items.length > 0 && (
             <Group gap="lg" mb="md" wrap="wrap">
               <Text size="sm"><b>{runningCount}</b>/{items.length} running</Text>
+              {brokenCount > 0 && (
+                <Text size="sm" c="red"><b>{brokenCount}</b> broken — containers crash-looping or unhealthy</Text>
+              )}
               {summary && summary.diskTotalGb > 0 && (
                 <Text size="sm" c={diskPct !== null && diskPct >= 90 ? "red" : "dimmed"}>
                   Disk: <b>{summary.diskFreeGb} GB</b> free of {summary.diskTotalGb} GB{diskPct !== null ? ` (${diskPct}% used)` : ""}
@@ -129,7 +133,14 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, o
           </ActionIcon>
         </Table.Td>
         <Table.Td><Anchor fw={500} onClick={() => nav(`/app/${d.stackId}`)}>{d.name}</Anchor></Table.Td>
-        <Table.Td><Group gap={6} wrap="nowrap">{d.state === "deploying" && <Loader size={12} color="yellow" />}<Badge color={hostingColor(d.state)} variant="light">{d.state}</Badge></Group></Table.Td>
+        <Table.Td>
+          <Group gap={6} wrap="nowrap">
+            {d.state === "deploying" && <Loader size={12} color="yellow" />}
+            <Tooltip label={d.healthDetail ?? ""} withArrow disabled={!d.healthDetail} multiline maw={320}>
+              <Badge color={deploymentColor(d)} variant="light">{hostingHealthLabel(d) ?? d.state}</Badge>
+            </Tooltip>
+          </Group>
+        </Table.Td>
         <Table.Td>
           {d.state === "running" && stat ? (
             <Tooltip label={`CPU ${stat.cpu}% · ${stat.memMb} MB`} withArrow>

@@ -31,7 +31,8 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     string? Submitter = null, string? Source = null);
 public record PresetFile(string Name, string Content);
 // Companion node in preset; wires env references and offers resource alternatives.
-public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role);
+public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role,
+    List<List<string>>? Volumes = null);
 // Preset param → Aspire parameter or literal env value.
 public record PresetParam(string Key, string Env, string? Default, bool Secret = false, string? Name = null);
 

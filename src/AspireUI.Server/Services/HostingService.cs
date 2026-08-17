@@ -349,10 +349,13 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             if (!string.IsNullOrWhiteSpace(stack.HostingUrlPath))
                 urls = urls.Select(u => Regex.IsMatch(u, @"://[^/]+:\d+$") ? u + stack.HostingUrlPath : u).ToList();
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
+            // Don't report green while the containers are still booting or already crash-looping.
+            var (health, detail) = up.Ok ? Settle(pub.OutputDir, project) : ("unknown", null);
             store.Upsert(store.Get(id)! with
             {
                 ComposeDir = pub.OutputDir, Urls = urls, Ports = chosen,
                 State = up.Ok ? "running" : "failed", LastError = up.Ok ? null : up.Log,
+                Health = health, HealthDetail = detail,
                 UpdatedAt = DateTime.UtcNow.ToString("O"),
             });
             if (up.Ok) SyncProxy();
@@ -405,6 +408,49 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             list.Add(new ServiceStatus(S("Name"), S("Service"), S("Image"), S("State"), S("Status"), ports));
         }
         return list;
+    }
+
+    // "running" only says compose started the containers. This says whether they actually work:
+    // a container that keeps restarting, exited, or reports unhealthy makes the whole app broken,
+    // which is what a user sees as "it says running but nothing answers".
+    public static (string Health, string? Detail) HealthOf(IEnumerable<ServiceStatus> services)
+    {
+        var list = services.Where(s => !s.Name.Contains("dashboard") && !s.Service.Contains("dashboard")).ToList();
+        if (list.Count == 0) return ("unknown", null);
+
+        string? Health(ServiceStatus s) => Regex.Match(s.Status, @"\((healthy|unhealthy|health: starting|starting)\)").Groups[1].Value is { Length: > 0 } h ? h : null;
+        string Name(ServiceStatus s) => string.IsNullOrWhiteSpace(s.Service) ? s.Name : s.Service;
+
+        var broken = list.FirstOrDefault(s => s.State.Contains("restarting", StringComparison.OrdinalIgnoreCase)
+                                           || Regex.IsMatch(s.Status, @"Restarting", RegexOptions.IgnoreCase));
+        if (broken is not null) return ("failing", $"{Name(broken)} keeps restarting — {broken.Status}");
+
+        var dead = list.FirstOrDefault(s => s.State.Contains("exited", StringComparison.OrdinalIgnoreCase)
+                                         || s.State.Contains("dead", StringComparison.OrdinalIgnoreCase));
+        if (dead is not null) return ("failing", $"{Name(dead)} stopped — {dead.Status}");
+
+        var unhealthy = list.FirstOrDefault(s => Health(s) == "unhealthy");
+        if (unhealthy is not null) return ("unhealthy", $"{Name(unhealthy)} reports unhealthy — {unhealthy.Status}");
+
+        var starting = list.FirstOrDefault(s => Health(s) is "starting" or "health: starting");
+        if (starting is not null) return ("starting", $"{Name(starting)} is still starting up");
+
+        return ("ok", null);
+    }
+
+    // After `compose up` the containers exist but may still be booting, migrating or crash-looping.
+    // Wait for a verdict instead of reporting green immediately.
+    public (string Health, string? Detail) Settle(string composeDir, string project, int timeoutSeconds = 45)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        var last = ("unknown", (string?)null);
+        while (true)
+        {
+            last = HealthOf(ParseServices(deploy.Ps(composeDir, project).Log));
+            if (last.Item1 is "ok" or "failing" or "unhealthy") return last;
+            if (DateTime.UtcNow >= deadline) return last;
+            Thread.Sleep(2000);
+        }
     }
 
     public static StackModel ApplyEnvUpdates(StackModel stack, IReadOnlyDictionary<string, List<string[]>> env)
@@ -619,11 +665,14 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     public Deployment? Refresh(string id)
     {
         if (store.Get(id) is not { } d) return null;
-        if (d.State is "deploying" or "failed") return d;
+        if (d.State is "deploying") return d;
         var ps = deploy.Ps(d.ComposeDir, d.Project);
+        var services = ParseServices(ps.Log);
         var running = ps.Ok && ps.Log.Contains("\"State\":\"running\"", StringComparison.OrdinalIgnoreCase);
-        var next = running ? "running" : "stopped";
-        if (next != d.State) store.SetState(id, next);
+        var (health, detail) = running ? HealthOf(services) : ("unknown", (string?)null);
+        var next = d.State is "failed" && !running ? "failed" : running ? "running" : "stopped";
+        if (next != d.State || health != d.Health || detail != d.HealthDetail)
+            store.Upsert(d with { State = next, Health = health, HealthDetail = detail, UpdatedAt = DateTime.UtcNow.ToString("O") });
         return store.Get(id);
     }
 }

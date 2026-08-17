@@ -8,6 +8,14 @@ import { confirmDelete, toastOk, toastErr } from "../ui";
 // Border/chip color for a stack's hosting state; shared so cards & badges stay consistent.
 export const hostingColor = (s: string) => s === "running" ? "green" : s === "failed" ? "red" : s === "deploying" ? "yellow" : "gray";
 
+// Colour for a deployment as a whole: a running app whose containers crash-loop is not green.
+export const deploymentColor = (d?: { state: string; health?: string | null } | null) =>
+  !d ? "gray"
+    : d.state === "running" && d.health === "failing" ? "red"
+    : d.state === "running" && d.health === "unhealthy" ? "orange"
+    : d.state === "running" && d.health === "starting" ? "yellow"
+    : hostingColor(d.state);
+
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
 export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onChanged }: {
   d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onChanged: () => void;

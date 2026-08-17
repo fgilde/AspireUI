@@ -24,9 +24,12 @@ public class DeploymentStore
                               "name TEXT, compose_dir TEXT, project TEXT, state TEXT, urls TEXT, " +
                               "created_at TEXT, updated_at TEXT, last_error TEXT, ports TEXT)";
             cmd.ExecuteNonQuery();
-            using var mig = conn.CreateCommand();
-            mig.CommandText = "ALTER TABLE deployments ADD COLUMN ports TEXT";
-            try { mig.ExecuteNonQuery(); } catch { }
+            foreach (var col in new[] { "ports TEXT", "health TEXT", "health_detail TEXT" })
+            {
+                using var mig = conn.CreateCommand();
+                mig.CommandText = "ALTER TABLE deployments ADD COLUMN " + col;
+                try { mig.ExecuteNonQuery(); } catch { }
+            }
         });
     }
 
@@ -40,9 +43,12 @@ public class DeploymentStore
         r.GetString(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4), r.GetString(5),
         JsonSerializer.Deserialize<List<string>>(r.IsDBNull(6) ? "[]" : r.GetString(6), Json) ?? new(),
         r.GetString(7), r.GetString(8), r.IsDBNull(9) ? null : r.GetString(9),
-        r.IsDBNull(10) ? null : JsonSerializer.Deserialize<List<PortMapping>>(r.GetString(10), Json));
+        r.IsDBNull(10) ? null : JsonSerializer.Deserialize<List<PortMapping>>(r.GetString(10), Json),
+        Domains: null,
+        Health: r.FieldCount > 11 && !r.IsDBNull(11) ? r.GetString(11) : null,
+        HealthDetail: r.FieldCount > 12 && !r.IsDBNull(12) ? r.GetString(12) : null);
 
-    private const string Cols = "id, stack_id, name, compose_dir, project, state, urls, created_at, updated_at, last_error, ports";
+    private const string Cols = "id, stack_id, name, compose_dir, project, state, urls, created_at, updated_at, last_error, ports, health, health_detail";
 
     private void SafeNotify(Deployment? d) { if (d is not null && _onChanged is { } cb) try { cb(d); } catch { } }
 
@@ -52,7 +58,7 @@ public class DeploymentStore
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "INSERT OR REPLACE INTO deployments (" + Cols + ") VALUES " +
-                              "($i,$s,$n,$c,$p,$st,$u,$ca,$ua,$e,$pt)";
+                              "($i,$s,$n,$c,$p,$st,$u,$ca,$ua,$e,$pt,$h,$hd)";
             cmd.Parameters.AddWithValue("$i", d.Id);
             cmd.Parameters.AddWithValue("$s", d.StackId);
             cmd.Parameters.AddWithValue("$n", d.Name);
@@ -64,6 +70,8 @@ public class DeploymentStore
             cmd.Parameters.AddWithValue("$ua", d.UpdatedAt);
             cmd.Parameters.AddWithValue("$e", (object?)d.LastError ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$pt", d.Ports is null ? DBNull.Value : JsonSerializer.Serialize(d.Ports, Json));
+            cmd.Parameters.AddWithValue("$h", (object?)d.Health ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$hd", (object?)d.HealthDetail ?? DBNull.Value);
             cmd.ExecuteNonQuery();
         });
         SafeNotify(d);

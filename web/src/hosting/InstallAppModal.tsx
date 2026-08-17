@@ -17,7 +17,7 @@ const FEATURED = new Set([
   "immich", "nextcloud", "vaultwarden", "jellyfin", "plex", "emby", "paperless-ngx", "homeassistant",
   "uptime-kuma", "pihole", "adguard", "gitea", "grafana", "portainer", "it-tools", "linkwarden", "mealie",
   "audiobookshelf", "actualbudget", "stirling-pdf", "excalidraw", "photoprism", "frigate", "mattermost", "videola",
-  "outline", "penpot", "onlyoffice", "nocodb", "metabase", "searxng", "vikunja", "firefly-iii", "bookstack",
+  "outline", "penpot", "onlyoffice", "nocodb", "metabase", "searxng", "vikunja", "firefly-iii", "bookstack", "coworkee", "havewa",
   "wikijs", "homarr", "npm", "nodered", "syncthing", "openwebui", "librechat", "komga", "kavita", "navidrome",
 ]);
 
