@@ -72,6 +72,14 @@ public class HostingHealthTests
     }
 
     [Fact]
+    public void Only_the_dashboard_running_is_not_the_app_running()
+    {
+        var services = new List<ServiceStatus> { Svc("aspireui-dashboard", "running", "Up 1 minute") };
+        Assert.Empty(HostingService.AppContainers(services));
+        Assert.Equal("unknown", HostingService.HealthOf(services).Health);
+    }
+
+    [Fact]
     public void No_containers_means_unknown()
         => Assert.Equal("unknown", HostingService.HealthOf([]).Health);
 

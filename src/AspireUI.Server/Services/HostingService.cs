@@ -413,9 +413,13 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // "running" only says compose started the containers. This says whether they actually work:
     // a container that keeps restarting, exited, or reports unhealthy makes the whole app broken,
     // which is what a user sees as "it says running but nothing answers".
+    // The bundled aspire-dashboard sidecar is ours, not the app — it never decides the app's state.
+    public static List<ServiceStatus> AppContainers(IEnumerable<ServiceStatus> services) =>
+        services.Where(s => !s.Name.Contains("dashboard") && !s.Service.Contains("dashboard")).ToList();
+
     public static (string Health, string? Detail) HealthOf(IEnumerable<ServiceStatus> services)
     {
-        var list = services.Where(s => !s.Name.Contains("dashboard") && !s.Service.Contains("dashboard")).ToList();
+        var list = AppContainers(services);
         if (list.Count == 0) return ("unknown", null);
 
         string? Health(ServiceStatus s) => Regex.Match(s.Status, @"\((healthy|unhealthy|health: starting|starting)\)").Groups[1].Value is { Length: > 0 } h ? h : null;
@@ -443,12 +447,15 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     public (string Health, string? Detail) Settle(string composeDir, string project, int timeoutSeconds = 45)
     {
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
-        var last = ("unknown", (string?)null);
+        var okStreak = 0;
+        (string Health, string? Detail) last = ("unknown", null);
         while (true)
         {
             last = HealthOf(ParseServices(deploy.Ps(composeDir, project).Log));
-            if (last.Item1 is "ok" or "failing" or "unhealthy") return last;
-            if (DateTime.UtcNow >= deadline) return last;
+            if (last.Health is "failing" or "unhealthy") return last;    // a verdict worth trusting at once
+            // "running" right after `up` means "has not crashed yet" — only a stable ok counts.
+            okStreak = last.Health == "ok" ? okStreak + 1 : 0;
+            if (okStreak >= 3 || DateTime.UtcNow >= deadline) return last;
             Thread.Sleep(2000);
         }
     }
@@ -668,7 +675,10 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         if (d.State is "deploying") return d;
         var ps = deploy.Ps(d.ComposeDir, d.Project);
         var services = ParseServices(ps.Log);
-        var running = ps.Ok && ps.Log.Contains("\"State\":\"running\"", StringComparison.OrdinalIgnoreCase);
+        // Only the app's own containers count: a project where just our dashboard sidecar is up is not running.
+        var running = ps.Ok && AppContainers(services).Any(s =>
+            s.State.Contains("running", StringComparison.OrdinalIgnoreCase) ||
+            s.State.Contains("restarting", StringComparison.OrdinalIgnoreCase));
         var (health, detail) = running ? HealthOf(services) : ("unknown", (string?)null);
         var next = d.State is "failed" && !running ? "failed" : running ? "running" : "stopped";
         if (next != d.State || health != d.Health || detail != d.HealthDetail)
