@@ -46,6 +46,8 @@ export interface NpmSettings { enabled: boolean; baseUrl: string; email: string;
 export interface NpmProxyHost { id: number; domainNames: string[]; forwardScheme: string; forwardHost: string; forwardPort: number; websockets: boolean; enabled: boolean; certificateId?: number; sslForced?: boolean }
 export interface DomainInfo {
   configured: boolean; error?: string | null;
+  // Which provider the app's target uses: none | npm | azure | manual.
+  kind?: string | null; target?: string | null; manual?: boolean | null;
   proposal?: { forwardHost: string; forwardPort: number; scheme: string; websockets: boolean };
   existing?: NpmProxyHost | null;
 }

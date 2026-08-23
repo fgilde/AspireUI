@@ -28,9 +28,15 @@ Two entry points, same result:
 - **Editor → Deploy** (advanced): build/import any stack, then use the **Deploy** button (or the
   Publish panel's **Hosting** card) to deploy that exact stack.
 
-When a Nginx Proxy Manager is connected (**Settings → Hosting**), the domain dialog opens right after
-an install, so the app can go on your own domain (with Let's Encrypt HTTPS) in the same flow. A hosted
-app with a domain shows two open buttons: the domain and the internal `host:port` URL.
+When a Nginx Proxy Manager is connected (on the target, under **Settings → Hosting → Deploy targets**),
+the domain dialog opens right after an install, so the app can go on your own domain (with Let's Encrypt
+HTTPS) in the same flow. A hosted app with a domain shows two open buttons: the domain and the internal
+`host:port` URL.
+
+Apps do not have to live on this machine: a deploy can go to a box over ssh, a Kubernetes cluster or a
+managed container platform, an app can be installed onto several targets at once, and a running app can
+be moved or copied — with its data — from one target to another. See
+[Deploy targets](deploy-targets.md).
 
 Installed apps show up on the overview (Simple mode: "My apps") and on the **Hosting** page.
 

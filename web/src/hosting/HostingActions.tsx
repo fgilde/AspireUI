@@ -354,8 +354,15 @@ export function DomainModal({ d, onClose }: { d: Deployment; onClose: () => void
     <Modal opened onClose={onClose} size="lg" title={<Group gap={8}><IconWorld size={18} /><Title order={5}>Domain · {d.name}</Title></Group>}>
       {info === null ? <Loader size="sm" /> : !info.configured ? (
         <Alert color="blue" icon={<IconWorld size={16} />}>
-          Connect your Nginx Proxy Manager first under <b>Settings → Hosting</b>. Then this dialog can create or
-          edit the proxy host that points your domain at this app.
+          <b>{info.target ?? "This target"}</b> has no domain provider yet. Set one on the target under{" "}
+          <b>Settings → Hosting → Deploy targets</b> — a Nginx Proxy Manager instance, an Azure custom domain,
+          or “manual DNS” if you point the record yourself.
+        </Alert>
+      ) : info.manual ? (
+        <Alert color="blue" icon={<IconWorld size={16} />}>
+          <b>{info.target}</b> manages domains by hand: point a DNS record at{" "}
+          <b>{info.proposal?.forwardHost}</b>{info.proposal?.forwardPort ? <> port <b>{info.proposal.forwardPort}</b></> : null}{" "}
+          and put your own reverse proxy in front of it.
         </Alert>
       ) : (
         <Stack gap="md">

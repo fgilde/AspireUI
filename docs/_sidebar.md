@@ -5,6 +5,7 @@
 - [AI Assistant](ai-assistant.md)
 - [Running & Deploying](running-and-deploying.md)
 - [Hosting (install & forget)](hosting.md)
+- [Deploy targets (remote & cloud)](deploy-targets.md)
 - [App Catalog](apps.md)
 - [App manifest (submit an app)](app-manifest.md)
 - [Umbrel & Unraid stores](app-stores.md)

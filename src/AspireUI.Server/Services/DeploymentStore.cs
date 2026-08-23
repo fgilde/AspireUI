@@ -15,7 +15,8 @@ public class DeploymentStore
     public DeploymentStore(string dbPath = "aspireui.db", Action<Deployment>? onChanged = null)
     {
         _onChanged = onChanged;
-        _connString = dbPath == ":memory:" ? "Data Source=DeploymentStore;Mode=Memory;Cache=Shared" : $"Data Source={dbPath}";
+        // Each in-memory store is its own database (the name is the identity), so tests never bleed into each other.
+        _connString = dbPath == ":memory:" ? $"Data Source=DeploymentStore-{Guid.NewGuid():n};Mode=Memory;Cache=Shared" : $"Data Source={dbPath}";
         if (dbPath == ":memory:") { _keepAlive = new SqliteConnection(_connString); _keepAlive.Open(); }
         UsingConnection(conn =>
         {

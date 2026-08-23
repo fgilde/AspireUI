@@ -318,6 +318,41 @@ public class DomainTargetTests
     }
 }
 
+// The guards a move runs before it touches anything — no docker needed to reach them.
+public class MoveGuardTests
+{
+    private static (HostingService hosting, DeploymentStore store) New()
+    {
+        var store = new DeploymentStore(":memory:");
+        var gen = new CodeGenService();
+        var hosting = new HostingService(store, new PublishService(gen), new DeployService());
+        return (hosting, store);
+    }
+
+    private static StackModel Stack(string id = "s1") =>
+        new(id, "app", "net10.0", [new NodeModel("n1", "web", "AddContainer", "web", [], 0, 0, ["\"nginx\""])], [], [], [], []);
+
+    [Fact]
+    public void Moving_a_stack_that_is_not_deployed_says_so()
+    {
+        var (hosting, _) = New();
+        var r = hosting.Move(Stack(), "/tmp/publish", "localhost", false, null, null, "somewhere");
+        Assert.False(r.Ok);
+        Assert.Contains("not deployed", r.Log);
+    }
+
+    [Fact]
+    public void Moving_to_the_target_it_already_runs_on_changes_nothing()
+    {
+        var (hosting, store) = New();
+        store.Upsert(new Deployment("d1", "s1", "app", "/dir", "proj", "running", new(), "now", "now", null));
+        var r = hosting.Move(Stack(), "/tmp/publish", "localhost", false, null, null, DeployTarget.LocalId);
+        Assert.False(r.Ok);
+        Assert.Contains("already runs", r.Log);
+        Assert.Equal("running", store.Get("d1")!.State);
+    }
+}
+
 public class DeploymentTargetTests
 {
     [Fact]
