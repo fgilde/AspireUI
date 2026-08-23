@@ -57,6 +57,11 @@ public class RoslynLspService
         catch { return []; }
     }
 
+    // The .NET SDK has these in NoWarn by default, so a real build never reports them: an assembly
+    // version mismatch between a package and the newer Aspire assemblies loaded here would otherwise
+    // show up for every resource that comes from a package built against an older Aspire.
+    private static readonly HashSet<string> SdkSuppressed = ["CS1701", "CS1702"];
+
     public IReadOnlyList<CodeDiagnostic> Diagnostics(string code)
     {
         try
@@ -66,6 +71,7 @@ public class RoslynLspService
             if (comp is null) return [];
             return comp.GetDiagnostics()
                 .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+                .Where(d => !SdkSuppressed.Contains(d.Id))
                 .Select(d => new CodeDiagnostic(
                     d.GetMessage(),
                     d.Severity.ToString().ToLowerInvariant(),

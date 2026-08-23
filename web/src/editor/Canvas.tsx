@@ -2,10 +2,10 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, Handle, Position, Base
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, Text, Badge, Group, Tooltip, useMantineColorScheme, ThemeIcon, Menu, Paper, UnstyledButton, TextInput, Anchor, ActionIcon, Modal, Stack as MStack, Button } from "@mantine/core";
-import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX, IconBookmark } from "@tabler/icons-react";
+import { IconCheck, IconArrowsLeftRight, IconTrash, IconCopy, IconPencil, IconSearch, IconLayoutGrid, IconExternalLink, IconTerminal2, IconMap, IconMapOff, IconNote, IconBoxMargin, IconX, IconBookmark, IconDatabaseSearch } from "@tabler/icons-react";
 import dagre from "dagre";
 import type { Stack, RunState, LiveResource } from "../model";
-import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, nodesInGroup, collectSubgraph, rid, type Node, type StackGroup } from "../model";
+import { removeNode, runStateColor, sanitizeIdentifier, buildLiveOverlay, liveStateColor, nodesInGroup, collectSubgraph, rid, canAttachWebDataStudio, webDataStudioOf, attachWebDataStudio, detachWebDataStudio, type Node, type StackGroup } from "../model";
 import { useResourceDelete } from "./useResourceDelete";
 import { resourceVisual, ResourceGlyph } from "../resourceIcons";
 import { toastOk, toastErr, promptText } from "../ui";
@@ -370,6 +370,12 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
     api.saveStack({ ...stack, nodes: [...stack.nodes, copy] }).then(setStack);
   }, [stack, setStack]);
 
+  const toggleWebDataStudio = useCallback((nodeId: string) => {
+    const next = webDataStudioOf(stack, nodeId)
+      ? detachWebDataStudio(stack, nodeId) : attachWebDataStudio(stack, nodeId);
+    if (next !== stack) api.saveStack(next).then(setStack);
+  }, [stack, setStack]);
+
   const autoLayout = useCallback(() => {
     if (stack.nodes.length === 0) return;
     const g = new dagre.graphlib.Graph();
@@ -614,6 +620,11 @@ export function Canvas({ stack, setStack, onSelect, onSelectIds, onShowPropertie
             : [
                 { icon: IconPencil, label: "Edit properties", run: () => { onSelect(menu.nodeId); onShowProperties?.(); }, color: undefined },
                 { icon: IconCopy, label: "Duplicate", run: () => duplicateNode(menu.nodeId), color: undefined },
+                ...(canAttachWebDataStudio(stack.nodes.find(x => x.id === menu.nodeId))
+                  ? [{ icon: IconDatabaseSearch,
+                       label: webDataStudioOf(stack, menu.nodeId) ? "Remove from WebDataStudio" : "Browse in WebDataStudio",
+                       run: () => toggleWebDataStudio(menu.nodeId), color: undefined }]
+                  : []),
                 { icon: IconBookmark, label: "Save as snippet", run: () => { const n = stack.nodes.find(x => x.id === menu.nodeId); saveAsSnippet([menu.nodeId], n?.resourceName || "snippet", n?.icon ?? n?.addMethod); }, color: undefined },
                 { icon: IconTrash, label: "Delete", run: () => deleteOne(menu.nodeId), color: "var(--mantine-color-red-text)" },
               ]).map(item => (

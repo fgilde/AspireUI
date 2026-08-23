@@ -40,6 +40,30 @@ other resource and `WithReference` makes it reachable as `http://<name>`. The di
 It is PHP's built-in dev server — for a packaged PHP *application* take the store apps instead
 (WordPress, Joomla, Drupal, Matomo, Kimai, …), which ship as production images with their database.
 
+### A database studio for your databases
+
+Every database resource whose engine WebDataStudio can derive from the resource type — `AddPostgres`,
+`AddSqlServer`, `AddMySql`, `AddOracle`, `AddMongoDB`, `AddRedis`, `AddValkey`, `AddGarnet` — has a
+**Browse in WebDataStudio** switch in its properties, and the same entry in its right-click menu on
+the canvas. Turning it on adds one
+[**WebDataStudio**](https://fgilde.github.io/WebDataStudio/) resource (`AddWebDataStudio`, from
+`Nextended.Aspire.Hosting.WebDataStudio`) and references the database from it:
+
+```csharp
+var db = builder.AddPostgres("db");
+var webDataStudio = builder.AddWebDataStudio("webdatastudio");
+webDataStudio.WithReference(db);
+```
+
+One studio is shared by every database you switch on — the connection shows up in it as `DB`, with no
+connection string typed anywhere, because the package derives the engine from the resource type and
+writes the `WDS_CONN_*` variables itself. Turning the switch off removes the reference, and the studio
+too once nothing points at it. Everything else the package offers (`WithLogin`, `WithReadOnly`,
+`WithTitle`, `WithMaxRows`, `WithQueryTimeout`, `WithConnection` for a database outside the stack, …)
+is available on the studio node in the capabilities list. **Without `WithLogin` the studio has no
+login screen at all** — add one before you publish its endpoint. The studio is also in the app store
+as a standalone app if you just want it next to an existing database.
+
 ### Setup / composite extensions
 
 The catalog also surfaces **macro extensions** — methods that take the builder and wire up *several*

@@ -60,8 +60,9 @@ public class ApiTests : IClassFixture<TestWebAppFactory>
 
         var packages = await _c.GetFromJsonAsync<List<PackageDto>>($"/api/stacks/{created!.Id}/packages");
 
-        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == "13.4.6" && p.Resources.Count == 0);
-        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == "13.4.6" && p.Resources.SequenceEqual(["cache"]));
+        var aspireVersion = CatalogService.PackageVersions()["Aspire.Hosting.AppHost"];
+        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.AppHost" && p.Version == aspireVersion && p.Resources.Count == 0);
+        Assert.Contains(packages!, p => p.Id == "Aspire.Hosting.Redis" && p.Version == aspireVersion && p.Resources.SequenceEqual(["cache"]));
         var n8nVersion = CatalogService.PackageVersions()["Nextended.Aspire.Hosting.N8n"];
         Assert.Contains(packages!, p => p.Id == "Nextended.Aspire.Hosting.N8n" && p.Version == n8nVersion && p.Resources.SequenceEqual(["flow"]));
     }

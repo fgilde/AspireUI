@@ -15,6 +15,7 @@ import aspireuiLogo from "./assets/logo.svg";
 import localagiLogo from "./assets/localagi.png";
 import localaiLogo from "./assets/localai.png";
 import localrecallLogo from "./assets/localrecall.png";
+import wdsLogo from "./assets/webdatastudio.svg";
 
 type Brand = { path: string };
 interface Visual { si?: Brand; tabler?: Icon; img?: string; color: string }
@@ -34,6 +35,8 @@ const MAP: Record<string, Visual> = {
   AddOllama:           { si: siOllama, color: TEXT },
   AddLocalAI:          { img: localaiLogo, color: "#10A37F" },
   AddN8n:              { si: siN8n, color: "#EA4B71" },
+  AddWebDataStudio:    { img: wdsLogo, color: "#2563EB" },
+  webdatastudio:       { img: wdsLogo, color: "#2563EB" },
   AddSupabase:         { si: siSupabase, color: "#3FCF8E" },
   AddProject:          { si: siDotnet, color: "#512BD4" },
   AddCSharpApp:        { si: siDotnet, color: "#512BD4" },

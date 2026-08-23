@@ -16,6 +16,20 @@ public class RoslynLspTests
     }
 
     [Fact]
+    public void Diagnostics_StaysQuietOnAPackageBuiltAgainstAnOlderAspire()
+    {
+        var code = """
+            using Aspire.Hosting;
+            using Nextended.Aspire.Hosting.WebDataStudio;
+            var builder = DistributedApplication.CreateBuilder(args);
+            var db = builder.AddPostgres("db");
+            var studio = builder.AddWebDataStudio("webdatastudio");
+            studio.WithReference(db);
+            """;
+        Assert.Empty(new RoslynLspService().Diagnostics(code));
+    }
+
+    [Fact]
     public void Diagnostics_FlagsBrokenCode_AndClearsForValid()
     {
         var svc = new RoslynLspService();

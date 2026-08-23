@@ -7780,5 +7780,64 @@
       "https://havewa.app/marketing/screenshots/tickets.png",
       "https://havewa.app/marketing/screenshots/calendar.png"
     ]
+  },
+  {
+    "id": "webdatastudio",
+    "label": "WebDataStudio",
+    "group": "Tools",
+    "image": "ghcr.io/fgilde/webdatastudio:latest",
+    "port": 8080,
+    "icon": "webdatastudio",
+    "description": "WebDataStudio — a database studio that runs in the browser: PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, Oracle, DuckDB, ClickHouse, MongoDB and Redis in one container. Schema explorer, SQL editor with completion and history, a visual query builder, result charts, ER diagrams, schema editing and comparison between connections, saved and scheduled queries, an administration surface and an MCP endpoint for AI agents. Connections are added in the studio or passed in as WDS_CONN_<NAME> variables. Set the admin account below — with no user and password there is no login screen at all, so never publish it without one. Building a stack instead? Add WebDataStudio to a database resource in the builder and the connection is wired for you.",
+    "params": [
+      {
+        "key": "wds-user",
+        "env": "WDS_USER",
+        "default": "admin"
+      },
+      {
+        "key": "wds-password",
+        "env": "WDS_PASSWORD",
+        "default": "",
+        "secret": true
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "tags": [
+      "database",
+      "sql",
+      "admin",
+      "developer-tools",
+      "self-hosted"
+    ],
+    "topics": [
+      "database",
+      "sql-editor",
+      "postgresql",
+      "mysql",
+      "mongodb",
+      "redis",
+      "selfhosted"
+    ],
+    "website": "https://fgilde.github.io/WebDataStudio/",
+    "github": "https://github.com/fgilde/WebDataStudio",
+    "license": "MIT",
+    "language": "C#",
+    "logo": "/media/webdatastudio/logo.png",
+    "card": "/media/webdatastudio/screenshots/query.png",
+    "screenshots": [
+      "/media/webdatastudio/screenshots/query.png",
+      "/media/webdatastudio/screenshots/builder.png",
+      "/media/webdatastudio/screenshots/designer.png",
+      "/media/webdatastudio/screenshots/diagram.png",
+      "/media/webdatastudio/screenshots/chart.png",
+      "/media/webdatastudio/screenshots/compare.png",
+      "/media/webdatastudio/screenshots/admin.png"
+    ]
   }
 ]

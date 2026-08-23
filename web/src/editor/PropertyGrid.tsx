@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { TextInput, NumberInput, Switch, Select, Autocomplete, Radio, Stack as MStack, Button, Group, Divider, ActionIcon, Text, SegmentedControl, Tooltip, Menu, Modal } from "@mantine/core";
 import { IconPlus, IconX, IconLink, IconInfoCircle, IconFolder, IconUpload } from "@tabler/icons-react";
 import type { Stack, Node, ResourceType, CatalogParam } from "../model";
-import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier, rid } from "../model";
+import { setAddArg, toLiteral, fromLiteral, readWithRows, writeWithRows, matchOverloadByArity, isPathParam, parseDotenv, sanitizeIdentifier, rid, canAttachWebDataStudio, webDataStudioOf, attachWebDataStudio, detachWebDataStudio } from "../model";
 import { toastOk, toastErr } from "../ui";
 import { ResourceGlyph } from "../resourceIcons";
 import { PathPickerModal } from "./PathPickerModal";
@@ -198,6 +198,13 @@ export function PropertyGrid({ stack, node, rt, setStack }:
     return refIntent !== null ? [...list].sort((a, b) => Number(b.addMethod === "AddParameter") - Number(a.addMethod === "AddParameter")) : list;
   }, [catalog, addTarget, refIntent]);
 
+  const canStudio = canAttachWebDataStudio(node);
+  const studio = webDataStudioOf(stack, node.id);
+  const setStudio = (on: boolean) =>
+    api.saveStack(on ? attachWebDataStudio(stack, node.id) : detachWebDataStudio(stack, node.id))
+      .then(s => { setStack(s); toastOk(on ? "WebDataStudio added" : "Removed from WebDataStudio"); })
+      .catch(toastErr);
+
   const canExternal = rt?.withs.some(w => w.method === "WithExternalHttpEndpoints") ?? false;
   const isExternal = draft.withCalls.some(w => w.method === "WithExternalHttpEndpoints");
   const setExternal = (on: boolean) =>
@@ -218,6 +225,17 @@ export function PropertyGrid({ stack, node, rt, setStack }:
             description="Exposes an external HTTP endpoint (WithExternalHttpEndpoints). Off = internal only."
             onChange={e => setExternal(e.currentTarget.checked)} />
           {isExternal && <Text size="xs" c="dimmed" mt={4}>A public URL is assigned at deploy time; custom domains are configured per deploy target.</Text>}
+        </div>
+      )}
+
+      {canStudio && (
+        <div>
+          <Divider my="xs" labelPosition="left" label={labelWith("WebDataStudio",
+            "Emits builder.AddWebDataStudio(\"webdatastudio\") once per stack and studio.WithReference(this resource). The engine comes from the resource type, so no connection string is typed anywhere.")} />
+          <Switch mb="xs" label="Browse in WebDataStudio" checked={!!studio}
+            description="Adds the WebDataStudio resource (shared by every database that has this on) and wires this database into it."
+            onChange={e => setStudio(e.currentTarget.checked)} />
+          {studio && <Text size="xs" c="dimmed" mt={4}>Attached to "{studio.resourceName}". Without WithLogin the studio has no login screen — add one before publishing its endpoint.</Text>}
         </div>
       )}
 

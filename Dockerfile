@@ -55,7 +55,7 @@ RUN apt-get update \
 # Hosting's compose publish shells it. Taken from the RID-specific NuGet package (a single
 # self-contained binary) instead of `dotnet tool install`, because the SDK's tool installer runs
 # emulated on the arm64 leg and aborts there (QEMU + .NET TLS), while curl/unzip do not.
-ARG ASPIRE_CLI_VERSION=13.4.6
+ARG ASPIRE_CLI_VERSION=13.5.2
 RUN case "${TARGETARCH:-amd64}" in \
       amd64) CLI_RID=linux-x64 ;; \
       arm64) CLI_RID=linux-arm64 ;; \

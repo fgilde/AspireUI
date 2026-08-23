@@ -162,9 +162,11 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
   `aspire publish`): view the generated artifact, download the bundle, or deploy Compose locally
 - **Hosting**: deploy a stack as a persistent, tracked appliance with a URL, complete with
   start/stop/update/backup and a one-click app store (Umbrel/CasaOS style); see [Hosting](docs/hosting.md)
-- **159 preconfigured container apps** (Immich, Jellyfin, Nextcloud, WordPress, Gitea, n8n, Pi-hole, …),
+- **162 preconfigured container apps** (Immich, Jellyfin, Nextcloud, WordPress, Gitea, n8n, Pi-hole, …),
   ready to drop on the canvas or install from the store; see the [App Catalog](docs/apps.md), and
   [add your own](#bring-your-own-app-to-the-store) with one JSON file
+- **WebDataStudio** on any database resource: one switch adds a browser database studio
+  (PostgreSQL, MySQL, SQL Server, Oracle, MongoDB, Redis …) with its connections already wired
 - NuGet packages panel for the AppHost project
 - Import an existing AppHost from `.cs`, `.csproj`, or a `.zip`, or from a `docker-compose.yml`
 - Demo templates to start from a working example

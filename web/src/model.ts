@@ -93,6 +93,49 @@ export const ROLE_MATCHERS: Record<string, { addMethods: string[]; images: strin
   meilisearch: { addMethods: ["AddMeilisearch"], images: ["meilisearch"] },
   llm: { addMethods: ["AddLocalAI", "AddOllama"], images: ["localai", "ollama"] },
 };
+// WebDataStudio (Nextended.Aspire.Hosting.WebDataStudio). The package reads the engine from the
+// resource type for these; anything else needs an explicit engine argument, so they stay out.
+export const WDS_METHOD = "AddWebDataStudio";
+export const WDS_ATTACHABLE = new Set(["AddPostgres", "AddSqlServer", "AddMySql", "AddOracle",
+  "AddMongoDB", "AddRedis", "AddValkey", "AddGarnet"]);
+export const canAttachWebDataStudio = (n?: Node) => !!n && WDS_ATTACHABLE.has(n.addMethod);
+
+// The studio a resource is attached to, i.e. the one emitting studio.WithReference(resource).
+export const webDataStudioOf = (stack: Stack, nodeId: string) =>
+  stack.nodes.find(s => s.addMethod === WDS_METHOD &&
+    stack.edges.some(e => e.kind === "reference" && e.fromNodeId === s.id && e.toNodeId === nodeId));
+
+// Adds one studio per stack and references the database from it — the package derives the engine
+// and writes the WDS_CONN_* variables itself.
+export function attachWebDataStudio(stack: Stack, nodeId: string): Stack {
+  const db = stack.nodes.find(n => n.id === nodeId);
+  if (!db || !canAttachWebDataStudio(db) || webDataStudioOf(stack, nodeId)) return stack;
+  const nodes = [...stack.nodes];
+  let studio = nodes.find(n => n.addMethod === WDS_METHOD);
+  if (!studio) {
+    const taken = new Set(nodes.map(n => n.resourceName));
+    let name = "webdatastudio";
+    for (let i = 2; taken.has(name); i++) name = `webdatastudio${i}`;
+    studio = {
+      id: "n" + rid(), varName: sanitizeIdentifier(name), resourceName: name, addMethod: WDS_METHOD,
+      addArgs: [], withCalls: [], x: db.x + 320, y: db.y + 130,
+    };
+    nodes.push(studio);
+  }
+  return { ...stack, nodes,
+    edges: [...stack.edges, { id: "e" + rid(), fromNodeId: studio.id, toNodeId: nodeId, kind: "reference" }] };
+}
+
+// Detaches the database and drops the studio once nothing else points at it.
+export function detachWebDataStudio(stack: Stack, nodeId: string): Stack {
+  const studio = webDataStudioOf(stack, nodeId);
+  if (!studio) return stack;
+  const edges = stack.edges.filter(e => !(e.fromNodeId === studio.id && e.toNodeId === nodeId));
+  const orphan = studio.withCalls.length === 0
+    && !edges.some(e => e.fromNodeId === studio.id || e.toNodeId === studio.id);
+  return { ...stack, nodes: orphan ? stack.nodes.filter(n => n.id !== studio.id) : stack.nodes, edges };
+}
+
 export const ROLE_ALTERNATIVES: Record<string, { addMethod: string; label: string }[]> = {
   postgres: [{ addMethod: "AddPostgres", label: "Aspire Postgres" }],
   redis: [{ addMethod: "AddRedis", label: "Aspire Redis" }, { addMethod: "AddValkey", label: "Aspire Valkey" }],

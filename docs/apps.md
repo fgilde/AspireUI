@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **161 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **162 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -134,7 +134,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(79)</sub>
+## Tools <sub>(80)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -214,6 +214,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/vikunja.png" width="22" height="22" alt=""> | **[Vikunja](https://vikunja.io)** | Vikunja — self-hosted to-do / task & project management. CORS disabled (single container); runs as root so it can create its files dir… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallabag.png" width="22" height="22" alt=""> | **[wallabag](https://wallabag.org)** | wallabag — save and read articles later, ad-free (the self-hosted Pocket). Runs on SQLite in a single container. First login: wallabag / wallabag — change it… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallos.png" width="22" height="22" alt=""> | **[Wallos](https://github.com/ellite/Wallos)** | Wallos — self-hosted subscription tracker & budget overview (SQLite). |
+| <img src="https://raw.githubusercontent.com/fgilde/AspireUI/master/src/AspireUI.Server/catalog/media/webdatastudio/logo.png" width="22" height="22" alt=""> | **[WebDataStudio](https://fgilde.github.io/WebDataStudio/)** | WebDataStudio — a database studio in the browser: PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, Oracle, DuckDB, ClickHouse, MongoDB and Redis, with SQL editor, query builder, charts, ER diagrams and schema comparison. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/whoogle.png" width="22" height="22" alt=""> | **[Whoogle](https://github.com/benbusby/whoogle-search)** | Whoogle — private, ad-free Google search proxy (no JS, no tracking). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wikijs.png" width="22" height="22" alt=""> | **[Wiki.js](https://js.wiki)** | Wiki.js — modern, powerful wiki. Postgres companion included. |
 | <img src="https://raw.githubusercontent.com/ulsklyc/yuvomi/main/deploy/umbrel/icon.svg" width="22" height="22" alt=""> | **[Yuvomi](https://github.com/ulsklyc/yuvomi)** | Yuvomi — self-hosted family planner as a PWA: shared calendar (CalDAV/Google/ICS sync), tasks, shopping, meals, contacts and budget. |
@@ -221,4 +222,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*161 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*162 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

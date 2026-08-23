@@ -153,6 +153,13 @@ public class CatalogService
 
         var result = new List<ResourceType>();
         var pkgVersions = ResourcePackages().Values; // reverse-lookup a package's version by id
+        // A "WithX": { "hidden": true } overlay entry drops that method from every resource list;
+        // for unconstrained generic extensions (they match every resource type) that are offered
+        // through a dedicated action instead — see WithWebDataStudio.
+        var hiddenEverywhere = _overlay
+            .Where(kv => kv.Key.StartsWith("With") && kv.Value.TryGetProperty("hidden", out var gh)
+                         && gh.ValueKind == JsonValueKind.True)
+            .Select(kv => kv.Key).ToHashSet(StringComparer.Ordinal);
         foreach (var grp in adds.GroupBy(m => m.Name))
         {
             var addOverloads = new List<CatalogOverload>();
@@ -171,7 +178,7 @@ public class CatalogService
             if (over?.TryGetProperty("exclude", out var ex) == true && ex.GetBoolean()) continue;
             var hidden = over?.TryGetProperty("hidden", out var h) == true
                 ? h.EnumerateArray().Select(x => x.GetString()).ToHashSet() : new HashSet<string?>();
-            withs = withs.Where(w => !hidden.Contains(w.Method)).ToList();
+            withs = withs.Where(w => !hidden.Contains(w.Method) && !hiddenEverywhere.Contains(w.Method)).ToList();
 
             var decl = grp.First().DeclaringType;
             var usings = new List<string>();
@@ -355,6 +362,7 @@ public class CatalogService
                      "Nextended.Aspire.Hosting.Supabase",
                      "Nextended.Aspire.Hosting.N8n",
                      "Nextended.Aspire.Hosting.Php",
+                     "Nextended.Aspire.Hosting.WebDataStudio",
                      "Nextended.Aspire.Hosting.LocalAI",
                      "Nextended.Aspire.Hosting.Grafana",
                      "Nextended.Aspire.Hosting.AspireUI",

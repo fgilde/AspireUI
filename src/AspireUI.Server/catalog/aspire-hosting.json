@@ -20,6 +20,19 @@
     "group": "Generic",
     "description": "Build and run a container from a local Dockerfile."
   },
+  "AddWebDataStudio": {
+    "label": "WebDataStudio",
+    "icon": "webdatastudio",
+    "group": "Database",
+    "package": "Nextended.Aspire.Hosting.WebDataStudio",
+    "usings": [
+      "Nextended.Aspire.Hosting.WebDataStudio"
+    ],
+    "description": "WebDataStudio — a browser database studio for the databases of this stack. Add it to a database resource (Postgres, SQL Server, MySQL, Oracle, MongoDB, Redis, Valkey, Garnet) and the connection is wired for you; the engine is read from the resource type. Guard it with WithLogin before publishing the endpoint."
+  },
+  "WithWebDataStudio": {
+    "hidden": true
+  },
   "AddPhp": {
     "label": "PHP",
     "icon": "php",

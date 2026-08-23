@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, buildPresetNodes, orphanableDeps, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource, type ContainerPreset } from "./model";
+import { toFlow, applyNodePosition, removeNode, readWithRows, writeWithRows, setAddArg, toLiteral, fromLiteral, configureLiteral, matchOverloadByArity, isErrorLine, pickAppHost, runStateColor, routeForStatus, buildLiveOverlay, liveStateColor, isPathParam, lintStack, buildPresetNodes, orphanableDeps, canAttachWebDataStudio, attachWebDataStudio, detachWebDataStudio, webDataStudioOf, type Stack, type Node, type CatalogOverload, type CatalogParam, type AuthStatus, type LiveResource, type ContainerPreset } from "./model";
 
 const stack: Stack = {
   id: "s1", name: "d", targetFramework: "net9.0",
@@ -348,5 +348,46 @@ describe("orphanableDeps", () => {
   it("excludes deps still referenced by another node", () => {
     const s = S([N("app"), N("other"), N("db")], [{ from: "app", to: "db" }, { from: "other", to: "db" }]);
     expect(orphanableDeps(s, "app")).toHaveLength(0); // db still used by 'other'
+  });
+});
+
+describe("webDataStudio", () => {
+  const base: Stack = { ...stack, edges: [] };
+  it("only offers itself for resources whose engine the package derives", () => {
+    expect(canAttachWebDataStudio(base.nodes[0])).toBe(true);
+    expect(canAttachWebDataStudio({ ...base.nodes[0], addMethod: "AddQdrant" })).toBe(false);
+    expect(canAttachWebDataStudio(undefined)).toBe(false);
+  });
+  it("adds one studio and references the database from it", () => {
+    const s = attachWebDataStudio(base, "n1");
+    const studio = s.nodes.find(n => n.addMethod === "AddWebDataStudio")!;
+    expect(studio.resourceName).toBe("webdatastudio");
+    expect(studio.addArgs).toEqual([]);
+    expect(s.edges).toEqual([{ id: expect.any(String), fromNodeId: studio.id, toNodeId: "n1", kind: "reference" }]);
+    expect(webDataStudioOf(s, "n1")?.id).toBe(studio.id);
+  });
+  it("shares the studio between databases and never attaches twice", () => {
+    const two: Stack = { ...base, nodes: [...base.nodes,
+      { id: "n2", varName: "cache", addMethod: "AddRedis", resourceName: "cache", withCalls: [], x: 0, y: 0, addArgs: [] }] };
+    const s = attachWebDataStudio(attachWebDataStudio(attachWebDataStudio(two, "n1"), "n2"), "n1");
+    expect(s.nodes.filter(n => n.addMethod === "AddWebDataStudio")).toHaveLength(1);
+    expect(s.edges).toHaveLength(2);
+  });
+  it("keeps the studio while another database uses it and drops it when empty", () => {
+    const two: Stack = { ...base, nodes: [...base.nodes,
+      { id: "n2", varName: "cache", addMethod: "AddRedis", resourceName: "cache", withCalls: [], x: 0, y: 0, addArgs: [] }] };
+    const both = attachWebDataStudio(attachWebDataStudio(two, "n1"), "n2");
+    const one = detachWebDataStudio(both, "n1");
+    expect(one.nodes.some(n => n.addMethod === "AddWebDataStudio")).toBe(true);
+    expect(webDataStudioOf(one, "n1")).toBeUndefined();
+    const none = detachWebDataStudio(one, "n2");
+    expect(none.nodes.some(n => n.addMethod === "AddWebDataStudio")).toBe(false);
+    expect(none.edges).toEqual([]);
+  });
+  it("does not collide with an existing resource of that name", () => {
+    const taken: Stack = { ...base, nodes: [...base.nodes,
+      { id: "n3", varName: "webdatastudio", addMethod: "AddContainer", resourceName: "webdatastudio", withCalls: [], x: 0, y: 0, addArgs: [] }] };
+    const s = attachWebDataStudio(taken, "n1");
+    expect(s.nodes.find(n => n.addMethod === "AddWebDataStudio")!.resourceName).toBe("webdatastudio2");
   });
 });
