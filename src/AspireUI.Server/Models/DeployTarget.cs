@@ -60,7 +60,9 @@ public record TargetCloud(string? SubscriptionId = null, string? ResourceGroup =
     string? Subnets = null, string? SecurityGroups = null, string? ExecutionRoleArn = null, bool AssignPublicIp = true);
 
 public record TargetProbe(bool Ok, string? Error = null, string? Version = null, string? Compose = null,
-    string? Arch = null, string? Os = null, long? DiskFreeMb = null, string? CheckedAt = null);
+    string? Arch = null, string? Os = null, long? DiskFreeMb = null, string? CheckedAt = null,
+    // The daemon's own id: two targets with the same one are the same machine, whatever they are called.
+    string? DaemonId = null);
 
 public record DeployTarget(
     string Id,

@@ -155,10 +155,10 @@ export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; erro
 
 export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
-export interface CloneHook { token: string; expireDays: number; bindDomain: boolean; domainFormat?: string | null; webhookPath: string }
-export const listCloneHooks = (id: string): Promise<{ npmConfigured: boolean; hooks: CloneHook[] }> =>
+export interface CloneHook { token: string; expireDays: number; bindDomain: boolean; domainFormat?: string | null; targetId?: string | null; webhookPath: string }
+export const listCloneHooks = (id: string): Promise<{ npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[]; hooks: CloneHook[] }> =>
   fetch(`${base}/stacks/${id}/clone-hooks`).then(ok);
-export const createCloneHook = (id: string, b: { expireDays: number; bindDomain: boolean; domainFormat?: string }): Promise<{ token: string; webhookPath: string }> =>
+export const createCloneHook = (id: string, b: { expireDays: number; bindDomain: boolean; domainFormat?: string; targetId?: string | null }): Promise<{ token: string; webhookPath: string }> =>
   fetch(`${base}/stacks/${id}/clone-hooks`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
 export const deleteCloneHook = (id: string, token: string): Promise<void> =>
   fetch(`${base}/stacks/${id}/clone-hooks/${token}`, { method: "DELETE" }).then(() => undefined);
@@ -204,8 +204,69 @@ export const assistStackCode = (id: string, prompt: string): Promise<{ reply: st
   fetch(`${base}/stacks/${id}/assist-code`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
 
 export const listHosting = (): Promise<import("./model").Deployment[]> => fetch(`${base}/hosting`).then(ok);
-export const hostingDeploy = (id: string): Promise<import("./model").Deployment> =>
-  fetch(`${base}/stacks/${id}/hosting/deploy`, { method: "POST" }).then(ok);
+export const hostingDeploy = (id: string, targetId?: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${id}/hosting/deploy`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ targetId: targetId ?? null }),
+  }).then(ok);
+// Moves an app to another target (its data comes along unless told otherwise).
+export const moveHosting = (id: string, targetId: string, withData = true): Promise<{ ok: boolean; log: string; deployment: import("./model").Deployment }> =>
+  fetch(`${base}/stacks/${id}/hosting/move`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ targetId, withData }),
+  }).then(ok);
+// Copies an app to another target: a second, independent instance with its own stack.
+export const copyHosting = (id: string, targetId: string, withData = false): Promise<{ stackId: string; deployment: import("./model").Deployment; log: string }> =>
+  fetch(`${base}/stacks/${id}/hosting/copy`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ targetId, withData }),
+  }).then(ok);
+
+// --- deploy targets ---
+export type TargetRequest = {
+  name?: string; kind?: string; publicHost?: string | null; notes?: string | null;
+  portFrom?: number; portTo?: number; default?: boolean;
+  ssh?: { host?: string; port?: number; user?: string; privateKey?: string; hostKey?: string } | null;
+  dockerHost?: string | null;
+  tls?: { ca?: string; cert?: string; key?: string } | null;
+  kube?: { context?: string; namespace?: string; kubeconfig?: string; ingressClass?: string; storageClass?: string } | null;
+  cloud?: {
+    subscriptionId?: string; resourceGroup?: string; location?: string; project?: string; cluster?: string;
+    account?: string; credentials?: string; environment?: string;
+    subnets?: string; securityGroups?: string; executionRoleArn?: string; assignPublicIp?: boolean;
+  } | null;
+  registry?: { url?: string; user?: string; password?: string } | null;
+  domains?: { kind?: string; npm?: { baseUrl?: string; email?: string; password?: string; forwardHost?: string } | null } | null;
+};
+export const listTargets = (): Promise<import("./model").DeployTarget[]> => fetch(`${base}/targets`).then(ok);
+export const targetKinds = (): Promise<import("./model").TargetKindInfo[]> => fetch(`${base}/targets/kinds`).then(ok);
+export const createTarget = (b: TargetRequest): Promise<import("./model").DeployTarget> =>
+  fetch(`${base}/targets`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const updateTarget = (id: string, b: TargetRequest): Promise<import("./model").DeployTarget> =>
+  fetch(`${base}/targets/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const deleteTarget = (id: string): Promise<void> => fetch(`${base}/targets/${id}`, { method: "DELETE" }).then(okVoid);
+export const probeTarget = (id: string): Promise<import("./model").DeployTarget> =>
+  fetch(`${base}/targets/${id}/probe`, { method: "POST" }).then(ok);
+export const testTarget = (b: TargetRequest): Promise<import("./model").TargetProbe> =>
+  fetch(`${base}/targets/test`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const makeTargetDefault = (id: string): Promise<import("./model").DeployTarget> =>
+  fetch(`${base}/targets/${id}/default`, { method: "POST" }).then(ok);
+export const installDockerOnTarget = (id: string): Promise<{ ok: boolean; log: string }> =>
+  fetch(`${base}/targets/${id}/install-docker`, { method: "POST" }).then(ok);
+export const generateSshKey = (): Promise<{ privateKey: string; publicKey: string }> =>
+  fetch(`${base}/targets/keygen`, { method: "POST" }).then(ok);
+export interface ProvisionProvider {
+  kind: string; label: string; auth: string; defaultRegion: string; defaultSize: string;
+  defaultImage: string; defaultUser: string; regions: string[]; sizes: string[]; docs: string;
+}
+export const provisionProviders = (): Promise<ProvisionProvider[]> => fetch(`${base}/targets/providers`).then(ok);
+export const provisionMachine = (b: {
+  provider: string; name: string; credentials?: string; region?: string; size?: string; image?: string;
+  sshUser?: string; resourceGroup?: string; project?: string; zone?: string; makeDefault?: boolean;
+}): Promise<{ ok: boolean; log: string; targetId?: string | null; host?: string | null }> =>
+  fetch(`${base}/targets/provision`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
+export const destroyMachine = (id: string): Promise<{ ok: boolean; log: string }> =>
+  fetch(`${base}/targets/${id}/destroy-machine`, { method: "POST" }).then(ok);
 export const stopHosting = (id: string): Promise<import("./model").Deployment> =>
   fetch(`${base}/stacks/${id}/hosting/stop`, { method: "POST" }).then(ok);
 export const startHosting = (id: string): Promise<import("./model").Deployment> =>

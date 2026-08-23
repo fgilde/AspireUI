@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton, NumberInput, Switch, TextInput, Divider } from "@mantine/core";
+import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton, NumberInput, Switch, TextInput, Divider, Select } from "@mantine/core";
 import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
@@ -10,6 +10,7 @@ import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
+import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
 import { stackContainers, healthOf, type AppStat } from "./Hosting";
 import { toastOk, toastErr } from "../ui";
 
@@ -32,6 +33,7 @@ export function AppDetail() {
   const [domain, setDomain] = useState(false);
   const [terminal, setTerminal] = useState(false);
   const [files, setFiles] = useState(false);
+  const [move, setMove] = useState(false);
   const [git, setGit] = useState<{ url: string; branch?: string | null; subdir?: string | null; webhookPath: string } | null>(null);
   const [pulling, setPulling] = useState(false);
   useTitle(d?.name ? `${d.name} · Hosting` : "App");
@@ -78,6 +80,7 @@ export function AppDetail() {
           <HostingMenuItems d={d} canEdit={canEdit} onConfigure={() => setConfig(true)} onLogs={(svc?: string) => { setLogsSvc(svc); setLogsOpen(true); }}
             onBackups={() => setBackups(true)} onDomain={() => setDomain(true)}
             onTerminal={isAdmin ? () => setTerminal(true) : undefined} onFiles={isAdmin ? () => setFiles(true) : undefined}
+            onMove={isAdmin ? () => setMove(true) : undefined}
             onOpenEditor={() => nav(`/editor/${d.stackId}`)} onChanged={load} />
         </Menu.Dropdown>
       </Menu>
@@ -89,6 +92,11 @@ export function AppDetail() {
               <Group gap={8}>
                 {d.state === "deploying" && <Loader size={14} color="yellow" />}
                 <Badge size="lg" color={deploymentColor(d)} variant="light">{hostingHealthLabel(d) ?? d.state}</Badge>
+                <Tooltip label={`Runs on ${d.targetName ?? "this machine"}`} withArrow>
+                  <Badge size="lg" variant="default" leftSection={targetIcon(d.targetKind ?? "local")}>
+                    {d.targetName ?? "This machine"}
+                  </Badge>
+                </Tooltip>
               </Group>
               {stat && active && (
                 <Tooltip label={`CPU ${stat.cpu}% · ${stat.memMb} MB`} withArrow>
@@ -199,21 +207,26 @@ export function AppDetail() {
       {domain && <DomainModal d={d} onClose={() => setDomain(false)} />}
       {terminal && <TerminalModal d={d} onClose={() => setTerminal(false)} />}
       {files && <VolumesModal d={d} onClose={() => setFiles(false)} />}
+      {move && (
+        <MoveAppModal stackId={d.stackId} name={d.name} current={d.targetId ?? "local"}
+          onClose={() => setMove(false)} onDone={() => { setMove(false); load(); }} />
+      )}
     </PageShell>
   );
 }
 
 function CloneHooksCard({ stackId }: { stackId: string }) {
-  const [data, setData] = useState<{ npmConfigured: boolean; hooks: api.CloneHook[] } | null>(null);
+  const [data, setData] = useState<{ npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[]; hooks: api.CloneHook[] } | null>(null);
   const [expireDays, setExpireDays] = useState(7);
   const [bindDomain, setBindDomain] = useState(false);
   const [domainFormat, setDomainFormat] = useState("");
+  const [hookTarget, setHookTarget] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const load = () => api.listCloneHooks(stackId).then(setData).catch(() => {});
   useEffect(() => { load(); }, [stackId]); // eslint-disable-line react-hooks/exhaustive-deps
   const create = async () => {
     setBusy(true);
-    try { await api.createCloneHook(stackId, { expireDays, bindDomain, domainFormat: bindDomain ? domainFormat.trim() : undefined }); load(); toastOk("Clone hook created"); }
+    try { await api.createCloneHook(stackId, { expireDays, bindDomain, domainFormat: bindDomain ? domainFormat.trim() : undefined, targetId: hookTarget }); load(); toastOk("Clone hook created"); }
     catch (e) { toastErr(e); } finally { setBusy(false); }
   };
   const full = (p: string) => `${window.location.origin}${p}`;
@@ -226,6 +239,7 @@ function CloneHooksCard({ stackId }: { stackId: string }) {
           <Text size="xs" ff="monospace" truncate style={{ flex: 1 }}>{full(h.webhookPath)}</Text>
           <Badge size="xs" variant="light" color={h.expireDays < 0 ? "gray" : "blue"}>{h.expireDays < 0 ? "never expires" : `${h.expireDays}d`}</Badge>
           {h.bindDomain && <Badge size="xs" variant="light" color="grape">{h.domainFormat}</Badge>}
+          {h.targetId && <Badge size="xs" variant="default">{data?.targets.find(t => t.id === h.targetId)?.name ?? h.targetId}</Badge>}
           <CopyButton value={full(h.webhookPath)}>{({ copied, copy }) => <Button size="compact-xs" variant="subtle" onClick={copy}>{copied ? "Copied" : "Copy"}</Button>}</CopyButton>
           <ActionIcon size="sm" variant="subtle" color="red" onClick={() => api.deleteCloneHook(stackId, h.token).then(load).catch(toastErr)} aria-label="Delete"><IconX size={14} /></ActionIcon>
         </Group>
@@ -234,6 +248,11 @@ function CloneHooksCard({ stackId }: { stackId: string }) {
       <MStack gap="xs" maw={420}>
         <NumberInput label="Auto-delete after (days)" description="-1 = keep forever" value={expireDays}
           onChange={v => setExpireDays(Number(v) ?? 7)} min={-1} max={365} w={220} />
+        {(data?.targets.length ?? 0) > 1 && (
+          <Select label="Clone onto" description="Where each clone is deployed — leave empty for the default target."
+            data={(data?.targets ?? []).map(t => ({ value: t.id, label: t.name }))} value={hookTarget} onChange={setHookTarget}
+            clearable w={260} />
+        )}
         {data?.npmConfigured && (
           <>
             <Switch label="Bind a domain via Nginx Proxy Manager" checked={bindDomain} onChange={e => setBindDomain(e.currentTarget.checked)} />

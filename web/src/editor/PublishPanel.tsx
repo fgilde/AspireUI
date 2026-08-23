@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Stack as MStack, Group, Button, ScrollArea, Text, Code, CopyButton, Alert, Menu, Badge, Box, Card, UnstyledButton, Anchor, LoadingOverlay, ThemeIcon, useMantineColorScheme } from "@mantine/core";
-import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink, IconDeviceDesktop, IconWorld, IconStack2, IconCheck } from "@tabler/icons-react";
+import { IconPackageExport, IconDownload, IconRocket, IconPlayerStop, IconInfoCircle, IconChevronDown, IconServer, IconExternalLink, IconCheck, IconArrowsExchange, IconAlertTriangle } from "@tabler/icons-react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
 import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import JSZip from "jszip";
 import { useEditor } from "./DockLayout";
-import type { PublishResult, DeployResult } from "../model";
+import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
+import type { PublishResult, DeployResult, DeployTarget } from "../model";
 import type { PublishTarget } from "../api";
 import * as api from "../api";
 
@@ -39,11 +40,17 @@ function langFor(name: string | null): string {
   return "yaml";
 }
 
-const DEPLOY_TARGETS = [
-  { id: "local", label: "This machine", hint: "Docker on the machine AspireUI runs on.", enabled: true, icon: IconDeviceDesktop },
-  { id: "remote", label: "Remote host", hint: "A Docker host over SSH.", enabled: false, icon: IconWorld },
-  { id: "swarm", label: "Cluster / Swarm", hint: "A multi-node cluster.", enabled: false, icon: IconStack2 },
-];
+// Where a target can be reached, in one line for the tile under it.
+function targetHint(t: DeployTarget): string {
+  if (t.kind === "local") return "Docker on the machine AspireUI runs on.";
+  if (t.kind === "ssh") return `Docker over ssh on ${t.ssh?.user}@${t.ssh?.host}.`;
+  if (t.kind === "dockerTcp") return `Docker over TCP at ${t.dockerHost}.`;
+  if (t.kind === "k8s") return `Helm release in ${t.kube?.namespace ?? "default"}${t.kube?.context ? ` on ${t.kube.context}` : ""}.`;
+  if (t.kind === "aca") return `Azure Container Apps in ${t.cloud?.resourceGroup ?? "?"}.`;
+  if (t.kind === "cloudrun") return `Cloud Run in ${t.cloud?.project ?? "?"} (${t.cloud?.location ?? "?"}).`;
+  if (t.kind === "ecs") return `ECS Fargate on ${t.cloud?.cluster ?? "?"}.`;
+  return t.host;
+}
 
 export function PublishPanel() {
   const { stack, deployToHosting, stopHosting, hostingBusy } = useEditor();
@@ -54,6 +61,13 @@ export function PublishPanel() {
   const [target, setTarget] = useState<PublishTarget>("compose");
   const [pickTarget, setPickTarget] = useState(false);
   const [deployTarget, setDeployTarget] = useState("local");
+  const [targets, setTargets] = useState<DeployTarget[]>([]);
+  const [moving, setMoving] = useState(false);
+  useEffect(() => {
+    api.listTargets()
+      .then(list => { setTargets(list); setDeployTarget(list.find(t => t.default)?.id ?? "local"); })
+      .catch(() => setTargets([]));
+  }, []);
   const dep = stack.deployment;
   const depColor = dep?.state === "running" ? "green" : dep?.state === "failed" ? "red" : dep?.state === "deploying" ? "yellow" : "gray";
 
@@ -95,6 +109,10 @@ export function PublishPanel() {
           <Box p="sm">
           {dep ? (
             <MStack gap={8}>
+              <Group gap={6}>
+                {targetIcon(dep.targetKind ?? "local")}
+                <Text size="xs" c="dimmed">runs on <b>{dep.targetName ?? "This machine"}</b></Text>
+              </Group>
               {dep.urls.length > 0 && (
                 <Group gap={8}>{dep.urls.map(u => <Anchor key={u} href={u} target="_blank" size="xs">{u} <IconExternalLink size={10} /></Anchor>)}</Group>
               )}
@@ -107,35 +125,51 @@ export function PublishPanel() {
                 {dep.state === "running" || dep.state === "deploying"
                   ? <Button size="xs" color="orange" variant="light" leftSection={<IconPlayerStop size={14} />} onClick={() => void stopHosting()}>Stop</Button>
                   : <Button size="xs" color="teal" leftSection={<IconRocket size={14} />} onClick={() => void deployToHosting()}>Re-deploy</Button>}
+                {targets.length > 1 && (
+                  <Button size="xs" variant="default" leftSection={<IconArrowsExchange size={14} />} onClick={() => setMoving(true)}>
+                    Move or copy…
+                  </Button>
+                )}
               </Group>
             </MStack>
           ) : pickTarget ? (
             <MStack gap="xs">
               <Text size="xs" c="dimmed">Choose where to deploy:</Text>
-              <Group gap={8} grow>
-                {DEPLOY_TARGETS.map(t => {
+              <Group gap={8} grow wrap="wrap">
+                {targets.map(t => {
                   const sel = deployTarget === t.id;
+                  const unreachable = t.probe && !t.probe.ok;
                   return (
-                    <UnstyledButton key={t.id} disabled={!t.enabled} onClick={() => t.enabled && setDeployTarget(t.id)}
+                    <UnstyledButton key={t.id} onClick={() => setDeployTarget(t.id)}
                       style={{
-                        position: "relative", padding: "10px 8px", borderRadius: 8, textAlign: "center",
+                        position: "relative", padding: "10px 8px", borderRadius: 8, textAlign: "center", minWidth: 120,
                         border: `1.5px solid ${sel ? "var(--mantine-color-teal-5)" : "var(--mantine-color-default-border)"}`,
                         background: sel ? "light-dark(var(--mantine-color-teal-0), rgba(12,166,120,.12))" : "transparent",
-                        opacity: t.enabled ? 1 : .45, cursor: t.enabled ? "pointer" : "not-allowed",
                         transition: "border-color .15s, background .15s, transform .1s",
                       }}>
                       {sel && <ThemeIcon size={16} radius="xl" color="teal" style={{ position: "absolute", top: 6, right: 6 }}><IconCheck size={10} /></ThemeIcon>}
-                      <t.icon size={22} style={{ color: sel ? "var(--mantine-color-teal-6)" : "var(--mantine-color-dimmed)" }} />
-                      <Text size="xs" fw={600} mt={4}>{t.label}</Text>
-                      {!t.enabled && <Badge size="xs" variant="light" color="gray" mt={4}>soon</Badge>}
+                      <Group justify="center" gap={4}>{targetIcon(t.kind)}</Group>
+                      <Text size="xs" fw={600} mt={4}>{t.name}</Text>
+                      {t.default && <Badge size="xs" variant="light" color="teal" mt={4}>default</Badge>}
+                      {unreachable && <Badge size="xs" variant="light" color="red" mt={4}>unreachable</Badge>}
                     </UnstyledButton>
                   );
                 })}
               </Group>
-              <Text size="10px" c="dimmed">{DEPLOY_TARGETS.find(t => t.id === deployTarget)?.hint}</Text>
+              <Text size="10px" c="dimmed">
+                {targets.find(t => t.id === deployTarget) ? targetHint(targets.find(t => t.id === deployTarget)!) : ""}
+              </Text>
+              {targets.find(t => t.id === deployTarget)?.compose === false && (
+                <Alert color="yellow" variant="light" p="xs" icon={<IconAlertTriangle size={14} />}>
+                  <Text size="10px">
+                    This target has no docker socket: no host ports, no volume browser and no container
+                    shell. Volumes a stack declares do not survive a restart there.
+                  </Text>
+                </Alert>
+              )}
               <Group gap="xs" mt={2}>
                 <Button size="xs" color="teal" leftSection={<IconRocket size={14} />}
-                  onClick={() => { setPickTarget(false); void deployToHosting(); }}>Deploy now</Button>
+                  onClick={() => { setPickTarget(false); void deployToHosting(deployTarget); }}>Deploy now</Button>
                 <Button size="xs" variant="subtle" color="gray" onClick={() => setPickTarget(false)}>Cancel</Button>
               </Group>
             </MStack>
@@ -150,6 +184,12 @@ export function PublishPanel() {
           )}
           </Box>
         </Card>
+
+        {moving && dep && (
+          <MoveAppModal stackId={stack.id} name={stack.name} current={dep.targetId ?? "local"}
+            onClose={() => setMoving(false)}
+            onDone={() => { setMoving(false); api.listTargets().then(setTargets).catch(() => undefined); }} />
+        )}
 
         <Text size="xs" c="dimmed" fw={600} mt={4}>Or export / publish artifacts</Text>
         <Group gap={0} wrap="nowrap">

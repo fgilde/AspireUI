@@ -33,7 +33,7 @@ export interface EditorState {
   diagnostics: CodeDiagnostic[];
   showPanel: (id: string) => void;
   flashSignal: { id: string; n: number };
-  deployToHosting: () => Promise<void>;
+  deployToHosting: (targetId?: string) => Promise<void>;
   stopHosting: () => Promise<void>;
   hostingBusy: boolean;
 }

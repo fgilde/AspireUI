@@ -57,7 +57,48 @@ export interface Deployment {
   domains?: string[] | null;
   health?: "ok" | "starting" | "unhealthy" | "failing" | "unknown" | null;
   healthDetail?: string | null;
+  // Where it runs. Missing means "this machine" — every app deployed before targets existed.
+  targetId?: string | null;
+  targetName?: string | null;
+  targetKind?: string | null;
+  targetCompose?: boolean | null;
 }
+
+// A place to deploy to. "local" always exists and cannot be removed.
+export interface TargetProbe {
+  ok: boolean; error?: string | null; version?: string | null; compose?: string | null;
+  arch?: string | null; os?: string | null; diskFreeMb?: number | null; checkedAt?: string | null;
+}
+export interface DeployTarget {
+  id: string; name: string; kind: string; default: boolean;
+  publicHost?: string | null; portFrom: number; portTo: number; notes?: string | null;
+  createdAt?: string | null; updatedAt?: string | null;
+  probe?: TargetProbe | null;
+  isLocal: boolean; compose: boolean; host: string; deployments: number;
+  ssh?: { host: string; port: number; user: string; hasKey: boolean; hasHostKey: boolean } | null;
+  dockerHost?: string | null;
+  tls?: { hasCa: boolean; hasCert: boolean; hasKey: boolean } | null;
+  kube?: { context?: string | null; namespace?: string | null; hasKubeconfig: boolean; ingressClass?: string | null; storageClass?: string | null } | null;
+  cloud?: {
+    subscriptionId?: string | null; resourceGroup?: string | null; location?: string | null;
+    project?: string | null; cluster?: string | null; environment?: string | null;
+    subnets?: string | null; securityGroups?: string | null; executionRoleArn?: string | null;
+    assignPublicIp?: boolean | null; hasCredentials: boolean;
+  } | null;
+  provider?: { kind: string; region?: string | null; serverId?: string | null; serverType?: string | null; hasCredentials: boolean } | null;
+  registry?: { url?: string | null; user?: string | null; hasPassword: boolean } | null;
+  domains: {
+    kind: string;
+    npm?: { baseUrl: string; email: string; forwardHost: string; hasPassword: boolean } | null;
+    azure?: { resourceGroup?: string | null; environment?: string | null; subscriptionId?: string | null } | null;
+  };
+}
+
+export interface TargetKindInfo { kind: string; compose: boolean; cli: string; label: string }
+
+// Only compose targets have host ports, a volume browser and a container shell.
+export const targetIsCompose = (t?: DeployTarget | null) => t?.compose !== false;
+export const targetLabel = (t: DeployTarget) => t.name + (t.default ? " (default)" : "");
 
 // A deployment whose containers crash-loop or report unhealthy is "running" for compose but broken for
 // the user — the overview shows that instead of a green light.

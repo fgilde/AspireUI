@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, Stack as MStack } from "@mantine/core";
-import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub } from "@tabler/icons-react";
-import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice } from "../model";
+import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, MultiSelect, Stack as MStack } from "@mantine/core";
+import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub, IconCloud } from "@tabler/icons-react";
+import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice, DeployTarget } from "../model";
 import { buildPresetNodes, instantiateSnippet } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { AppInfoModal, type AppInfo } from "../components/AppInfoModal";
@@ -83,8 +83,16 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   const [gitOpen, setGitOpen] = useState(false);
   const [domainFor, setDomainFor] = useState<Deployment | null>(null);
   const [npm, setNpm] = useState(false);
+  const [targets, setTargets] = useState<DeployTarget[]>([]);
+  const [targetIds, setTargetIds] = useState<string[]>([]);
 
   useEffect(() => { api.npmConfigured().then(r => setNpm(r.configured)).catch(() => {}); }, []);
+  useEffect(() => {
+    api.listTargets().then(list => {
+      setTargets(list);
+      setTargetIds([list.find(t => t.default)?.id ?? "local"]);
+    }).catch(() => setTargets([]));
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -109,10 +117,17 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
 
   const done = () => { onInstalled(); onClose(); };
 
+  // One install, one deployment per chosen target: the first goes to the stack we just created, every
+  // other target gets its own copy of it (an independent instance with its own data and domain).
   const deployThen = async (stackId: string, label: string) => {
-    const dep = await api.hostingDeploy(stackId);
-    toastOk(`Installing ${label}…`);
-    if (npm) { setDomainFor(dep); onInstalled(); } else done();
+    const chosen = targetIds.length > 0 ? targetIds : [undefined];
+    const dep = await api.hostingDeploy(stackId, chosen[0]);
+    for (const tid of chosen.slice(1)) {
+      try { await api.copyHosting(stackId, tid!, false); }
+      catch (e) { toastErr(e, `Could not install on ${targets.find(t => t.id === tid)?.name ?? tid}`); }
+    }
+    toastOk(chosen.length > 1 ? `Installing ${label} on ${chosen.length} targets…` : `Installing ${label}…`);
+    if (npm && chosen.length === 1) { setDomainFor(dep); onInstalled(); } else done();
   };
 
   const finishInstall = async (label: string, mk: () => Promise<{ id: string }>) => {
@@ -231,6 +246,13 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
       <Group mb="md" gap="xs" wrap="nowrap">
         <TextInput style={{ flex: 1 }} placeholder="Search apps, packages, snippets…" value={q} onChange={e => setQ(e.currentTarget.value)}
           leftSection={<IconSearch size={14} />} autoFocus />
+        {targets.length > 1 && (
+          <MultiSelect w={300} placeholder="Install to…" clearable={false}
+            data={targets.map(t => ({ value: t.id, label: t.name + (t.default ? " (default)" : "") }))}
+            value={targetIds} onChange={v => setTargetIds(v.length > 0 ? v : [targets.find(t => t.default)?.id ?? "local"])}
+            leftSection={<IconCloud size={14} />}
+            description={targetIds.length > 1 ? `${targetIds.length} independent instances` : undefined} />
+        )}
         <Tooltip label="Install any repo with a docker-compose file (or an Aspire AppHost) straight into hosting" withArrow multiline w={260}>
           <Button variant="default" leftSection={<IconBrandGithub size={16} />} loading={installing === "git"}
             onClick={() => setGitOpen(true)}>From Git</Button>

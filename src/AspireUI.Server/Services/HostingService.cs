@@ -731,6 +731,11 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         var from = TargetOf(d);
         var to = TargetById(toTargetId);
         if (from.Id == to.Id) return new MoveResult(false, $"it already runs on {to.Name}", d);
+        // Same machine under two names: the compose project is one and the same there, so "moving" would
+        // only tear the app down. Nothing to do but say so.
+        if (targets is not null && TargetKind.IsCompose(from.Kind) && TargetKind.IsCompose(to.Kind)
+            && targets.DaemonId(from) is { Length: > 0 } fromId && targets.DaemonId(to) == fromId)
+            return new MoveResult(false, $"'{from.Name}' and '{to.Name}' are the same docker daemon — the app already runs there", d);
         var log = new StringBuilder();
         var vols = VolumesOf(d.Id);
         var moveData = withData && vols.Count > 0 && TargetKind.IsCompose(from.Kind) && TargetKind.IsCompose(to.Kind);
@@ -799,6 +804,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         var toT = TargetOf(to);
         if (!TargetKind.IsCompose(fromT.Kind) || !TargetKind.IsCompose(toT.Kind))
             return new DeployResult(false, "data can only be copied between docker targets");
+        if (targets is not null && targets.DaemonId(fromT) is { Length: > 0 } sameId && targets.DaemonId(toT) == sameId
+            && from.Project == to.Project)
+            return new DeployResult(false, "source and destination are the same docker daemon and the same project");
         var vols = VolumesOf(from.Id);
         if (vols.Count == 0) return new DeployResult(true, "no volumes to copy");
         var log = new StringBuilder();

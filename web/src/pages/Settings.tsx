@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh } from "@tabler/icons-react";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
+import { TargetsSection } from "../hosting/TargetsPanel";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
 import { APP_VERSION, BUILD_INFO } from "../model";
@@ -14,12 +15,14 @@ function HostingTab() {
     <Tabs defaultValue="general" variant="outline">
       <Tabs.List mb="lg">
         <Tabs.Tab value="general" leftSection={<IconServer2 size={14} />}>General</Tabs.Tab>
+        <Tabs.Tab value="targets" leftSection={<IconCloud size={14} />}>Deploy targets</Tabs.Tab>
         <Tabs.Tab value="proxy" leftSection={<IconWorld size={14} />}>Proxy</Tabs.Tab>
         <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
         <Tabs.Tab value="backups" leftSection={<IconDatabase size={14} />}>Backups</Tabs.Tab>
         <Tabs.Tab value="sources" leftSection={<IconApps size={14} />}>App sources</Tabs.Tab>
       </Tabs.List>
       <Tabs.Panel value="general"><GeneralHostingSection /></Tabs.Panel>
+      <Tabs.Panel value="targets"><TargetsSection /></Tabs.Panel>
       <Tabs.Panel value="proxy"><MStack maw={560}><NpmSettingsSection /></MStack></Tabs.Panel>
       <Tabs.Panel value="notifications"><MStack maw={560}><NotificationsSection /></MStack></Tabs.Panel>
       <Tabs.Panel value="backups"><MStack maw={560}><AutoBackupSection /></MStack></Tabs.Panel>

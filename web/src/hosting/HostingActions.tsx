@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase } from "@tabler/icons-react";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange } from "@tabler/icons-react";
 import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -17,8 +17,8 @@ export const deploymentColor = (d?: { state: string; health?: string | null } | 
     : hostingColor(d.state);
 
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
-export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onChanged }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onChanged }: {
+  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onChanged: () => void;
 }) {
   const stop = () => { toastOk(`Stopping ${d.name}…`); api.stopHosting(d.stackId).then(onChanged).catch(toastErr); };
   const start = () => { toastOk(`${d.state === "failed" ? "Retrying" : "Starting"} ${d.name}…`); api.startHosting(d.stackId).then(onChanged).catch(toastErr); };
@@ -45,7 +45,9 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, o
       {onTerminal && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
       <Menu.Item leftSection={<IconSearch size={14} />} onClick={checkUpdates}>Check for updates</Menu.Item>
       <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
-      {onFiles && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
+      {/* A target without a docker socket has no volumes to browse and no compose shell. */}
+      {onFiles && d.targetCompose !== false && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
+      {onMove && <Menu.Item leftSection={<IconArrowsExchange size={14} />} onClick={onMove}>Move or copy to another target…</Menu.Item>}
       {onBackups && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}

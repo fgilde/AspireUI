@@ -22,6 +22,7 @@ import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 import { stackContainers } from "./Hosting";
 import { InstallAppModal } from "../hosting/InstallAppModal";
+import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
 import { GitImportModal } from "../hosting/GitImportModal";
 import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
@@ -93,6 +94,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const [terminalFor, setTerminalFor] = useState<Deployment | null>(null);
   const [filesFor, setFilesFor] = useState<Deployment | null>(null);
   const [installOpen, setInstallOpen] = useState(false);
+  const [moveFor, setMoveFor] = useState<Deployment | null>(null);
   const [gitOpen, setGitOpen] = useState(false);
   const [importLocal, setImportLocal] = useState<{ name: string; sources: Src[] } | null>(null);
   const [readProg, setReadProg] = useState<{ label: string; done: number; total: number } | null>(null);
@@ -434,6 +436,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           </Badge>
                         </Tooltip>
                       )}
+                      {dep && dep.targetId && dep.targetId !== "local" && (
+                        <Tooltip label={`Runs on ${dep.targetName}`} withArrow>
+                          <Badge size="xs" variant="default" leftSection={targetIcon(dep.targetKind ?? "ssh")}>{dep.targetName}</Badge>
+                        </Tooltip>
+                      )}
                       <Menu position="bottom-end" withArrow>
                         <Menu.Target>
                           <ActionIcon variant="subtle" color="gray" aria-label={`Actions for ${s.name}`}
@@ -447,6 +454,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                               <HostingMenuItems d={dep} canEdit={canEdit} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
                                 onBackups={() => setBackupsFor(dep)} onDomain={() => setDomainFor(dep)}
                                 onTerminal={isAdmin ? () => setTerminalFor(dep) : undefined} onFiles={isAdmin ? () => setFilesFor(dep) : undefined}
+                                onMove={isAdmin ? () => setMoveFor(dep) : undefined}
                                 onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
                               <Menu.Divider />
                               {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
@@ -697,6 +705,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
       {terminalFor && <TerminalModal d={terminalFor} onClose={() => setTerminalFor(null)} />}
       {filesFor && <VolumesModal d={filesFor} onClose={() => setFilesFor(null)} />}
       {installOpen && <InstallAppModal onClose={() => setInstallOpen(false)} onInstalled={() => { load(); loadDeps(); }} />}
+      {moveFor && (
+        <MoveAppModal stackId={moveFor.stackId} name={moveFor.name} current={moveFor.targetId ?? "local"}
+          onClose={() => setMoveFor(null)} onDone={() => { setMoveFor(null); load(); loadDeps(); }} />
+      )}
       {gitOpen && <GitImportModal onClose={() => setGitOpen(false)} onImported={(id) => { setGitOpen(false); load(); nav(`/editor/${id}`); }} />}
       {importLocal && <GitImportModal local={importLocal} onClose={() => setImportLocal(null)} onImported={(id) => { setImportLocal(null); load(); nav(`/editor/${id}`); }} />}
       <Modal opened={readProg !== null} onClose={() => {}} withCloseButton={false} closeOnClickOutside={false} title="Reading files…" size="md" centered>

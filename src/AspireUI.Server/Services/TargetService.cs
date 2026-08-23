@@ -185,7 +185,7 @@ public class TargetService(TargetStore targets, SecretStore secrets, string work
                         server = cv.GetString();
                 }
                 catch { }
-                var info = runner.Info("{{.OperatingSystem}}|{{.Architecture}}|{{.ServerVersion}}");
+                var info = runner.Info("{{.OperatingSystem}}|{{.Architecture}}|{{.ServerVersion}}|{{.ID}}");
                 var parts = (info.Ok ? info.Log : "").Split('|');
                 var compose = runner.ComposeVersion();
                 return new TargetProbe(true, null,
@@ -194,7 +194,8 @@ public class TargetService(TargetStore targets, SecretStore secrets, string work
                     Arch: parts.Length > 1 ? Normalize(parts[1]) : null,
                     Os: parts.Length > 0 ? parts[0].Trim() : null,
                     DiskFreeMb: DiskFreeMb(runner),
-                    CheckedAt: now);
+                    CheckedAt: now,
+                    DaemonId: parts.Length > 3 ? parts[3].Trim() : null);
             }
             if (t.Kind == TargetKind.K8s)
             {
@@ -265,6 +266,16 @@ public class TargetService(TargetStore targets, SecretStore secrets, string work
 
     private static string FirstLine(string s) =>
         s.Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim() ?? "failed";
+
+    // Which docker daemon a target really talks to. Two targets can point at the same machine (local and
+    // an ssh alias for it, say), and moving an app "between" them would tear down what it just started.
+    public string? DaemonId(DeployTarget t)
+    {
+        if (!TargetKind.IsCompose(t.Kind)) return null;
+        if (t.Probe?.DaemonId is { Length: > 0 } known) return known;
+        var r = Runner(t).Info("{{.ID}}");
+        return r.Ok && r.Log.Trim() is { Length: > 0 } id ? id : null;
+    }
 
     // Host ports already in use on the target, read from the daemon itself.
     public ISet<int> UsedPortsOn(DeployTarget t)

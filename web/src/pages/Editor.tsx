@@ -169,10 +169,10 @@ export function Editor() {
     toastOk("Editing unlocked — the code now regenerates from the graph");
   };
   const [hostingBusy, setHostingBusy] = useState(false);
-  const deployToHosting = useCallback(async () => {
+  const deployToHosting = useCallback(async (targetId?: string) => {
     if (!stack) return;
     setHostingBusy(true);
-    try { await api.hostingDeploy(stack.id); setStackState(await api.getStack(stack.id)); toastOk("Deployed to hosting"); }
+    try { await api.hostingDeploy(stack.id, targetId); setStackState(await api.getStack(stack.id)); toastOk("Deployed to hosting"); }
     catch (e) { toastErr(e); }
     finally { setHostingBusy(false); }
   }, [stack?.id]);
