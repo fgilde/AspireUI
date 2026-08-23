@@ -48,7 +48,8 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, o
       {/* A target without a docker socket has no volumes to browse and no compose shell. */}
       {onFiles && d.targetCompose !== false && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
       {onMove && <Menu.Item leftSection={<IconArrowsExchange size={14} />} onClick={onMove}>Move or copy to another target…</Menu.Item>}
-      {onBackups && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
+      {/* Backups are volume snapshots: an orchestrator target has none to take. */}
+      {onBackups && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       <Menu.Divider />
