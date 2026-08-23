@@ -38,7 +38,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS runtime
 ARG COMPOSE_VERSION=v2.32.4
 ARG TARGETARCH
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io unzip \
+    && apt-get install -y --no-install-recommends docker.io unzip openssh-client \
     && rm -rf /var/lib/apt/lists/* \
     # docker.io ships the CLI but NOT the compose v2 plugin — drop the plugin binary in.
     && mkdir -p /usr/local/lib/docker/cli-plugins \
@@ -67,6 +67,25 @@ RUN case "${TARGETARCH:-amd64}" in \
     && chmod +x /usr/local/bin/aspire \
     && rm /tmp/aspire-cli.nupkg \
     && aspire --version
+
+# kubectl + helm for Kubernetes deploy targets. The hyperscaler CLIs (az, aws, gcloud) are hundreds of
+# megabytes each and are NOT bundled: a Container Apps / Cloud Run / ECS target needs its CLI mounted or
+# installed in a derived image, and that target's connection test says so plainly.
+ARG KUBECTL_VERSION=v1.31.4
+ARG HELM_VERSION=v3.16.3
+RUN case "${TARGETARCH:-amd64}" in \
+      amd64) K8S_ARCH=amd64 ;; \
+      arm64) K8S_ARCH=arm64 ;; \
+      *) echo "unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && curl -fSL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${K8S_ARCH}/kubectl" -o /usr/local/bin/kubectl \
+    && chmod +x /usr/local/bin/kubectl \
+    && curl -fSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${K8S_ARCH}.tar.gz" -o /tmp/helm.tgz \
+    && tar -xzf /tmp/helm.tgz -C /tmp \
+    && mv "/tmp/linux-${K8S_ARCH}/helm" /usr/local/bin/helm \
+    && rm -rf /tmp/helm.tgz "/tmp/linux-${K8S_ARCH}" \
+    && kubectl version --client=true --output=yaml >/dev/null \
+    && helm version --short
 
 WORKDIR /app
 COPY --from=build /app .

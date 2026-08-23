@@ -28,7 +28,8 @@ public class BackupSchedulerService : BackgroundService
 
         var retain = int.TryParse(settings.GetValue("BackupRetain"), out var r) && r > 0 ? r : 7;
         var store = new DeploymentStore(Db());
-        var hosting = new HostingService(store, new PublishService(new CodeGenService()), new DeployService());
+        var targets = TargetService.FromEnvironment();
+        var hosting = new HostingService(store, new PublishService(new CodeGenService()), new DeployService(), targets: targets);
         foreach (var d in store.List().Where(d => d.State == "running"))
         {
             try

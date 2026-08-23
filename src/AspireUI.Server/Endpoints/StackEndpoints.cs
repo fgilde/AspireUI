@@ -43,10 +43,19 @@ public static class StackEndpoints
         var assist = new AssistService(chatClient, catalog);
         var wsRoot = Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(dataDir, "workspace");
         var proxy = new ProxyService(deploy, Path.Combine(wsRoot, "_proxy"), Environment.GetEnvironmentVariable("HOSTING_BASE_DOMAIN") ?? "localhost");
-        var hosting = new HostingService(deployments, publish, deploy, proxy);
+        var dbFile = Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db");
+        var secrets = new SecretStore(dbFile, dataDir);
+        var targetStore = new TargetStore(dbFile);
+        var targets = new TargetService(targetStore, secrets, wsRoot);
+        var provision = new ProvisionService(targetStore, targets, secrets);
+        var orchestrator = new OrchestratorService(deployments, publish, targets, secrets);
+        var domains = new DomainService(targetStore, secrets, settings);
+        domains.MigrateGlobalNpm();
+        var hosting = new HostingService(deployments, publish, deploy, proxy, targets, orchestrator);
         _ = Task.Run(hosting.ReconcileOnStartup);
 
         var app2 = app.MapGroup("/api").RequireAuthorization();
+        app2.MapTargetEndpoints(targetStore, targets, secrets, deployments, provision);
         var docker = new DockerService(deploy);
         var devProxy = new DevProxyService(deploy);
         var dockerGrp = app2.MapGroup("/docker").RequireAuthorization(p => p.RequireRole("Admin"));
@@ -250,8 +259,8 @@ public static class StackEndpoints
             RemoveAllDomainHosts(id);
             if (settings.GetValue($"clonedomain:{id}") is { } pidRaw && int.TryParse(pidRaw, out var proxyId))
             {
-                var c = NpmCfg();
-                if (c.Enabled) { try { NpmService.DeleteAsync(c, proxyId).GetAwaiter().GetResult(); } catch { } }
+                var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
+                try { domains.DeleteAsync(t, proxyId).GetAwaiter().GetResult(); } catch { }
                 settings.SetValue($"clonedomain:{id}", null);
             }
             store.Delete(id);
@@ -567,18 +576,19 @@ public static class StackEndpoints
         void RemoveDomainHost(string id, int proxyId) { var ids = DomainHosts(id); if (ids.Remove(proxyId)) SaveDomainHosts(id, ids); }
         void RemoveAllDomainHosts(string id)
         {
-            var c = NpmCfg();
-            foreach (var pid in DomainHosts(id)) if (c.Enabled) { try { NpmService.DeleteAsync(c, pid).GetAwaiter().GetResult(); } catch { } }
+            var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
+            foreach (var pid in DomainHosts(id)) { try { domains.DeleteAsync(t, pid).GetAwaiter().GetResult(); } catch { } }
             settings.SetValue($"domainhosts:{id}", null);
         }
 
         app2.MapGet("/stacks/{id}/clone-hooks", (string id) => Results.Ok(new
         {
-            npmConfigured = NpmCfg().Enabled,
+            npmConfigured = targetStore.List().Any(t => domains.Configured(t)),
+            targets = targetStore.List().Select(t => new { t.Id, t.Name, domains = domains.Configured(t) }),
             hooks = CloneHookTokens(id).Select(tok =>
             {
                 var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(settings.GetValue($"clonehook:{tok}") ?? "{}", gitJson)!;
-                return new { token = tok, cfg.ExpireDays, cfg.BindDomain, cfg.DomainFormat, webhookPath = $"/api/clone-hook/{tok}" };
+                return new { token = tok, cfg.ExpireDays, cfg.BindDomain, cfg.DomainFormat, cfg.TargetId, webhookPath = $"/api/clone-hook/{tok}" };
             }).ToList(),
         }));
         app2.MapPost("/stacks/{id}/clone-hooks", (string id, CloneHookCfg b) =>
@@ -612,20 +622,22 @@ public static class StackEndpoints
 
             var dc = DashCfg();
             var host = PublicHost(ctx);
-            var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token, (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null);
+            var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token,
+                (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null, cfg.TargetId);
             var url = dep.Urls.FirstOrDefault();
 
             if (cfg.BindDomain && !string.IsNullOrWhiteSpace(cfg.DomainFormat))
             {
-                var c = NpmCfg();
+                var t = targetStore.Resolve(dep.TargetId);
                 var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-                if (c.Enabled && port > 0)
+                if (domains.Configured(t) && port > 0)
                 {
                     var domain = cfg.DomainFormat!.Replace("{id}", shortId)
                         .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(src.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
                     try
                     {
-                        var pr = await NpmService.UpsertAsync(c, null, new List<string> { domain }, "http", ForwardHost(ctx), port, true);
+                        var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
+                            domains.ForwardHost(t, host), port, true, false, 0);
                         settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
                         url = $"http://{domain}";
                     }
@@ -883,12 +895,15 @@ public static class StackEndpoints
         // Admin-controlled: host the Aspire dashboard with each deployment? + a browser token so AspireUI
         // can hand out a one-click login link.
         (bool Host, string? Token) DashCfg() => ((settings.GetValue("HostDashboard") ?? "false") == "true", settings.GetValue("DashboardToken"));
-        app2.MapPost("/stacks/{id}/hosting/deploy", (string id, HttpContext ctx) =>
+        app2.MapPost("/stacks/{id}/hosting/deploy", (string id, HttpContext ctx, HostingDeployRequest? body) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
+            if (body?.TargetId is { Length: > 0 } tid && targetStore.Get(tid) is null)
+                return Results.BadRequest(new { message = $"unknown deploy target '{tid}'" });
             gen.Materialize(s, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null));
+            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token,
+                (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, body?.TargetId));
         });
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
@@ -921,12 +936,13 @@ public static class StackEndpoints
         app2.MapPost("/stacks/{id}/hosting/check-updates", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
-            var images = deploy.ConfigImages(d.ComposeDir, d.Project).Log
+            var runner = targets.Runner(d.TargetId);
+            var images = runner.ConfigImages(d.ComposeDir, d.Project).Log
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Where(x => !x.Contains(' ') && (x.Contains('/') || x.Contains(':'))).Distinct().ToList();
             var results = images.Select(img =>
             {
-                var pull = deploy.Docker(d.ComposeDir, $"pull {img}");
+                var pull = runner.Docker(d.ComposeDir, $"pull {img}");
                 return new { image = img, updateAvailable = pull.Log.Contains("Downloaded newer image", StringComparison.OrdinalIgnoreCase) };
             }).ToList();
             return Results.Ok(new { images = results, anyUpdate = results.Any(r => r.updateAvailable) });
@@ -979,18 +995,24 @@ public static class StackEndpoints
             {
                 if (string.IsNullOrWhiteSpace(b.Service) || !System.Text.RegularExpressions.Regex.IsMatch(b.Service, @"^[A-Za-z0-9][A-Za-z0-9._-]*$"))
                     return Results.BadRequest(new { message = "pick a compose service" });
-                var one = deploy.RunOneOff(d.ComposeDir, d.Project, b.Service!, b.Cmd);
+                var one = targets.Runner(d.TargetId).RunOneOff(d.ComposeDir, d.Project, b.Service!, b.Cmd);
                 return Results.Ok(new { ok = one.Ok, output = one.Log });
+            }
+            // An orchestrator target has no container names: the shell goes through its own tool.
+            if (hosting.IsOrchestrated(d))
+            {
+                var k = orchestrator.Exec(d, b.Cmd);
+                return Results.Ok(new { ok = k.Ok, output = k.Log });
             }
             if (string.IsNullOrWhiteSpace(b.Container) || !b.Container.StartsWith(d.Project, StringComparison.Ordinal))
                 return Results.BadRequest(new { message = "container is not part of this app" });
-            var r = deploy.Exec(b.Container, b.Cmd);
+            var r = targets.Runner(d.TargetId).Exec(b.Container, b.Cmd);
             return Results.Ok(new { ok = r.Ok, output = r.Log });
         }).RequireAuthorization(p => p.RequireRole("Admin"));
         // Compose services of an app, running or not — the terminal needs them for a one-off repair container.
         app2.MapGet("/hosting/{id}/compose-services", (string id) =>
             deployments.Get(id) is { } d
-                ? Results.Ok(deploy.Docker(d.ComposeDir, $"compose -p {d.Project} config --services").Log
+                ? Results.Ok(targets.Runner(d.TargetId).Docker(d.ComposeDir, $"compose -p {d.Project} config --services").Log
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())
                     .Where(s => s.Length > 0 && !s.Contains(' ') && !s.Contains("dashboard")).ToList())
                 : Results.NotFound()).RequireAuthorization(p => p.RequireRole("Admin"));
@@ -1013,6 +1035,47 @@ public static class StackEndpoints
             var dc = DashCfg();
             return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, (updated.FromGit || updated.HasSource) ? Path.GetFullPath(Dir(id)) : null));
         });
+        // Move an app to another target: data goes with it unless asked otherwise.
+        app2.MapPost("/stacks/{id}/hosting/move", (string id, MoveRequest b, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            if (deployments.GetByStack(id) is null) return Results.Conflict(new { message = "this stack is not deployed" });
+            if (targetStore.Get(b.TargetId) is null) return Results.BadRequest(new { message = $"unknown target '{b.TargetId}'" });
+            gen.Materialize(s, Dir(id));
+            var dc = DashCfg();
+            var r = hosting.Move(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token,
+                (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, b.TargetId, b.WithData);
+            return r.Ok ? Results.Ok(new { r.Ok, r.Log, deployment = r.Deployment })
+                : Results.BadRequest(new { message = r.Log, deployment = r.Deployment });
+        });
+
+        // Copy an app to another target: a second, independent instance (its own stack, its own data).
+        app2.MapPost("/stacks/{id}/hosting/copy", (string id, MoveRequest b, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } src) return Results.NotFound();
+            if (targetStore.Get(b.TargetId) is not { } t) return Results.BadRequest(new { message = $"unknown target '{b.TargetId}'" });
+            var srcDep = deployments.GetByStack(id);
+            var newId = Guid.NewGuid().ToString("n");
+            var clone = src with
+            {
+                Id = newId,
+                Name = $"{src.Name} @ {t.Name}",
+                CreatedAt = DateTime.UtcNow.ToString("O"),
+                CreatedBy = "copy",
+                ClonedFrom = src.Id,
+            };
+            try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
+            store.Save(clone);
+            gen.Materialize(clone, Dir(newId));
+            var dc = DashCfg();
+            var dep = hosting.Deploy(clone, PublishRoot(newId), PublicHost(ctx), dc.Host, dc.Token,
+                (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null, t.Id);
+            var log = "";
+            if (b.WithData && srcDep is not null && dep.State != "failed")
+                log = hosting.CopyData(srcDep, dep).Log;
+            return Results.Ok(new { stackId = newId, deployment = dep, log });
+        });
+
         app2.MapGet("/hosting/dashboard-settings", (HttpContext ctx) => Results.Ok(new
         {
             hostDashboard = (settings.GetValue("HostDashboard") ?? "false") == "true",
@@ -1030,29 +1093,45 @@ public static class StackEndpoints
             return Results.NoContent();
         }).RequireAuthorization(p => p.RequireRole("Admin"));
 
-        NpmConfig NpmCfg() => new(
-            (settings.GetValue("NpmEnabled") ?? "false") == "true",
-            settings.GetValue("NpmBaseUrl") ?? "", settings.GetValue("NpmEmail") ?? "",
-            settings.GetValue("NpmPassword") ?? "", settings.GetValue("NpmForwardHost") ?? "");
-        app2.MapGet("/hosting/npm-configured", () => Results.Ok(new { configured = NpmCfg().Enabled }));
-        app2.MapGet("/hosting/npm-settings", () => { var c = NpmCfg(); return Results.Ok(new
+        // Kept at their old paths, now backed by the local target's domain configuration: "this machine"
+        // is a target like any other, and its Nginx Proxy Manager lives with it.
+        DeployTarget LocalTarget() => targetStore.Resolve(DeployTarget.LocalId);
+        app2.MapGet("/hosting/npm-configured", () => Results.Ok(new
         {
-            enabled = c.Enabled, baseUrl = c.BaseUrl, email = c.Email,
-            hasPassword = !string.IsNullOrEmpty(c.Password),
-        }); }).RequireAuthorization(p => p.RequireRole("Admin"));
+            configured = domains.Configured(LocalTarget()),
+            anyTarget = targetStore.List().Any(t => domains.Configured(t)),
+            targets = targetStore.List().Count,
+        }));
+        app2.MapGet("/hosting/npm-settings", () =>
+        {
+            var t = LocalTarget();
+            var n = t.Domains?.Npm;
+            return Results.Ok(new
+            {
+                enabled = domains.KindOf(t) == DomainService.KindNpm,
+                baseUrl = n?.BaseUrl ?? "", email = n?.Email ?? "",
+                hasPassword = !string.IsNullOrEmpty(n?.PasswordRef),
+                forwardHost = n?.ForwardHost ?? "",
+            });
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPut("/hosting/npm-settings", (NpmSettingsRequest b) =>
         {
-            settings.SetValue("NpmEnabled", b.Enabled ? "true" : "false");
-            settings.SetValue("NpmBaseUrl", b.BaseUrl ?? "");
-            settings.SetValue("NpmEmail", b.Email ?? "");
-            if (b.Password is not null) settings.SetValue("NpmPassword", b.Password);
-            settings.SetValue("NpmForwardHost", b.ForwardHost ?? "");
+            var t = LocalTarget();
+            var cur = t.Domains?.Npm;
+            var pwRef = b.Password is { Length: > 0 } ? secrets.Replace(cur?.PasswordRef, b.Password, "npm password (this machine)") : cur?.PasswordRef;
+            targetStore.Upsert(t with
+            {
+                Domains = new TargetDomains(b.Enabled ? DomainService.KindNpm : DomainService.KindNone,
+                    new TargetNpm(b.BaseUrl ?? cur?.BaseUrl ?? "", b.Email ?? cur?.Email ?? "", pwRef,
+                        b.ForwardHost ?? cur?.ForwardHost ?? "")),
+            });
             return Results.NoContent();
         }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPost("/hosting/npm/test", async (NpmSettingsRequest b) =>
         {
-            var c = new NpmConfig(true, b.BaseUrl ?? "", b.Email ?? "", b.Password ?? (settings.GetValue("NpmPassword") ?? ""), b.ForwardHost ?? "");
-            var (ok, error) = await NpmService.TestAsync(c);
+            var cur = LocalTarget().Domains?.Npm;
+            var pw = b.Password is { Length: > 0 } ? b.Password : secrets.Resolve(cur?.PasswordRef) ?? "";
+            var (ok, error) = await NpmService.TestAsync(new NpmConfig(true, b.BaseUrl ?? "", b.Email ?? "", pw, b.ForwardHost ?? ""));
             return Results.Ok(new { ok, error });
         }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapGet("/hosting/backup-settings", () => Results.Ok(new
@@ -1095,74 +1174,77 @@ public static class StackEndpoints
         app2.MapGet("/stacks/{id}/hosting/domain", async (string id, HttpContext ctx) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
-            var c = NpmCfg();
-            if (!c.Enabled || string.IsNullOrWhiteSpace(c.BaseUrl)) return Results.Ok(new { configured = false });
+            var t = targetStore.Resolve(d.TargetId);
+            if (!domains.Configured(t))
+                return Results.Ok(new { configured = false, kind = domains.KindOf(t), target = t.Name });
             var port = (d.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-            var fwdHost = ForwardHost(ctx);
+            var fwdHost = domains.ForwardHost(t, PublicHost(ctx));
             NpmProxyHost? existing = null; string? error = null;
-            try { existing = (await NpmService.ListAsync(c)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
+            try { existing = (await domains.ListAsync(t, cached: false)).FirstOrDefault(h => port > 0 && h.ForwardPort == port); }
             catch (Exception e) { error = e.Message; }
             return Results.Ok(new
             {
-                configured = true, error,
+                configured = true, error, kind = domains.KindOf(t), target = t.Name,
+                manual = domains.KindOf(t) == DomainService.KindManual,
                 proposal = new { forwardHost = fwdHost, forwardPort = port, scheme = "http", websockets = true },
                 existing,
             });
         });
         app2.MapPut("/stacks/{id}/hosting/domain", async (string id, DomainRequest b) =>
         {
-            if (deployments.GetByStack(id) is null) return Results.NotFound();
-            var c = NpmCfg();
-            if (!c.Enabled) return Results.BadRequest(new { message = "Nginx Proxy Manager isn't configured (Settings → Hosting)." });
+            if (deployments.GetByStack(id) is not { } dep) return Results.NotFound();
+            var t = targetStore.Resolve(dep.TargetId);
+            if (!domains.Configured(t))
+                return Results.BadRequest(new { message = $"'{t.Name}' has no domain provider configured (Settings → Deploy targets)." });
             try
             {
-                var list = b.DomainNames ?? new();
-                var certId = b.CertificateId;
-                if (b.Ssl && certId <= 0)
-                {
-                    if (string.IsNullOrWhiteSpace(c.Email)) return Results.BadRequest(new { message = "Set the NPM account email (Settings → Hosting) — Let's Encrypt needs it." });
-                    certId = await NpmService.RequestCertAsync(c, list, c.Email);
-                }
-                var pr = await NpmService.UpsertAsync(c, b.Id, list, b.Scheme ?? "http", b.ForwardHost, b.ForwardPort, b.Websockets, certId, b.Ssl && certId > 0);
+                var pr = await domains.UpsertAsync(t, b.Id, b.DomainNames ?? new(), b.Scheme ?? "http",
+                    b.ForwardHost, b.ForwardPort, b.Websockets, b.Ssl, b.CertificateId);
                 AddDomainHost(id, pr.Id);
                 return Results.Ok(pr);
             }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
-        app2.MapDelete("/stacks/{id}/hosting/domain/{proxyId:int}", async (string id, int proxyId) =>
+        app2.MapDelete("/stacks/{id}/hosting/domain/{proxyId:int}", async (string id, int proxyId, string? hostname) =>
         {
-            var c = NpmCfg();
-            if (!c.Enabled) return Results.BadRequest(new { message = "Nginx Proxy Manager isn't configured." });
-            try { await NpmService.DeleteAsync(c, proxyId); RemoveDomainHost(id, proxyId); return Results.NoContent(); }
+            var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
+            try { await domains.DeleteAsync(t, proxyId, hostname); RemoveDomainHost(id, proxyId); return Results.NoContent(); }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
         app2.MapPost("/stacks/{id}/hosting/domain/{proxyId:int}/enabled", async (string id, int proxyId, EnabledRequest b) =>
         {
-            var c = NpmCfg();
-            if (!c.Enabled) return Results.BadRequest(new { message = "Nginx Proxy Manager isn't configured." });
-            try { await NpmService.SetEnabledAsync(c, proxyId, b.Enabled); return Results.NoContent(); }
+            var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
+            try { await domains.SetEnabledAsync(t, proxyId, b.Enabled); return Results.NoContent(); }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         });
 
+        // Every target answers for its own apps: its own proxy for domains, and its own address for
+        // URLs — rewriting a remote app's URL to the request host would point at the wrong machine.
         app2.MapGet("/hosting", async (HttpContext ctx) =>
         {
             var host = PublicHost(ctx);
-            var c = NpmCfg();
-            var proxyHosts = new List<NpmProxyHost>();
-            if (c.Enabled && !string.IsNullOrWhiteSpace(c.BaseUrl))
-                try { proxyHosts = await NpmService.ListCachedAsync(c); } catch { }
-            return Results.Ok(deployments.List().Select(d => hosting.Refresh(d.Id) ?? d)
-                .Select(d => d with
+            var list = deployments.List().Select(d => hosting.Refresh(d.Id) ?? d).ToList();
+            var hostsByTarget = new Dictionary<string, List<NpmProxyHost>>();
+            foreach (var tid in list.Select(d => d.Target).Distinct())
+                hostsByTarget[tid] = await domains.ListAsync(targetStore.Resolve(tid));
+            return Results.Ok(list.Select(d =>
+            {
+                var t = targetStore.Resolve(d.TargetId);
+                return d with
                 {
-                    Urls = d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList(),
-                    Domains = HostingService.DomainUrls(proxyHosts, d),
-                }));
+                    Urls = t.IsLocal ? d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList() : d.Urls,
+                    Domains = HostingService.DomainUrls(hostsByTarget.GetValueOrDefault(d.Target) ?? new(), d),
+                    TargetName = t.Name, TargetKind = t.Kind, TargetCompose = TargetKind.IsCompose(t.Kind),
+                };
+            }));
         });
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
             if (deployments.Get(id) is not { } d) { ctx.Response.StatusCode = 404; return; }
             ctx.Response.Headers.Append("Content-Type", "text/event-stream");
-            var logs = deploy.Logs(d.ComposeDir, d.Project);
+            var logs = hosting.IsOrchestrated(d)
+                ? orchestrator.Logs(d)
+                : targets.Runner(d.TargetId).Logs(d.ComposeDir, d.Project);
             foreach (var line in logs.Log.Split('\n'))
                 await ctx.Response.WriteAsync($"data: {line}\n\n");
             await ctx.Response.Body.FlushAsync();
@@ -1273,8 +1355,10 @@ public static class StackEndpoints
     public record BackupSettingsRequest(int IntervalHours, int Retain);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
-    public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null);
+    public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null, string? TargetId = null);
     public record EnabledRequest(bool Enabled);
+    public record HostingDeployRequest(string? TargetId = null);
+    public record MoveRequest(string TargetId, bool WithData = true, bool KeepSource = false);
     public record SourceFile(string Path, string Content);
     public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null, Dictionary<string, int>? ServicePorts = null);
 }

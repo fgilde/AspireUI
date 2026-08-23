@@ -8,9 +8,30 @@ namespace AspireUI.Server.Services;
 
 public record ServiceStatus(string Name, string Service, string Image, string State, string Status, string Ports);
 
-public class HostingService(DeploymentStore store, PublishService publish, DeployService deploy, ProxyService? proxy = null)
+public class HostingService(DeploymentStore store, PublishService publish, DeployService deploy,
+    ProxyService? proxy = null, TargetService? targets = null, OrchestratorService? orchestrator = null)
 {
     public static string Project(string stackId) => "aspireui-" + stackId[..Math.Min(8, stackId.Length)];
+
+    // Every docker command for a deployment goes to the daemon of its target; without a TargetService
+    // (tests, local-only paths) that is the ambient docker of this machine.
+    private static readonly DeployTarget LocalFallback = new(DeployTarget.LocalId, "This machine", TargetKind.Local, true);
+    private DeployService R(Deployment d) => targets?.Runner(d.Target) ?? deploy;
+    private DeployService R(DeployTarget t) => targets?.Runner(t) ?? deploy;
+    public DeployTarget TargetOf(Deployment d) => targets?.Resolve(d.TargetId) ?? LocalFallback;
+    public DeployTarget TargetById(string? id) => targets?.Resolve(id) ?? LocalFallback;
+    public bool IsOrchestrated(Deployment d) => TargetKind.IsOrchestrator(TargetOf(d).Kind);
+
+    private Deployment OrchestratorDeploy(StackModel stack, string publishRoot, string id, DeployTarget target, string? cloneSrc)
+        => orchestrator is null
+            ? Fail(id, $"'{target.Name}' is a {target.Kind} target, which this instance cannot deploy to")
+            : orchestrator.Deploy(stack, publishRoot, id, target, cloneSrc);
+
+    private Deployment Fail(string id, string message)
+    {
+        store.SetState(id, "failed", message);
+        return store.Get(id)!;
+    }
 
     private static int? FirstPort(IEnumerable<string> urls)
     {
@@ -143,17 +164,22 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         catch { return false; }
     }
 
-    public static int AllocateHostPort(ISet<int> used)
+    public static int AllocateHostPort(ISet<int> used) => AllocateHostPort(used, 20000, 29999, PortFree);
+
+    // A remote target cannot be probed by binding a socket here, so for those "free" is only what the
+    // target's own daemon does not already publish — the caller passes that in as `used`.
+    public static int AllocateHostPort(ISet<int> used, int from, int to, Func<int, bool>? free = null)
     {
-        for (var p = 20000; p <= 29999; p++)
+        if (from <= 0) from = 20000;
+        if (to < from) to = from + 999;
+        for (var p = from; p <= to; p++)
         {
             if (used.Contains(p)) continue;
-            try { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, p); l.Start(); l.Stop(); }
-            catch { continue; }
+            if (free is not null && !free(p)) continue;
             used.Add(p);
             return p;
         }
-        throw new InvalidOperationException("no free host port in 20000-29999");
+        throw new InvalidOperationException($"no free host port in {from}-{to}");
     }
 
     public static void FillParameterEnv(StackModel stack, string envPath)
@@ -312,14 +338,21 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     }
 
     public Deployment Deploy(StackModel stack, string publishRoot, string host = "localhost",
-        bool hostDashboard = true, string? dashboardToken = null, string? cloneSrc = null)
+        bool hostDashboard = true, string? dashboardToken = null, string? cloneSrc = null, string? targetId = null)
     {
         var project = Project(stack.Id);
         var now = DateTime.UtcNow.ToString("O");
         var existing = store.GetByStack(stack.Id);
         var id = existing?.Id ?? "dep" + Guid.NewGuid().ToString("n")[..8];
+        // Redeploying an app keeps it where it is unless a target was asked for explicitly.
+        var target = TargetById(targetId ?? existing?.TargetId ?? targets?.Resolve(null).Id);
+        // Only this machine's URLs may use the request's host; a remote box has its own address.
+        if (!target.IsLocal) host = target.HostForUrls();
         store.Upsert(new Deployment(id, stack.Id, stack.Name, existing?.ComposeDir ?? "", project, "deploying",
-            existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null, existing?.Ports));
+            existing?.Urls ?? new(), existing?.CreatedAt ?? now, now, null, existing?.Ports, TargetId: target.Id));
+        if (!TargetKind.IsCompose(target.Kind))
+            return OrchestratorDeploy(stack, publishRoot, id, target, cloneSrc);
+        var runner = R(target);
         try
         {
             var pub = publish.Publish(stack, publishRoot, "compose", cloneSrc);
@@ -327,8 +360,13 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
             var raw = InjectDockerfileBuilds(EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken)), stack, Path.Combine(publishRoot, "src"));
             var needsBuild = stack.Nodes.Any(n => n.AddMethod == "AddDockerfile");
-            var used = new HashSet<int>(store.List().Where(x => x.Id != id)
+            // Ports are per machine: what other apps on *this* target use, plus whatever else that
+            // daemon already publishes (containers we did not create).
+            var used = new HashSet<int>(store.List().Where(x => x.Id != id && x.Target == target.Id)
                 .SelectMany(x => (x.Ports ?? new()).Where(p => p.Public).Select(p => p.Host)));
+            if (!target.IsLocal && targets is not null)
+                foreach (var p in targets.UsedPortsOn(target)) used.Add(p);
+            bool Free(int p) => target.IsLocal ? PortFree(p) : !used.Contains(p);
             var prev = (existing?.Ports ?? new()).ToDictionary(p => p.Container);
             var chosen = new List<PortMapping>();
             var portMap = new Dictionary<int, int>();
@@ -337,20 +375,21 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             {
                 if (prev.TryGetValue(cp, out var pm) && !pm.Public) { keepInternal.Add(cp); chosen.Add(new(cp, 0, false)); continue; }
                 var pinned = prev.TryGetValue(cp, out var pp) && pp.Public && pp.Host > 0 ? pp.Host : 0;
-                var hostPort = pinned > 0 && !used.Contains(pinned) && PortFree(pinned) ? pinned : AllocateHostPort(used);
+                var hostPort = pinned > 0 && !used.Contains(pinned) && Free(pinned)
+                    ? pinned : AllocateHostPort(used, target.PortFrom, target.PortTo, Free);
                 used.Add(hostPort); portMap[cp] = hostPort; chosen.Add(new(cp, hostPort, true));
             }
             var processed = PublishExposedPorts(raw, portMap, keepInternal);
             File.WriteAllText(path, processed);
             FillParameterEnv(stack, Path.Combine(pub.OutputDir, ".env"));
-            var up = deploy.UpProject(pub.OutputDir, project, needsBuild);
-            var urls = up.Ok ? UrlsFromServices(ParseServices(deploy.Ps(pub.OutputDir, project).Log), host) : new();
+            var up = runner.UpProject(pub.OutputDir, project, needsBuild);
+            var urls = up.Ok ? UrlsFromServices(ParseServices(runner.Ps(pub.OutputDir, project).Log), host) : new();
             if (urls.Count == 0) urls = ParseUrls(processed, host);
             if (!string.IsNullOrWhiteSpace(stack.HostingUrlPath))
                 urls = urls.Select(u => Regex.IsMatch(u, @"://[^/]+:\d+$") ? u + stack.HostingUrlPath : u).ToList();
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));
             // Don't report green while the containers are still booting or already crash-looping.
-            var (health, detail) = up.Ok ? Settle(pub.OutputDir, project) : ("unknown", null);
+            var (health, detail) = up.Ok ? Settle(pub.OutputDir, project, runner: runner) : ("unknown", null);
             store.Upsert(store.Get(id)! with
             {
                 ComposeDir = pub.OutputDir, Urls = urls, Ports = chosen,
@@ -368,15 +407,25 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     {
         if (store.Get(id) is not { } d) return null;
         store.SetState(id, "deploying");
-        var pull = deploy.PullProject(d.ComposeDir, d.Project);
-        var up = deploy.UpProject(d.ComposeDir, d.Project);
+        if (IsOrchestrated(d) && orchestrator is not null)
+        {
+            var res = orchestrator.Restart(d);
+            store.SetState(id, res.Ok ? "running" : "failed", res.Ok ? null : res.Log);
+            return store.Get(id);
+        }
+        var pull = R(d).PullProject(d.ComposeDir, d.Project);
+        var up = R(d).UpProject(d.ComposeDir, d.Project);
         store.SetState(id, up.Ok ? "running" : "failed", up.Ok ? null : $"{pull.Log}\n{up.Log}");
         if (up.Ok) SyncProxy();
         return store.Get(id);
     }
 
     public List<ServiceStatus> Services(string id)
-        => store.Get(id) is { } d ? ParseServices(deploy.Ps(d.ComposeDir, d.Project).Log) : new();
+    {
+        if (store.Get(id) is not { } d) return new();
+        if (IsOrchestrated(d)) return orchestrator?.Services(d) ?? new();
+        return ParseServices(R(d).Ps(d.ComposeDir, d.Project).Log);
+    }
 
     public static List<ServiceStatus> ParseServices(string psJson)
     {
@@ -444,14 +493,15 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
 
     // After `compose up` the containers exist but may still be booting, migrating or crash-looping.
     // Wait for a verdict instead of reporting green immediately.
-    public (string Health, string? Detail) Settle(string composeDir, string project, int timeoutSeconds = 45)
+    public (string Health, string? Detail) Settle(string composeDir, string project, int timeoutSeconds = 45,
+        DeployService? runner = null)
     {
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         var okStreak = 0;
         (string Health, string? Detail) last = ("unknown", null);
         while (true)
         {
-            last = HealthOf(ParseServices(deploy.Ps(composeDir, project).Log));
+            last = HealthOf(ParseServices((runner ?? deploy).Ps(composeDir, project).Log));
             if (last.Health is "failing" or "unhealthy") return last;    // a verdict worth trusting at once
             // "running" right after `up` means "has not crashed yet" — only a stable ok counts.
             okStreak = last.Health == "ok" ? okStreak + 1 : 0;
@@ -541,7 +591,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         if (store.Get(id) is not { } d) return new();
         return VolumesOf(id).Select(v =>
         {
-            var kb = deploy.VolumeDu($"{d.Project}_{v}").Log.Split('\t', ' ').FirstOrDefault();
+            var kb = R(d).VolumeDu($"{d.Project}_{v}").Log.Split('\t', ' ').FirstOrDefault();
             return new VolInfo(v, long.TryParse(kb, out var k) ? k / 1024 : 0);
         }).ToList();
     }
@@ -549,7 +599,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     public List<VolEntry> BrowseVolume(string id, string vol, string relPath)
     {
         if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return new();
-        var r = deploy.VolumeLs($"{d.Project}_{vol}", relPath);
+        var r = R(d).VolumeLs($"{d.Project}_{vol}", relPath);
         var list = new List<VolEntry>();
         foreach (var raw in r.Log.Split('\n'))
         {
@@ -570,9 +620,11 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     public (byte[]? data, string? error) ReadVolumeFile(string id, string vol, string relPath)
     {
         if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return (null, "no such volume");
-        return deploy.VolumeCat($"{d.Project}_{vol}", relPath);
+        return R(d).VolumeCat($"{d.Project}_{vol}", relPath);
     }
 
+    // Streamed out of the volume rather than written through a bind mount: a mount lands on the
+    // *daemon's* host, which is another machine as soon as the target is remote. stdout comes back here.
     public string? Backup(string id, string backupsRoot)
     {
         if (store.Get(id) is not { } d) return null;
@@ -581,12 +633,22 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
         var dir = Path.Combine(backupsRoot, d.StackId, stamp);
         Directory.CreateDirectory(dir);
+        var wrote = 0;
         foreach (var vol in VolumeNames(File.ReadAllText(composePath)))
         {
-            var full = $"{d.Project}_{vol}";
-            deploy.Docker(dir, $"run --rm -v {full}:/data -v \"{Path.GetFullPath(dir)}\":/backup alpine tar czf /backup/{vol}.tgz -C /data .");
+            var file = Path.Combine(dir, vol + ".tgz");
+            DeployResult r;
+            using (var gz = new System.IO.Compression.GZipStream(File.Create(file), System.IO.Compression.CompressionLevel.Optimal))
+                r = R(d).VolumeTarOutTo($"{d.Project}_{vol}", gz);
+            if (!r.Ok || new FileInfo(file).Length <= 32)
+            {
+                try { File.Delete(file); } catch { }
+                File.AppendAllText(Path.Combine(dir, "errors.log"), $"{vol}: {(r.Log.Length > 0 ? r.Log : "empty")}" + Environment.NewLine);
+                continue;
+            }
+            wrote++;
         }
-        return dir;
+        return wrote > 0 ? dir : null;
     }
 
     private static readonly Regex StampRe = new(@"^\d{8}-\d{6}$");
@@ -622,15 +684,18 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         store.SetState(id, "deploying");
         try
         {
-            deploy.StopProject(d.ComposeDir, d.Project);
+            R(d).StopProject(d.ComposeDir, d.Project);
             foreach (var f in Directory.GetFiles(dir, "*.tgz"))
             {
                 var vol = Path.GetFileNameWithoutExtension(f);
                 if (current.Count > 0 && !current.Contains(vol)) continue;
-                var full = $"{d.Project}_{vol}";
-                deploy.Docker(dir, $"run --rm -v {full}:/data -v \"{Path.GetFullPath(dir)}\":/backup alpine sh -c \"find /data -mindepth 1 -delete; tar xzf /backup/{vol}.tgz -C /data\"");
+                using var gz = new System.IO.Compression.GZipStream(File.OpenRead(f), System.IO.Compression.CompressionMode.Decompress);
+                using var buf = new MemoryStream();
+                gz.CopyTo(buf);
+                buf.Position = 0;
+                R(d).VolumeTarIn($"{d.Project}_{vol}", buf);
             }
-            var up = deploy.UpProject(d.ComposeDir, d.Project);
+            var up = R(d).UpProject(d.ComposeDir, d.Project);
             store.SetState(id, up.Ok ? "running" : "failed", up.Ok ? null : up.Log);
             SyncProxy();
             return up.Ok;
@@ -654,26 +719,160 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return Directory.Exists(dir) ? dir : null;
     }
 
+    public record MoveResult(bool Ok, string Log, Deployment? Deployment);
+
+    // Moves a running app to another machine: data first (with the app stopped, so it is consistent),
+    // then the deployment itself, then the source is torn down. On any failure before the source is
+    // removed the app is started again where it was, so a failed move never loses an app.
+    public MoveResult Move(StackModel stack, string publishRoot, string host, bool hostDashboard,
+        string? dashboardToken, string? cloneSrc, string toTargetId, bool withData = true)
+    {
+        if (store.GetByStack(stack.Id) is not { } d) return new MoveResult(false, "this stack is not deployed", null);
+        var from = TargetOf(d);
+        var to = TargetById(toTargetId);
+        if (from.Id == to.Id) return new MoveResult(false, $"it already runs on {to.Name}", d);
+        var log = new StringBuilder();
+        var vols = VolumesOf(d.Id);
+        var moveData = withData && vols.Count > 0 && TargetKind.IsCompose(from.Kind) && TargetKind.IsCompose(to.Kind);
+        if (withData && !moveData && vols.Count > 0)
+            log.AppendLine($"note: {vols.Count} volume(s) are not moved — {(TargetKind.IsCompose(from.Kind) ? to.Name : from.Name)} has no docker volumes");
+
+        var sourceDir = d.ComposeDir;
+        var sourceProject = d.Project;
+        try
+        {
+            if (TargetKind.IsCompose(from.Kind))
+            {
+                log.AppendLine($"stopping {d.Name} on {from.Name}");
+                R(from).StopProject(sourceDir, sourceProject);
+            }
+
+            var moved = Deploy(stack, publishRoot, host, hostDashboard, dashboardToken, cloneSrc, to.Id);
+            if (moved.State == "failed")
+            {
+                // Put it back the way it was: the source is still there, untouched.
+                if (TargetKind.IsCompose(from.Kind)) R(from).UpProject(sourceDir, sourceProject);
+                store.Upsert(moved with { TargetId = from.Id, ComposeDir = sourceDir, Project = sourceProject, State = "running" });
+                return new MoveResult(false, log + Environment.NewLine + "deploy on the new target failed, the app was left where it was:" + Environment.NewLine + (moved.LastError ?? ""), store.Get(d.Id));
+            }
+
+            if (moveData)
+            {
+                log.AppendLine($"transferring {vols.Count} volume(s)");
+                R(to).StopProject(moved.ComposeDir, moved.Project);
+                foreach (var v in vols)
+                {
+                    var r = DeployService.TransferVolume(R(from), $"{sourceProject}_{v}", R(to), $"{moved.Project}_{v}");
+                    log.AppendLine($"  {v}: {(r.Ok ? "ok" : "failed — " + r.Log)}");
+                    if (!r.Ok)
+                    {
+                        R(from).UpProject(sourceDir, sourceProject);
+                        return new MoveResult(false, log.ToString(), store.Get(d.Id));
+                    }
+                }
+                var up = R(to).UpProject(moved.ComposeDir, moved.Project);
+                log.Append(up.Log);
+            }
+
+            if (TargetKind.IsCompose(from.Kind))
+            {
+                log.AppendLine($"removing it from {from.Name}");
+                R(from).DownProject(sourceDir, sourceProject, volumes: moveData);
+            }
+            var (health, detail) = TargetKind.IsCompose(to.Kind)
+                ? Settle(moved.ComposeDir, moved.Project, runner: R(to)) : (moved.Health ?? "ok", moved.HealthDetail);
+            store.Upsert(store.Get(d.Id)! with { Health = health, HealthDetail = detail, UpdatedAt = DateTime.UtcNow.ToString("O") });
+            SyncProxy();
+            return new MoveResult(true, log.ToString(), store.Get(d.Id));
+        }
+        catch (Exception e)
+        {
+            try { if (TargetKind.IsCompose(from.Kind)) R(from).UpProject(sourceDir, sourceProject); } catch { }
+            return new MoveResult(false, log + Environment.NewLine + e.Message, store.Get(d.Id));
+        }
+    }
+
+    // Copies the data of one deployment into another (a freshly deployed clone on another target).
+    public DeployResult CopyData(Deployment from, Deployment to)
+    {
+        var fromT = TargetOf(from);
+        var toT = TargetOf(to);
+        if (!TargetKind.IsCompose(fromT.Kind) || !TargetKind.IsCompose(toT.Kind))
+            return new DeployResult(false, "data can only be copied between docker targets");
+        var vols = VolumesOf(from.Id);
+        if (vols.Count == 0) return new DeployResult(true, "no volumes to copy");
+        var log = new StringBuilder();
+        R(fromT).StopProject(from.ComposeDir, from.Project);
+        R(toT).StopProject(to.ComposeDir, to.Project);
+        var ok = true;
+        foreach (var v in vols)
+        {
+            var r = DeployService.TransferVolume(R(fromT), $"{from.Project}_{v}", R(toT), $"{to.Project}_{v}");
+            log.AppendLine($"{v}: {(r.Ok ? "ok" : "failed — " + r.Log)}");
+            ok &= r.Ok;
+        }
+        R(fromT).UpProject(from.ComposeDir, from.Project);
+        R(toT).UpProject(to.ComposeDir, to.Project);
+        return new DeployResult(ok, log.ToString());
+    }
+
     public void ReconcileOnStartup()
     {
         var any = false;
         foreach (var d in store.List().Where(x => x.State == "running"))
         {
-            try { if (File.Exists(Path.Combine(d.ComposeDir, "docker-compose.yaml"))) { deploy.UpProject(d.ComposeDir, d.Project); any = true; } }
+            try
+            {
+                if (IsOrchestrated(d)) continue;   // nothing to restart: the platform keeps them running
+                if (File.Exists(Path.Combine(d.ComposeDir, "docker-compose.yaml"))) { R(d).UpProject(d.ComposeDir, d.Project); any = true; }
+            }
             catch { }
         }
         if (any) SyncProxy();
     }
 
-    public void Stop(string id) { if (store.Get(id) is { } d) { deploy.StopProject(d.ComposeDir, d.Project); store.SetState(id, "stopped"); SyncProxy(); } }
-    public void Start(string id) { if (store.Get(id) is { } d) { store.SetState(id, "deploying"); var r = deploy.UpProject(d.ComposeDir, d.Project); store.SetState(id, r.Ok ? "running" : "failed", r.Ok ? null : r.Log); SyncProxy(); } }
-    public void Undeploy(string id, bool wipe = false) { if (store.Get(id) is { } d) { deploy.DownProject(d.ComposeDir, d.Project, wipe); store.Delete(id); SyncProxy(); } }
+    public void Stop(string id)
+    {
+        if (store.Get(id) is not { } d) return;
+        if (IsOrchestrated(d) && orchestrator is not null)
+        {
+            var r = orchestrator.Scale(d, 0);
+            store.SetState(id, r.Ok ? "stopped" : "failed", r.Ok ? null : r.Log);
+            return;
+        }
+        R(d).StopProject(d.ComposeDir, d.Project);
+        store.SetState(id, "stopped");
+        SyncProxy();
+    }
+    public void Start(string id)
+    {
+        if (store.Get(id) is not { } d) return;
+        store.SetState(id, "deploying");
+        if (IsOrchestrated(d) && orchestrator is not null)
+        {
+            var s = orchestrator.Scale(d, 1);
+            store.SetState(id, s.Ok ? "running" : "failed", s.Ok ? null : s.Log);
+            return;
+        }
+        var r = R(d).UpProject(d.ComposeDir, d.Project);
+        store.SetState(id, r.Ok ? "running" : "failed", r.Ok ? null : r.Log);
+        SyncProxy();
+    }
+    public void Undeploy(string id, bool wipe = false)
+    {
+        if (store.Get(id) is not { } d) return;
+        if (IsOrchestrated(d) && orchestrator is not null) orchestrator.Remove(d);
+        else R(d).DownProject(d.ComposeDir, d.Project, wipe);
+        store.Delete(id);
+        SyncProxy();
+    }
 
     public Deployment? Refresh(string id)
     {
         if (store.Get(id) is not { } d) return null;
         if (d.State is "deploying") return d;
-        var ps = deploy.Ps(d.ComposeDir, d.Project);
+        if (IsOrchestrated(d)) return orchestrator?.Refresh(d) ?? d;
+        var ps = R(d).Ps(d.ComposeDir, d.Project);
         var services = ParseServices(ps.Log);
         // Only the app's own containers count: a project where just our dashboard sidecar is up is not running.
         var running = ps.Ok && AppContainers(services).Any(s =>

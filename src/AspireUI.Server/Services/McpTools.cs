@@ -19,7 +19,7 @@ public class McpTools(CatalogService catalog, RunService run)
     {
         var deploy = new DeployService();
         var proxy = new ProxyService(deploy, Path.Combine(WsRoot(), "_proxy"), Environment.GetEnvironmentVariable("HOSTING_BASE_DOMAIN") ?? "localhost");
-        return new HostingService(Deps(), new PublishService(new CodeGenService()), deploy, proxy);
+        return new HostingService(Deps(), new PublishService(new CodeGenService()), deploy, proxy, TargetService.FromEnvironment());
     }
 
     [McpServerTool, Description("List all AspireUI stacks (id, name, resource count).")]
