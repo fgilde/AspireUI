@@ -6,7 +6,7 @@ import {
 } from "@mantine/core";
 import {
   IconAlertCircle, IconCheck, IconCloud, IconCloudUpload, IconCopy, IconPlus, IconRefresh, IconServer2,
-  IconTrash, IconTerminal2, IconWorld, IconKey, IconStar, IconStarFilled,
+  IconTrash, IconTerminal2, IconWorld, IconKey, IconStar, IconStarFilled, IconBrandDocker,
 } from "@tabler/icons-react";
 import type { DeployTarget, TargetKindInfo, TargetProbe } from "../model";
 import * as api from "../api";
@@ -105,6 +105,18 @@ export function TargetsSection() {
     try { await api.makeTargetDefault(t.id); load(); } catch (e) { toastErr(e); }
   };
 
+  // A box with ssh but without docker: install it over the connection the target already has.
+  const installDocker = async (t: DeployTarget) => {
+    setBusy(t.id);
+    try {
+      const r = await api.installDockerOnTarget(t.id);
+      if (r.ok) toastOk(`docker installed on ${t.name}`);
+      else toastErr(r.log.split("\n").slice(-6).join("\n"));
+      await api.probeTarget(t.id).catch(() => undefined);
+      load();
+    } catch (e) { toastErr(e); } finally { setBusy(null); }
+  };
+
   if (!targets) return <Loader size="sm" />;
 
   return (
@@ -181,6 +193,11 @@ export function TargetsSection() {
                     <Tooltip label="Edit" withArrow>
                       <ActionIcon variant="subtle" size="sm" onClick={() => setEdit(t)}><IconWorld size={14} /></ActionIcon>
                     </Tooltip>
+                    {t.kind === "ssh" && (
+                      <Tooltip label="Install docker on this box over ssh" withArrow>
+                        <ActionIcon variant="subtle" size="sm" onClick={() => installDocker(t)}><IconBrandDocker size={14} /></ActionIcon>
+                      </Tooltip>
+                    )}
                     {t.provider?.serverId && (
                       <Tooltip label={`Destroy the ${t.provider.kind} machine`} withArrow>
                         <ActionIcon variant="subtle" size="sm" color="orange" onClick={() => destroy(t)}><IconCloud size={14} /></ActionIcon>
