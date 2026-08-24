@@ -72,6 +72,10 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         if (!pub.Ok) return Fail(id, Tail(log.ToString()));
         var chart = FindChart(pub.OutputDir);
         if (chart is null) return Fail(id, "the published output has no Helm chart (Chart.yaml)");
+        // The generated chart keeps every volume in an emptyDir, which a pod restart empties. With a
+        // storage class on the target they become real claims instead.
+        if (target.Kube?.StorageClass is { Length: > 0 } sc)
+            log.Append(PersistVolumes(chart, sc, target.Kube.StorageSize ?? "8Gi"));
 
         var d = store.Get(id)!;
         var release = Release(d);
@@ -86,9 +90,150 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         store.Upsert(store.Get(id)! with { ComposeDir = chart, Project = release });
         if (!up.Ok) return Fail(id, Tail(log.ToString()));
 
+        // ...and it has no Ingress and only ClusterIP services, so nothing is reachable until we say how.
+        log.Append(Expose(target, release, ns, stack.Name));
         var urls = IngressUrls(target, release, ns);
         var (health, detail) = PodHealth(target, release, ns);
         return Save(id, true, urls, log.ToString(), health, detail);
+    }
+
+    // emptyDir -> PersistentVolumeClaim, one claim per named volume, written next to the templates.
+    public static string PersistVolumes(string chartDir, string storageClass, string size)
+    {
+        var dir = Path.Combine(chartDir, "templates");
+        if (!Directory.Exists(dir)) return "";
+        var claims = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var file in Directory.GetFiles(dir, "*.yaml", SearchOption.AllDirectories))
+        {
+            var (rewritten, names) = RewriteEmptyDirs(File.ReadAllText(file));
+            if (names.Count == 0) continue;
+            File.WriteAllText(file, rewritten);
+            foreach (var n in names) claims.Add(n);
+        }
+        if (claims.Count == 0) return "";
+        var sb = new StringBuilder();
+        foreach (var name in claims) sb.Append(ClaimManifest(name, storageClass, size));
+        File.WriteAllText(Path.Combine(dir, "aspireui-claims.yaml"), sb.ToString());
+        return $"volumes made persistent on storage class {storageClass} ({size}): {string.Join(", ", claims)}" + Environment.NewLine;
+    }
+
+    // Turns an emptyDir volume into a claim reference and reports the volume names it changed.
+    public static (string Yaml, List<string> Volumes) RewriteEmptyDirs(string yaml)
+    {
+        var names = new List<string>();
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        for (var i = 0; i < lines.Count - 1; i++)
+        {
+            var m = Regex.Match(lines[i], "^(\\s*)- name: \"?([A-Za-z0-9][A-Za-z0-9._-]*)\"?\\s*$");
+            if (!m.Success) continue;
+            var empty = Regex.Match(lines[i + 1], "^(\\s*)emptyDir: \\{\\}\\s*$");
+            if (!empty.Success) continue;
+            var name = m.Groups[2].Value;
+            names.Add(name);
+            lines[i + 1] = empty.Groups[1].Value + "persistentVolumeClaim:";
+            lines.Insert(i + 2, empty.Groups[1].Value + "  claimName: \"{{ .Release.Name }}-" + name + "\"");
+            i += 2;
+        }
+        return (string.Join("\n", lines), names);
+    }
+
+    private static string ClaimManifest(string name, string storageClass, string size) =>
+        "---" + Environment.NewLine +
+        "apiVersion: \"v1\"" + Environment.NewLine +
+        "kind: \"PersistentVolumeClaim\"" + Environment.NewLine +
+        "metadata:" + Environment.NewLine +
+        "  name: \"{{ .Release.Name }}-" + name + "\"" + Environment.NewLine +
+        "  labels:" + Environment.NewLine +
+        "    app.kubernetes.io/instance: \"{{ .Release.Name }}\"" + Environment.NewLine +
+        "spec:" + Environment.NewLine +
+        "  accessModes:" + Environment.NewLine +
+        "    - \"ReadWriteOnce\"" + Environment.NewLine +
+        "  storageClassName: \"" + storageClass + "\"" + Environment.NewLine +
+        "  resources:" + Environment.NewLine +
+        "    requests:" + Environment.NewLine +
+        "      storage: \"" + size + "\"" + Environment.NewLine + Environment.NewLine;
+
+    // The chart publishes ClusterIP services only. Depending on the target that becomes a NodePort, a
+    // LoadBalancer or an Ingress per service; anything else stays cluster-internal, and we say so.
+    private string Expose(DeployTarget t, string release, string ns, string stackName)
+    {
+        var mode = (t.Kube?.Expose ?? "clusterip").ToLowerInvariant();
+        if (mode is "clusterip" or "" or "none")
+            return "services stay ClusterIP - set \"expose\" on the target to publish them" + Environment.NewLine;
+        var env = targets.KubeEnv(t);
+        var scoped = t with { Kube = (t.Kube ?? new TargetKube()) with { Namespace = ns } };
+        if (mode is "nodeport" or "loadbalancer")
+        {
+            var type = mode == "nodeport" ? "NodePort" : "LoadBalancer";
+            // `kubectl patch` takes no label selector, so the names come first.
+            var names = Cli.Run("kubectl", TargetService.KubeArgs(scoped, ["get", "svc", "-l",
+                $"app.kubernetes.io/instance={release}", "-o", "jsonpath={.items[*].metadata.name}"]), env);
+            if (!names.Ok) return "could not list services: " + names.Log + Environment.NewLine;
+            var patched = new List<string>();
+            foreach (var svcName in names.Log.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (svcName.Contains("dashboard", StringComparison.OrdinalIgnoreCase)) continue;
+                var r = Cli.Run("kubectl", TargetService.KubeArgs(scoped, ["patch", "svc", svcName,
+                    "-p", "{\"spec\":{\"type\":\"" + type + "\"}}"]), env);
+                patched.Add(r.Ok ? svcName : $"{svcName}: {r.Log.Trim()}");
+            }
+            return $"exposing as {type}: {(patched.Count == 0 ? "no service to expose" : string.Join(", ", patched))}" + Environment.NewLine;
+        }
+        if (mode != "ingress") return $"unknown expose mode '{mode}'" + Environment.NewLine;
+
+        if (t.Kube?.IngressHostPattern is not { Length: > 0 } pattern)
+            return "expose=ingress needs a host pattern on the target, e.g. {service}.apps.example.com" + Environment.NewLine;
+        var svcJson = Cli.Run("kubectl", TargetService.KubeArgs(scoped,
+            ["get", "svc", "-l", $"app.kubernetes.io/instance={release}", "-o", "json"]), env);
+        if (!svcJson.Ok) return "could not list services: " + svcJson.Log + Environment.NewLine;
+        var manifest = IngressManifest(svcJson.Log, release, SafeName(stackName), pattern, t.Kube?.IngressClass);
+        if (manifest.Length == 0) return "no service with a port to expose" + Environment.NewLine;
+        var apply = Cli.Run("kubectl", TargetService.KubeArgs(scoped, ["apply", "-f", "-"]), env, stdin: manifest);
+        return "ingress: " + (apply.Ok ? apply.Log.Trim() : apply.Log) + Environment.NewLine;
+    }
+
+    // One Ingress per service that has a port; {app} and {service} are substituted in the host pattern.
+    public static string IngressManifest(string servicesJson, string release, string app, string hostPattern, string? ingressClass)
+    {
+        var sb = new StringBuilder();
+        try
+        {
+            using var doc = JsonDocument.Parse(servicesJson);
+            foreach (var svc in doc.RootElement.GetProperty("items").EnumerateArray())
+            {
+                var meta = svc.GetProperty("metadata");
+                var name = meta.GetProperty("name").GetString() ?? "";
+                if (name.Contains("dashboard", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!svc.GetProperty("spec").TryGetProperty("ports", out var ports) || ports.GetArrayLength() == 0) continue;
+                var port = ports[0].GetProperty("port").GetInt32();
+                var service = meta.TryGetProperty("labels", out var labels)
+                    && labels.TryGetProperty("app.kubernetes.io/component", out var comp)
+                    ? comp.GetString() ?? name : name;
+                var host = hostPattern.Replace("{app}", app).Replace("{service}", SafeName(service)).Trim();
+                sb.AppendLine("---");
+                sb.AppendLine("apiVersion: networking.k8s.io/v1");
+                sb.AppendLine("kind: Ingress");
+                sb.AppendLine("metadata:");
+                sb.AppendLine($"  name: {name}-ingress");
+                sb.AppendLine("  labels:");
+                sb.AppendLine($"    app.kubernetes.io/instance: {release}");
+                sb.AppendLine("spec:");
+                if (!string.IsNullOrWhiteSpace(ingressClass)) sb.AppendLine($"  ingressClassName: {ingressClass}");
+                sb.AppendLine("  rules:");
+                sb.AppendLine($"    - host: {host}");
+                sb.AppendLine("      http:");
+                sb.AppendLine("        paths:");
+                sb.AppendLine("          - path: /");
+                sb.AppendLine("            pathType: Prefix");
+                sb.AppendLine("            backend:");
+                sb.AppendLine("              service:");
+                sb.AppendLine($"                name: {name}");
+                sb.AppendLine("                port:");
+                sb.AppendLine($"                  number: {port}");
+            }
+        }
+        catch { return ""; }
+        return sb.ToString();
     }
 
     private static string? FindChart(string dir)
@@ -107,7 +252,7 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         if (ing.Ok) urls.AddRange(ParseIngressHosts(ing.Log));
         var svc = Cli.Run("kubectl", TargetService.KubeArgs(t with { Kube = (t.Kube ?? new TargetKube()) with { Namespace = ns } },
             ["get", "svc", "-l", $"app.kubernetes.io/instance={release}", "-o", "json"]), env);
-        if (svc.Ok) urls.AddRange(ParseServiceUrls(svc.Log));
+        if (svc.Ok) urls.AddRange(ParseServiceUrls(svc.Log, NodeHost(t)));
         return urls.Distinct().ToList();
     }
 
@@ -130,8 +275,20 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         return urls;
     }
 
-    // LoadBalancer services carry a reachable address; NodePort at least tells the user the port.
-    public static List<string> ParseServiceUrls(string json)
+    // Where a NodePort is reached: what the target says, else any node's external (then internal) address.
+    private string? NodeHost(DeployTarget t)
+    {
+        if (!string.IsNullOrWhiteSpace(t.PublicHost)) return t.PublicHost!.Trim();
+        var r = Cli.Run("kubectl", TargetService.KubeArgs(t, ["get", "nodes", "-o",
+            "jsonpath={.items[0].status.addresses[?(@.type=='ExternalIP')].address}"]), targets.KubeEnv(t));
+        if (r.Ok && r.Log.Trim() is { Length: > 0 } ext) return ext.Trim().Split(' ')[0];
+        var int_ = Cli.Run("kubectl", TargetService.KubeArgs(t, ["get", "nodes", "-o",
+            "jsonpath={.items[0].status.addresses[?(@.type=='InternalIP')].address}"]), targets.KubeEnv(t));
+        return int_.Ok && int_.Log.Trim().Length > 0 ? int_.Log.Trim().Split(' ')[0] : null;
+    }
+
+    // LoadBalancer services carry a reachable address; a NodePort is reached on any node's address.
+    public static List<string> ParseServiceUrls(string json, string? nodeHost = null)
     {
         var urls = new List<string>();
         try
@@ -141,6 +298,13 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
             {
                 var spec = item.GetProperty("spec");
                 var type = spec.TryGetProperty("type", out var ty) ? ty.GetString() : "ClusterIP";
+                if (type == "NodePort" && nodeHost is { Length: > 0 })
+                {
+                    foreach (var port in spec.GetProperty("ports").EnumerateArray())
+                        if (port.TryGetProperty("nodePort", out var np) && np.GetInt32() > 0)
+                            urls.Add($"http://{nodeHost}:{np.GetInt32()}");
+                    continue;
+                }
                 if (type != "LoadBalancer") continue;
                 if (!item.TryGetProperty("status", out var st) || !st.TryGetProperty("loadBalancer", out var lb)
                     || !lb.TryGetProperty("ingress", out var ing) || ing.GetArrayLength() == 0) continue;
@@ -172,7 +336,9 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         try
         {
             using var doc = JsonDocument.Parse(json);
-            var items = doc.RootElement.GetProperty("items").EnumerateArray().ToList();
+            // Our own dashboard sidecar is not the app: it never decides whether the app is healthy.
+            var items = doc.RootElement.GetProperty("items").EnumerateArray()
+                .Where(p => !PodName(p).Contains("dashboard", StringComparison.OrdinalIgnoreCase)).ToList();
             if (items.Count == 0) return ("unknown", null);
             foreach (var pod in items)
             {
@@ -217,10 +383,9 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         var t = targets.Resolve(d.TargetId);
         if (t.Kind == TargetKind.K8s)
         {
-            var pod = Cli.Run("kubectl", TargetService.KubeArgs(t, ["get", "pods", "-l", $"app.kubernetes.io/instance={d.Project}",
-                "-o", "jsonpath={.items[0].metadata.name}"]), targets.KubeEnv(t));
-            if (!pod.Ok || string.IsNullOrWhiteSpace(pod.Log)) return new DeployResult(false, "no pod to exec into");
-            return Cli.Run("kubectl", TargetService.KubeArgs(t, ["exec", pod.Log.Trim(), "--", "sh", "-c", cmd]), targets.KubeEnv(t));
+            // The app's pod, not our dashboard sidecar — that image has no shell at all.
+            if (FirstAppPod(t, d.Project) is not { Length: > 0 } pod) return new DeployResult(false, "no running pod of this app to exec into");
+            return Cli.Run("kubectl", TargetService.KubeArgs(t, ["exec", pod, "--", "sh", "-c", cmd]), targets.KubeEnv(t));
         }
         return ManagedDeploy.Exec(this, d, t, cmd);
     }
@@ -264,6 +429,9 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
         return ManagedDeploy.Services(this, d, t);
     }
 
+    private static string PodName(JsonElement pod) =>
+        pod.TryGetProperty("metadata", out var m) && m.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+
     public static List<ServiceStatus> PodServices(string json)
     {
         var list = new List<ServiceStatus>();
@@ -273,6 +441,7 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
             foreach (var pod in doc.RootElement.GetProperty("items").EnumerateArray())
             {
                 var name = pod.GetProperty("metadata").GetProperty("name").GetString() ?? "pod";
+                if (name.Contains("dashboard", StringComparison.OrdinalIgnoreCase)) continue;
                 var status = pod.GetProperty("status");
                 var phase = status.TryGetProperty("phase", out var ph) ? ph.GetString() ?? "" : "";
                 var image = "";
@@ -308,7 +477,12 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
             var ns = t.Kube?.Namespace is { Length: > 0 } n ? n : "default";
             var args = new List<string> { "uninstall", d.Project, "--namespace", ns };
             if (t.Kube?.Context is { Length: > 0 } ctx) { args.Add("--kube-context"); args.Add(ctx); }
-            return Cli.Run("helm", args.ToArray(), targets.KubeEnv(t), timeoutMs: 300_000);
+            var r = Cli.Run("helm", args.ToArray(), targets.KubeEnv(t), timeoutMs: 300_000);
+            // The Ingress objects are ours, not the release's, so helm leaves them behind.
+            var scoped = t with { Kube = (t.Kube ?? new TargetKube()) with { Namespace = ns } };
+            var ing = Cli.Run("kubectl", TargetService.KubeArgs(scoped, ["delete", "ingress", "-l",
+                $"app.kubernetes.io/instance={d.Project}", "--ignore-not-found"]), targets.KubeEnv(t));
+            return new DeployResult(r.Ok, r.Log + Environment.NewLine + ing.Log);
         }
         return ManagedDeploy.Remove(this, d, t);
     }
@@ -318,12 +492,34 @@ public class OrchestratorService(DeploymentStore store, PublishService publish, 
     {
         var t = targets.Resolve(d.TargetId);
         if (t.Kind != TargetKind.K8s) return (null, "this target has no browsable storage");
-        var pod = Cli.Run("kubectl", TargetService.KubeArgs(t, ["get", "pods", "-l", $"app.kubernetes.io/instance={d.Project}",
-            "-o", "jsonpath={.items[0].metadata.name}"]), targets.KubeEnv(t));
-        if (!pod.Ok || string.IsNullOrWhiteSpace(pod.Log)) return (null, "no pod");
-        var r = Cli.Run("kubectl", TargetService.KubeArgs(t, ["exec", pod.Log.Trim(), "--", "tar", "cf", "-", "-C", path, "."]),
+        if (FirstAppPod(t, d.Project) is not { Length: > 0 } pod) return (null, "no running pod of this app");
+        var r = Cli.Run("kubectl", TargetService.KubeArgs(t, ["exec", pod, "--", "tar", "cf", "-", "-C", path, "."]),
             targets.KubeEnv(t), timeoutMs: 600_000);
         return r.Ok ? (Encoding.UTF8.GetBytes(r.Log), null) : (null, r.Log);
+    }
+
+    // First running pod of a release that is not our dashboard sidecar.
+    private string? FirstAppPod(DeployTarget t, string release)
+    {
+        var r = Cli.Run("kubectl", TargetService.KubeArgs(t, ["get", "pods", "-l",
+            $"app.kubernetes.io/instance={release}", "-o", "json"]), targets.KubeEnv(t));
+        if (!r.Ok) return null;
+        return PickAppPod(r.Log);
+    }
+
+    public static string? PickAppPod(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var pods = doc.RootElement.GetProperty("items").EnumerateArray()
+                .Select(p => (Name: PodName(p),
+                    Running: p.TryGetProperty("status", out var st) && st.TryGetProperty("phase", out var ph) && ph.GetString() == "Running"))
+                .Where(p => p.Name.Length > 0 && !p.Name.Contains("dashboard", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return pods.FirstOrDefault(p => p.Running).Name ?? pods.FirstOrDefault().Name;
+        }
+        catch { return null; }
     }
 
     internal static string SafeName(string s) =>

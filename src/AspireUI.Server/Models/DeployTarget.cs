@@ -50,8 +50,14 @@ public record TargetDomains(string Kind = "none", TargetNpm? Npm = null, TargetA
 public record TargetNpm(string BaseUrl, string Email, string? PasswordRef, string ForwardHost);
 public record TargetAzureDomains(string? ResourceGroup, string? Environment, string? SubscriptionId);
 
+// How a Helm release is made reachable and persistent. The chart `aspire publish` produces has
+// ClusterIP services, no Ingress and emptyDir volumes — these settings are what AspireUI adds on top.
+//   Expose: clusterip (nothing, internal only) | nodeport | loadbalancer | ingress
+//   IngressHostPattern: {app} and {service} are substituted, e.g. "{service}.apps.example.com"
+//   StorageClass: set it and emptyDir volumes become PersistentVolumeClaims of that class
 public record TargetKube(string? Context = null, string? Namespace = null, string? KubeconfigRef = null,
-    string? IngressClass = null, string? StorageClass = null);
+    string? IngressClass = null, string? StorageClass = null,
+    string? Expose = null, string? IngressHostPattern = null, string? StorageSize = null);
 
 public record TargetCloud(string? SubscriptionId = null, string? ResourceGroup = null, string? Location = null,
     string? Project = null, string? Cluster = null, string? Account = null, string? CredRef = null,

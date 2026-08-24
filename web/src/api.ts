@@ -229,7 +229,10 @@ export type TargetRequest = {
   ssh?: { host?: string; port?: number; user?: string; privateKey?: string; hostKey?: string } | null;
   dockerHost?: string | null;
   tls?: { ca?: string; cert?: string; key?: string } | null;
-  kube?: { context?: string; namespace?: string; kubeconfig?: string; ingressClass?: string; storageClass?: string } | null;
+  kube?: {
+    context?: string; namespace?: string; kubeconfig?: string; ingressClass?: string; storageClass?: string;
+    expose?: string; ingressHostPattern?: string; storageSize?: string;
+  } | null;
   cloud?: {
     subscriptionId?: string; resourceGroup?: string; location?: string; project?: string; cluster?: string;
     account?: string; credentials?: string; environment?: string;

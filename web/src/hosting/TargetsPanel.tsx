@@ -251,6 +251,11 @@ function TargetEditor({ target, kinds, onClose, onSaved }:
   const [kubeContext, setKubeContext] = useState(target?.kube?.context ?? "");
   const [kubeNs, setKubeNs] = useState(target?.kube?.namespace ?? "");
   const [kubeconfig, setKubeconfig] = useState("");
+  const [expose, setExpose] = useState(target?.kube?.expose ?? "clusterip");
+  const [ingressClass, setIngressClass] = useState(target?.kube?.ingressClass ?? "");
+  const [hostPattern, setHostPattern] = useState(target?.kube?.ingressHostPattern ?? "");
+  const [storageClass, setStorageClass] = useState(target?.kube?.storageClass ?? "");
+  const [storageSize, setStorageSize] = useState(target?.kube?.storageSize ?? "");
 
   const [subscription, setSubscription] = useState(target?.cloud?.subscriptionId ?? "");
   const [resourceGroup, setResourceGroup] = useState(target?.cloud?.resourceGroup ?? "");
@@ -284,7 +289,10 @@ function TargetEditor({ target, kinds, onClose, onSaved }:
     ssh: kind === "ssh" ? { host: sshHost, port: sshPort, user: sshUser, privateKey: sshKey || undefined } : null,
     dockerHost: kind === "dockerTcp" ? dockerHost : null,
     tls: kind === "dockerTcp" && (ca || cert || key) ? { ca: ca || undefined, cert: cert || undefined, key: key || undefined } : null,
-    kube: kind === "k8s" ? { context: kubeContext, namespace: kubeNs, kubeconfig: kubeconfig || undefined } : null,
+    kube: kind === "k8s" ? {
+      context: kubeContext, namespace: kubeNs, kubeconfig: kubeconfig || undefined,
+      expose, ingressClass, ingressHostPattern: hostPattern, storageClass, storageSize,
+    } : null,
     cloud: kind === "aca" || kind === "cloudrun" || kind === "ecs" ? {
       subscriptionId: subscription, resourceGroup, location, project, cluster, environment,
       subnets, securityGroups, executionRoleArn: execRole,
@@ -396,6 +404,29 @@ function TargetEditor({ target, kinds, onClose, onSaved }:
             <Textarea label="Kubeconfig" autosize minRows={3} maxRows={8} value={kubeconfig} onChange={e => setKubeconfig(e.currentTarget.value)}
               placeholder={target?.kube?.hasKubeconfig ? "stored — paste to replace" : "apiVersion: v1\nclusters: …"}
               description="Optional: without one, the kubeconfig of the account AspireUI runs as is used." />
+            <Select label="How apps are reached" value={expose} onChange={v => setExpose(v ?? "clusterip")} allowDeselect={false}
+              description="The generated chart only has ClusterIP services — this is what AspireUI adds on top."
+              data={[
+                { value: "clusterip", label: "ClusterIP — cluster-internal only" },
+                { value: "nodeport", label: "NodePort — reachable on every node's address" },
+                { value: "loadbalancer", label: "LoadBalancer — the cloud assigns an address" },
+                { value: "ingress", label: "Ingress — one host per service" },
+              ]} />
+            {expose === "ingress" && (
+              <Group grow>
+                <TextInput label="Ingress class" placeholder="nginx, traefik …" value={ingressClass}
+                  onChange={e => setIngressClass(e.currentTarget.value)} />
+                <TextInput label="Host pattern" placeholder="{service}.apps.example.com" value={hostPattern}
+                  description="{app} and {service} are substituted" onChange={e => setHostPattern(e.currentTarget.value)} />
+              </Group>
+            )}
+            <Group grow>
+              <TextInput label="Storage class" placeholder="empty = volumes stay ephemeral" value={storageClass}
+                description="Set it and the chart's emptyDir volumes become PersistentVolumeClaims"
+                onChange={e => setStorageClass(e.currentTarget.value)} />
+              <TextInput label="Claim size" placeholder="8Gi" value={storageSize}
+                onChange={e => setStorageSize(e.currentTarget.value)} />
+            </Group>
           </>
         )}
 

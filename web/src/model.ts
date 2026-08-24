@@ -80,7 +80,11 @@ export interface DeployTarget {
   ssh?: { host: string; port: number; user: string; hasKey: boolean; hasHostKey: boolean } | null;
   dockerHost?: string | null;
   tls?: { hasCa: boolean; hasCert: boolean; hasKey: boolean } | null;
-  kube?: { context?: string | null; namespace?: string | null; hasKubeconfig: boolean; ingressClass?: string | null; storageClass?: string | null } | null;
+  kube?: {
+    context?: string | null; namespace?: string | null; hasKubeconfig: boolean;
+    ingressClass?: string | null; storageClass?: string | null;
+    expose?: string | null; ingressHostPattern?: string | null; storageSize?: string | null;
+  } | null;
   cloud?: {
     subscriptionId?: string | null; resourceGroup?: string | null; location?: string | null;
     project?: string | null; cluster?: string | null; environment?: string | null;

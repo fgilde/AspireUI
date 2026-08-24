@@ -40,14 +40,15 @@ the managed platforms are **always** *Add target* — AspireUI does not create c
 
 | | ssh / TCP / local | Kubernetes | Container Apps | Cloud Run | ECS |
 |---|---|---|---|---|---|
-| Host ports & URLs | ✅ own port range | ingress / LoadBalancer | platform FQDN | platform URL | task public IP |
-| Volumes, file browser | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Host ports & URLs | ✅ own port range | NodePort / LoadBalancer / Ingress | platform FQDN | platform URL | task public IP |
+| Persistent volumes | ✅ docker volumes | ✅ claims on a storage class | ❌ | ❌ | ❌ |
+| Volume file browser | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Backups / restore | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Terminal | ✅ `docker exec` | ✅ `kubectl exec` | ✅ `az containerapp exec` | ❌ | ⚠️ needs ECS Exec enabled |
 | Logs | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Start / stop | ✅ | scale 0 ⇄ 1 | min-replicas 0 ⇄ 1 | min-instances | desired-count |
 | Move/copy **with data** | ✅ between two of them | ❌ | ❌ | ❌ | ❌ |
-| Multi-service stack | ✅ compose network | ✅ chart | ⚠️ see below | ⚠️ no name DNS | ⚠️ no name DNS |
+| Multi-service stack | ✅ compose network | ✅ chart | ✅ names rewired for you | ⚠️ no name DNS | ⚠️ no name DNS |
 | Bundled tooling | docker CLI, compose, ssh | **kubectl + helm** | `az` **not** bundled | `gcloud` **not** bundled | `aws` **not** bundled |
 
 ---
@@ -117,17 +118,39 @@ kubectl and helm ship inside the AspireUI image, so only cluster access is neede
 2. **Context** — empty means "the current context of that kubeconfig".
 3. **Namespace** — created on deploy if missing (`--create-namespace`).
 
+4. **How apps are reached** — the chart Aspire generates has **ClusterIP services only, no Ingress**,
+   so this setting decides what AspireUI adds after the install:
+
+   | Mode | What happens | Reachable at |
+   |---|---|---|
+   | `ClusterIP` | nothing — internal only | inside the cluster |
+   | `NodePort` | every app service is patched to NodePort | `http://<node or public address>:<nodePort>` |
+   | `LoadBalancer` | patched to LoadBalancer, the cloud assigns an address | `http://<assigned address>` |
+   | `Ingress` | one Ingress per app service, with your class | `http://<host from the pattern>` |
+
+   For `Ingress`, set an **ingress class** (`nginx`, `traefik`, …) and a **host pattern** —
+   `{service}.apps.example.com` becomes `web.apps.example.com`, `{app}` is the stack's name. Point the
+   DNS records at your ingress controller yourself (or use the target's domain provider).
+   Our dashboard sidecar is never published.
+
+5. **Storage class** — the generated chart puts every volume in an `emptyDir`, which a pod restart
+   empties. Name a storage class (`local-path`, `longhorn`, `gp3`, …) and AspireUI rewrites those into
+   `PersistentVolumeClaim`s of that class before installing, one claim per volume, sized by *claim size*
+   (default `8Gi`). Leave it empty to keep volumes ephemeral on purpose.
+
 What a deploy runs:
 ```bash
 helm upgrade --install aspireui-<stack> <chart-from-aspire-publish> \
   --namespace <ns> --create-namespace --wait --timeout 5m
+# then, depending on the target: kubectl patch svc … / kubectl apply -f <generated ingress>
 ```
 Status comes from the release's pods (`CrashLoopBackOff`, `ImagePullBackOff` and not-ready pods show as
-failing/starting, never as green), URLs from its Ingress hosts and LoadBalancer services.
+failing/starting, never as green), URLs from Ingress hosts, LoadBalancer addresses or NodePorts. Stop
+scales to zero, start scales back, undeploy runs `helm uninstall` **and** removes the Ingress objects
+AspireUI created (helm does not own those).
 
-**Known gaps, stated plainly:** the *ingress class* and *storage class* fields are stored on the target
-but not yet passed to the chart — set them in the chart's values for now. Volume browsing, backups and
-move-with-data do not exist for cluster storage.
+**What is not there:** no volume file browser and no backup/restore for cluster storage, so an app
+cannot be moved between a docker target and a cluster with its data.
 
 ---
 
@@ -262,21 +285,15 @@ Start/stop maps to min-replicas 0/1, logs to `az containerapp logs show`, the te
 
 - **No volumes.** Anything a compose service declares as a volume is gone on the next revision. The
   deploy log says so per service. Databases belong in Azure Database / Cosmos, not in a container app.
-- **Multi-service stacks need their addresses rewired.** Container apps in one environment reach each
-  other by app name, but AspireUI names them `<stack>-<service>` (names must be unique per environment),
-  while the compose environment still says `Host=db`. A single-service app works as is; for two or more
-  services, fix the variable after the first deploy:
-  ```bash
-  az containerapp update -g <rg> -n myapp-web --set-env-vars "DATABASE_HOST=myapp-db"
-  ```
-  (Or keep multi-service stacks on a compose target — that is the honest recommendation today.)
-- **Private registries are not wired.** AspireUI pushes a locally built image to the target's registry,
-  but does not put pull credentials on the container app. Use public images, or attach the registry once
-  by hand:
-  ```bash
-  az containerapp registry set -g <rg> -n <app> --server myacr.azurecr.io \
-    --username <user> --password <token>
-  ```
+- **Multi-service stacks are rewired for you.** Container apps in one environment reach each other by
+  app name, and AspireUI names them `<stack>-<service>` (names must be unique per environment). Every
+  environment variable of every service is rewritten accordingly, so a compose value like
+  `Host=db;Port=5432` becomes `Host=myapp-db;Port=5432`. Only whole host tokens are replaced —
+  `POSTGRES_DB=mydb` is left alone. A service whose port is not HTTP (5432, 6379, …) gets TCP ingress
+  (`--transport tcp --exposed-port`), so a database inside the environment is actually reachable.
+- **Private registries work** when the target has a registry with a user and a password: the credentials
+  are passed at `containerapp create` and set with `az containerapp registry set` on later deploys. A
+  registry without credentials only works if the image is public.
 - **Custom domains:** the built-in *Azure custom domain* provider needs the container app's name
   recorded on the target, and the wizard has no field for it yet — so bind by hand:
   ```bash
@@ -373,27 +390,25 @@ replaced — put an ALB in front for anything permanent.
 | **Hetzner Cloud** | API token | console.hetzner.cloud → project → Security → API tokens (**read & write**) | all (no firewall unless you add one) |
 | **DigitalOcean** | API token | cloud.digitalocean.com → API → tokens (**write** scope) | all |
 | **Akamai Linode** | API token | cloud.linode.com → profile → API tokens (Linodes: read/write) | all |
-| **Azure VM** | `az login` or `tenant:appId:secret` | see [Azure](#azure-vm-create-a-machine) | ssh only → open the range with `az vm open-port` |
-| **AWS EC2** | `aws configure` or `accessKeyId:secretAccessKey` | IAM user with EC2 rights | ⚠️ the default security group allows **nothing** inbound |
-| **Google Compute Engine** | `gcloud auth login` or a service-account key | see Cloud Run above, plus `roles/compute.admin` | ⚠️ only ssh; app ports need a firewall rule |
+| **Azure VM** | `az login` or `tenant:appId:secret` | see [Azure](#azure-vm-create-a-machine) | ssh, plus the port range (`az vm open-port` runs for you) |
+| **AWS EC2** | `aws configure` or `accessKeyId:secretAccessKey` | IAM user with EC2 rights | ssh and the port range, in a security group AspireUI creates |
+| **Google Compute Engine** | `gcloud auth login` or a service-account key | see Cloud Run above, plus `roles/compute.admin` | ssh, plus a tagged firewall rule AspireUI creates |
 
 Common flow for all of them: key pair → server with cloud-init (`curl -fsSL https://get.docker.com | sh`)
 → wait for `docker version` (up to 5 min, then a plain ssh install attempt) → target added → probe.
 
-**The two providers with a caveat:**
+**What AspireUI opens, and where:**
 
-- **AWS EC2** — AspireUI does not pass a security group, so the instance lands in the VPC's default
-  group, which allows no inbound ssh. The provisioning then hangs until the timeout. Either open the
-  default group first
-  ```bash
-  aws ec2 authorize-security-group-ingress --group-id <sg-default> --protocol tcp --port 22 --cidr <your-ip>/32
-  aws ec2 authorize-security-group-ingress --group-id <sg-default> --protocol tcp --port 20000-29999 --cidr 0.0.0.0/0
-  ```
-  or create the instance yourself and register it with *Add target*.
-- **Google Compute Engine** — ssh works out of the box, app ports do not:
-  ```bash
-  gcloud compute firewall-rules create aspireui-apps --allow tcp:20000-29999 --project <PROJECT>
-  ```
+- **AWS EC2** — a security group `aspireui-<name>` is created (or reused) with ssh and 20000–29999
+  inbound, and the instance is launched into it with a public IP. Without that the VPC's default group
+  would allow nothing and the box would never answer.
+- **Google Compute Engine** — the instance is tagged `aspireui` and a firewall rule `aspireui-apps`
+  (tcp:20000-29999 on that tag) is created once per project; ssh is already open on a default network.
+- **Azure VM** — `az vm create` opens ssh, then `az vm open-port --port 20000-29999` runs for the range.
+- **Hetzner / DigitalOcean / Linode** — no firewall by default; nothing to open.
+
+All of these open the range to `0.0.0.0/0`, which is what a public app URL needs. Narrow it at the
+provider if the apps are only reached through a reverse proxy on the box itself.
 
 # Domains, per target
 
@@ -476,3 +491,6 @@ reports unhealthy makes the app broken — compose service or Kubernetes pod ali
 | Container app starts, then 502 | wrong target port, or the service needs a companion it cannot resolve | check `--target-port`, and see the multi-service limit |
 | `no free host port in <from>-<to>` | the target's range is exhausted | widen the range on the target |
 | Backups menu missing | the target has no docker volumes | expected on Kubernetes and the managed platforms |
+| Kubernetes app deployed but no URL | *how apps are reached* is still ClusterIP | pick NodePort/LoadBalancer/Ingress on the target |
+| Kubernetes app lost its data on restart | no storage class on the target, so volumes are `emptyDir` | set a storage class and re-deploy |
+| Container app cannot reach its database | the database has no port in compose, so it got no ingress | expose the port in the stack, or use a managed database |

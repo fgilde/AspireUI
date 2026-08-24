@@ -31,7 +31,8 @@ public static class TargetEndpoints
             },
             dockerHost = t.DockerHost,
             tls = t.Tls is null ? null : new { hasCa = t.Tls.CaRef is not null, hasCert = t.Tls.CertRef is not null, hasKey = t.Tls.KeyRef is not null },
-            kube = t.Kube is null ? null : new { t.Kube.Context, t.Kube.Namespace, hasKubeconfig = t.Kube.KubeconfigRef is not null, t.Kube.IngressClass, t.Kube.StorageClass },
+            kube = t.Kube is null ? null : new { t.Kube.Context, t.Kube.Namespace, hasKubeconfig = t.Kube.KubeconfigRef is not null,
+                t.Kube.IngressClass, t.Kube.StorageClass, expose = t.Kube.Expose ?? "clusterip", t.Kube.IngressHostPattern, t.Kube.StorageSize },
             cloud = t.Cloud is null ? null : new { t.Cloud.SubscriptionId, t.Cloud.ResourceGroup, t.Cloud.Location, t.Cloud.Project, t.Cloud.Cluster, t.Cloud.Environment, t.Cloud.Subnets, t.Cloud.SecurityGroups, t.Cloud.ExecutionRoleArn, t.Cloud.AssignPublicIp, hasCredentials = t.Cloud.CredRef is not null },
             provider = t.Provider is null ? null : new { t.Provider.Kind, t.Provider.Region, t.Provider.ServerId, t.Provider.ServerType, hasCredentials = t.Provider.CredRef is not null },
             registry = t.Registry is null ? null : new { t.Registry.Url, t.Registry.User, hasPassword = t.Registry.PasswordRef is not null },
@@ -172,7 +173,10 @@ public static class TargetEndpoints
             b.Kube.Namespace ?? cur.Kube?.Namespace,
             secrets.Replace(cur.Kube?.KubeconfigRef, b.Kube.Kubeconfig, "kubeconfig"),
             b.Kube.IngressClass ?? cur.Kube?.IngressClass,
-            b.Kube.StorageClass ?? cur.Kube?.StorageClass);
+            b.Kube.StorageClass ?? cur.Kube?.StorageClass,
+            b.Kube.Expose ?? cur.Kube?.Expose,
+            b.Kube.IngressHostPattern ?? cur.Kube?.IngressHostPattern,
+            b.Kube.StorageSize ?? cur.Kube?.StorageSize);
 
         var cloud = b.Cloud is null ? cur.Cloud : new TargetCloud(
             b.Cloud.SubscriptionId ?? cur.Cloud?.SubscriptionId,
@@ -217,7 +221,8 @@ public static class TargetEndpoints
 
     public record SshRequest(string? Host, int? Port, string? User, string? PrivateKey, string? HostKey);
     public record TlsRequest(string? Ca, string? Cert, string? Key);
-    public record KubeRequest(string? Context, string? Namespace, string? Kubeconfig, string? IngressClass, string? StorageClass);
+    public record KubeRequest(string? Context, string? Namespace, string? Kubeconfig, string? IngressClass, string? StorageClass,
+        string? Expose = null, string? IngressHostPattern = null, string? StorageSize = null);
     public record CloudRequest(string? SubscriptionId, string? ResourceGroup, string? Location, string? Project,
         string? Cluster, string? Account, string? Credentials, string? Environment,
         string? Subnets = null, string? SecurityGroups = null, string? ExecutionRoleArn = null, bool? AssignPublicIp = null);

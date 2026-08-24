@@ -335,6 +335,9 @@ public class ProvisionService(TargetStore targets, TargetService svc, SecretStor
             env, timeoutMs: 900_000);
         log.Append(create.Log.Length > 800 ? "az vm create finished\n" : create.Log);
         if (!create.Ok) return (null, null, null, log.ToString());
+        // `az vm create` opens ssh only; without this the apps answer on the box and nowhere else.
+        log.Append(Cli.Run("az", ["vm", "open-port", "-g", rg, "-n", name, "--port", "20000-29999",
+            "--priority", "1010", "-o", "none"], env, timeoutMs: 300_000).Log);
         string? ip = null;
         try
         {
@@ -359,8 +362,15 @@ public class ProvisionService(TargetStore targets, TargetService svc, SecretStor
         var keyName = $"aspireui-{name}";
         log.Append(Cli.Run("aws", ["ec2", "import-key-pair", "--region", region, "--key-name", keyName,
             "--public-key-material", "fileb://" + TempFile(pubKey), "--output", "json"], env).Log);
+
+        // The VPC's default security group allows nothing inbound, so without one of our own the box
+        // would come up and never be reachable — not even for the ssh that installs docker.
+        var sg = SecurityGroup(env, region, name, log);
+        if (sg is null) return (null, null, keyName, log + "could not prepare a security group\n");
+
         var run = Cli.Run("aws", ["ec2", "run-instances", "--region", region, "--image-id", ami.Log.Trim(),
             "--instance-type", size, "--key-name", keyName, "--user-data", "file://" + TempFile(CloudInit),
+            "--security-group-ids", sg, "--associate-public-ip-address",
             "--tag-specifications", $"ResourceType=instance,Tags=[{{Key=Name,Value={name}}}]", "--output", "json"], env, timeoutMs: 300_000);
         if (!run.Ok) return (null, null, null, log + run.Log);
         string? id = null;
@@ -391,8 +401,18 @@ public class ProvisionService(TargetStore targets, TargetService svc, SecretStor
         var log = new StringBuilder();
         var keys = TempFile($"{user}:{pubKey}");
         var init = TempFile(CloudInit);
+        // ssh is open on a default GCE network, the app ports are not: one tagged rule fixes that for
+        // every machine AspireUI creates in this project.
+        var rule = Cli.Run("gcloud", ["compute", "firewall-rules", "describe", "aspireui-apps", "--format", "value(name)"], env);
+        if (!rule.Ok)
+        {
+            var made = Cli.Run("gcloud", ["compute", "firewall-rules", "create", "aspireui-apps",
+                "--allow", "tcp:20000-29999", "--target-tags", "aspireui", "--description", "AspireUI published app ports"],
+                env, timeoutMs: 300_000);
+            log.Append(made.Ok ? "firewall rule aspireui-apps created\n" : made.Log);
+        }
         var create = Cli.Run("gcloud", ["compute", "instances", "create", name, "--zone", zone, "--machine-type", size,
-            "--image-family", image, "--image-project", "ubuntu-os-cloud", "--metadata-from-file",
+            "--image-family", image, "--image-project", "ubuntu-os-cloud", "--tags", "aspireui", "--metadata-from-file",
             $"ssh-keys={keys},user-data={init}", "--format", "json"], env, timeoutMs: 900_000);
         log.Append(create.Ok ? "gcloud compute instances create finished\n" : create.Log);
         if (!create.Ok) return (null, null, null, log.ToString());
@@ -405,6 +425,31 @@ public class ProvisionService(TargetStore targets, TargetService svc, SecretStor
         }
         catch { }
         return (ip, name, null, log.ToString());
+    }
+
+    // Reuses ours if it exists, else creates it and opens ssh plus the app port range.
+    private static string? SecurityGroup(IReadOnlyDictionary<string, string> env, string region, string name, StringBuilder log)
+    {
+        var groupName = $"aspireui-{name}";
+        var existing = Cli.Run("aws", ["ec2", "describe-security-groups", "--region", region,
+            "--filters", $"Name=group-name,Values={groupName}", "--query", "SecurityGroups[0].GroupId", "--output", "text"], env);
+        var id = existing.Ok && existing.Log.Trim() is { Length: > 3 } found && found != "None" ? found.Trim() : null;
+        if (id is null)
+        {
+            var created = Cli.Run("aws", ["ec2", "create-security-group", "--region", region, "--group-name", groupName,
+                "--description", "AspireUI managed: ssh and published app ports", "--query", "GroupId", "--output", "text"], env);
+            log.Append(created.Ok ? $"security group {groupName} created\n" : created.Log);
+            if (!created.Ok) return null;
+            id = created.Log.Trim();
+        }
+        foreach (var (from, to) in new[] { (22, 22), (20000, 29999) })
+        {
+            var open = Cli.Run("aws", ["ec2", "authorize-security-group-ingress", "--region", region, "--group-id", id!,
+                "--ip-permissions", $"IpProtocol=tcp,FromPort={from},ToPort={to},IpRanges=[{{CidrIp=0.0.0.0/0}}]", "--output", "json"], env);
+            // A rule that is already there is not a failure.
+            if (!open.Ok && !open.Log.Contains("Duplicate", StringComparison.OrdinalIgnoreCase)) log.Append(open.Log);
+        }
+        return id;
     }
 
     private static string TempFile(string content)

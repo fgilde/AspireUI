@@ -97,6 +97,42 @@ public static class ManagedDeploy
         t.Registry?.Url is { Length: > 0 } reg && !image.Contains('/')
             ? $"{reg.TrimEnd('/')}/{image}" : image;
 
+    // Compose services talk to each other by service name. On a platform where the deployed service is
+    // called something else (Container Apps needs names unique per environment, so ours are
+    // "<stack>-<service>"), those names have to be rewritten in the environment or nothing resolves.
+    public static Dictionary<string, string> RewriteHosts(IReadOnlyDictionary<string, string> env,
+        IReadOnlyDictionary<string, string> serviceToApp)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in env) result[key] = RewriteHostValue(value, serviceToApp);
+        return result;
+    }
+
+    // Only whole host tokens are replaced: "Host=db;" and "postgres://u:p@db:5432/x" match, "mydb" and
+    // a value that merely contains the word do not.
+    public static string RewriteHostValue(string value, IReadOnlyDictionary<string, string> serviceToApp)
+    {
+        var text = value ?? "";
+        foreach (var (service, app) in serviceToApp)
+        {
+            if (service.Length < 2 || service == app) continue;
+            text = System.Text.RegularExpressions.Regex.Replace(text,
+                "(?<=^|[@/=:;,\\s(])" + System.Text.RegularExpressions.Regex.Escape(service) + "(?=$|[:/?;,\\s)])",
+                app);
+        }
+        return text;
+    }
+
+    // A platform pulls the image itself, so a private registry needs credentials on the app, not on us.
+    private static string[] RegistryArgs(OrchestratorService o, DeployTarget t, string image)
+    {
+        if (t.Registry?.Url is not { Length: > 0 } reg) return [];
+        if (!image.StartsWith(reg.Split('/')[0], StringComparison.OrdinalIgnoreCase)) return [];
+        if (t.Registry.User is not { Length: > 0 } user) return [];
+        if (o.Secrets.Resolve(t.Registry.PasswordRef) is not { Length: > 0 } pw) return [];
+        return ["--registry-server", reg.Split('/')[0], "--registry-username", user, "--registry-password", pw];
+    }
+
     // ---------- Azure Container Apps ----------
 
     public static Deployment Aca(OrchestratorService o, StackModel stack, string publishRoot, string id, DeployTarget t, string? cloneSrc)
@@ -125,38 +161,53 @@ public static class ManagedDeploy
         }
 
         var prefix = OrchestratorService.SafeName(stack.Name);
+        // Container app names have to be unique per environment, so they carry the stack's name. The
+        // environment of every service is rewritten to match, otherwise "Host=db" points at nothing.
+        var appOf = prep.Services.ToDictionary(s => s.Name, s => OrchestratorService.SafeName($"{prefix}-{s.Name}"), StringComparer.Ordinal);
         var urls = new List<string>();
         var ok = true;
         foreach (var s in prep.Services)
         {
-            var app = OrchestratorService.SafeName($"{prefix}-{s.Name}");
+            var app = appOf[s.Name];
             var port = s.Ports.FirstOrDefault();
-            // The first service with a port gets public ingress; the rest stay inside the environment,
-            // where compose's own service names keep resolving.
+            // The first service with a port gets public ingress; the rest are internal, reachable inside
+            // the environment under their app name.
             var external = port > 0 && s == prep.Services.First(x => x.Ports.Count > 0);
+            var exists = Cli.Run("az", ["containerapp", "show", "-g", rg!, "-n", app, "-o", "none"], cli).Ok;
             var args = new List<string>
             {
-                "containerapp", (Cli.Run("az", ["containerapp", "show", "-g", rg!, "-n", app, "-o", "none"], cli).Ok ? "update" : "create"),
+                "containerapp", exists ? "update" : "create",
                 "-g", rg!, "-n", app, "--image", Rewrite(s.Image, t), "-o", "json",
             };
-            if (args[1] == "create")
+            if (!exists)
             {
                 args.AddRange(["--environment", envName]);
                 if (port > 0)
                 {
                     args.AddRange(["--target-port", port.ToString(), "--ingress", external ? "external" : "internal"]);
-                    if (port is not (80 or 443 or 8080 or 3000 or 5000)) args.AddRange(["--transport", "auto"]);
+                    // Anything that is not HTTP needs TCP ingress, or a database is never reachable.
+                    if (!IsHttpPort(port)) args.AddRange(["--transport", "tcp", "--exposed-port", port.ToString()]);
                 }
+                args.AddRange(RegistryArgs(o, t, Rewrite(s.Image, t)));
             }
-            if (s.Env.Count > 0)
+            var env = RewriteHosts(s.Env, appOf);
+            if (env.Count > 0)
             {
                 args.Add("--env-vars");
-                args.AddRange(s.Env.Select(kv => $"{kv.Key}={kv.Value}"));
+                args.AddRange(env.Select(kv => $"{kv.Key}={kv.Value}"));
             }
             if (s.HasVolumes) log.AppendLine($"note: {s.Name} declares a volume — Container Apps keeps no local disk, data will not survive a revision");
             var r = Cli.Run("az", args.ToArray(), cli, timeoutMs: 900_000);
             log.AppendLine("az " + string.Join(' ', args.Take(6)));
             if (!r.Ok) { log.Append(r.Log); ok = false; continue; }
+            // On an existing app the credentials go on separately; `update` takes no --registry-* flags.
+            if (exists && RegistryArgs(o, t, Rewrite(s.Image, t)) is { Length: > 0 } regArgs)
+            {
+                var set = new List<string> { "containerapp", "registry", "set", "-g", rg!, "-n", app, "-o", "none" };
+                for (var i = 0; i < regArgs.Length; i += 2)
+                    set.AddRange([regArgs[i].Replace("--registry-", "--"), regArgs[i + 1]]);
+                log.Append(Cli.Run("az", set.ToArray(), cli, timeoutMs: 300_000).Log);
+            }
             if (external)
             {
                 var fqdn = Cli.Run("az", ["containerapp", "show", "-g", rg!, "-n", app, "--query", "properties.configuration.ingress.fqdn", "-o", "tsv"], cli);
@@ -182,6 +233,8 @@ public static class ManagedDeploy
         if (PushImages(o, t, prep.Services, log) is { } pushErr) return o.Fail(id, pushErr);
         if (prep.Services.Count > 1)
             log.AppendLine("note: Cloud Run has no service-to-service DNS by name — a multi-service stack needs its URLs wired by hand");
+        var runAppOf = prep.Services.ToDictionary(s => s.Name,
+            s => OrchestratorService.SafeName($"{OrchestratorService.SafeName(stack.Name)}-{s.Name}"), StringComparer.Ordinal);
 
         var prefix = OrchestratorService.SafeName(stack.Name);
         var urls = new List<string>();
@@ -195,8 +248,9 @@ public static class ManagedDeploy
                 "--project", project, "--platform", "managed", "--allow-unauthenticated", "--format", "json",
             };
             if (s.Ports.FirstOrDefault() is > 0 and var port) args.AddRange(["--port", port.ToString()]);
-            if (s.Env.Count > 0)
-                args.AddRange(["--set-env-vars", string.Join(",", s.Env.Select(kv => $"{kv.Key}={kv.Value.Replace(",", "^")}"))]);
+            var runEnv = RewriteHosts(s.Env, runAppOf);
+            if (runEnv.Count > 0)
+                args.AddRange(["--set-env-vars", string.Join(",", runEnv.Select(kv => $"{kv.Key}={kv.Value.Replace(",", "^")}"))]);
             if (s.HasVolumes) log.AppendLine($"note: {s.Name} declares a volume — Cloud Run has no local disk that survives a revision");
             var r = Cli.Run("gcloud", args.ToArray(), cli, timeoutMs: 900_000);
             log.AppendLine("gcloud " + string.Join(' ', args.Take(5)));
@@ -232,12 +286,15 @@ public static class ManagedDeploy
             log.AppendLine("note: services are registered as separate ECS services — for name-based discovery add Service Connect in the console");
 
         var prefix = OrchestratorService.SafeName(stack.Name);
+        var ecsAppOf = prep.Services.ToDictionary(s => s.Name,
+            s => OrchestratorService.SafeName($"{prefix}-{s.Name}"), StringComparer.Ordinal);
         var urls = new List<string>();
         var ok = true;
         foreach (var s in prep.Services)
         {
             var name = OrchestratorService.SafeName($"{prefix}-{s.Name}");
-            var taskDef = TaskDefinition(name, Rewrite(s.Image, t), role, region, s);
+            var taskDef = TaskDefinition(name, Rewrite(s.Image, t), role, region,
+                s with { Env = RewriteHosts(s.Env, ecsAppOf) });
             var defFile = Path.Combine(prep.Dir, name + ".taskdef.json");
             File.WriteAllText(defFile, taskDef);
             var reg = Cli.Run("aws", ["ecs", "register-task-definition", "--region", region,
@@ -284,6 +341,10 @@ public static class ManagedDeploy
         }
         return null;
     }
+
+    // Ports a platform can front with HTTP; everything else needs plain TCP ingress.
+    public static bool IsHttpPort(int port) =>
+        port is 80 or 443 or 3000 or 4000 or 5000 or 5001 or 8000 or 8080 or 8081 or 8443 or 9000;
 
     public static string TaskDefinition(string name, string image, string roleArn, string region, ComposeService s)
     {

@@ -13,15 +13,26 @@ public class PublishService
 
     private record Target(CodeGenService.PublishEnv? Env, string Primary, bool UsesAspireCli);
 
+    // The publisher packages must move with the rest of Aspire: a stack generated against 13.5 that
+    // references a 13.4 publisher fails with MissingMethodException. Versions come from
+    // Directory.Packages.props, the same single source codegen uses for everything else.
+    private static string Ver(string id, string fallback) =>
+        CatalogService.PackageVersions().TryGetValue(id, out var v) ? v : fallback;
+
     private static readonly Dictionary<string, Target> Targets = new()
     {
-        ["compose"]    = new(new("builder.AddDockerComposeEnvironment(\"aspireui\");", "Aspire.Hosting.Docker", "13.4.6"), "docker-compose.yaml", true),
+        ["compose"]    = new(new("builder.AddDockerComposeEnvironment(\"aspireui\");", "Aspire.Hosting.Docker", Ver("Aspire.Hosting.Docker", "13.5.2")), "docker-compose.yaml", true),
         ["manifest"]   = new(null, "aspire-manifest.json", false),
-        ["kubernetes"] = new(new("builder.AddKubernetesEnvironment(\"k8s\");", "Aspire.Hosting.Kubernetes", "13.4.6-preview.1.26319.6"), "values.yaml", true),
-        ["bicep"]      = new(new("builder.AddAzureContainerAppEnvironment(\"aca\");", "Aspire.Hosting.Azure.AppContainers", "13.4.6"), "main.bicep", true),
+        ["kubernetes"] = new(new("builder.AddKubernetesEnvironment(\"k8s\");", "Aspire.Hosting.Kubernetes", Ver("Aspire.Hosting.Kubernetes", "13.5.2-preview.1.26421.6")), "values.yaml", true),
+        ["bicep"]      = new(new("builder.AddAzureContainerAppEnvironment(\"aca\");", "Aspire.Hosting.Azure.AppContainers", Ver("Aspire.Hosting.Azure.AppContainers", "13.5.2")), "main.bicep", true),
     };
 
     public static bool IsTarget(string t) => Targets.ContainsKey(t);
+
+    // The publish environment a target adds to a generated stack — also what codegen stamps into the
+    // .csproj, which is why it is worth asserting on.
+    public static CodeGenService.PublishEnv? EnvFor(string target) =>
+        Targets.TryGetValue(target, out var t) ? t.Env : null;
 
     public PublishService(CodeGenService? gen = null, Func<string, string, string, ProcessStartInfo>? commandFactory = null)
     {
