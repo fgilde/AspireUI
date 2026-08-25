@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://fgilde.github.io/QuickRun/quickrun.schema.json
+name: AspireUI
+description: "The AspireUI server, a dashboard for building and running Aspire stacks."
+
+requires:
+  - tool: dotnet
+    version: ">=10.0"
+    install: https://dotnet.microsoft.com/download
+
+setup:
+  - run: dotnet restore
+
+tasks:
+  - name: app
+    run: dotnet run --project src/AspireUI.Server --urls http://localhost:5081
+    readyWhen: {http: "http://localhost:5081"}
+    open: true
