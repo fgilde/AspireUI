@@ -6,12 +6,17 @@ requires:
   - tool: dotnet
     version: ">=10.0"
     install: https://dotnet.microsoft.com/download
+  - tool: node
+    version: ">=20.0"
+    install: https://nodejs.org
 
 setup:
   - run: dotnet restore
 
 tasks:
   - name: app
-    run: dotnet run --project src/AspireUI.Server --urls http://localhost:5081
-    readyWhen: {http: "http://localhost:5081"}
-    open: true
+    # -c Release ist Pflicht: nur dort laeuft das BuildSpa-Target des csproj, das web/ baut und
+    # nach wwwroot kopiert. Im Debug-Build ist wwwroot leer und "/" antwortet 404.
+    run: dotnet run -c Release --project src/AspireUI.Server --urls http://localhost:5081
+    readyWhen: {http: "http://localhost:5081/index.html"}
+    open: http://localhost:5081
