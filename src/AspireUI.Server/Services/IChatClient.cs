@@ -119,9 +119,22 @@ public class CliChatClient : IChatClient
 
 public class HttpChatClient(HttpClient http) : IChatClient
 {
+    // Both spellings are common in the wild: "https://api.openai.com" (no path) and
+    // "https://integrate.api.nvidia.com/v1" or ".../v1beta/openai" (version already in the URL).
+    // Appending /v1 blindly produced /v1/v1/chat/completions and a 404, so it is only added when the
+    // base carries no path of its own.
+    public static string ApiRoot(string? baseUrl)
+    {
+        var b = (baseUrl ?? "").Trim().TrimEnd('/');
+        if (b.Length == 0) return b;
+        var path = Uri.TryCreate(b, UriKind.Absolute, out var u) ? u.AbsolutePath.Trim('/') : "";
+        return path.Length > 0 ? b : b + "/v1";
+    }
+
     public async Task<string> CompleteAsync(string system, string user, AppSettings s)
     {
-        var req = new HttpRequestMessage(HttpMethod.Post, $"{s.AiBaseUrl!.TrimEnd('/')}/v1/chat/completions")
+        var url = $"{ApiRoot(s.AiBaseUrl)}/chat/completions";
+        var req = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = JsonContent.Create(new
             {
@@ -138,19 +151,34 @@ public class HttpChatClient(HttpClient http) : IChatClient
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", s.AiApiKey);
 
         var resp = await http.SendAsync(req);
-        resp.EnsureSuccessStatusCode();
+        if (!resp.IsSuccessStatusCode) throw Failed(url, s.AiModel, resp);
 
         using var doc = JsonDocument.Parse(await resp.Content.ReadAsStreamAsync());
         return doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "";
     }
 
+    // A bare "404 Not Found" says nothing about which URL was called or which model was asked for.
+    private static InvalidOperationException Failed(string url, string? model, HttpResponseMessage resp)
+    {
+        var body = "";
+        try { body = resp.Content.ReadAsStringAsync().GetAwaiter().GetResult(); } catch { }
+        if (body.Length > 400) body = body[..400] + "…";
+        var hint = resp.StatusCode == System.Net.HttpStatusCode.NotFound
+            ? " — check the base URL and whether the model exists at this provider"
+            : resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+                ? " — check the API key" : "";
+        return new InvalidOperationException(
+            $"{(int)resp.StatusCode} {resp.ReasonPhrase} from {url} (model '{model}'){hint}. {body}".Trim());
+    }
+
     public async Task<List<string>> ListModelsAsync(AppSettings s)
     {
-        var req = new HttpRequestMessage(HttpMethod.Get, $"{s.AiBaseUrl!.TrimEnd('/')}/v1/models");
+        var url = $"{ApiRoot(s.AiBaseUrl)}/models";
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
         if (!string.IsNullOrEmpty(s.AiApiKey))
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", s.AiApiKey);
         var resp = await http.SendAsync(req);
-        resp.EnsureSuccessStatusCode();
+        if (!resp.IsSuccessStatusCode) throw Failed(url, s.AiModel, resp);
         using var doc = JsonDocument.Parse(await resp.Content.ReadAsStreamAsync());
         return doc.RootElement.GetProperty("data").EnumerateArray()
             .Select(e => e.GetProperty("id").GetString()).Where(id => id is not null).Select(id => id!)

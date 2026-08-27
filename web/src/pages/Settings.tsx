@@ -589,7 +589,8 @@ export function Settings() {
               <>
                 <TextInput
                   label="Base URL"
-                  placeholder="http://localhost:8080 (your LocalAI/Ollama/OpenAI base URL, without /v1)"
+                  description="With or without the version segment: http://localhost:11434 and https://integrate.api.nvidia.com/v1 both work."
+                  placeholder="http://localhost:8080"
                   value={settings.aiBaseUrl ?? ""}
                   onChange={e => setSettings({ ...settings, aiBaseUrl: e.currentTarget.value })}
                 />

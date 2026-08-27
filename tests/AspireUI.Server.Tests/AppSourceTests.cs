@@ -1,6 +1,9 @@
 using System.Text.Json;
 using AspireUI.Server.Services;
 
+// The app-source cache lives under WORKSPACE_DIR, which TestWebAppFactory repoints when a server test
+// starts — running both at once makes this one read the wrong directory. Same collection, no overlap.
+[Collection("ServerIntegration")]
 public class AppSourceTests
 {
     private static (AppSourceService svc, string cache) New()
