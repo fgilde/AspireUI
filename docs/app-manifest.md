@@ -46,6 +46,11 @@ the volume, generates a 48-character `APP_SECRET` at install time and shows it i
   dialog. A `"secret": true` param with an empty `default` gets a fresh random value per install
   (never ship a real secret as a default). Outside the store dialog a param becomes an Aspire
   `AddParameter` resource, so it stays visible and editable in the builder.
+  Two fields for the awkward cases:
+  `"generate": false` marks a secret **only the provider can hand out** — an installation key, an API
+  token, an SMTP password. The dialog then asks for it instead of inventing a value that looks right
+  and breaks the app. `"hint"` is the one line under the field that says what it is and where to get
+  it, e.g. `"From https://bitwarden.com/host (free, one form)."`.
 - **`volumes`** — `[["name", "/container/path"], …]`, one named volume per entry, prefixed with the
   resource name. Anything the user would be upset to lose belongs here: databases, uploads,
   generated keys, config. Avoid `bindMounts` in submitted apps — host paths don't exist elsewhere.

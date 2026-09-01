@@ -15,7 +15,7 @@ public static class PresetBuilder
     }
     public static string ParamDefault(PresetParam p) =>
         !string.IsNullOrEmpty(p.Default) ? p.Default!
-        : p.Secret ? Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24)).ToLowerInvariant()
+        : p.Secret && p.Generate ? Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24)).ToLowerInvariant()
         : "";
 
     private static string? IconForImage(string? img)

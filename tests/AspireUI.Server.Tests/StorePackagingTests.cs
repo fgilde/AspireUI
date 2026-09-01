@@ -71,6 +71,16 @@ public class StorePackagingTests
     }
 
     [Fact]
+    public void A_secret_only_the_provider_can_issue_is_never_invented()
+    {
+        // An installation key or an API token must come from the user; a random value would look
+        // right, install cleanly and leave the app broken.
+        var p = new PresetParam("key", "BW_INSTALLATION_KEY", "", Secret: true, Generate: false);
+        Assert.Equal("", PresetBuilder.ParamDefault(p));
+        Assert.Equal("given", PresetBuilder.ParamDefault(p with { Default = "given" }));
+    }
+
+    [Fact]
     public void Unraid_template_and_profile_are_valid()
     {
         var root = RepoRoot();

@@ -7839,5 +7839,156 @@
       "/media/webdatastudio/screenshots/compare.png",
       "/media/webdatastudio/screenshots/admin.png"
     ]
+  },
+  {
+    "id": "bitwarden",
+    "label": "Bitwarden",
+    "group": "Tools",
+    "image": "ghcr.io/bitwarden/lite:latest",
+    "port": 8080,
+    "icon": "bitwarden",
+    "description": "Bitwarden — the official self-hosted server (Bitwarden Lite, formerly \"unified\"), the real thing rather than a reimplementation: vaults, organisations, collections, sends, attachments, the admin portal and the official web vault, with a MariaDB companion. Two things it needs from you: an installation id and key from https://bitwarden.com/host (free, one form), and HTTPS on the domain you set below — the browser extensions and mobile apps refuse a plain-http server. Put a proxy with a certificate in front of it (the domain dialog does that for you) and set BW_DOMAIN to that URL. Wants about 1–2 GB of RAM; for a smaller box, Vaultwarden in this store speaks the same client protocol at a fraction of the size.",
+    "env": [
+      [
+        "BW_DB_PROVIDER",
+        "mysql"
+      ],
+      [
+        "BW_DB_SERVER",
+        "${db}"
+      ],
+      [
+        "BW_DB_DATABASE",
+        "bitwarden_vault"
+      ],
+      [
+        "BW_DB_USERNAME",
+        "bitwarden"
+      ],
+      [
+        "BW_DB_PASSWORD",
+        "bitwarden"
+      ],
+      [
+        "BW_ENABLE_ADMIN",
+        "true"
+      ]
+    ],
+    "params": [
+      {
+        "key": "bw-domain",
+        "env": "BW_DOMAIN",
+        "default": "bitwarden.example.com",
+        "hint": "The URL clients will use, e.g. https://vault.example.com — Bitwarden apps refuse a plain-http server, so put a certificate in front of it."
+      },
+      {
+        "key": "bw-installation-id",
+        "env": "BW_INSTALLATION_ID",
+        "default": "",
+        "hint": "From https://bitwarden.com/host (free, one form). Without it the server starts but cannot talk to Bitwarden's push and licensing services."
+      },
+      {
+        "key": "bw-installation-key",
+        "env": "BW_INSTALLATION_KEY",
+        "default": "",
+        "secret": true,
+        "hint": "The key from the same form at https://bitwarden.com/host.",
+        "generate": false
+      },
+      {
+        "key": "bw-admins",
+        "env": "adminSettings__admins",
+        "default": "",
+        "hint": "Comma-separated e-mail addresses that may open the admin portal at /admin."
+      },
+      {
+        "key": "bw-smtp-host",
+        "env": "globalSettings__mail__smtp__host",
+        "default": "",
+        "hint": "Optional SMTP server; without it the server cannot send invitations or verification mails."
+      },
+      {
+        "key": "bw-smtp-port",
+        "env": "globalSettings__mail__smtp__port",
+        "default": "587",
+        "hint": "SMTP port, 587 for STARTTLS."
+      },
+      {
+        "key": "bw-smtp-user",
+        "env": "globalSettings__mail__smtp__username",
+        "default": "",
+        "hint": "SMTP user name."
+      },
+      {
+        "key": "bw-smtp-password",
+        "env": "globalSettings__mail__smtp__password",
+        "default": "",
+        "secret": true,
+        "hint": "SMTP password — your provider's, not one we can invent.",
+        "generate": false
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "bitwarden-db",
+        "image": "mariadb:11",
+        "role": "mariadb",
+        "env": [
+          [
+            "MARIADB_USER",
+            "bitwarden"
+          ],
+          [
+            "MARIADB_PASSWORD",
+            "bitwarden"
+          ],
+          [
+            "MARIADB_DATABASE",
+            "bitwarden_vault"
+          ],
+          [
+            "MARIADB_RANDOM_ROOT_PASSWORD",
+            "true"
+          ]
+        ],
+        "volumes": [
+          [
+            "data",
+            "/var/lib/mysql"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "config",
+        "/etc/bitwarden"
+      ],
+      [
+        "logs",
+        "/var/log/bitwarden"
+      ]
+    ],
+    "tags": [
+      "password-manager",
+      "security",
+      "vault",
+      "self-hosted",
+      "official"
+    ],
+    "topics": [
+      "password-manager",
+      "bitwarden",
+      "vault",
+      "security",
+      "selfhosted"
+    ],
+    "website": "https://bitwarden.com",
+    "github": "https://github.com/bitwarden/self-host",
+    "license": "GPL-3.0 / Bitwarden License",
+    "language": "C#",
+    "urlPath": "/"
   }
 ]

@@ -112,7 +112,7 @@
               },
               "secret": {
                 "type": "boolean",
-                "description": "Masked in the UI; an empty default is filled with a random 48-char hex value."
+                "description": "Masked in the UI; an empty default is filled with a random 48-char hex value unless generate is false."
               },
               "name": {
                 "type": [
@@ -120,6 +120,18 @@
                   "null"
                 ],
                 "description": "Resource name of the generated Aspire parameter."
+              },
+              "generate": {
+                "type": "boolean",
+                "default": true,
+                "description": "Set to false for a secret only the provider can hand out (installation key, API token, SMTP password). The install dialog then asks for it instead of inventing one."
+              },
+              "hint": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "One line shown under the field in the install dialog: what the value is and where to get it."
               }
             }
           }

@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **162 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **163 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -134,12 +134,13 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(80)</sub>
+## Tools <sub>(81)</sub>
 
 | | App | What it is |
 |---|---|---|
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/actual.png" width="22" height="22" alt=""> | **[Actual Budget](https://actualbudget.org)** | A local-first personal finance app |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/archivebox.png" width="22" height="22" alt=""> | **[ArchiveBox](https://archivebox.io)** | 🗃 Open source self-hosted web archiving. Takes URLs/browser history/bookmarks/Pocket/Pinboard/etc., saves HTML, JS, PDFs, media, and… |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bitwarden.png" width="22" height="22" alt=""> | **[Bitwarden](https://bitwarden.com)** | Bitwarden — the official self-hosted server (Bitwarden Lite): vaults, organisations, sends, admin portal and the official web vault, with a MariaDB companion. Needs an installation id/key from bitwarden.com/host and HTTPS on its domain. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/baikal.png" width="22" height="22" alt=""> | **[Baikal](https://sabre.io/baikal/)** | Baïkal is a Calendar+Contacts server Finish setup (admin + SQLite/MySQL) via the web installer on first visit. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bookstack.png" width="22" height="22" alt=""> | **[BookStack](https://www.bookstackapp.com)** | NOW MANAGED ON CODEBERG MariaDB companion. APP_KEY seeded (base64). Set APP_URL to how you reach it (default http://localhost). Built-in… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/changedetection.png" width="22" height="22" alt=""> | **[changedetection.io](https://changedetection.io)** | changedetection.io — watch web pages for changes and get notified. (Add a Playwright/browserless companion later for JS-heavy pages.) |
@@ -222,4 +223,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*162 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*163 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

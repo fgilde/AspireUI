@@ -77,6 +77,34 @@ jobs:
 
   # Real arm64 hardware, because QEMU cannot verify this: the emulated .NET runtime aborts
   # (AccessViolation / signal 6) on any non-trivial app, so a passing local emulated build says
+
+  # CasaOS consumes a custom app source as a zip whose root is a `build/sysroot/...` tree (that is
+  # what IceWhale's own store CI produces). Build ours from store/casaos/ and keep it at a fixed
+  # release tag, so the URL a user pastes into CasaOS never changes.
+  casaos-store:
+    needs: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the CasaOS app-source archive
+        run: |
+          set -euo pipefail
+          root="build/sysroot/var/lib/casaos/appstore/default.new"
+          mkdir -p "$root"
+          cp -r store/casaos/Apps "$root/"
+          cp store/casaos/category-list.json store/casaos/featured-apps.json              store/casaos/recommend-list.json store/casaos/README.md "$root/"
+          zip -rq casaos-appstore.zip build
+          unzip -t casaos-appstore.zip >/dev/null
+      - name: Publish it at the stable store tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view store >/dev/null 2>&1             || gh release create store --title "App store packages" --notes "CasaOS app source for AspireUI. Add the zip URL below under App Store → Add source." --latest=false
+          gh release upload store casaos-appstore.zip --clobber
+
   # nothing about the arm64 image actually running.
   smoke-arm64:
     needs: build-push

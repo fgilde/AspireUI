@@ -33,8 +33,11 @@ public record PresetFile(string Name, string Content);
 // Companion node in preset; wires env references and offers resource alternatives.
 public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role,
     List<List<string>>? Volumes = null);
-// Preset param → Aspire parameter or literal env value.
-public record PresetParam(string Key, string Env, string? Default, bool Secret = false, string? Name = null);
+// Preset param -> Aspire parameter or literal env value.
+// Generate=false marks a secret the app cannot invent: an installation key, an API token, an SMTP
+// password. Inventing one there produces a value that looks right and breaks the install.
+public record PresetParam(string Key, string Env, string? Default, bool Secret = false, string? Name = null,
+    bool Generate = true, string? Hint = null);
 
 public class CatalogService
 {

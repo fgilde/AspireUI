@@ -28,18 +28,22 @@ export function InstallOptionsModal({ preset, npm, busy, onClose, onInstall }: {
         <TextInput label="App name" value={name} onChange={e => setName(e.currentTarget.value)} data-autofocus
           description="Used for the stack, the container names and its volumes." />
         {params.map(p => {
-          const label = p.env;
-          const desc = p.secret ? "Generated for you — keep it if you have no reason to change it." : undefined;
+          const label = p.name || p.env;
+          // A secret the app can invent gets one; a secret only the provider can hand out asks for it.
+          const generated = p.secret && p.generate !== false;
+          const desc = p.hint ?? (generated ? "Generated for you — keep it if you have no reason to change it." : undefined);
           return p.secret
             ? <PasswordInput key={p.key} label={label} description={desc} value={vals[p.key] ?? ""}
                 onChange={e => set(p.key, e.currentTarget.value)}
-                rightSection={
-                  <Tooltip label="Generate a new value" withArrow>
-                    <ActionIcon variant="subtle" color="gray" onClick={() => set(p.key, presetParamDefault({ ...p, default: "" }))} aria-label="Regenerate">
-                      <IconRefresh size={15} />
-                    </ActionIcon>
-                  </Tooltip>} />
-            : <TextInput key={p.key} label={label} value={vals[p.key] ?? ""} onChange={e => set(p.key, e.currentTarget.value)} />;
+                rightSection={generated
+                  ? <Tooltip label="Generate a new value" withArrow>
+                      <ActionIcon variant="subtle" color="gray" onClick={() => set(p.key, presetParamDefault({ ...p, default: "" }))} aria-label="Regenerate">
+                        <IconRefresh size={15} />
+                      </ActionIcon>
+                    </Tooltip>
+                  : null} />
+            : <TextInput key={p.key} label={label} description={p.hint ?? undefined} value={vals[p.key] ?? ""}
+                onChange={e => set(p.key, e.currentTarget.value)} />;
         })}
         {npm
           ? <Alert color="blue" p="xs" icon={<IconWorld size={16} />}>
@@ -49,7 +53,7 @@ export function InstallOptionsModal({ preset, npm, busy, onClose, onInstall }: {
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose}>Cancel</Button>
           <Button loading={busy} leftSection={<IconDownload size={16} />}
-            disabled={!name.trim() || params.some(p => p.secret && !(vals[p.key] ?? "").trim())}
+            disabled={!name.trim() || params.some(p => p.secret && p.generate !== false && !(vals[p.key] ?? "").trim())}
             onClick={() => onInstall({ name: name.trim(), params: vals })}>Install</Button>
         </Group>
       </Stack>

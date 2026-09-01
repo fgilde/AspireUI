@@ -1,7 +1,8 @@
-# AspireUI in other app stores (Umbrel, Unraid)
+# AspireUI in other app stores (Umbrel, Unraid, CasaOS, Cosmos)
 
-AspireUI ships the packaging files for **Umbrel** and **Unraid Community Applications** in this
-repository, so this repo *is* both an Umbrel community app store and an Unraid CA template repo.
+AspireUI ships the packaging for four self-hosting platforms in this repository, so the repo *is* an
+Umbrel community app store, an Unraid CA template repo, a CasaOS app source and a ready-to-PR Cosmos
+servapp.
 
 | File | Store |
 |------|-------|
@@ -10,6 +11,21 @@ repository, so this repo *is* both an Umbrel community app store and an Unraid C
 | `fgilde-aspireui/docker-compose.yml` | Umbrel app services (`app_proxy` + `server`) |
 | `ca_profile.xml` | Unraid CA repository profile |
 | `templates/aspireui.xml` | Unraid CA container template |
+| `store/casaos/Apps/AspireUI/docker-compose.yml` | CasaOS app (compose + `x-casaos` metadata) |
+| `store/casaos/*.json` | CasaOS source index (categories, featured, recommended) |
+| `store/cosmos/servapps/AspireUI/` | Cosmos servapp (`cosmos-compose.json`, description, images) |
+
+Where each one stands, and what is left to do:
+
+| Store | Installable today | Listed in the official store |
+|---|---|---|
+| **Umbrel** | ✅ community app store (add this repo's URL) | ❌ blocked: their rules forbid the Docker socket |
+| **Unraid CA** | ✅ template URL by hand | ⏳ one submission form, then moderation |
+| **CasaOS** | ✅ custom app source (zip URL) | ⏳ PR to `IceWhaleTech/CasaOS-AppStore` |
+| **Cosmos** | ✅ compose import by hand | ⏳ PR to `azukaar/cosmos-servapps-official` |
+
+`StoreListingTests` and `StorePackagingTests` keep all of these files valid — they are hand-written
+files that nothing compiles, so a typo would otherwise only surface as a rejected submission.
 
 ## Umbrel — install it today (community store)
 
@@ -74,7 +90,50 @@ field accepts the raw template URL
 https://raw.githubusercontent.com/fgilde/AspireUI/master/templates/aspireui.xml
 ```
 
-## Notes for both stores
+## CasaOS
+
+CasaOS reads an app source as a zip whose root is a `build/sysroot/var/lib/casaos/appstore/default.new`
+tree (that is what IceWhale's own store CI produces). `.github/workflows/docker-publish.yml` builds
+exactly that from `store/casaos/` on every push to master and keeps it at a fixed release tag, so the
+URL never changes:
+
+```
+https://github.com/fgilde/AspireUI/releases/download/store/casaos-appstore.zip
+```
+
+**Install it today:** CasaOS **App Store → the ⋯ menu → Add source**, paste that URL, then install
+AspireUI from the *Developer* category. The app opens on port `5158`, stores its data under
+`/DATA/AppData/aspireui/data`, and gets `ASPIREUI_SET_PublicHost` pointed at the device so links to
+hosted apps work from other machines.
+
+**Submitting to the official CasaOS store:** a PR against
+[IceWhaleTech/CasaOS-AppStore](https://github.com/IceWhaleTech/CasaOS-AppStore) that adds
+`Apps/AspireUI/`. Their CI validates the compose file and the `x-casaos` block.
+
+1. Copy `store/casaos/Apps/AspireUI/docker-compose.yml` into their `Apps/AspireUI/`.
+2. Add the image files their layout expects next to it — `icon.png` (and `icon.svg` if available),
+   `thumbnail.png`, `screenshot-1..3.png` — and repoint `icon`, `thumbnail` and `screenshot_link` at
+   `https://cdn.jsdelivr.net/gh/IceWhaleTech/CasaOS-AppStore@main/Apps/AspireUI/…`.
+3. Pin `version:` in `x-casaos` to the released AspireUI version and replace the `:latest` tag with it.
+4. Mention the Docker socket in the PR: CasaOS lists container managers (Portainer, Dockge), but the
+   reviewer should not have to discover that mount on their own.
+
+## Cosmos
+
+`store/cosmos/servapps/AspireUI/` is a complete Cosmos servapp: `cosmos-compose.json` (with an
+installer form for the optional admin account, a `SERVAPP` route to port 8080, a named `/data` volume
+and the Docker socket bind), `description.json`, `icon.png` and three screenshots.
+
+**Install it today** without waiting for the market: Cosmos **ServApps → Create → Import compose
+file**, and paste the contents of `cosmos-compose.json` (Cosmos resolves the `{ServiceName}` and
+`{if Context.…}` placeholders as you fill the form).
+
+**Submitting to the official market:** a PR against
+[azukaar/cosmos-servapps-official](https://github.com/azukaar/cosmos-servapps-official) that adds
+`servapps/AspireUI/` — copy the folder as it is; the icon URL in the `cosmos-icon` label already points
+at where the file will live once merged (`azukaar.github.io/cosmos-servapps-official/servapps/AspireUI/icon.png`).
+
+## Notes for all four stores
 
 - The Docker socket mapping is required, not optional: without it Run and Hosting cannot start
   containers. It is root-equivalent host access — keep AspireUI off the public internet.
