@@ -37,6 +37,8 @@
   AspireUI
 </h1>
 
+[![QuickRun](https://quickrun.org/badge.svg)](https://quickrun.org/run?repo=fgilde/AspireUI)
+
 Visually build, import, and run .NET Aspire AppHost projects.
 
 ## Deploy
