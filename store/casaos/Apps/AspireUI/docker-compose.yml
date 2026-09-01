@@ -113,15 +113,16 @@ x-casaos:
       de_DE: |
         Beim ersten Start legt ein Assistent das Admin-Konto an. Mit ASPIREUI_ADMIN_USERNAME und
         ASPIREUI_ADMIN_PASSWORD wird er übersprungen.
-  icon: https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/aspireui.png
-  thumbnail: https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/overview-github-dark.png
+  icon: https://raw.githubusercontent.com/fgilde/AspireUI/master/store/casaos/Apps/AspireUI/icon.svg
+  thumbnail: https://raw.githubusercontent.com/fgilde/AspireUI/master/store/casaos/Apps/AspireUI/thumbnail.png
   screenshot_link:
-    - https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/overview-github-dark.png
-    - https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/editor-github-dark.png
-    - https://raw.githubusercontent.com/fgilde/AspireUI/master/docs/screenshots/dashboard-github-dark.png
+    - https://raw.githubusercontent.com/fgilde/AspireUI/master/store/casaos/Apps/AspireUI/screenshot-1.png
+    - https://raw.githubusercontent.com/fgilde/AspireUI/master/store/casaos/Apps/AspireUI/screenshot-2.png
+    - https://raw.githubusercontent.com/fgilde/AspireUI/master/store/casaos/Apps/AspireUI/screenshot-3.png
   index: /
   port_map: "5158"
   scheme: http
+  version: "0.1.40"
   website: https://github.com/fgilde/AspireUI
   repo: https://github.com/fgilde/AspireUI
   support: https://github.com/fgilde/AspireUI/issues
