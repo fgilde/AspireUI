@@ -7990,5 +7990,161 @@
     "license": "GPL-3.0 / Bitwarden License",
     "language": "C#",
     "urlPath": "/"
+  },
+  {
+    "id": "passbolt",
+    "label": "Passbolt",
+    "group": "Tools",
+    "image": "passbolt/passbolt:latest-ce",
+    "port": 80,
+    "icon": "passbolt",
+    "description": "Passbolt Community Edition — the password manager built for teams: passwords are encrypted in the browser with OpenPGP, shared per user or per group, and the server never sees a plaintext secret. Browser extension for Chrome and Firefox, mobile apps, folders, tags, an audit log and a JSON API, with a MariaDB companion.\n\nThree things it wants from you. First, the address: set APP_FULL_BASE_URL below to exactly the URL you will open — passbolt writes it into every mail and refuses requests that arrive under another name. Second, HTTPS on that address: the browser extension will not talk to a plain-http server unless it is localhost, so give the app a domain (the domain dialog does that for you). Third, the first account, which is created on the command line rather than in a setup screen — open the app's terminal and run:\n\nsu -m -c \"/usr/share/php/passbolt/bin/cake passbolt register_user -u you@example.com -f First -l Last -r admin\" -s /bin/sh www-data\n\nThat prints a one-time setup link; open it in the browser that has the extension installed. Without SMTP settings no mail is sent, and that link is the only way in — so keep it. The two volumes hold the server's OpenPGP key and the JWT keys: lose them and no client can talk to the server again, so they belong in the backup.",
+    "env": [
+      [
+        "DATASOURCES_DEFAULT_HOST",
+        "${db}"
+      ],
+      [
+        "DATASOURCES_DEFAULT_PORT",
+        "3306"
+      ],
+      [
+        "DATASOURCES_DEFAULT_USERNAME",
+        "passbolt"
+      ],
+      [
+        "DATASOURCES_DEFAULT_PASSWORD",
+        "passbolt"
+      ],
+      [
+        "DATASOURCES_DEFAULT_DATABASE",
+        "passbolt"
+      ],
+      [
+        "PASSBOLT_SSL_FORCE",
+        "false"
+      ],
+      [
+        "PASSBOLT_SECURITY_PROXIES_ACTIVE",
+        "true"
+      ]
+    ],
+    "args": [
+      "/usr/bin/wait-for.sh",
+      "-t",
+      "300",
+      "passbolt-db:3306",
+      "--",
+      "/docker-entrypoint.sh"
+    ],
+    "params": [
+      {
+        "key": "app-url",
+        "env": "APP_FULL_BASE_URL",
+        "default": "https://passbolt.example.com",
+        "hint": "Exactly the URL you will open, protocol included. It goes into every mail passbolt sends, and the browser extension refuses a plain-http server that is not localhost."
+      },
+      {
+        "key": "email-from",
+        "env": "EMAIL_DEFAULT_FROM",
+        "default": "",
+        "hint": "Sender address for invitations and password-reset mails. Empty means passbolt sends no mail at all, and every account has to be created on the command line."
+      },
+      {
+        "key": "smtp-host",
+        "env": "EMAIL_TRANSPORT_DEFAULT_HOST",
+        "default": "",
+        "hint": "SMTP server, e.g. smtp.example.com."
+      },
+      {
+        "key": "smtp-port",
+        "env": "EMAIL_TRANSPORT_DEFAULT_PORT",
+        "default": "587",
+        "hint": "SMTP port, 587 for STARTTLS."
+      },
+      {
+        "key": "smtp-user",
+        "env": "EMAIL_TRANSPORT_DEFAULT_USERNAME",
+        "default": "",
+        "hint": "SMTP user name."
+      },
+      {
+        "key": "smtp-password",
+        "env": "EMAIL_TRANSPORT_DEFAULT_PASSWORD",
+        "default": "",
+        "secret": true,
+        "hint": "SMTP password — your provider's, not one we can invent.",
+        "generate": false
+      },
+      {
+        "key": "smtp-tls",
+        "env": "EMAIL_TRANSPORT_DEFAULT_TLS",
+        "default": "true",
+        "hint": "true for STARTTLS on port 587, false for an unencrypted relay on the same host."
+      }
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "passbolt-db",
+        "image": "mariadb:10.11",
+        "role": "mariadb",
+        "env": [
+          [
+            "MARIADB_USER",
+            "passbolt"
+          ],
+          [
+            "MARIADB_PASSWORD",
+            "passbolt"
+          ],
+          [
+            "MARIADB_DATABASE",
+            "passbolt"
+          ],
+          [
+            "MARIADB_RANDOM_ROOT_PASSWORD",
+            "true"
+          ]
+        ],
+        "volumes": [
+          [
+            "data",
+            "/var/lib/mysql"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "gpg",
+        "/etc/passbolt/gpg"
+      ],
+      [
+        "jwt",
+        "/etc/passbolt/jwt"
+      ]
+    ],
+    "tags": [
+      "password-manager",
+      "security",
+      "vault",
+      "teams",
+      "self-hosted",
+      "official"
+    ],
+    "topics": [
+      "password-manager",
+      "passbolt",
+      "openpgp",
+      "security",
+      "selfhosted"
+    ],
+    "website": "https://www.passbolt.com",
+    "github": "https://github.com/passbolt/passbolt_api",
+    "license": "AGPL-3.0",
+    "language": "PHP",
+    "urlPath": "/"
   }
 ]

@@ -168,7 +168,7 @@ Docs site (in progress): **https://fgilde.github.io/AspireUI/**
   Cloud Run or ECS — pick one per deploy, install a store app onto several at once, and move or copy a
   running app (with its data) from one to another; machines at Hetzner/DigitalOcean/Linode/AWS/Azure/GCP
   can be created from AspireUI too. See [Deploy targets](docs/deploy-targets.md)
-- **163 preconfigured container apps** (Immich, Jellyfin, Nextcloud, WordPress, Gitea, n8n, Pi-hole, …),
+- **164 preconfigured container apps** (Immich, Jellyfin, Nextcloud, WordPress, Gitea, n8n, Pi-hole, …),
   ready to drop on the canvas or install from the store; see the [App Catalog](docs/apps.md), and
   [add your own](#bring-your-own-app-to-the-store) with one JSON file
 - **WebDataStudio** on any database resource: one switch adds a browser database studio

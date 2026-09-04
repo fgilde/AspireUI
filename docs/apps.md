@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **163 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **164 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -134,7 +134,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(81)</sub>
+## Tools <sub>(82)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -198,6 +198,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/onlyoffice.png" width="22" height="22" alt=""> | **[OnlyOffice](https://www.onlyoffice.com)** | I believe this is just a description based on the fact, that ONLYOFFICE Docs is a web-based application. Therefore it has to be “hosted”… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/outline.png" width="22" height="22" alt=""> | **[Outline](https://www.getoutline.com)** | # Hosting Outline ... This guide contains documentation for installing and configuring the Outline knowledge base in a variety of… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/paperless.png" width="22" height="22" alt=""> | **[Paperless-ngx](https://docs.paperless-ngx.com)** | Paperless-ngx — scan/OCR document management. Comes with a Postgres + Redis companion (scaffold — finish the connection env). |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/passbolt.png" width="22" height="22" alt=""> | **[Passbolt](https://www.passbolt.com)** | Passbolt Community Edition — password manager for teams: secrets encrypted in the browser with OpenPGP, shared per user or group, with a MariaDB companion. Set APP_FULL_BASE_URL to the URL you will open, give it HTTPS (the extension refuses plain http), and create the first account from the app's terminal with `cake passbolt register_user`. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/pearcircle-seeder.png" width="22" height="22" alt=""> | **[PearCircle Seeder](https://github.com/peerloomllc/pearcircle-seeder)** | Run a blind seeder for your PearCircle circles on your Umbrel so their history stays in sync even when every phone is offline. ...… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/penpot.png" width="22" height="22" alt=""> | **[Penpot](https://penpot.app)** | Penpot — open-source design & prototyping (Figma alternative). Frontend + backend + exporter + Postgres + Redis. Register the first… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/planka.png" width="22" height="22" alt=""> | **[Planka](https://planka.app)** | Planka — Trello-style kanban boards. Postgres companion. Set BASE_URL to how you reach it (default localhost:1337). Login = the seeded… |
@@ -223,4 +224,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*163 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*164 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

@@ -151,4 +151,39 @@ public class StoreListingTests
         Assert.Single(edges);
         Assert.Contains(nodes, n => n.AddArgs.Contains("\"mariadb:11\""));
     }
+
+    [Fact]
+    public void Passbolt_waits_for_its_database_before_it_installs()
+    {
+        var p = Assert.Single(new CatalogService().GetPresets(), x => x.Id == "passbolt");
+        Assert.Equal("passbolt/passbolt:latest-ce", p.Image);
+        Assert.Equal(80, p.Port);
+
+        // The address goes into every mail passbolt sends and is checked on every request.
+        Assert.Contains(p.Params!, x => x.Env == "APP_FULL_BASE_URL");
+        // An SMTP password is the provider's, so the wizard must not invent one.
+        var smtp = Assert.Single(p.Params!, x => x.Env == "EMAIL_TRANSPORT_DEFAULT_PASSWORD");
+        Assert.True(smtp.Secret);
+        Assert.False(smtp.Generate);
+
+        var db = Assert.Single(p.Companions!);
+        Assert.StartsWith("mariadb", db.Image);
+        Assert.Contains(p.Env!, e => e[0] == "DATASOURCES_DEFAULT_HOST" && e[1] == "${db}");
+
+        // Verified against the image: started while MariaDB is still booting, passbolt serves a
+        // login page and never installs its schema - and it does not crash, so no restart policy
+        // repairs it. The command upstream ships for the same reason is what makes the first
+        // start install cleanly, and it names the companion it waits for.
+        Assert.Equal(new[] { "/usr/bin/wait-for.sh", "-t", "300", "passbolt-db:3306", "--", "/docker-entrypoint.sh" }, p.Args);
+        Assert.Equal("passbolt-db", db.ResourceName);
+
+        // The server's OpenPGP key and the JWT keys: without them no client can talk to it again.
+        var mounts = (p.Volumes ?? new()).Select(v => v[1]).ToList();
+        Assert.Contains("/etc/passbolt/gpg", mounts);
+        Assert.Contains("/etc/passbolt/jwt", mounts);
+
+        var (nodes, edges) = PresetBuilder.Build(p);
+        Assert.Single(edges);
+        Assert.Contains(nodes, n => n.AddArgs.Contains("\"mariadb:10.11\""));
+    }
 }
