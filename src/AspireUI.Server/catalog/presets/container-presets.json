@@ -847,7 +847,10 @@
     "stars": 6729,
     "license": "GNU Affero General Public License v3.0",
     "logo": "/media/onlyoffice/logo.webp",
-    "card": "/media/onlyoffice/card.webp"
+    "card": "/media/onlyoffice/card.webp",
+    "screenshots": [
+      "/media/onlyoffice/screenshot_1.webp"
+    ]
   },
   {
     "id": "gokapi",
@@ -6385,7 +6388,10 @@
     "website": "https://github.com/ulsklyc/yuvomi",
     "github": "https://github.com/ulsklyc/yuvomi",
     "license": "MIT",
-    "language": "JavaScript"
+    "language": "JavaScript",
+    "screenshots": [
+      "/media/yuvomi/screenshot_1.webp"
+    ]
   },
   {
     "id": "lx-family-planner",
@@ -6453,7 +6459,12 @@
     "website": "https://github.com/laxxx-lab/lx-family-planner",
     "github": "https://github.com/laxxx-lab/lx-family-planner",
     "license": "MIT",
-    "language": "JavaScript"
+    "language": "JavaScript",
+    "screenshots": [
+      "/media/lx-family-planner/screenshot_1.webp",
+      "/media/lx-family-planner/screenshot_2.webp",
+      "/media/lx-family-planner/screenshot_3.webp"
+    ]
   },
   {
     "id": "videola",
@@ -7269,6 +7280,9 @@
       "erp",
       "crm",
       "dolibarr"
+    ],
+    "screenshots": [
+      "/media/dolibarr/screenshot_1.webp"
     ]
   },
   {
@@ -7424,6 +7438,9 @@
       "photos",
       "gallery",
       "piwigo"
+    ],
+    "screenshots": [
+      "/media/piwigo/screenshot_1.webp"
     ]
   },
   {
