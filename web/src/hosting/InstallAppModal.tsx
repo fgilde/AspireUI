@@ -115,25 +115,37 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
     try { await api.setStoreExclusions([...next]); } catch (e) { toastErr(e, "Could not save"); }
   };
 
-  const done = () => { onInstalled(); onClose(); };
-
   // One install, one deployment per chosen target: the first goes to the stack we just created, every
   // other target gets its own copy of it (an independent instance with its own data and domain).
-  const deployThen = async (stackId: string, label: string) => {
+  // Nobody waits here. The server records the deployment as `deploying` before it pulls anything, so
+  // the app is already on the hosting page with a spinner while this runs — closing the store, or
+  // installing a second app meanwhile, costs nothing.
+  const deployThen = (stackId: string, label: string) => {
     const chosen = targetIds.length > 0 ? targetIds : [undefined];
-    const dep = await api.hostingDeploy(stackId, chosen[0]);
-    for (const tid of chosen.slice(1)) {
-      try { await api.copyHosting(stackId, tid!, false); }
-      catch (e) { toastErr(e, `Could not install on ${targets.find(t => t.id === tid)?.name ?? tid}`); }
-    }
     toastOk(chosen.length > 1 ? `Installing ${label} on ${chosen.length} targets…` : `Installing ${label}…`);
-    if (npm && chosen.length === 1) { setDomainFor(dep); onInstalled(); } else done();
+    return api.hostingDeploy(stackId, chosen[0]).then(async dep => {
+      for (const tid of chosen.slice(1)) {
+        try { await api.copyHosting(stackId, tid!, false); }
+        catch (e) { toastErr(e, `Could not install on ${targets.find(t => t.id === tid)?.name ?? tid}`); }
+      }
+      onInstalled();
+      if (dep.state === "failed") toastErr(dep.lastError ?? "", `${label} did not start`);
+      else {
+        toastOk(`${label} is running`);
+        // The domain dialog is an offer, not a step: it only makes sense while the store is still on
+        // screen, and by then the app is up and reachable on its port either way.
+        if (npm && chosen.length === 1) setDomainFor(dep);
+      }
+    }).catch(e => toastErr(e, `Installing ${label} failed`));
   };
 
+  // The stack exists the moment this returns, so the overview and the hosting page can show it -
+  // deploying it is what takes the minute.
   const finishInstall = async (label: string, mk: () => Promise<{ id: string }>) => {
     try {
       const stack = await mk();
-      await deployThen(stack.id, label);
+      onInstalled();
+      void deployThen(stack.id, label);
       return true;
     } catch (e) { toastErr(e, "Install failed"); return false; }
   };
@@ -147,17 +159,18 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
   };
 
   const installPreset = async (p: ContainerPreset, opts: InstallOptions) => {
+    // The options are answered, so this dialog has nothing left to say: it closes now rather than
+    // holding a spinner over a store the user can go on browsing.
+    setOptionsFor(null);
     setInstalling(`preset:${p.id}`);
-    const okd = await finishInstall(opts.name || p.label, () => createPresetStack(p, opts));
+    await finishInstall(opts.name || p.label, () => createPresetStack(p, opts));
     setInstalling(null);
-    if (okd) setOptionsFor(null);
   };
 
-  const installFromGit = async (stackId: string, label: string) => {
+  const installFromGit = (stackId: string, label: string) => {
     setGitOpen(false);
-    setInstalling("git");
-    try { await deployThen(stackId, label); } catch (e) { toastErr(e, "Deploy failed"); }
-    setInstalling(null);
+    onInstalled();
+    void deployThen(stackId, label);
   };
 
   const onPackageCreate = async (node: Node, _refs: string[], _usedBy: string[], extra?: { nodes: Node[]; edges: Edge[] }) => {
@@ -304,7 +317,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
         <GitImportModal hosting onClose={() => setGitOpen(false)}
           onImported={stackId => { installFromGit(stackId, "app from Git"); }} />
       )}
-      {domainFor && <DomainModal d={domainFor} onClose={() => { setDomainFor(null); done(); }} />}
+      {domainFor && <DomainModal d={domainFor} onClose={() => { setDomainFor(null); onInstalled(); }} />}
 
       <style>{`
         .store-card{transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
