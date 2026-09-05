@@ -1486,7 +1486,12 @@
       "torrent-client"
     ],
     "logo": "/media/qbittorrent/logo.webp",
-    "card": "/media/qbittorrent/card.webp"
+    "card": "/media/qbittorrent/card.webp",
+    "screenshots": [
+      "/media/qbittorrent/screenshot_1.webp",
+      "/media/qbittorrent/screenshot_2.webp",
+      "/media/qbittorrent/screenshot_3.webp"
+    ]
   },
   {
     "id": "pihole",
@@ -6856,6 +6861,9 @@
       "analytics",
       "matomo",
       "privacy"
+    ],
+    "screenshots": [
+      "/media/matomo/screenshot_1.webp"
     ]
   },
   {
@@ -6935,6 +6943,10 @@
       "php",
       "time-tracking",
       "kimai"
+    ],
+    "screenshots": [
+      "/media/kimai/screenshot_1.webp",
+      "/media/kimai/screenshot_2.webp"
     ]
   },
   {
@@ -7045,6 +7057,11 @@
       "asset-management",
       "inventory",
       "laravel"
+    ],
+    "screenshots": [
+      "/media/snipe-it/screenshot_1.webp",
+      "/media/snipe-it/screenshot_2.webp",
+      "/media/snipe-it/screenshot_3.webp"
     ]
   },
   {
@@ -7079,6 +7096,9 @@
       "php",
       "kanban",
       "project-management"
+    ],
+    "screenshots": [
+      "/media/kanboard/screenshot_1.webp"
     ]
   },
   {
@@ -7183,6 +7203,11 @@
       "survey",
       "forms",
       "limesurvey"
+    ],
+    "screenshots": [
+      "/media/limesurvey/screenshot_1.webp",
+      "/media/limesurvey/screenshot_2.webp",
+      "/media/limesurvey/screenshot_3.webp"
     ]
   },
   {
@@ -7511,6 +7536,9 @@
       "bookmarks",
       "read-it-later",
       "symfony"
+    ],
+    "screenshots": [
+      "/media/wallabag/screenshot_1.webp"
     ]
   },
   {
@@ -7546,6 +7574,10 @@
       "bookmarks",
       "shaarli",
       "rss"
+    ],
+    "screenshots": [
+      "/media/shaarli/screenshot_1.webp",
+      "/media/shaarli/screenshot_2.webp"
     ]
   },
   {
@@ -8162,6 +8194,9 @@
     "github": "https://github.com/passbolt/passbolt_api",
     "license": "AGPL-3.0",
     "language": "PHP",
-    "urlPath": "/"
+    "urlPath": "/",
+    "screenshots": [
+      "/media/passbolt/screenshot_1.webp"
+    ]
   }
 ]
