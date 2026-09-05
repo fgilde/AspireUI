@@ -111,6 +111,23 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", lines);
     }
 
+    // A number in a service block is only a port under `expose:` or `ports:`. It used to be counted
+    // wherever it stood, which made `command: ["wait-for.sh", "-t", "300", ...]` publish a host port
+    // for container port 300 — a port nothing listens on, taken off the pool for the app's lifetime.
+    private static IEnumerable<int> PortsIn(List<string> lines, int serviceLine)
+    {
+        var key = "";
+        for (var j = serviceLine + 1; j < lines.Count; j++)
+        {
+            if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) yield break;
+            var k = Regex.Match(lines[j], @"^    (\S[^:]*):");
+            if (k.Success) key = k.Groups[1].Value;
+            if (key is not ("expose" or "ports")) continue;
+            var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
+            if (pm.Success) yield return int.Parse(pm.Groups[1].Value);
+        }
+    }
+
     public static List<int> ExposedAppPorts(string yaml)
     {
         var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
@@ -119,12 +136,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         {
             var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
             if (!svc.Success || svc.Groups[1].Value.Contains("dashboard") || !InServicesSection(lines, i)) continue;
-            for (var j = i + 1; j < lines.Count; j++)
-            {
-                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;
-                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
-                if (pm.Success) result.Add(int.Parse(pm.Groups[1].Value));
-            }
+            result.AddRange(PortsIn(lines, i));
         }
         return result;
     }
@@ -139,14 +151,13 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             outp.Add(lines[i]);
             var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
             if (!svc.Success || svc.Groups[1].Value.Contains("dashboard") || !InServicesSection(lines, i)) continue;
-            var ports = new List<int>(); var hasPorts = false;
+            var hasPorts = false;
             for (var j = i + 1; j < lines.Count; j++)
             {
                 if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;
                 if (Regex.IsMatch(lines[j], @"^    ports:\s*$")) hasPorts = true;
-                var pm = Regex.Match(lines[j], @"^      -\s*""?(\d+)""?\s*$");
-                if (pm.Success) ports.Add(int.Parse(pm.Groups[1].Value));
             }
+            var ports = PortsIn(lines, i).ToList();
             var publish = ports.Where(p => keepInternal is null || !keepInternal.Contains(p)).ToList();
             if (!hasPorts && publish.Count > 0)
             {

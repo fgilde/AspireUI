@@ -165,6 +165,30 @@ public class HostingServiceTests
     }
 
     [Fact]
+    public void A_number_in_a_command_is_not_a_port()
+    {
+        const string yaml = """
+            services:
+              passbolt:
+                image: "passbolt/passbolt:latest-ce"
+                command:
+                  - "/usr/bin/wait-for.sh"
+                  - "-t"
+                  - "300"
+                  - "passbolt-db:3306"
+                  - "--"
+                  - "/docker-entrypoint.sh"
+                expose:
+                  - "80"
+            """;
+        Assert.Equal(new[] { 80 }, HostingService.ExposedAppPorts(yaml));
+
+        var outp = HostingService.PublishExposedPorts(yaml, new Dictionary<int, int> { [80] = 20001 });
+        Assert.Contains("- \"20001:80\"", outp);
+        Assert.DoesNotContain(":300\"", outp);
+    }
+
+    [Fact]
     public void PublishExposedPorts_publishes_expose_to_host_skipping_dashboard()
     {
         const string yaml = """
