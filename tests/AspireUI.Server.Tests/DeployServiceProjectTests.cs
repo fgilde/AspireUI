@@ -45,4 +45,26 @@ public class DeployServiceProjectTests
             Assert.Contains("refusing", r.Log);
         }
     }
+
+    [Fact]
+    public void VolumeMkdir_and_VolumePut_refuse_a_nameless_path()
+    {
+        var (svc, _) = Fake();
+        foreach (var path in new[] { "", "/", "..", "./.." })
+        {
+            Assert.False(svc.VolumeMkdir("app_data", path).Ok, $"mkdir {path} should have been refused");
+            Assert.False(svc.VolumePut("app_data", path, new MemoryStream()).Ok, $"put {path} should have been refused");
+        }
+    }
+
+    [Fact]
+    public void VolumeMv_needs_both_ends_and_does_nothing_when_they_are_the_same()
+    {
+        var (svc, _) = Fake();
+        Assert.False(svc.VolumeMv("app_data", "", "there").Ok);
+        Assert.False(svc.VolumeMv("app_data", "here", "..").Ok);
+        var same = svc.VolumeMv("app_data", "here/x", "./here/x");
+        Assert.True(same.Ok);
+        Assert.Contains("nothing to do", same.Log);
+    }
 }

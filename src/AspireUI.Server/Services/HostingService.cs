@@ -643,6 +643,27 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return (r.Ok, r.Ok ? null : r.Log);
     }
 
+    public (bool ok, string? error) WriteVolumeFile(string id, string vol, string relPath, Stream content)
+    {
+        if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return (false, "no such volume");
+        var r = R(d).VolumePut($"{d.Project}_{vol}", relPath, content);
+        return (r.Ok, r.Ok ? null : r.Log);
+    }
+
+    public (bool ok, string? error) MakeVolumeDir(string id, string vol, string relPath)
+    {
+        if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return (false, "no such volume");
+        var r = R(d).VolumeMkdir($"{d.Project}_{vol}", relPath);
+        return (r.Ok, r.Ok ? null : r.Log);
+    }
+
+    public (bool ok, string? error) MoveVolumeFile(string id, string vol, string fromRel, string toRel)
+    {
+        if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return (false, "no such volume");
+        var r = R(d).VolumeMv($"{d.Project}_{vol}", fromRel, toRel);
+        return (r.Ok, r.Ok ? null : r.Log);
+    }
+
     // Streamed out of the volume rather than written through a bind mount: a mount lands on the
     // *daemon's* host, which is another machine as soon as the target is remote. stdout comes back here.
     public string? Backup(string id, string backupsRoot)

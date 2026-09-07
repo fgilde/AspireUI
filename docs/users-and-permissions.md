@@ -18,7 +18,7 @@ one away takes effect immediately — the user does not have to log out first.
 | **Install & run apps** (`deploy`) | Install from the store, start, stop, restart, update, undeploy, move/copy to another target, take and restore backups. |
 | **Configure apps** (`configure`) | A hosted app's environment variables, ports and domain. |
 | **Browse app files** (`files`) | List, view and download files in an app's volumes. |
-| **Delete app files** (`files-write`) | Delete files and folders in an app's volumes. Separate so a read-only file browser is possible. |
+| **Write app files** (`files-write`) | Upload, rename, delete and create folders in an app's volumes. Separate so a read-only file browser is possible. |
 | **Terminal in containers** (`terminal`) | Run commands inside an app's containers. |
 | **Deploy targets** (`targets`) | Add, change and remove the machines apps are deployed to. |
 | **App store** (`store`) | Store sources and which apps are hidden. A hidden app stays hidden for everybody else. |

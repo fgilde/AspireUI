@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import { IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
 import { useAuth } from "../auth/AuthContext";
@@ -521,7 +521,7 @@ function FileViewModal({ d, vol, path, onClose }: { d: Deployment; vol: string; 
 
 // Browse deployment's named volumes: walk directories, view, download and delete files.
 export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
-  const mayDelete = can(useAuth().status?.user, PERM_FILES_WRITE);
+  const mayWrite = can(useAuth().status?.user, PERM_FILES_WRITE);
   const [vols, setVols] = useState<{ name: string; sizeMb: number }[] | null>(null);
   const [vol, setVol] = useState<string | null>(null);
   const [path, setPath] = useState("");
@@ -529,6 +529,10 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
   const [viewing, setViewing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [renaming, setRenaming] = useState<{ name: string; to: string } | null>(null);
+  const [newDir, setNewDir] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploadRef = useRef<HTMLInputElement>(null);
   useEffect(() => { api.listVolumes(d.id).then(v => { setVols(v); if (v[0]) setVol(v[0].name); }).catch(() => setVols([])); }, [d.id]);
   useEffect(() => {
     if (!vol) return;
@@ -550,6 +554,44 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
     } catch (err) { toastErr(err, "Could not delete"); }
     setBusy(null);
   };
+  const rename = async () => {
+    if (!renaming || !vol) return;
+    const to = renaming.to.trim();
+    if (!to || to === renaming.name) { setRenaming(null); return; }
+    setBusy(renaming.name);
+    try {
+      await api.renameVolumeFile(d.id, vol, path ? `${path}/${renaming.name}` : renaming.name,
+        path ? `${path}/${to}` : to);
+      toastOk(`Renamed to ${to}`);
+      setRenaming(null);
+      setReload(n => n + 1);
+    } catch (err) { toastErr(err, "Could not rename"); }
+    setBusy(null);
+  };
+
+  const createDir = async () => {
+    const name = (newDir ?? "").trim();
+    if (!name || !vol) { setNewDir(null); return; }
+    try {
+      await api.makeVolumeDir(d.id, vol, path ? `${path}/${name}` : name);
+      toastOk(`Created ${name}`);
+      setNewDir(null);
+      setReload(n => n + 1);
+    } catch (err) { toastErr(err, "Could not create the folder"); }
+  };
+
+  const upload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !vol) return;
+    setUploading(true);
+    try {
+      const r = await api.uploadVolumeFiles(d.id, vol, path, Array.from(files));
+      toastOk(`Uploaded ${r.written.join(", ")}`);
+      setReload(n => n + 1);
+    } catch (err) { toastErr(err, "Could not upload"); }
+    setUploading(false);
+    if (uploadRef.current) uploadRef.current.value = "";
+  };
+
   const crumbs = path.split("/").filter(Boolean);
   const goUp = () => setPath(crumbs.slice(0, -1).join("/"));
   const fmt = (n: number) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
@@ -564,7 +606,23 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
             <Group gap="xs" align="flex-end">
               <Select label="Volume" data={vols.map(v => ({ value: v.name, label: `${v.name} (${v.sizeMb} MB)` }))}
                 value={vol} onChange={v => { setVol(v); setPath(""); }} allowDeselect={false} style={{ minWidth: 300 }} />
+              {mayWrite && <>
+                <input ref={uploadRef} type="file" multiple hidden onChange={e => upload(e.currentTarget.files)} />
+                <Button variant="default" leftSection={<IconUpload size={15} />} loading={uploading}
+                  onClick={() => uploadRef.current?.click()}>Upload</Button>
+                <Button variant="default" leftSection={<IconFolderPlus size={15} />}
+                  onClick={() => setNewDir("")}>New folder</Button>
+              </>}
             </Group>
+            {newDir !== null && (
+              <Group gap="xs" align="flex-end">
+                <TextInput label="Folder name" value={newDir} data-autofocus w={280}
+                  onChange={e => setNewDir(e.currentTarget.value)}
+                  onKeyDown={e => { if (e.key === "Enter") createDir(); if (e.key === "Escape") setNewDir(null); }} />
+                <Button onClick={createDir}>Create</Button>
+                <Button variant="subtle" onClick={() => setNewDir(null)}>Cancel</Button>
+              </Group>
+            )}
             <Group gap={4} wrap="wrap">
               <Anchor size="sm" onClick={() => setPath("")}><IconFolderOpen size={13} /> {vol}</Anchor>
               {crumbs.map((c, i) => (
@@ -580,9 +638,22 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
                   {entries.map(e => (
                     <Group key={e.name} gap={8} px={6} py={4} wrap="nowrap" className="ctx-item" style={{ borderRadius: 4 }}>
                       {e.dir ? <IconFolder size={16} color="var(--mantine-color-yellow-6)" /> : <IconFile size={16} color="var(--mantine-color-gray-5)" />}
-                      {e.dir
+                      {renaming?.name === e.name
+                        ? <TextInput size="xs" style={{ flex: 1 }} value={renaming.to} data-autofocus
+                            onChange={ev => setRenaming({ name: e.name, to: ev.currentTarget.value })}
+                            onKeyDown={ev => { if (ev.key === "Enter") rename(); if (ev.key === "Escape") setRenaming(null); }} />
+                        : e.dir
                         ? <Anchor size="sm" style={{ flex: 1 }} onClick={() => setPath(path ? `${path}/${e.name}` : e.name)}>{e.name}</Anchor>
                         : <Text size="sm" style={{ flex: 1 }} truncate>{e.name}</Text>}
+                      {mayWrite && (renaming?.name === e.name
+                        ? <Tooltip label="Save" withArrow>
+                            <ActionIcon size="sm" variant="subtle" color="teal" loading={busy === e.name}
+                              aria-label={`Save ${e.name}`} onClick={rename}><IconCheck size={15} /></ActionIcon>
+                          </Tooltip>
+                        : <Tooltip label="Rename" withArrow>
+                            <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`Rename ${e.name}`}
+                              onClick={() => setRenaming({ name: e.name, to: e.name })}><IconPencil size={15} /></ActionIcon>
+                          </Tooltip>)}
                       {!e.dir && <Text size="xs" c="dimmed" ff="monospace">{fmt(e.size)}</Text>}
                       {!e.dir && (
                         <Tooltip label="View" withArrow>
@@ -600,7 +671,7 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
                           </Anchor>
                         </Tooltip>
                       )}
-                      {mayDelete && (
+                      {mayWrite && (
                         <Tooltip label="Delete" withArrow>
                           <ActionIcon size="sm" variant="subtle" color="red" loading={busy === e.name}
                             aria-label={`Delete ${e.name}`} onClick={() => remove(e)}>

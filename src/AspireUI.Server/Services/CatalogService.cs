@@ -68,7 +68,16 @@ public class CatalogService
         void LoadDir(string? dir)
         {
             if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return;
-            foreach (var f in Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories)
+            string[] files;
+            // A source cache directory can be written or removed while we walk it. The store showing
+            // one app less is a nuisance; the store throwing is a broken page.
+            try
+            {
+                files = Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories);
+            }
+            catch (IOException) { return; }
+            catch (UnauthorizedAccessException) { return; }
+            foreach (var f in files
                          .Where(f => !Path.GetFileName(f).EndsWith(".schema.json", StringComparison.OrdinalIgnoreCase))
                          .OrderBy(x => x, StringComparer.Ordinal)) Load(f);
         }

@@ -27,7 +27,7 @@ public static class Perm
     /// <summary>Browse and download files in an app's volumes.</summary>
     public const string Files = "files";
 
-    /// <summary>Delete files in an app's volumes. Separate, so a read-only file browser is possible.</summary>
+    /// <summary>Upload, rename, delete and create folders in an app's volumes. Separate, so a read-only file browser is possible.</summary>
     public const string FilesWrite = "files-write";
 
     /// <summary>Run commands in an app's containers.</summary>

@@ -96,6 +96,38 @@ public class DeployService
         return RunArgv(60_000, "run", "--rm", "-v", $"{volume}:/data", "alpine", "rm", "-rf", "--", "/data/" + rel);
     }
 
+    /// <summary>
+    /// Writes one file into a volume from a stream, creating the folders above it. The destination
+    /// travels as an environment value rather than inside the script, so a name with a quote or a
+    /// space in it cannot become part of the command.
+    /// </summary>
+    public DeployResult VolumePut(string volume, string relPath, Stream content)
+    {
+        var rel = SafeRel(relPath);
+        if (rel.Length == 0) return new(false, "a file needs a name");
+        return StreamIn(600_000, content, "run", "--rm", "-i", "-e", "DEST=/data/" + rel,
+            "-v", $"{volume}:/data", "alpine", "sh", "-c",
+            "mkdir -p \"$(dirname \"$DEST\")\" && cat > \"$DEST\"");
+    }
+
+    public DeployResult VolumeMkdir(string volume, string relPath)
+    {
+        var rel = SafeRel(relPath);
+        if (rel.Length == 0) return new(false, "a folder needs a name");
+        return RunArgv(30_000, "run", "--rm", "-v", $"{volume}:/data", "alpine", "mkdir", "-p", "--", "/data/" + rel);
+    }
+
+    /// <summary>Renames or moves one entry inside the same volume.</summary>
+    public DeployResult VolumeMv(string volume, string fromRel, string toRel)
+    {
+        var from = SafeRel(fromRel);
+        var to = SafeRel(toRel);
+        if (from.Length == 0 || to.Length == 0) return new(false, "both a source and a destination are needed");
+        if (from == to) return new(true, "nothing to do");
+        return RunArgv(60_000, "run", "--rm", "-v", $"{volume}:/data", "alpine",
+            "mv", "-n", "--", "/data/" + from, "/data/" + to);
+    }
+
     // Volume contents as a tar stream we read ourselves. A bind mount would land on the *daemon's* host,
     // which is the wrong machine as soon as the target is remote — stdout always comes back to us.
     public (byte[]? data, string? error) VolumeTarOut(string volume) =>

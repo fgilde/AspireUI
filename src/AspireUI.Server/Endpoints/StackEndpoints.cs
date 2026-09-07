@@ -960,6 +960,35 @@ public static class StackEndpoints
             var (ok, error) = hosting.DeleteVolumeFile(id, vol, path);
             return ok ? Results.NoContent() : Results.BadRequest(new { message = error ?? "could not delete" });
         }).RequirePerm(Perm.FilesWrite);
+        app2.MapPost("/hosting/{id}/volumes/{vol}/dir", (string id, string vol, VolumePathRequest b) =>
+        {
+            var (ok, error) = hosting.MakeVolumeDir(id, vol, b.Path);
+            return ok ? Results.NoContent() : Results.BadRequest(new { message = error ?? "could not create the folder" });
+        }).RequirePerm(Perm.FilesWrite);
+        app2.MapPost("/hosting/{id}/volumes/{vol}/rename", (string id, string vol, VolumeRenameRequest b) =>
+        {
+            var (ok, error) = hosting.MoveVolumeFile(id, vol, b.From, b.To);
+            return ok ? Results.NoContent() : Results.BadRequest(new { message = error ?? "could not rename" });
+        }).RequirePerm(Perm.FilesWrite);
+        // Multipart, streamed straight into the container's stdin: an upload never lands on this disk.
+        app2.MapPost("/hosting/{id}/volumes/{vol}/upload", async (string id, string vol, string? path, HttpRequest req) =>
+        {
+            if (!req.HasFormContentType) return Results.BadRequest(new { message = "expected a file upload" });
+            var form = await req.ReadFormAsync();
+            if (form.Files.Count == 0) return Results.BadRequest(new { message = "no file in the request" });
+            var written = new List<string>();
+            foreach (var file in form.Files)
+            {
+                var name = Path.GetFileName(file.FileName);
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                await using var stream = file.OpenReadStream();
+                var rel = string.IsNullOrWhiteSpace(path) ? name : path!.TrimEnd('/') + "/" + name;
+                var (ok, error) = hosting.WriteVolumeFile(id, vol, rel, stream);
+                if (!ok) return Results.BadRequest(new { message = error ?? $"could not write {name}" });
+                written.Add(name);
+            }
+            return Results.Ok(new { written });
+        }).RequirePerm(Perm.FilesWrite).DisableAntiforgery();
         app2.MapPost("/hosting/{id}/exec", (string id, ExecRequest b) =>
         {
             if (deployments.Get(id) is not { } d) return Results.NotFound();
@@ -1332,6 +1361,8 @@ public static class StackEndpoints
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets, bool Ssl = false, int CertificateId = 0);
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
+    public record VolumePathRequest(string Path);
+    public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);

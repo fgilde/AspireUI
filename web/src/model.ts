@@ -468,7 +468,7 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
   { id: PERM_DEPLOY, label: "Install & run apps", description: "Install, start, stop, update, undeploy, move and back up hosted apps." },
   { id: PERM_CONFIGURE, label: "Configure apps", description: "Change a hosted app's environment variables, ports and domain." },
   { id: PERM_FILES, label: "Browse app files", description: "List, view and download files in an app's volumes." },
-  { id: PERM_FILES_WRITE, label: "Delete app files", description: "Delete files and folders in an app's volumes." },
+  { id: PERM_FILES_WRITE, label: "Write app files", description: "Upload, rename and delete files in an app's volumes, and create folders." },
   { id: PERM_TERMINAL, label: "Terminal in containers", description: "Run commands inside an app's containers." },
   { id: PERM_TARGETS, label: "Deploy targets", description: "Add, change and remove the machines apps are deployed to." },
   { id: PERM_STORE, label: "App store", description: "Manage store sources and which apps are hidden." },

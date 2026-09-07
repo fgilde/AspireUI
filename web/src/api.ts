@@ -314,6 +314,16 @@ export const lsVolume = (depId: string, vol: string, path: string): Promise<{ na
   fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/ls?path=${encodeURIComponent(path)}`).then(ok);
 export const volumeFileUrl = (depId: string, vol: string, path: string, download = false): string =>
   `${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/file?path=${encodeURIComponent(path)}${download ? "&download=true" : ""}`;
+export const makeVolumeDir = (depId: string, vol: string, path: string): Promise<void> =>
+  fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/dir`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ path }) }).then(okVoid);
+export const renameVolumeFile = (depId: string, vol: string, from: string, to: string): Promise<void> =>
+  fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/rename`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ from, to }) }).then(okVoid);
+export const uploadVolumeFiles = (depId: string, vol: string, path: string, files: File[]): Promise<{ written: string[] }> => {
+  const body = new FormData();
+  for (const f of files) body.append("files", f, f.name);
+  return fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/upload?path=${encodeURIComponent(path)}`,
+    { method: "POST", body }).then(ok);
+};
 export const deleteVolumeFile = (depId: string, vol: string, path: string): Promise<void> =>
   fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/file?path=${encodeURIComponent(path)}`,
     { method: "DELETE" }).then(okVoid);
