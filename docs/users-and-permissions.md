@@ -84,6 +84,35 @@ appear once. From then on signing in asks for a code after the password.
 
 The list shows a **2FA** badge for accounts that have it on.
 
+## Single sign-on (OpenID Connect)
+
+**Settings → Sign-in** hands authentication to an identity provider — Keycloak, Authentik, Entra,
+Google, Zitadel, anything that speaks OpenID Connect. Give it the **authority** (the issuer url), a
+**client id** and, for a confidential client, a **client secret**; everything else — the authorize,
+token and userinfo endpoints — is read from the provider's own discovery document, so a provider that
+moves an endpoint is followed rather than configured twice. *Test discovery* says whether it answers.
+
+Register the redirect url the page shows you (`https://your-host/api/auth/sso/callback`) with the
+provider.
+
+How it works, and why it is this way:
+
+- **Authorization code with PKCE.** The verifier never leaves the server; the state and the verifier
+  travel in a ten-minute encrypted cookie, so nothing has to be remembered between the two redirects
+  and a reply that did not start here cannot be replayed.
+- **Claims come from the `userinfo` endpoint**, not from a token this server parses. The access token
+  arrives directly from the token endpoint over TLS, so there is nothing to check a signature
+  against that is not already trusted — and no JWT library in the login path.
+- **Username** comes from the claim you name, or from `preferred_username`, `email`, `name`, `sub`
+  in that order.
+- **Groups** are read from a claim that may be an array, a space-separated string or a
+  comma-separated one, because providers disagree. Name an **admin group** and its members are
+  admins — and then the provider owns that on *every* sign-in, including taking it away.
+- **New accounts** are created on first sign-in with the permissions you pick (a preset or a list of
+  ids), and get a password nobody knows: the provider authenticates them, not us. Turn that off and
+  only people who already have an account here can use the provider.
+- **Password sign-in keeps working.** An admin locked out by a broken provider still gets in.
+
 ## The activity log
 
 **Settings → Activity** lists everything that changed something: who did it, which app it was about,

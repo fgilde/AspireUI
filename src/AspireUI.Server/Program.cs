@@ -79,6 +79,7 @@ app.MapAuthEndpoints();
 app.MapAuditEndpoints();
 app.MapInstanceEndpoints();
 app.MapPtyEndpoints();
+app.MapOidcEndpoints();
 app.MapStackEndpoints();
 app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });

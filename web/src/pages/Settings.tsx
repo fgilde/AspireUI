@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox, Divider } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud, IconHistory, IconFileZip, IconUpload, IconDownload } from "@tabler/icons-react";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud, IconHistory, IconFileZip, IconUpload, IconDownload, IconKey } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { TargetsSection } from "../hosting/TargetsPanel";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -592,6 +592,100 @@ function InstanceSection() {
   );
 }
 
+// Single sign-on. Everything is derived from the provider's own discovery document, so this asks
+// for the authority and not for four endpoints.
+function SsoTab() {
+  const [c, setC] = useState<api.SsoConfig | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [found, setFound] = useState<string | null>(null);
+  useEffect(() => { api.getSso().then(setC).catch(() => {}); }, []);
+  if (!c) return <Loader size="sm" />;
+
+  const set = (patch: Partial<api.SsoConfig>) => setC(prev => ({ ...prev!, ...patch }));
+  const save = async () => {
+    setBusy("save");
+    try { await api.setSso(c); setC(await api.getSso()); toastOk("Saved"); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(null); }
+  };
+  const test = async () => {
+    setBusy("test"); setFound(null);
+    try {
+      const r = await api.testSso(c);
+      setFound(`${r.authorization}${r.hasUserInfo ? "" : " — but no userinfo endpoint, which this needs"}`);
+      if (r.hasUserInfo) toastOk("The provider answered and has everything needed");
+      else toastErr("The provider has no userinfo endpoint");
+    }
+    catch (e) { toastErr(e, "The provider could not be reached"); }
+    finally { setBusy(null); }
+  };
+
+  const redirect = `${location.origin}/api/auth/sso/callback`;
+  return (
+    <MStack gap="md" maw={620}>
+      <Text size="sm" c="dimmed">
+        Let people sign in with Keycloak, Authentik, Entra, Google, Zitadel — anything that speaks
+        OpenID Connect. Authorization code with PKCE; the claims are read from the provider's
+        userinfo endpoint, so there is no token parsing in the login path.
+      </Text>
+      <Switch checked={c.enabled} onChange={e => set({ enabled: e.currentTarget.checked })}
+        label="Offer single sign-on on the login page"
+        description="Password sign-in keeps working — an admin locked out of a broken provider still gets in." />
+
+      <Group gap="xs" align="center">
+        <Text size="xs" c="dimmed">Redirect url to register with the provider:</Text>
+        <Code>{redirect}</Code>
+        <CopyButton value={redirect}>
+          {({ copied, copy }) => (
+            <ActionIcon variant="default" onClick={copy} aria-label="Copy redirect url">
+              {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+            </ActionIcon>
+          )}
+        </CopyButton>
+      </Group>
+
+      <TextInput label="Authority" placeholder="https://id.example.com/realms/main"
+        description="The issuer url. Its /.well-known/openid-configuration is what gets read."
+        value={c.authority ?? ""} onChange={e => set({ authority: e.currentTarget.value })} />
+      <Group grow>
+        <TextInput label="Client id" value={c.clientId ?? ""} onChange={e => set({ clientId: e.currentTarget.value })} />
+        <PasswordInput label="Client secret" value={c.clientSecret ?? ""}
+          placeholder={c.hasClientSecret ? "•••••• (leave blank to keep)" : "empty for a public client"}
+          onChange={e => set({ clientSecret: e.currentTarget.value })} />
+      </Group>
+      <Group grow>
+        <TextInput label="Scopes" value={c.scopes ?? ""} onChange={e => set({ scopes: e.currentTarget.value })}
+          placeholder="openid profile email" />
+        <TextInput label="Button label" value={c.label ?? ""} onChange={e => set({ label: e.currentTarget.value })}
+          placeholder="single sign-on" description="Shown as “Sign in with …”." />
+      </Group>
+      <Group grow>
+        <TextInput label="Username claim" value={c.usernameClaim ?? ""} onChange={e => set({ usernameClaim: e.currentTarget.value })}
+          placeholder="preferred_username" description="Blank tries preferred_username, email, name, sub." />
+        <TextInput label="Groups claim" value={c.groupsClaim ?? ""} onChange={e => set({ groupsClaim: e.currentTarget.value })}
+          placeholder="groups" />
+      </Group>
+      <Group grow>
+        <TextInput label="Admin group" value={c.adminGroup ?? ""} onChange={e => set({ adminGroup: e.currentTarget.value })}
+          placeholder="aspireui-admins"
+          description="Members become admins. Set it and the provider owns that on every sign-in." />
+        <TextInput label="Permissions for new accounts" value={c.defaultPermissions ?? ""}
+          onChange={e => set({ defaultPermissions: e.currentTarget.value })}
+          placeholder="default" description="A preset (all, operator, app-user, viewer, none) or a list of ids." />
+      </Group>
+      <Switch checked={c.autoCreate} onChange={e => set({ autoCreate: e.currentTarget.checked })}
+        label="Create an account on first sign-in"
+        description="Off means only people who already have an account here can use the provider." />
+
+      {found && <Alert color="blue" variant="light" p="xs"><Text size="xs" ff="monospace">{found}</Text></Alert>}
+      <Group>
+        <Button onClick={save} loading={busy === "save"}>Save</Button>
+        <Button variant="default" onClick={test} loading={busy === "test"} disabled={!c.authority}>Test discovery</Button>
+      </Group>
+    </MStack>
+  );
+}
+
 function ImportTab() {
   const [maxMb, setMaxMb] = useState(20);
   const [gitignore, setGitignore] = useState(true);
@@ -931,6 +1025,7 @@ export function Settings() {
               {mayHosting && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
               {can(user, PERM_DOCKER) && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
               {can(user, PERM_AUDIT) && <Tabs.Tab value="activity" leftSection={<IconHistory size={15} />}>Activity</Tabs.Tab>}
+              {maySettings && <Tabs.Tab value="sso" leftSection={<IconKey size={15} />}>Sign-in</Tabs.Tab>}
               {maySettings && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
               <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
@@ -1023,6 +1118,11 @@ export function Settings() {
             {can(user, PERM_AUDIT) && (
               <Tabs.Panel value="activity" style={{ flex: 1 }}>
                 <ActivityTab />
+              </Tabs.Panel>
+            )}
+            {maySettings && (
+              <Tabs.Panel value="sso" style={{ flex: 1 }}>
+                <SsoTab />
               </Tabs.Panel>
             )}
             {maySettings && (

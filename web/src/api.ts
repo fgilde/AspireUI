@@ -53,6 +53,20 @@ export const twoFactorRecoveryCodes = (password: string): Promise<{ recoveryCode
   fetch(`${base}/auth/2fa/recovery-codes`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }).then(ok);
 export const adminClearTwoFactor = (id: string): Promise<void> =>
   fetch(`${base}/users/${id}/2fa`, { method: "DELETE" }).then(okVoid);
+export interface SsoConfig {
+  enabled: boolean; authority?: string | null; clientId?: string | null; clientSecret?: string | null;
+  scopes?: string | null; label?: string | null; usernameClaim?: string | null; groupsClaim?: string | null;
+  adminGroup?: string | null; autoCreate: boolean; defaultPermissions?: string | null;
+  hasClientSecret?: boolean; redirectUri?: string;
+}
+export const ssoStatus = (): Promise<{ enabled: boolean; label: string }> => fetch(`${base}/auth/sso`).then(ok);
+export const ssoStartUrl = (next = "/"): string => `${base}/auth/sso/start?next=${encodeURIComponent(next)}`;
+export const getSso = (): Promise<SsoConfig> => fetch(`${base}/settings/sso`).then(ok);
+export const setSso = (c: SsoConfig): Promise<void> =>
+  fetch(`${base}/settings/sso`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(c) }).then(okVoid);
+export const testSso = (c: SsoConfig): Promise<{ authorization: string; token: string; userInfo?: string | null; hasUserInfo: boolean }> =>
+  fetch(`${base}/settings/sso/test`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(c) }).then(ok);
+
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
