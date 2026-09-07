@@ -455,6 +455,7 @@ export const PERM_STORE = "store";
 export const PERM_SETTINGS = "settings";
 export const PERM_DOCKER = "docker";
 export const PERM_USERS = "users";
+export const PERM_AUDIT = "audit";
 
 // Admins may everything; a user with no list at all is an install that predates permissions and keeps
 // what it had. The server checks the same thing again — this only decides what is worth showing.
@@ -474,7 +475,13 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
   { id: PERM_SETTINGS, label: "Global settings", description: "Proxy, notifications, backup schedule, dashboard and import settings." },
   { id: PERM_DOCKER, label: "Docker host", description: "See and prune the host's images, containers and volumes." },
   { id: PERM_USERS, label: "Users", description: "Create users and grant them permissions. Only an admin can make an admin." },
+  { id: PERM_AUDIT, label: "Activity log", description: "Read who did what, to which app, and when." },
 ];
+
+export interface AuditEntry {
+  id: number; at: string; userId?: string | null; user: string; method: string; route: string;
+  action: string; targetId?: string | null; target?: string | null; status: number; ms: number;
+}
 
 export const PERM_PRESETS: { label: string; perms: string[] }[] = [
   { label: "Everything", perms: PERMISSIONS.map(p => p.id) },

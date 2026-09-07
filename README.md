@@ -290,6 +290,7 @@ only written when that setting is still empty (so a user's later change sticks);
 | **AI assistant** | `AiKind` (`http`/`cli`), `AiBaseUrl`, `AiApiKey`, `AiModel`, `AiProviderLabel`, `AiCliTool` |
 | **Hosting dashboard** | `HostDashboard` (`true`/`false`), `DashboardToken` |
 | **Nginx Proxy Manager** | `NpmEnabled` (`true`/`false`), `NpmBaseUrl`, `NpmEmail`, `NpmPassword`, `NpmForwardHost` |
+| **Activity log** | `AuditRetainDays` (days to keep, `0` = keep everything; default 90) |
 
 ```bash
 docker run -d -p 8080:8080 -v aspireui-data:/data -v /var/run/docker.sock:/var/run/docker.sock \

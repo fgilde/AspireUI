@@ -25,6 +25,7 @@ one away takes effect immediately — the user does not have to log out first.
 | **Global settings** (`settings`) | Proxy, notifications, backup schedule, dashboard, import settings. |
 | **Docker host** (`docker`) | See and prune the host's images, containers and volumes. |
 | **Users** (`users`) | Create users and grant permissions — see the limits below. |
+| **Activity log** (`audit`) | Read who did what, to which app, and when. |
 
 Anyone who is logged in can always **look**: the app list, an app's status and its logs. That is the
 floor, and it is why a user with an empty list is a viewer rather than a locked-out account.
@@ -63,6 +64,21 @@ The permissions dialog has a few one-click sets:
 
 `ASPIREUI_USERS` creates accounts at start — `name:password[:permissions]`, with a preset name or a
 list of permission ids in the third field. See [Seeding an install](seeding.md).
+
+## The activity log
+
+**Settings → Activity** lists everything that changed something: who did it, which app it was about,
+what came back and how long it took. Reading is not recorded — a log of every page view buries the
+one line that matters.
+
+It is written in one place, the request pipeline, rather than in each handler, so a new endpoint is
+logged the day it exists instead of the day somebody remembers to add a line to it. A request that
+was **refused** is logged too, with its status: 403 on the log is how you find out that somebody's
+permissions are wrong (or that they should be).
+
+Entries older than `AuditRetainDays` (90 by default, `0` keeps everything) are dropped. The
+retention and *Prune now* need the **Global settings** permission; reading the log needs
+**Activity log**.
 
 ## View modes
 

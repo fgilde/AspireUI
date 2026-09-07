@@ -13,6 +13,10 @@ builder.Services.AddSingleton<ResourceGraphService>();
 builder.Services.AddSingleton<RunService>(sp => new RunService(graph: sp.GetRequiredService<ResourceGraphService>()));
 builder.Services.AddSingleton(_ => new ApiTokenStore(dbPath));
 builder.Services.AddSingleton(_ => new UserStore(dbPath));
+builder.Services.AddSingleton(_ => new AuditStore(dbPath));
+builder.Services.AddSingleton(_ => new StackStore(dbPath));
+builder.Services.AddSingleton(_ => new DeploymentStore(dbPath));
+builder.Services.AddSingleton(_ => new SettingsStore(dbPath));
 builder.Services.AddSingleton(_ => new CatalogService());
 builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpTools>();
 builder.Services.AddHostedService<BackupSchedulerService>();
@@ -65,8 +69,12 @@ if (Directory.Exists(mediaDir))
         OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "public, max-age=604800",
     });
 app.UseAuthentication();
+// Before UseAuthorization on purpose: a request that is refused is exactly the kind of activity the
+// log is for, and a refusal never reaches anything downstream of the authorization middleware.
+app.UseMiddleware<AuditMiddleware>();
 app.UseAuthorization();
 app.MapAuthEndpoints();
+app.MapAuditEndpoints();
 app.MapStackEndpoints();
 app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });

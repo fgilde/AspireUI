@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud } from "@tabler/icons-react";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud, IconHistory } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { TargetsSection } from "../hosting/TargetsPanel";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
-import { APP_VERSION, BUILD_INFO, can, PERM_DOCKER, PERM_SETTINGS, PERM_STORE, PERM_TARGETS } from "../model";
+import { APP_VERSION, BUILD_INFO, can, PERM_AUDIT, PERM_DOCKER, PERM_SETTINGS, PERM_STORE, PERM_TARGETS } from "../model";
+import type { AuditEntry } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { useAuth } from "../auth/AuthContext";
@@ -356,6 +357,107 @@ function ImportTab() {
   );
 }
 
+// Who did what, newest first. Read-only by design: an activity log you can edit is not one.
+function ActivityTab() {
+  const { status } = useAuth();
+  const maySettings = can(status?.user, PERM_SETTINGS);
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [retain, setRetain] = useState(90);
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const size = 50;
+
+  const load = (offset = page * size, search = q) =>
+    api.audit({ limit: size, offset, q: search })
+      .then(r => { setEntries(r.entries); setTotal(r.total); setRetain(r.retainDays); })
+      .catch(() => setEntries([]));
+  useEffect(() => { load(); }, [page]);
+  // Typing filters after a beat rather than on every keystroke.
+  useEffect(() => {
+    const h = setTimeout(() => { setPage(0); load(0, q); }, 300);
+    return () => clearTimeout(h);
+  }, [q]);
+
+  const saveRetention = async (days: number) => {
+    setRetain(days);
+    try { await api.setAuditRetention(days); toastOk(days === 0 ? "Keeping everything" : `Keeping ${days} days`); }
+    catch (e) { toastErr(e); }
+  };
+  const prune = async () => {
+    setBusy(true);
+    try { const r = await api.pruneAudit(); toastOk(`Removed ${r.removed} entr${r.removed === 1 ? "y" : "ies"}`); await load(); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(false); }
+  };
+
+  const color = (s: number) => s < 300 ? "green" : s < 400 ? "blue" : s === 403 || s === 401 ? "orange" : "red";
+
+  return (
+    <MStack gap="md">
+      <Text c="dimmed" size="sm">
+        Everything that changed something: who did it, which app it was about, and what came back.
+        Reading is not recorded. Entries older than the retention are dropped.
+      </Text>
+      <Group align="flex-end" gap="sm">
+        <TextInput label="Filter" placeholder="user, action or app" value={q} w={260}
+          onChange={e => setQ(e.currentTarget.value)} />
+        {maySettings && (
+          <NumberInput label="Keep for (days)" description="0 = keep everything" w={170} min={0} max={3650}
+            value={retain} onChange={v => saveRetention(typeof v === "number" ? v : parseInt(String(v) || "0", 10))} />
+        )}
+        {maySettings && <Button variant="default" leftSection={<IconTrash size={15} />} loading={busy} onClick={prune}>Prune now</Button>}
+        <Button variant="subtle" leftSection={<IconRefresh size={15} />} onClick={() => load()}>Refresh</Button>
+      </Group>
+
+      {entries === null ? <Loader size="sm" /> : entries.length === 0 ? (
+        <Text c="dimmed" size="sm">Nothing recorded yet.</Text>
+      ) : (
+        <ScrollArea.Autosize mah="60vh">
+          <Table verticalSpacing="xs" fz="sm" stickyHeader>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={160}>When</Table.Th>
+                <Table.Th w={130}>Who</Table.Th>
+                <Table.Th>Action</Table.Th>
+                <Table.Th>App</Table.Th>
+                <Table.Th w={90}>Result</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {entries.map(e => (
+                <Table.Tr key={e.id}>
+                  <Table.Td c="dimmed">{new Date(e.at).toLocaleString()}</Table.Td>
+                  <Table.Td>{e.user}</Table.Td>
+                  <Table.Td>
+                    <Code>{e.method}</Code> {e.action}
+                  </Table.Td>
+                  <Table.Td>{e.target ?? (e.targetId ? <Text span c="dimmed" fz="xs" ff="monospace">{e.targetId}</Text> : "")}</Table.Td>
+                  <Table.Td>
+                    <Badge size="sm" variant="light" color={color(e.status)}>{e.status}</Badge>
+                    <Text span c="dimmed" fz="xs" ml={6}>{e.ms} ms</Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </ScrollArea.Autosize>
+      )}
+
+      {total > size && (
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">{page * size + 1}–{Math.min((page + 1) * size, total)} of {total}</Text>
+          <Group gap="xs">
+            <Button size="xs" variant="default" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Newer</Button>
+            <Button size="xs" variant="default" disabled={(page + 1) * size >= total} onClick={() => setPage(p => p + 1)}>Older</Button>
+          </Group>
+        </Group>
+      )}
+    </MStack>
+  );
+}
+
 function DockerTab() {
   const [containers, setContainers] = useState<DockerContainer[] | null>(null);
   const [images, setImages] = useState<DockerImage[] | null>(null);
@@ -573,6 +675,7 @@ export function Settings() {
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
               {mayHosting && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
               {can(user, PERM_DOCKER) && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
+              {can(user, PERM_AUDIT) && <Tabs.Tab value="activity" leftSection={<IconHistory size={15} />}>Activity</Tabs.Tab>}
               {maySettings && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
               <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
@@ -660,6 +763,11 @@ export function Settings() {
             {can(user, PERM_DOCKER) && (
               <Tabs.Panel value="docker" style={{ flex: 1 }}>
                 <DockerTab />
+              </Tabs.Panel>
+            )}
+            {can(user, PERM_AUDIT) && (
+              <Tabs.Panel value="activity" style={{ flex: 1 }}>
+                <ActivityTab />
               </Tabs.Panel>
             )}
             {maySettings && (

@@ -39,6 +39,16 @@ export const login = (username: string, password: string): Promise<UserDto> =>
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
+export const audit = (params: { limit?: number; offset?: number; q?: string; user?: string; stack?: string } = {}):
+  Promise<{ total: number; entries: import("./model").AuditEntry[]; retainDays: number }> =>
+  fetch(`${base}/audit?` + new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)]),
+  )).then(ok);
+export const setAuditRetention = (days: number): Promise<void> =>
+  fetch(`${base}/audit/retention`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ days }) }).then(okVoid);
+export const pruneAudit = (): Promise<{ removed: number }> =>
+  fetch(`${base}/audit/prune`, { method: "POST" }).then(ok);
+
 export const listUsers = (): Promise<UserDto[]> => fetch(`${base}/users`).then(ok);
 export const createUser = (username: string, password: string, isAdmin: boolean, permissions?: string[], viewModes?: string[]): Promise<UserDto> =>
   fetch(`${base}/users`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, isAdmin, permissions, viewModes }) }).then(ok);

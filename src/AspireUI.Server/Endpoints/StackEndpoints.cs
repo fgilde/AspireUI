@@ -102,12 +102,18 @@ public static class StackEndpoints
         app2.MapDelete("/api-tokens/{id}", (string id, HttpContext ctx) =>
             apiTokens.Delete(id, Uid(ctx)) ? Results.NoContent() : Results.NotFound());
 
-        StackModel New(StackModel s, HttpContext ctx) => s with
+        StackModel New(StackModel s, HttpContext ctx)
         {
-            Id = Guid.NewGuid().ToString("n"),
-            CreatedAt = DateTime.UtcNow.ToString("O"),
-            CreatedBy = ctx.User.Identity?.Name ?? "admin",
-        };
+            var created = s with
+            {
+                Id = Guid.NewGuid().ToString("n"),
+                CreatedAt = DateTime.UtcNow.ToString("O"),
+                CreatedBy = ctx.User.Identity?.Name ?? "admin",
+            };
+            // The activity log reads its subject from the url, and a stack being created has no url yet.
+            AuditMiddleware.Names(ctx, created.Id, created.Name);
+            return created;
+        }
 
         IResult Persist(StackModel s)
         {

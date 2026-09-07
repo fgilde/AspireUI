@@ -48,9 +48,12 @@ public static class Perm
     /// <summary>Manage users and their permissions.</summary>
     public const string Users = "users";
 
+    /// <summary>Read the activity log: who did what, to which app, and when.</summary>
+    public const string Audit = "audit";
+
     public static readonly string[] All =
     [
-        OpenEditor, Deploy, Configure, Files, FilesWrite, Terminal, Targets, Store, Settings, Docker, Users,
+        OpenEditor, Deploy, Configure, Files, FilesWrite, Terminal, Targets, Store, Settings, Docker, Users, Audit,
     ];
 
     /// <summary>Everything an app operator needs, and nothing that reaches past the apps themselves.</summary>
