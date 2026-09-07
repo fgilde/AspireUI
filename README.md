@@ -6,7 +6,8 @@
   <a href="https://github.com/fgilde/AspireUI/releases"><img src="https://img.shields.io/github/v/tag/fgilde/AspireUI?label=release&sort=semver" alt="Release"></a>
   <img src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white" alt=".NET 10">
   <a href="https://github.com/fgilde/AspireUI/stargazers"><img src="https://img.shields.io/github/stars/fgilde/AspireUI?style=flat" alt="Stars"></a>
-  <a href="https://fgilde.github.io/AspireUI/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
+  <a href="https://fgilde.github.io/AspireUI/"><img src="https://img.shields.io/badge/website-aspireui-8b5cf6" alt="Website"></a>
+  <a href="https://fgilde.github.io/AspireUI/docs.html"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
 </p>
 
 <p align="center">
@@ -30,7 +31,7 @@
   </tr>
 </table>
 
-<sub>Read the <a href="https://fgilde.github.io/AspireUI/">docs</a> to find more.</sub>
+<sub>Read the <a href="https://fgilde.github.io/AspireUI/docs.html">docs</a>, or start at the <a href="https://fgilde.github.io/AspireUI/">website</a>.</sub>
 
 <h1>
   <img src="docs/aspireui_transparent.svg" alt="AspireUI" width="50" align="center">
@@ -140,7 +141,8 @@ updates as you go. Run the stack and it opens straight into the Aspire dashboard
 AppHost (`.cs` / `.csproj` / `.zip`) to start from what you already have, or use a demo template if
 you just want to explore.
 
-Docs site (in progress): **https://fgilde.github.io/AspireUI/**
+Website: **https://fgilde.github.io/AspireUI/** (German and English) — the docs live one click away
+at **https://fgilde.github.io/AspireUI/docs.html**.
 
 ## Features
 

@@ -1,138 +1,1042 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>AspireUI Docs</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <meta name="description" content="Documentation for AspireUI — a visual canvas for .NET Aspire AppHost projects">
-  <link rel="icon" href="aspireui_transparent.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --brand: #8b5cf6;
-      --brand-2: #6d4bd8;
-      --bg: #0f0f14;
-      --bg-alt: #17171f;
-      --surface: #1c1c26;
-      --border: #2a2a37;
-      --text: #e9e9ee;
-      --text-dim: #a0a0b0;
-      --theme-color: var(--brand);
-    }
-    html, body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    body { text-rendering: optimizeLegibility; }
+<meta charset="UTF-8">
+<script>
+  // Every deep link ever shared points at the docsify shell (#/hosting.md). Keep them working.
+  if (location.hash.indexOf('#/') === 0) location.replace('docs.html' + location.hash);
+</script>
+<title>AspireUI — a visual .NET Aspire AppHost, and a place to run it</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AspireUI draws a .NET Aspire AppHost as a graph, writes the C# while you edit it, runs it, and keeps what you deploy alive on your own hardware. Self-hosted, MIT, .NET 10.">
+<link rel="canonical" href="https://fgilde.github.io/AspireUI/">
+<link rel="icon" href="aspireui_transparent.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AspireUI">
+<meta property="og:url" content="https://fgilde.github.io/AspireUI/">
+<meta property="og:title" content="AspireUI — a visual .NET Aspire AppHost, and a place to run it">
+<meta property="og:description" content="Compose an AppHost on a canvas, watch the C# follow, run it, and host what you deploy on your own machine — a Proxmox VM, a NAS, any Docker host.">
+<meta property="og:image" content="https://fgilde.github.io/AspireUI/screenshots/editor-github-dark.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AspireUI — a visual .NET Aspire AppHost, and a place to run it">
+<meta name="twitter:image" content="https://fgilde.github.io/AspireUI/screenshots/editor-github-dark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #07070b;
+  --ink-2:    #0b0b11;
+  --ink-3:    #101018;
+  --line:     #1e1e29;
+  --line-2:   #2c2c3b;
+  --text:     #e9e9f0;
+  --dim:      #8d8da2;
+  --dim-2:    #61617a;
+  --brand:    #8b5cf6;
+  --brand-lo: rgba(139, 92, 246, .13);
+  --cyan:     #4fd1c5;
+  --gold:     #e0a24e;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+[id] { scroll-margin-top: 74px; }
+body {
+  margin: 0; background: var(--ink); color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(rgba(255,255,255,.038) 1px, transparent 1px);
+  background-size: 30px 30px; background-position: -1px -1px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto 0; height: 420px; pointer-events: none; z-index: 0;
+  background: linear-gradient(180deg, rgba(139,92,246,.07), transparent 70%);
+}
+html[data-lang="en"] [lang="de"], html[data-lang="de"] [lang="en"] { display: none !important; }
 
-    /* Sidebar */
-    .sidebar { background: var(--bg-alt); border-right: 1px solid var(--border); padding-top: 0; }
-    .sidebar > h1 { display: none; }
-    .app-name-link { display: none; }
-    .sidebar .sidebar-brand {
-      display: flex; align-items: center; gap: 10px; padding: 20px 22px 14px;
-      border-bottom: 1px solid var(--border); margin-bottom: 8px;
-    }
-    .sidebar .sidebar-brand img { width: 30px; height: 30px; }
-    .sidebar .sidebar-brand b { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
-    .sidebar .sidebar-brand b span { color: var(--brand); }
-    .sidebar ul li a { color: var(--text-dim); border-radius: 8px; padding: 5px 12px; transition: background .12s, color .12s; }
-    .sidebar ul li a:hover { color: var(--text); background: rgba(139,92,246,.10); text-decoration: none; }
-    .sidebar ul li.active > a { color: var(--brand); background: rgba(139,92,246,.14); font-weight: 600; border-right: none; }
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+code, kbd, .mono { font-family: var(--mono); font-size: .88em; }
+p code, li code, td code { background: var(--ink-3); border: 1px solid var(--line); border-radius: 5px;
+  padding: .08em .38em; color: #cbb8ff; }
+.wrap { width: 100%; max-width: 1140px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
-    /* Content */
-    .content { background: var(--bg); }
-    .markdown-section { max-width: 860px; }
-    .markdown-section h1, .markdown-section h2, .markdown-section h3 { color: var(--text); font-weight: 700; letter-spacing: -.4px; }
-    .markdown-section h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; margin-top: 2.2rem; }
-    .markdown-section p, .markdown-section li { color: var(--text); line-height: 1.7; }
-    .markdown-section a { color: var(--brand); }
-    .markdown-section tr { background: transparent; border-top: 1px solid var(--border); }
-    .markdown-section tr:nth-child(2n) { background: var(--bg-alt); }
-    .markdown-section th, .markdown-section td { border: 1px solid var(--border); }
-    .markdown-section code { background: var(--surface); color: #d7c9ff; border-radius: 5px; }
-    .markdown-section pre, .markdown-section pre > code { background: #0b0b10 !important; }
-    .markdown-section blockquote { border-left: 3px solid var(--brand); background: var(--bg-alt); color: var(--text-dim); border-radius: 0 8px 8px 0; }
-    .markdown-section img:not(.no-frame) { border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
-    .app-nav a { color: var(--text-dim); }
-    .app-nav a:hover { color: var(--brand); }
-    ::selection { background: rgba(139,92,246,.4); }
+/* ---------------------------------------------------------------- nav */
+.nav { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(12px);
+  background: rgba(7,7,11,.82); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 18px; height: 58px; }
+.brand { display: flex; align-items: center; gap: 9px; color: var(--text); font-weight: 700;
+  letter-spacing: -.02em; font-size: 17px; }
+.brand:hover { text-decoration: none; }
+.brand img { width: 25px; height: 25px; }
+.brand span { color: var(--brand); }
+.nav nav { display: flex; gap: 4px; margin-left: auto; }
+.nav nav a { color: var(--dim); font-size: 13.5px; font-weight: 500; padding: 6px 10px; border-radius: 7px; }
+.nav nav a:hover { color: var(--text); background: var(--brand-lo); text-decoration: none; }
+.nav-right { display: flex; align-items: center; gap: 10px; margin-left: 6px; }
+.lang { display: flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.lang button { background: none; border: 0; color: var(--dim); font-family: var(--mono); font-size: 11.5px;
+  font-weight: 600; letter-spacing: .06em; padding: 5px 9px; cursor: pointer; }
+.lang button:hover { color: var(--text); }
+.lang button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+.ghlink { color: var(--dim); display: flex; }
+.ghlink:hover { color: var(--text); }
+@media (max-width: 880px) { .nav nav { display: none; } .nav nav.compact { display: flex; } }
+@media (max-width: 620px) { .nav nav { display: none !important; } }
 
-    /* Search box */
-    .search input { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; }
-    .search .results-panel { background: var(--bg-alt); }
+/* ---------------------------------------------------------------- hero */
+.hero { padding: 76px 0 20px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 54px; align-items: start; }
+@media (max-width: 1000px) { .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; } .hero { padding-top: 48px; } }
+.eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--dim-2); display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.eyebrow::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line-2), transparent); }
+h1 { font-size: clamp(2.05rem, 4.4vw, 3.15rem); line-height: 1.08; letter-spacing: -.035em;
+  font-weight: 800; margin: 0 0 20px; }
+h1 em, h2 em { font-style: normal; color: var(--brand); }
+.lead { font-size: 17.5px; color: #c3c3d2; margin: 0 0 14px; max-width: 40em; }
+.lead-2 { font-size: 15.5px; color: var(--dim); margin: 0 0 30px; max-width: 40em; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 9px;
+  font-size: 14.5px; font-weight: 600; border: 1px solid var(--line-2); color: var(--text);
+  background: var(--ink-3); cursor: pointer; }
+.btn:hover { text-decoration: none; border-color: var(--brand); background: var(--brand-lo); }
+.btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn-primary:hover { background: #7c4ef0; border-color: #7c4ef0; }
+quickrun-btn { display: inline-block; }
+.meta-row { margin-top: 24px; font-family: var(--mono); font-size: 11.5px; color: var(--dim-2);
+  letter-spacing: .04em; display: flex; flex-wrap: wrap; gap: 8px 14px; }
 
-    /* Image compare slider (github-dark vs blazor) */
-    .img-compare { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden;
-      border: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,.4); user-select: none; touch-action: none; margin: 1.2rem 0; background: var(--surface); }
-    .img-compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: none !important; border-radius: 0 !important; box-shadow: none !important; margin: 0 !important; }
-    .img-compare .ic-top { clip-path: inset(0 0 0 50%); }
-    .img-compare .ic-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--brand); transform: translateX(-1px); z-index: 3; }
-    .img-compare .ic-handle::after { content: ""; position: absolute; top: 50%; left: 50%; width: 34px; height: 34px; transform: translate(-50%,-50%);
-      background: var(--brand); border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
-    .img-compare .ic-handle::before { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 4;
-      color: #fff; font-size: 14px; letter-spacing: 1px; }
-    .img-compare .ic-label { position: absolute; bottom: 10px; z-index: 3; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px;
-      background: rgba(0,0,0,.6); color: #fff; backdrop-filter: blur(4px); }
-    .img-compare .ic-label.left { left: 10px; }
-    .img-compare .ic-label.right { right: 10px; }
-  </style>
+/* copy strip */
+.copy { display: flex; align-items: stretch; margin-top: 22px; border: 1px solid var(--line);
+  border-radius: 9px; background: var(--ink-2); overflow: hidden; max-width: 640px; }
+.copy pre { margin: 0; padding: 11px 14px; flex: 1; min-width: 0; font-family: var(--mono);
+  font-size: 12.5px; color: #b9b9cc; white-space: pre-wrap; overflow-wrap: anywhere; }
+.copy pre .c { color: var(--dim-2); }
+.copy button { border: 0; border-left: 1px solid var(--line); background: var(--ink-3); color: var(--dim);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em; padding: 0 14px; cursor: pointer; }
+.copy button:hover { color: var(--text); background: var(--brand-lo); }
+
+/* ------------------------------------------------------- the blueprint */
+.bp { border: 1px solid var(--line-2); border-radius: 12px; background: var(--ink-2);
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,.9); overflow: hidden; }
+.bp-bar { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px;
+  border-bottom: 1px solid var(--line); background: var(--ink-3); font-family: var(--mono); font-size: 11px;
+  color: var(--dim-2); letter-spacing: .08em; }
+.bp-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
+.bp-bar .spacer { flex: 1; }
+.bp-bar button { background: none; border: 1px solid var(--line-2); color: var(--dim); border-radius: 6px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; padding: 3px 8px; cursor: pointer; }
+.bp-bar button:hover { color: var(--text); border-color: var(--brand); }
+.bp-canvas-scroll { overflow-x: auto; }
+.bp-canvas { position: relative; height: 198px; min-width: 516px;
+  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px); background-size: 22px 22px; }
+.bp-canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bp-canvas svg path { fill: none; stroke: rgba(139,92,246,.5); stroke-width: 1.4;
+  stroke-dasharray: 4 5; animation: flow 1.1s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -18; } }
+.node { position: absolute; width: 124px; border: 1px solid var(--line-2); border-radius: 8px;
+  background: #14141d; cursor: grab; user-select: none; touch-action: none;
+  box-shadow: 0 6px 18px -8px rgba(0,0,0,.9); transition: border-color .12s, box-shadow .12s; }
+.node:hover, .node.on { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-lo); }
+.node.drag { cursor: grabbing; z-index: 5; }
+.node .tint { position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; }
+.node .nm { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--text);
+  padding: 8px 10px 0 13px; }
+.node .ty { font-family: var(--mono); font-size: 10px; letter-spacing: .07em; color: var(--dim-2);
+  padding: 0 10px 8px 13px; }
+.node .x { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border: 0; border-radius: 5px;
+  background: none; color: var(--dim-2); font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; }
+.node:hover .x { opacity: 1; }
+.node .x:hover { background: rgba(255,90,90,.15); color: #ff8080; }
+.bp-code { border-top: 1px solid var(--line); background: #06060a; padding: 14px 16px; margin: 0;
+  font-family: var(--mono); font-size: 12.2px; line-height: 1.75; overflow-x: auto; color: #b9b9cc;
+  max-height: 340px; }
+.bp-code .k { color: #c084fc; } .bp-code .s { color: #7ee0c0; } .bp-code .m { color: #8ab4ff; }
+.bp-code .t { color: #f0c674; } .bp-code .p { color: #6f6f88; }
+.bp-code .cl { display: block; border-left: 2px solid transparent; padding-left: 14px; margin-left: -16px;
+  transition: background .12s; }
+.bp-code .cl.on { background: rgba(139,92,246,.11); border-left-color: var(--brand); }
+.bp-add { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 11px 13px;
+  border-top: 1px solid var(--line); background: var(--ink-3); }
+.bp-add .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; color: var(--dim-2);
+  margin-right: 2px; }
+.chip { border: 1px dashed var(--line-2); background: none; color: var(--dim); border-radius: 20px;
+  font-family: var(--mono); font-size: 11px; padding: 3px 11px; cursor: pointer; }
+.chip:hover { color: var(--text); border-color: var(--brand); border-style: solid; background: var(--brand-lo); }
+.hint { font-size: 12.5px; color: var(--dim-2); margin: 12px 2px 0; font-family: var(--mono); }
+
+/* ------------------------------------------------------------ sections */
+section { padding: 84px 0 0; }
+.sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 26px; }
+.sec-no { font-family: var(--mono); font-size: 12px; color: var(--brand); letter-spacing: .1em;
+  padding-top: 4px; }
+.sec-head h2 { font-size: clamp(1.42rem, 2.6vw, 1.95rem); letter-spacing: -.028em; font-weight: 700;
+  margin: 0; white-space: nowrap; }
+.sec-head .rule { flex: 1; height: 9px; align-self: center; opacity: .5;
+  background-image: linear-gradient(90deg, var(--line-2) 1px, transparent 1px), linear-gradient(var(--line) 1px, transparent 1px);
+  background-size: 22px 9px, 100% 1px; background-position: 0 0, 0 4px; background-repeat: repeat-x; }
+@media (max-width: 900px) { .sec-head h2 { white-space: normal; } .sec-head .rule { display: none; } }
+.cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 44px; align-items: start; }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); gap: 26px; } }
+.hero-grid > *, .cols > *, .nt-grid > * { min-width: 0; }
+.prose p { color: #c3c3d2; margin: 0 0 15px; }
+.prose p.tight { font-size: 14.5px; color: var(--dim); }
+.shot { border: 1px solid var(--line-2); border-radius: 11px; width: 100%; display: block;
+  box-shadow: 0 26px 60px -30px rgba(0,0,0,.95); }
+figure { margin: 0; }
+figcaption { font-family: var(--mono); font-size: 11px; color: var(--dim-2); letter-spacing: .05em;
+  margin-top: 10px; }
+
+/* fact list */
+.facts { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.facts li { background: var(--ink-2); padding: 13px 16px; display: grid;
+  grid-template-columns: 132px minmax(0,1fr); gap: 16px; font-size: 14.5px; color: #c3c3d2; }
+.facts li b { font-family: var(--mono); font-size: 11.5px; font-weight: 600; letter-spacing: .05em;
+  color: var(--brand); text-transform: uppercase; padding-top: 3px; }
+@media (max-width: 560px) { .facts li { grid-template-columns: 1fr; gap: 4px; } }
+
+.tags { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0 0; padding: 0; list-style: none; }
+.tags li { font-family: var(--mono); font-size: 11.5px; color: var(--dim); border: 1px solid var(--line-2);
+  border-radius: 6px; padding: 3px 9px; background: var(--ink-2); }
+
+/* code block */
+.nt-grid { display: block; }
+.nt-grid .prose { columns: 2; column-gap: 44px; }
+.nt-grid .prose p { break-inside: avoid; }
+.nt-code { margin-top: 28px; }
+@media (max-width: 900px) { .nt-grid .prose { columns: 1; } }
+.code { border: 1px solid var(--line-2); border-radius: 11px; background: #06060a; overflow: hidden;
+  box-shadow: 0 26px 60px -34px rgba(0,0,0,.95); }
+.code header { display: flex; align-items: center; height: 34px; padding: 0 13px; background: var(--ink-3);
+  border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11px; color: var(--dim-2);
+  letter-spacing: .07em; }
+.code header button { margin-left: auto; border: 0; background: none; color: var(--dim);
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; cursor: pointer; }
+.code header button:hover { color: var(--text); }
+.code pre { margin: 0; padding: 15px 16px; overflow-x: auto; font-family: var(--mono); font-size: 12.4px;
+  line-height: 1.75; color: #b9b9cc; }
+.code .k { color: #c084fc; } .code .s { color: #7ee0c0; } .code .m { color: #8ab4ff; }
+.code .t { color: #f0c674; } .code .c { color: #5e5e75; }
+
+/* topology diagram */
+.topo { border: 1px solid var(--line-2); border-radius: 11px; background: var(--ink-2); padding: 18px 14px 10px; }
+.topo svg { width: 100%; height: auto; display: block; }
+.topo .bx { fill: #14141d; stroke: var(--line-2); }
+.topo .vm { fill: rgba(139,92,246,.045); stroke: rgba(139,92,246,.4); stroke-dasharray: 5 4; }
+.topo .wire { stroke: var(--line-2); stroke-width: 1.2; fill: none; }
+.topo .lb { font-family: var(--mono); font-size: 10.5px; fill: var(--text); }
+.topo .lb.dim { fill: var(--dim-2); font-size: 9.5px; letter-spacing: .06em; }
+.topo .lb.acc { fill: var(--cyan); }
+@media (prefers-reduced-motion: reduce) { .flow-dot { display: none; } .bp-canvas svg path { animation: none; } }
+
+/* doc cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 14px; }
+.card { border: 1px solid var(--line); border-radius: 10px; background: var(--ink-2); padding: 16px 17px;
+  display: block; color: var(--text); }
+.card:hover { text-decoration: none; border-color: var(--brand); background: #12121b; transform: translateY(-1px); }
+.card b { display: block; font-size: 14.5px; font-weight: 600; margin-bottom: 5px; }
+.card span { font-size: 13px; color: var(--dim); }
+
+/* ------------------------------------------------------------- footer */
+footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--ink-2); padding: 42px 0 34px; }
+.foot { display: flex; flex-wrap: wrap; gap: 34px; justify-content: space-between; align-items: flex-start; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13.5px; }
+.foot-links a { color: var(--dim); }
+.foot-links a:hover { color: var(--text); }
+.foot small { display: block; color: var(--dim-2); font-family: var(--mono); font-size: 11px;
+  letter-spacing: .05em; margin-top: 14px; }
+.partners { display: flex; align-items: center; gap: 26px; }
+.partner { display: flex; align-items: center; gap: 10px; color: var(--dim); font-size: 13.5px; font-weight: 600; }
+.partner:hover { text-decoration: none; color: var(--text); }
+.gilde-mark { width: 34px; height: 34px; flex: none; }
+.gilde-mark path { stroke-dashoffset: 0px; }
+.gilde-mark.draw path { animation: gdraw 1.5s ease-out forwards; }
+.gilde-mark.draw path:nth-child(2) { animation-delay: .5s; }
+.partner:hover .gilde-mark path { animation: gdraw 1.1s ease-out forwards; }
+.partner:hover .gilde-mark path:nth-child(2) { animation-delay: .35s; }
+@keyframes gdraw { from { stroke-dashoffset: 1px; } to { stroke-dashoffset: 0px; } }
+@media (prefers-reduced-motion: reduce) { .gilde-mark path { stroke-dashoffset: 0px !important; animation: none !important; } }
+.love { font-family: var(--mono); font-weight: 600; letter-spacing: -.01em; }
+.love .h { color: #f0637a; display: inline-block; padding: 0 1px; }
+.partner:hover .love .h { animation: beat .9s ease-in-out infinite; }
+@keyframes beat { 0%,100% { transform: scale(1); } 30% { transform: scale(1.28); } }
+@media (prefers-reduced-motion: reduce) { .partner:hover .love .h { animation: none; } }
+.love img { width: 15px; height: 15px; vertical-align: -2px; margin-right: 6px; }
+</style>
 </head>
 <body>
-  <div id="app"></div>
-  <script>
-    // Turn <div class="img-compare"><img><img></div> into a draggable before/after slider.
-    function initImgCompare() {
-      document.querySelectorAll('.img-compare:not([data-ready])').forEach(function (el) {
-        var imgs = el.querySelectorAll('img');
-        if (imgs.length < 2) return;
-        el.setAttribute('data-ready', '1');
-        imgs[1].classList.add('ic-top');
-        var handle = document.createElement('div'); handle.className = 'ic-handle'; el.appendChild(handle);
-        var l = document.createElement('span'); l.className = 'ic-label left'; l.textContent = imgs[0].getAttribute('data-label') || 'A'; el.appendChild(l);
-        var r = document.createElement('span'); r.className = 'ic-label right'; r.textContent = imgs[1].getAttribute('data-label') || 'B'; el.appendChild(r);
-        function setPct(p) { p = Math.max(0, Math.min(100, p)); imgs[1].style.clipPath = 'inset(0 0 0 ' + p + '%)'; handle.style.left = p + '%'; }
-        var dragging = false;
-        function fromEvent(e) {
-          var rect = el.getBoundingClientRect();
-          var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-          setPct((x / rect.width) * 100);
-        }
-        el.addEventListener('pointerdown', function (e) { dragging = true; fromEvent(e); });
-        window.addEventListener('pointermove', function (e) { if (dragging) fromEvent(e); });
-        window.addEventListener('pointerup', function () { dragging = false; });
-        setPct(50);
-      });
-    }
-    window.$docsify = {
-      name: '',
-      repo: 'https://github.com/fgilde/AspireUI',
-      basePath: '/AspireUI/',
-      loadSidebar: true,
-      subMaxLevel: 3,
-      auto2top: true,
-      themeColor: '#8b5cf6',
-      search: { maxAge: 86400000, paths: 'auto', placeholder: 'Search', noData: 'No results', depth: 4 },
-      plugins: [
-        function (hook) {
-          // Brand header at the top of the sidebar.
-          hook.doneEach(function () {
-            var sb = document.querySelector('.sidebar');
-            if (sb && !sb.querySelector('.sidebar-brand')) {
-              var b = document.createElement('div'); b.className = 'sidebar-brand';
-              b.innerHTML = '<img src="aspireui_transparent.svg" alt=""><b>Aspire<span>UI</span></b>';
-              sb.insertBefore(b, sb.firstChild);
-            }
-            initImgCompare();
-          });
-        }
-      ]
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="aspireui_transparent.svg" alt="">Aspire<span>UI</span></a>
+    <nav>
+      <a href="#canvas" lang="en">Canvas</a><a href="#canvas" lang="de">Canvas</a>
+      <a href="#run" lang="en">Run</a><a href="#run" lang="de">Starten</a>
+      <a href="#hosting" lang="en">Hosting</a><a href="#hosting" lang="de">Hosting</a>
+      <a href="#proxmox" lang="en">Self-host</a><a href="#proxmox" lang="de">Eigener Server</a>
+      <a href="#nextended">Nextended</a>
+      <a href="docs.html" lang="en">Docs</a><a href="docs.html" lang="de">Doku</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-set-lang="de" aria-pressed="false">DE</button>
+      </div>
+      <a class="ghlink" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noopener" aria-label="AspireUI on GitHub">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.24.54.72.54 1.45v2.15c0 .21.15.46.55.38A7.99 7.99 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow"><span lang="en">Self-hosted · .NET 10 · MIT</span><span lang="de">Selbst gehostet · .NET 10 · MIT</span></div>
+
+      <h1 lang="en">A visual AppHost — and a place to <em>run</em> it.</h1>
+      <h1 lang="de">Ein sichtbarer AppHost — und ein Ort, an dem er <em>läuft</em>.</h1>
+
+      <p class="lead" lang="en">AspireUI draws a .NET Aspire AppHost as a graph, writes the C# while
+        you edit it, starts it, and keeps what gets deployed running on hardware you own.</p>
+      <p class="lead" lang="de">AspireUI zeichnet einen .NET-Aspire-AppHost als Graph, schreibt den
+        C#-Code beim Bearbeiten mit, startet ihn und hält das, was deployt wurde, auf eigener
+        Hardware am Laufen.</p>
+
+      <p class="lead-2" lang="en">It is a browser application. On the host it needs Docker — nothing
+        else, not even the SDK: the image carries the .NET SDK, the Docker CLI and the
+        <code>aspire</code> CLI, because the features that run and host stacks depend on all three.</p>
+      <p class="lead-2" lang="de">Es ist eine Browser-Anwendung. Auf dem Host braucht es Docker —
+        sonst nichts, nicht einmal das SDK: Das Image bringt .NET-SDK, Docker-CLI und die
+        <code>aspire</code>-CLI mit, weil die Funktionen zum Starten und Hosten alle drei brauchen.</p>
+
+      <div class="cta">
+        <quickrun-btn repo="fgilde/AspireUI" icon="left">Run local now</quickrun-btn>
+        <a class="btn btn-primary" href="docs.html"><span lang="en">Read the docs</span><span lang="de">Zur Dokumentation</span></a>
+        <a class="btn" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noopener">GitHub</a>
+      </div>
+
+      <div class="copy">
+        <pre id="dockerrun">docker run -d --name aspireui -p 8080:8080 \
+  -v aspireui-data:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  ghcr.io/fgilde/aspireui:latest</pre>
+        <button type="button" data-copy="#dockerrun">COPY</button>
+      </div>
+
+      <div class="meta-row">
+        <span>ghcr.io/fgilde/aspireui</span><span>·</span>
+        <span lang="en">164 catalog apps</span><span lang="de">164 Katalog-Apps</span><span>·</span>
+        <span lang="en">no account, no cloud</span><span lang="de">kein Konto, keine Cloud</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="bp">
+        <div class="bp-bar">
+          <span class="dot"></span><span>Program.cs</span><span class="spacer"></span>
+          <button type="button" id="bp-reset">RESET</button>
+        </div>
+        <div class="bp-canvas-scroll">
+          <div class="bp-canvas" id="bp-canvas"><svg id="bp-wires" aria-hidden="true"></svg></div>
+        </div>
+        <div class="bp-add">
+          <span class="lbl">+</span>
+          <button class="chip" data-add="rabbitmq">rabbitmq</button>
+          <button class="chip" data-add="mongodb">mongodb</button>
+          <button class="chip" data-add="keycloak">keycloak</button>
+          <button class="chip" data-add="kafka">kafka</button>
+          <button class="chip" data-add="project">project</button>
+        </div>
+        <pre class="bp-code" id="bp-code"></pre>
+      </div>
+      <p class="hint" lang="en">// drag a node, add one, remove one — the C# follows</p>
+      <p class="hint" lang="de">// Knoten ziehen, hinzufügen, entfernen — der C#-Code folgt</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 01 canvas -->
+<section id="canvas"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">01</span>
+    <h2 lang="en">The canvas is the AppHost</h2>
+    <h2 lang="de">Der Canvas <em>ist</em> der AppHost</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cols">
+    <div class="prose">
+      <p lang="en">Not a picture of one. The add-resource dialog is generated from a reflection pass
+        over the Aspire integrations the project references, so an integration you install shows up
+        with its real parameters and its real capabilities — there is no hand-maintained list here to
+        go stale.</p>
+      <p lang="de">Kein Bild davon. Der Dialog zum Hinzufügen von Ressourcen entsteht per Reflection
+        über die Aspire-Integrationen, die das Projekt referenziert: Eine neu installierte Integration
+        erscheint mit ihren echten Parametern und Fähigkeiten — hier gibt es keine handgepflegte
+        Liste, die veralten kann.</p>
+
+      <p lang="en">The property grid edits those parameters. Reference pickers only offer resources
+        whose type fits, and offer to create a missing dependency on the spot. Composite helpers such
+        as <code>AddObservabilityStack</code>, which set up several resources at once, are discovered
+        the same way and grouped separately.</p>
+      <p lang="de">Das Property-Grid bearbeitet diese Parameter. Referenz-Picker zeigen nur
+        Ressourcen mit passendem Typ und bieten an, eine fehlende Abhängigkeit direkt anzulegen.
+        Zusammengesetzte Helfer wie <code>AddObservabilityStack</code>, die mehrere Ressourcen auf
+        einmal aufsetzen, werden genauso gefunden und separat gruppiert.</p>
+
+      <p lang="en">The code panel is not a preview you read at the end. Monaco with Roslyn-backed
+        IntelliSense edits the same file, and an edit is parsed back into the graph — the two cannot
+        drift apart, which is the whole reason to trust either.</p>
+      <p lang="de">Das Code-Panel ist keine Vorschau, die man am Ende liest. Monaco mit
+        Roslyn-gestütztem IntelliSense bearbeitet dieselbe Datei, und eine Änderung wird zurück in
+        den Graph geparst — beide können nicht auseinanderlaufen, und genau deshalb kann man beiden
+        trauen.</p>
+    </div>
+    <figure>
+      <img class="shot" src="screenshots/editor-github-dark.png" alt="The AspireUI editor: canvas, property grid and generated C#" loading="lazy">
+      <figcaption lang="en">Editor — palette, canvas, property grid, generated Program.cs</figcaption>
+      <figcaption lang="de">Editor — Palette, Canvas, Property-Grid, generierte Program.cs</figcaption>
+    </figure>
+  </div>
+</div></section>
+
+<!-- =============================================================== 02 run -->
+<section id="run"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">02</span>
+    <h2 lang="en">Run it, and the drawing stops being a drawing</h2>
+    <h2 lang="de">Starten — und die Zeichnung ist keine Zeichnung mehr</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cols">
+    <figure>
+      <img class="shot" src="screenshots/live-resources.png" alt="Live resource state on the canvas while a stack runs" loading="lazy">
+      <figcaption lang="en">A running stack — state, endpoints and the child resources a builder spawned</figcaption>
+      <figcaption lang="de">Ein laufender Stack — Zustand, Endpunkte und die Kind-Ressourcen eines Builders</figcaption>
+    </figure>
+    <div class="prose">
+      <p lang="en">Run starts the stack through the Aspire CLI and links straight into the Aspire
+        dashboard. While it is up, each node on the canvas shows the state Aspire itself reports, the
+        endpoint URLs it was given, and the child resources a builder created underneath it — a
+        volume or a container you never wrote down becomes visible instead of implied. Console output
+        streams per resource.</p>
+      <p lang="de">Run startet den Stack über die Aspire-CLI und verlinkt direkt ins
+        Aspire-Dashboard. Solange er läuft, zeigt jeder Knoten den Zustand, den Aspire selbst meldet,
+        die Endpunkt-URLs, die er bekommen hat, und die Kind-Ressourcen, die ein Builder darunter
+        erzeugt hat — ein Volume oder Container, den man nie hingeschrieben hat, wird sichtbar
+        statt nur implizit. Konsolenausgabe streamt pro Ressource.</p>
+      <ul class="facts">
+        <li><b>Publish</b><span lang="en">Docker Compose, Kubernetes (Helm), Azure Bicep or the Aspire manifest — read the artifact, download the bundle, or deploy Compose right there.</span><span lang="de">Docker Compose, Kubernetes (Helm), Azure Bicep oder das Aspire-Manifest — Artefakt ansehen, Bundle herunterladen oder Compose direkt deployen.</span></li>
+        <li><b>Import</b><span lang="en">An existing AppHost from <code>.cs</code>, <code>.csproj</code> or a <code>.zip</code>, a folder, a git repository, or a <code>docker-compose.yml</code>.</span><span lang="de">Ein bestehender AppHost aus <code>.cs</code>, <code>.csproj</code> oder <code>.zip</code>, ein Ordner, ein Git-Repository oder eine <code>docker-compose.yml</code>.</span></li>
+        <li><b>Assistant</b><span lang="en">An OpenAI-compatible endpoint (Ollama and friends included) rewrites the stack on the canvas — and, outside the editor, operates the instance through the same permission-checked tools the MCP server exposes.</span><span lang="de">Ein OpenAI-kompatibler Endpunkt (Ollama und Co. eingeschlossen) schreibt den Stack auf dem Canvas um — und bedient außerhalb des Editors die Instanz über dieselben rechteprüfenden Tools, die auch der MCP-Server anbietet.</span></li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- =========================================================== 03 hosting -->
+<section id="hosting"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">03</span>
+    <h2 lang="en">A stack you keep is more than a process</h2>
+    <h2 lang="de">Ein Stack, den man behält, ist mehr als ein Prozess</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cols">
+    <div class="prose">
+      <p lang="en">Hosting deploys a stack as a tracked appliance. It gets a URL, a state you can
+        see, start / stop / update, volume backups on a schedule with retention, resource limits and
+        a healthcheck written into the generated Compose file, and a menu for the things you
+        otherwise do over SSH: browse and edit its files, open a real shell in the container, look at
+        a diff before an update touches anything.</p>
+      <p lang="de">Hosting deployt einen Stack als verwaltete Appliance. Er bekommt eine URL, einen
+        sichtbaren Zustand, Start / Stop / Update, Volume-Backups nach Zeitplan samt Aufbewahrung,
+        Ressourcen-Limits und einen Healthcheck in der generierten Compose-Datei — und ein Menü für
+        das, was man sonst über SSH macht: Dateien ansehen und bearbeiten, eine echte Shell im
+        Container öffnen, vor einem Update erst den Diff lesen.</p>
+      <p lang="en">The store side installs 164 preconfigured apps — Immich, Jellyfin, Nextcloud,
+        Gitea, WordPress, n8n, Vaultwarden and the rest — with their volumes, ports, companion
+        databases and a freshly generated secret per install. Each one is a single JSON file, so
+        adding your own is a URL or a pull request, never a release of ours to wait for.</p>
+      <p lang="de">Der Store installiert 164 vorkonfigurierte Apps — Immich, Jellyfin, Nextcloud,
+        Gitea, WordPress, n8n, Vaultwarden und weitere — mit ihren Volumes, Ports, Begleit-Datenbanken
+        und einem pro Installation neu erzeugten Secret. Jede App ist eine einzige JSON-Datei; eine
+        eigene hinzuzufügen ist eine URL oder ein Pull Request, kein Warten auf ein Release von uns.</p>
+      <p class="tight" lang="en">Not only on this machine, and not only once: an app can be installed
+        onto several targets at once, and a running one can be moved or copied — with its data — from
+        one target to another.</p>
+      <p class="tight" lang="de">Nicht nur auf dieser Maschine und nicht nur einmal: Eine App kann auf
+        mehrere Ziele gleichzeitig installiert werden, und eine laufende lässt sich — samt Daten —
+        von einem Ziel auf ein anderes verschieben oder kopieren.</p>
+    </div>
+    <div>
+      <ul class="facts">
+        <li><b lang="en">Targets</b><b lang="de">Ziele</b><span lang="en">This machine · another box over SSH · a Docker daemon over TCP with mTLS · Kubernetes via Helm · Azure Container Apps · Cloud Run · ECS. Machines at Hetzner, DigitalOcean, Linode, AWS, Azure and GCP can be created from inside AspireUI.</span><span lang="de">Diese Maschine · eine andere Kiste über SSH · ein Docker-Daemon über TCP mit mTLS · Kubernetes per Helm · Azure Container Apps · Cloud Run · ECS. Maschinen bei Hetzner, DigitalOcean, Linode, AWS, Azure und GCP lassen sich aus AspireUI heraus anlegen.</span></li>
+        <li><b lang="en">Accounts</b><b lang="de">Konten</b><span lang="en">Twelve permissions rather than an admin flag, TOTP two-factor, sign-in through any OpenID Connect provider, and an activity log that records who did what. An API token can never do more than the person it belongs to.</span><span lang="de">Zwölf Rechte statt eines Admin-Flags, TOTP-Zweifaktor, Anmeldung über jeden OpenID-Connect-Provider und ein Aktivitätsprotokoll, das festhält, wer was getan hat. Ein API-Token kann nie mehr als die Person, zu der er gehört.</span></li>
+        <li><b lang="en">Off-site</b><b lang="de">Auswärts</b><span lang="en">Every backup can be copied to an S3-compatible bucket, a WebDAV share, or a directory on another machine over scp. The whole instance exports to one archive and imports into the next one.</span><span lang="de">Jedes Backup kann in einen S3-kompatiblen Bucket, auf eine WebDAV-Freigabe oder per scp in ein Verzeichnis auf einer anderen Maschine kopiert werden. Die ganze Instanz exportiert in ein Archiv und importiert in die nächste.</span></li>
+      </ul>
+      <ul class="tags">
+        <li>umbrel store</li><li>unraid template</li><li>casaos</li><li>MCP server</li>
+        <li>webhook updates</li><li>nginx proxy manager</li><li>seed file</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- =========================================================== 04 proxmox -->
+<section id="proxmox"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">04</span>
+    <h2 lang="en">On your own Proxmox host</h2>
+    <h2 lang="de">Auf dem eigenen Proxmox-Host</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cols">
+    <div class="prose">
+      <p lang="en">This is where a lot of it actually ends up, so it is worth being precise about the
+        shape that works. On a Proxmox VE host, one script takes you from nothing to a URL: it
+        creates a clean Debian VM, installs Docker, starts AspireUI with the socket mounted, and
+        prints <code>http://&lt;vm-ip&gt;:8080</code>.</p>
+      <p lang="de">Genau dort landet vieles davon am Ende, deshalb lohnt es sich, die funktionierende
+        Form präzise zu beschreiben. Auf einem Proxmox-VE-Host führt ein Skript von nichts zu einer
+        URL: Es erstellt eine frische Debian-VM, installiert Docker, startet AspireUI mit
+        eingebundenem Socket und gibt <code>http://&lt;vm-ip&gt;:8080</code> aus.</p>
+
+      <div class="copy">
+        <pre id="pve"><span class="c"># on the Proxmox host, as root</span>
+IP=192.168.1.50/24 GW=192.168.1.1 RAM=8192 CORES=4 \
+    bash deploy/pve-install-aspireui.sh</pre>
+        <button type="button" data-copy="#pve">COPY</button>
+      </div>
+
+      <p style="margin-top:22px" lang="en"><b>A VM, not an LXC container.</b> Hosting starts
+        <em>other</em> containers through the Docker socket, which needs real Docker. That is
+        straightforward in a VM and fiddly with Docker-in-LXC on PVE. It also keeps a
+        root-equivalent socket inside one disposable place — which is the honest reason for the extra
+        VM, not a preference. Tear the whole thing down with
+        <code>qm stop &lt;vmid&gt; &amp;&amp; qm destroy &lt;vmid&gt;</code>.</p>
+      <p style="margin-top:22px" lang="de"><b>Eine VM, kein LXC-Container.</b> Hosting startet
+        <em>andere</em> Container über den Docker-Socket, und das braucht echtes Docker. In einer VM
+        ist das unkompliziert, Docker-in-LXC auf PVE ist fummelig. Außerdem bleibt so ein
+        root-äquivalenter Socket an einem wegwerfbaren Ort — das ist der ehrliche Grund für die
+        zusätzliche VM, keine Geschmacksfrage. Alles wieder weg mit
+        <code>qm stop &lt;vmid&gt; &amp;&amp; qm destroy &lt;vmid&gt;</code>.</p>
+    </div>
+
+    <div>
+      <div class="topo">
+        <svg viewBox="0 0 560 250" role="img" aria-label="Request path: browser, domain, Nginx Proxy Manager, and the AspireUI VM with its app containers">
+          <rect class="bx" x="8" y="26" width="84" height="40" rx="7"></rect>
+          <text class="lb" x="24" y="51">browser</text>
+
+          <path class="wire" d="M92 46 H 150 V 76 H 214"></path>
+          <text class="lb dim" x="98" y="40">*.acme.dev</text>
+          <text class="lb dim" x="98" y="88">A &#8594; PVE HOST</text>
+
+          <rect class="bx" x="214" y="46" width="104" height="60" rx="7"></rect>
+          <text class="lb" x="228" y="70">nginx proxy</text>
+          <text class="lb" x="228" y="84">manager</text>
+          <text class="lb acc" x="228" y="98">:443 &#183; TLS</text>
+
+          <path class="wire" d="M318 76 H 372"></path>
+
+          <rect class="vm" x="372" y="14" width="180" height="222" rx="10"></rect>
+          <text class="lb dim" x="386" y="34">DEBIAN VM &#183; DOCKER</text>
+
+          <rect class="bx" x="386" y="46" width="152" height="44" rx="7"></rect>
+          <text class="lb" x="398" y="65">aspireui</text>
+          <text class="lb dim" x="398" y="79">:8080 &#183; DOCKER SOCKET</text>
+
+          <path class="wire" d="M462 90 V 116"></path>
+          <path class="wire" d="M410 116 H 514"></path>
+          <path class="wire" d="M410 116 V 132"></path>
+          <path class="wire" d="M514 116 V 132"></path>
+          <path class="wire" d="M462 116 V 182"></path>
+
+          <rect class="bx" x="386" y="132" width="70" height="40" rx="6"></rect>
+          <text class="lb" x="394" y="150">wordpress</text>
+          <text class="lb dim" x="394" y="163">:32768</text>
+
+          <rect class="bx" x="468" y="132" width="70" height="40" rx="6"></rect>
+          <text class="lb" x="478" y="150">gitea</text>
+          <text class="lb dim" x="478" y="163">:32769</text>
+
+          <rect class="bx" x="386" y="182" width="152" height="40" rx="6"></rect>
+          <text class="lb" x="398" y="200">volumes + backups</text>
+          <text class="lb dim" x="398" y="213">S3 &#183; WEBDAV &#183; SCP</text>
+
+          <circle class="flow-dot" r="3.2" fill="#4fd1c5">
+            <animateMotion dur="2.8s" repeatCount="indefinite"
+              path="M92 46 H 150 V 76 H 372 H 462 V 132"></animateMotion>
+          </circle>
+        </svg>
+      </div>
+      <p class="prose" style="margin-top:20px" lang="en">Put Nginx Proxy Manager in front once, and
+        AspireUI manages that same instance from <b>Settings → Hosting</b>: a hosted app is given a
+        hostname and a Let's Encrypt certificate from its own menu, without a second admin UI in the
+        loop. Set the public host once and every app URL is built from it. Proxmox snapshots cover
+        the VM; the scheduled volume backups cover the app data, and a copy of each goes off the box.</p>
+      <p class="prose" style="margin-top:20px" lang="de">Einmal Nginx Proxy Manager davor, und
+        AspireUI verwaltet genau diese Instanz aus <b>Settings → Hosting</b>: Eine gehostete App
+        bekommt Hostname und Let's-Encrypt-Zertifikat aus ihrem eigenen Menü, ohne Umweg über eine
+        zweite Admin-Oberfläche. Den Public Host einmal setzen, und jede App-URL wird daraus gebaut.
+        Proxmox-Snapshots sichern die VM, die geplanten Volume-Backups sichern die App-Daten — und
+        von jedem geht eine Kopie von der Kiste herunter.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ========================================================= 05 nextended -->
+<section id="nextended"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">05</span>
+    <h2 lang="en">If the AppHost already exists</h2>
+    <h2 lang="de">Wenn der AppHost schon existiert</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="nt-grid">
+    <div class="prose">
+      <p lang="en">Then AspireUI can be part of it.
+        <a href="https://www.nuget.org/packages/Nextended.Aspire.Hosting.AspireUI" target="_blank" rel="noopener"><code>Nextended.Aspire.Hosting.AspireUI</code></a>
+        adds it as a resource — the container, an HTTP endpoint, the host Docker socket, a named
+        volume for its data — and then writes down the entire first run: the admin account, further
+        accounts with a permission preset, deploy targets, catalog apps, a starter stack built from
+        the <code>ProjectResource</code>s in this very AppHost, the assistant pointed at an Ollama
+        container in the same stack, single sign-on, off-site backups.</p>
+      <p lang="de">Dann kann AspireUI ein Teil davon sein.
+        <a href="https://www.nuget.org/packages/Nextended.Aspire.Hosting.AspireUI" target="_blank" rel="noopener"><code>Nextended.Aspire.Hosting.AspireUI</code></a>
+        fügt es als Ressource hinzu — Container, HTTP-Endpunkt, Docker-Socket des Hosts, ein
+        benanntes Volume für die Daten — und schreibt dann den ganzen ersten Start auf: das
+        Admin-Konto, weitere Konten mit Rechte-Preset, Deploy-Ziele, Katalog-Apps, einen Start-Stack
+        aus den <code>ProjectResource</code>s genau dieses AppHosts, den Assistenten auf einen
+        Ollama-Container im selben Stack gezeigt, Single Sign-on, Backups nach auswärts.</p>
+      <p lang="en">Everything is idempotent by name. Restarting with the same AppHost changes
+        nothing, adding one entry adds exactly that one, and anything somebody changed in the UI
+        stays changed unless you explicitly ask for the opposite. Secrets come from Aspire
+        parameters, so they stay out of the source and out of the manifest.</p>
+      <p lang="de">Alles ist idempotent über den Namen. Ein Neustart mit demselben AppHost ändert
+        nichts, ein zusätzlicher Eintrag fügt genau diesen einen hinzu, und was jemand in der
+        Oberfläche geändert hat, bleibt geändert — es sei denn, man verlangt ausdrücklich das
+        Gegenteil. Secrets kommen aus Aspire-Parametern und bleiben damit außerhalb von Quellcode
+        und Manifest.</p>
+      <p class="tight" lang="en">Docs for the package:
+        <a href="https://fgilde.github.io/Nextended/projects/aspire-aspireui" target="_blank" rel="noopener">English</a> ·
+        <a href="https://fgilde.github.io/Nextended/de/projects/aspire-aspireui" target="_blank" rel="noopener">Deutsch</a> ·
+        <a href="https://github.com/fgilde/Nextended/tree/main/Tests/TestProjects/AspireUI.AppHost" target="_blank" rel="noopener">runnable sample</a>.
+        Seeding without the package is
+        <a href="docs.html#/seeding.md">environment variables and a seed file</a>.</p>
+      <p class="tight" lang="de">Doku zum Paket:
+        <a href="https://fgilde.github.io/Nextended/de/projects/aspire-aspireui" target="_blank" rel="noopener">Deutsch</a> ·
+        <a href="https://fgilde.github.io/Nextended/projects/aspire-aspireui" target="_blank" rel="noopener">English</a> ·
+        <a href="https://github.com/fgilde/Nextended/tree/main/Tests/TestProjects/AspireUI.AppHost" target="_blank" rel="noopener">lauffähiges Beispiel</a>.
+        Ohne das Paket geht dasselbe über
+        <a href="docs.html#/seeding.md">Umgebungsvariablen und eine Seed-Datei</a>.</p>
+    </div>
+    <div class="nt-code">
+      <div class="copy" style="margin-top:0;max-width:none">
+        <pre id="nuget">dotnet add package Nextended.Aspire.Hosting.AspireUI</pre>
+        <button type="button" data-copy="#nuget">COPY</button>
+      </div>
+      <div class="code" style="margin-top:14px">
+        <header>AppHost/Program.cs<button type="button" data-copy="#ntcode">COPY</button></header>
+        <pre id="ntcode"><span class="k">var</span> builder = DistributedApplication.<span class="m">CreateBuilder</span>(args);
+
+<span class="k">var</span> api    = builder.<span class="m">AddProject</span>&lt;<span class="t">Projects</span>.Api&gt;(<span class="s">"api"</span>);
+<span class="k">var</span> web    = builder.<span class="m">AddProject</span>&lt;<span class="t">Projects</span>.Web&gt;(<span class="s">"web"</span>).<span class="m">WithReference</span>(api);
+<span class="k">var</span> ollama = builder.<span class="m">AddOllama</span>(<span class="s">"ollama"</span>).<span class="m">WithDataVolume</span>();
+
+builder.<span class="m">AddAspireUI</span>()
+    .<span class="m">WithAdminUser</span>(<span class="s">"admin"</span>, builder.<span class="m">AddParameter</span>(<span class="s">"admin-password"</span>, secret: <span class="k">true</span>))
+    .<span class="m">WithProjectStack</span>(<span class="s">"My App"</span>, api, web)   <span class="c">// canvas + sources mounted</span>
+    .<span class="m">WithApps</span>(<span class="s">"gitea"</span>, <span class="s">"vaultwarden"</span>)
+    .<span class="m">WithOllamaAssistant</span>(ollama, <span class="s">"llama3.2"</span>)
+    .<span class="m">WithSingleSignOn</span>(<span class="s">"https://id.example.com/realms/main"</span>, <span class="s">"aspireui"</span>,
+                      builder.<span class="m">AddParameter</span>(<span class="s">"sso-secret"</span>, secret: <span class="k">true</span>))
+    .<span class="m">WithSettings</span>(s =&gt;
+    {
+        s.PublicHost          = <span class="s">"apps.example.com"</span>;
+        s.BackupIntervalHours = <span class="k">12</span>;
+    })
+    .<span class="m">WithAutoDeploy</span>();
+
+builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
+      </div>
+      <p class="hint" lang="en">// AddOllama comes from the Aspire Community Toolkit</p>
+      <p class="hint" lang="de">// AddOllama kommt aus dem Aspire Community Toolkit</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============================================================= 06 learn -->
+<section id="learn"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">06</span>
+    <h2 lang="en">A decent way to learn Aspire</h2>
+    <h2 lang="de">Eine brauchbare Art, Aspire zu lernen</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cols">
+    <div class="prose">
+      <p lang="en">The reason is mechanical, not motivational: the code appears the moment you make
+        the call. Drop a Postgres node and there is the <code>AddPostgres("db").WithDataVolume()</code>;
+        wire a project to it and the <code>WithReference(db)</code> lands in the right place in the
+        right chain. Delete it again and watch what disappears with it.</p>
+      <p lang="de">Der Grund ist mechanisch, nicht motivierend: Der Code erscheint in dem Moment, in
+        dem man den Aufruf macht. Einen Postgres-Knoten ablegen — da steht
+        <code>AddPostgres("db").WithDataVolume()</code>; ein Projekt daran hängen, und
+        <code>WithReference(db)</code> landet an der richtigen Stelle in der richtigen Kette. Wieder
+        löschen und zusehen, was mit verschwindet.</p>
+      <p lang="en">Then the other direction: import an existing AppHost and read it as a graph.
+        Publish one and put the generated Compose file, Helm chart or Bicep next to the C# that
+        produced it. And the store apps are ordinary stacks — open one and see how its volumes,
+        published ports and companion database were actually wired.</p>
+      <p lang="de">Dann die andere Richtung: Einen bestehenden AppHost importieren und als Graph
+        lesen. Einen veröffentlichen und die erzeugte Compose-Datei, das Helm-Chart oder das Bicep
+        neben den C#-Code legen, der sie erzeugt hat. Und die Store-Apps sind gewöhnliche Stacks —
+        einen öffnen und sehen, wie Volumes, veröffentlichte Ports und Begleit-Datenbank wirklich
+        verdrahtet sind.</p>
+      <ul class="tags">
+        <li>ctrl/⌘+K palette</li><li>undo/redo</li><li>dockable panels</li><li>themes</li>
+        <li>saveable layouts</li><li>roslyn intellisense</li>
+      </ul>
+    </div>
+    <figure>
+      <img class="shot" src="screenshots/add-dialog.png" alt="The add-resource dialog, generated from the installed Aspire integrations" loading="lazy">
+      <figcaption lang="en">Add-resource dialog — parameters, capabilities and a live C# preview</figcaption>
+      <figcaption lang="de">Ressourcen-Dialog — Parameter, Fähigkeiten und eine lebende C#-Vorschau</figcaption>
+    </figure>
+  </div>
+</div></section>
+
+<!-- ============================================================== 07 docs -->
+<section id="docs"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">07</span>
+    <h2 lang="en">Documentation</h2>
+    <h2 lang="de">Dokumentation</h2>
+    <span class="rule"></span>
+  </div>
+  <div class="cards">
+    <a class="card" href="docs.html#/getting-started.md">
+      <b lang="en">Getting started</b><b lang="de">Erste Schritte</b>
+      <span lang="en">Install it, open it, build the first stack.</span>
+      <span lang="de">Installieren, öffnen, den ersten Stack bauen.</span></a>
+    <a class="card" href="docs.html#/building-stacks.md">
+      <b lang="en">Building stacks</b><b lang="de">Stacks bauen</b>
+      <span lang="en">Canvas, catalog, property grid, code round-trip.</span>
+      <span lang="de">Canvas, Katalog, Property-Grid, Code-Rundreise.</span></a>
+    <a class="card" href="docs.html#/running-and-deploying.md">
+      <b lang="en">Running &amp; deploying</b><b lang="de">Starten &amp; deployen</b>
+      <span lang="en">Run, dashboard, publish to Compose, Helm, Bicep.</span>
+      <span lang="de">Run, Dashboard, Publish zu Compose, Helm, Bicep.</span></a>
+    <a class="card" href="docs.html#/hosting.md">
+      <b>Hosting</b>
+      <span lang="en">Appliances with a URL: limits, health, backups, shell.</span>
+      <span lang="de">Appliances mit URL: Limits, Health, Backups, Shell.</span></a>
+    <a class="card" href="docs.html#/deploy-targets.md">
+      <b lang="en">Deploy targets</b><b lang="de">Deploy-Ziele</b>
+      <span lang="en">SSH, TCP+mTLS, Kubernetes, ACA, Cloud Run, ECS.</span>
+      <span lang="de">SSH, TCP+mTLS, Kubernetes, ACA, Cloud Run, ECS.</span></a>
+    <a class="card" href="docs.html#/apps.md">
+      <b lang="en">App catalog</b><b lang="de">App-Katalog</b>
+      <span lang="en">All 164 apps, and how to submit your own.</span>
+      <span lang="de">Alle 164 Apps — und wie man eine eigene einreicht.</span></a>
+    <a class="card" href="docs.html#/users-and-permissions.md">
+      <b lang="en">Users &amp; permissions</b><b lang="de">Nutzer &amp; Rechte</b>
+      <span lang="en">Twelve permissions, two-factor, OIDC, activity log.</span>
+      <span lang="de">Zwölf Rechte, Zweifaktor, OIDC, Aktivitätsprotokoll.</span></a>
+    <a class="card" href="docs.html#/ai-chat.md">
+      <b lang="en">The assistant chat</b><b lang="de">Der Assistenz-Chat</b>
+      <span lang="en">Sessions, tools, and why it can only do what you can.</span>
+      <span lang="de">Sessions, Tools — und warum er nur kann, was du kannst.</span></a>
+    <a class="card" href="docs.html#/seeding.md">
+      <b lang="en">Seeding an install</b><b lang="de">Installation vorbelegen</b>
+      <span lang="en">Accounts, targets, apps and settings, written down.</span>
+      <span lang="de">Konten, Ziele, Apps und Settings, aufgeschrieben.</span></a>
+    <a class="card" href="docs.html#/instance-transfer.md">
+      <b lang="en">Export &amp; import</b><b lang="de">Export &amp; Import</b>
+      <span lang="en">Move an instance, or hand over a support bundle.</span>
+      <span lang="de">Eine Instanz umziehen oder ein Support-Bundle abgeben.</span></a>
+    <a class="card" href="docs.html#/app-stores.md">
+      <b lang="en">Umbrel &amp; Unraid</b><b lang="de">Umbrel &amp; Unraid</b>
+      <span lang="en">This repo is also a community store and a CA template.</span>
+      <span lang="de">Dieses Repo ist auch Community-Store und CA-Template.</span></a>
+    <a class="card" href="docs.html">
+      <b lang="en">All pages</b><b lang="de">Alle Seiten</b>
+      <span lang="en">Seventeen pages with search.</span>
+      <span lang="de">Siebzehn Seiten mit Suche.</span></a>
+  </div>
+</div></section>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <a class="brand" href="#top" style="margin-bottom:14px"><img src="aspireui_transparent.svg" alt="">Aspire<span>UI</span></a>
+      <div class="foot-links">
+        <a href="docs.html" lang="en">Documentation</a><a href="docs.html" lang="de">Dokumentation</a>
+        <a href="https://github.com/fgilde/AspireUI" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/fgilde/AspireUI/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/fgilde/AspireUI/pkgs/container/aspireui" target="_blank" rel="noopener">Container image</a>
+        <a href="https://www.nuget.org/packages/Nextended.Aspire.Hosting.AspireUI" target="_blank" rel="noopener">NuGet</a>
+        <a href="docs.html#/app-manifest.md" lang="en">Submit an app</a><a href="docs.html#/app-manifest.md" lang="de">App einreichen</a>
+      </div>
+      <small>MIT · .NET 10 · React · Mantine</small>
+    </div>
+    <div class="partners">
+      <a class="partner" href="https://gilde.org" target="_blank" rel="noopener" title="gilde.org">
+        <svg class="gilde-mark" viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="gGold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffe6a8"></stop>
+              <stop offset=".45" stop-color="#e0a24e"></stop>
+              <stop offset="1" stop-color="#a9761f"></stop>
+            </linearGradient>
+            <filter id="gGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="10" result="b"></feGaussianBlur>
+              <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+            </filter>
+          </defs>
+          <g fill="none" stroke="url(#gGold)" stroke-width="56" stroke-linecap="square" stroke-linejoin="miter" filter="url(#gGlow)">
+            <path d="M376 88H112v264l144 112 144-112v-96H280" pathLength="1" stroke-dasharray="1px 1px"></path>
+            <path d="M280 216h120" pathLength="1" stroke-dasharray="1px 1px"></path>
+          </g>
+        </svg>
+        gilde.org
+      </a>
+      <a class="partner" href="https://www.aspire.love/" target="_blank" rel="noopener" title="aspire.love">
+        <span class="love"><img src="https://www.aspire.love/assets/favicon.ico" alt="">aspire<span class="h">♥</span>love</span>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="https://quickrun.org/components.js"></script>
+<script>
+(function () {
+  /* ------------------------------------------------------------- language */
+  var pick = new URLSearchParams(location.search).get('lang')
+    || localStorage.getItem('aspireui-lang')
+    || ((navigator.language || 'en').toLowerCase().indexOf('de') === 0 ? 'de' : 'en');
+  setLang(pick === 'de' ? 'de' : 'en');
+
+  function setLang(l) {
+    document.documentElement.lang = l;
+    document.documentElement.dataset.lang = l;
+    try { localStorage.setItem('aspireui-lang', l); } catch (e) {}
+    document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.setLang === l));
+    });
+  }
+  document.querySelectorAll('[data-set-lang]').forEach(function (b) {
+    b.addEventListener('click', function () { setLang(b.dataset.setLang); });
+  });
+
+  /* ----------------------------------------------------------------- copy */
+  document.querySelectorAll('[data-copy]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var el = document.querySelector(b.dataset.copy);
+      if (!el) return;
+      var text = el.textContent.split('\n').filter(function (l) { return l.trim().indexOf('#') !== 0; }).join('\n').trim();
+      navigator.clipboard.writeText(text).then(function () {
+        var was = b.textContent; b.textContent = 'COPIED';
+        setTimeout(function () { b.textContent = was; }, 1400);
+      }).catch(function () {});
+    });
+  });
+
+  /* ------------------------------------------------- quickrun fallback */
+  setTimeout(function () {
+    if (customElements.get('quickrun-btn')) return;
+    document.querySelectorAll('quickrun-btn').forEach(function (el) {
+      var a = document.createElement('a');
+      a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
+      a.href = 'https://quickrun.org/run?repo=fgilde/AspireUI';
+      a.textContent = el.textContent.trim() || 'Run local now';
+      el.replaceWith(a);
+    });
+  }, 3000);
+
+  /* --------------------------------------------------- the gilde logo draw */
+  var gmark = document.querySelector('.gilde-mark');
+  if (gmark && 'IntersectionObserver' in window) {
+    new IntersectionObserver(function (es, obs) {
+      es.forEach(function (e) { if (e.isIntersecting) { gmark.classList.add('draw'); obs.disconnect(); } });
+    }, { threshold: .5 }).observe(gmark);
+  } else if (gmark) {
+    gmark.classList.add('draw');
+  }
+
+  /* ================================================== the blueprint canvas */
+  var KINDS = {
+    postgres: { call: 'AddPostgres', vol: true,  tint: '#4f7ed4', backing: true },
+    redis:    { call: 'AddRedis',    vol: false, tint: '#d64c3c', backing: true },
+    rabbitmq: { call: 'AddRabbitMQ', vol: false, tint: '#e8763a', backing: true },
+    mongodb:  { call: 'AddMongoDB',  vol: true,  tint: '#3fa45b', backing: true },
+    keycloak: { call: 'AddKeycloak', vol: true,  tint: '#3b7fd4', backing: true },
+    kafka:    { call: 'AddKafka',    vol: false, tint: '#8b8b9c', backing: true },
+    project:  { call: 'AddProject',  vol: false, tint: '#8b5cf6', backing: false }
+  };
+  var START = function () {
+    return {
+      nodes: [
+        { id: 'db',    kind: 'postgres', x: 16,  y: 16 },
+        { id: 'cache', kind: 'redis',    x: 16,  y: 92 },
+        { id: 'api',   kind: 'project',  x: 200, y: 52,  cls: 'Api' },
+        { id: 'web',   kind: 'project',  x: 368, y: 52,  cls: 'Web', external: true }
+      ],
+      links: [['api', 'db'], ['api', 'cache'], ['web', 'api']]
     };
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/zoom-image.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-csharp.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-bash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-docker.min.js"></script>
+  };
+  var g = START();
+  var canvas = document.getElementById('bp-canvas');
+  var wires = document.getElementById('bp-wires');
+  var codeEl = document.getElementById('bp-code');
+  if (!canvas) return;
+
+  function node(id) { return g.nodes.filter(function (n) { return n.id === id; })[0]; }
+  function referenced(id) { return g.links.some(function (l) { return l[1] === id; }); }
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function line(owner, html) { return '<span class="cl" data-node="' + owner + '">' + html + '</span>'; }
+
+  function render() {
+    // nodes
+    canvas.querySelectorAll('.node').forEach(function (el) { el.remove(); });
+    g.nodes.forEach(function (n) {
+      var k = KINDS[n.kind];
+      var el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.id = n.id;
+      el.style.left = n.x + 'px';
+      el.style.top = n.y + 'px';
+      el.innerHTML =
+        '<span class="tint" style="background:' + k.tint + '"></span>' +
+        '<div class="nm">' + n.id + '</div>' +
+        '<div class="ty">' + (n.kind === 'project' ? 'project · ' + n.cls : n.kind) + '</div>' +
+        '<button class="x" type="button" aria-label="remove ' + n.id + '">×</button>';
+      el.querySelector('.x').addEventListener('click', function (e) {
+        e.stopPropagation();
+        g.nodes = g.nodes.filter(function (o) { return o.id !== n.id; });
+        g.links = g.links.filter(function (l) { return l[0] !== n.id && l[1] !== n.id; });
+        render();
+      });
+      el.addEventListener('pointerenter', function () { light(n.id, true); });
+      el.addEventListener('pointerleave', function () { light(n.id, false); });
+      drag(el, n);
+      canvas.appendChild(el);
+    });
+    wires_draw();
+    code();
+  }
+
+  function light(id, on) {
+    codeEl.querySelectorAll('[data-node="' + id + '"]').forEach(function (e) { e.classList.toggle('on', on); });
+    var el = canvas.querySelector('.node[data-id="' + id + '"]');
+    if (el) el.classList.toggle('on', on);
+  }
+
+  function centre(n) {
+    var el = canvas.querySelector('.node[data-id="' + n.id + '"]');
+    var w = el ? el.offsetWidth : 124, h = el ? el.offsetHeight : 46;
+    return { x: n.x + w / 2, y: n.y + h / 2 };
+  }
+
+  function wires_draw() {
+    var d = g.links.map(function (l) {
+      var a = node(l[0]), b = node(l[1]);
+      if (!a || !b) return '';
+      var p = centre(a), q = centre(b), dx = Math.max(40, Math.abs(q.x - p.x) * .5);
+      return '<path d="M' + p.x + ' ' + p.y + ' C' + (p.x - dx) + ' ' + p.y +
+        ' ' + (q.x + dx) + ' ' + q.y + ' ' + q.x + ' ' + q.y + '"></path>';
+    }).join('');
+    wires.innerHTML = d;
+  }
+
+  function code() {
+    var out = [];
+    out.push(line('', '<span class="k">var</span> builder = DistributedApplication.<span class="m">CreateBuilder</span>(args);'));
+    out.push(line('', ' '));
+
+    g.nodes.filter(function (n) { return KINDS[n.kind].backing; }).forEach(function (n) {
+      var k = KINDS[n.kind];
+      out.push(line(n.id, '<span class="k">var</span> ' + n.id + ' = builder.<span class="m">' + k.call +
+        '</span>(<span class="s">"' + n.id + '"</span>)' + (k.vol ? '.<span class="m">WithDataVolume</span>()' : '') + ';'));
+    });
+
+    var projects = g.nodes.filter(function (n) { return !KINDS[n.kind].backing; });
+    projects.forEach(function (n) {
+      out.push(line('', ' '));
+      var refs = g.links.filter(function (l) { return l[0] === n.id; }).map(function (l) { return l[1]; })
+        .filter(function (id) { return !!node(id); });
+      var head = (referenced(n.id) ? '<span class="k">var</span> ' + n.id + ' = ' : '') +
+        'builder.<span class="m">AddProject</span>&lt;<span class="t">Projects</span>.' + esc(n.cls || n.id) +
+        '&gt;(<span class="s">"' + n.id + '"</span>)';
+      var tail = refs.map(function (r) { return '<br>    .<span class="m">WithReference</span>(' + r + ')'; }).join('');
+      if (n.external) tail += '<br>    .<span class="m">WithExternalHttpEndpoints</span>()';
+      out.push(line(n.id, head + tail + ';'));
+    });
+
+    out.push(line('', ' '));
+    out.push(line('', 'builder.<span class="m">Build</span>().<span class="m">Run</span>();'));
+    codeEl.innerHTML = out.join('');
+  }
+
+  function drag(el, n) {
+    el.addEventListener('pointerdown', function (e) {
+      if (e.target.classList.contains('x')) return;
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('drag');
+      var ox = e.clientX - n.x, oy = e.clientY - n.y;
+      function move(ev) {
+        n.x = Math.max(4, Math.min(canvas.clientWidth - el.offsetWidth - 4, ev.clientX - ox));
+        n.y = Math.max(4, Math.min(canvas.clientHeight - el.offsetHeight - 4, ev.clientY - oy));
+        el.style.left = n.x + 'px';
+        el.style.top = n.y + 'px';
+        wires_draw();
+      }
+      function up() {
+        el.classList.remove('drag');
+        el.removeEventListener('pointermove', move);
+        el.removeEventListener('pointerup', up);
+      }
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+    });
+  }
+
+  function freeId(base) {
+    if (!node(base)) return base;
+    for (var i = 2; i < 40; i++) if (!node(base + i)) return base + i;
+    return base + Date.now();
+  }
+
+  document.querySelectorAll('[data-add]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var kind = b.dataset.add;
+      if (g.nodes.length >= 9) return;
+      if (kind === 'project') {
+        var pn = freeId('worker');
+        g.nodes.push({ id: pn, kind: 'project', x: 200, y: 132, cls: 'Worker' });
+        var first = g.nodes.filter(function (n) { return KINDS[n.kind].backing; })[0];
+        if (first) g.links.push([pn, first.id]);
+      } else {
+        var id = freeId(kind === 'rabbitmq' ? 'bus' : kind === 'keycloak' ? 'idp' : kind === 'kafka' ? 'events' : kind);
+        var used = g.nodes.filter(function (n) { return KINDS[n.kind].backing; }).length;
+        g.nodes.push({ id: id, kind: kind, x: 16, y: 16 + used * 62 });
+        var host = node('api') || g.nodes.filter(function (n) { return !KINDS[n.kind].backing; })[0];
+        if (host) g.links.push([host.id, id]);
+      }
+      render();
+    });
+  });
+  document.getElementById('bp-reset').addEventListener('click', function () { g = START(); render(); });
+
+  render();
+})();
+</script>
 </body>
 </html>

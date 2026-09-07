@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ActionIcon, Anchor, Divider, Modal, Stack as MStack, Text, Title, Tooltip } from "@mantine/core";
 import { IconHelp } from "@tabler/icons-react";
 
-const DOCS_URL = "https://fgilde.github.io/AspireUI/";
+const DOCS_URL = "https://fgilde.github.io/AspireUI/docs.html";
 
 // Self-contained Help button + modal for Stacks overview and Editor header.
 export function HelpModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
