@@ -1,13 +1,43 @@
 using System.ComponentModel;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Security.Claims;
 using System.Text.Json;
 using AspireUI.Server.Models;
 using ModelContextProtocol.Server;
 
 namespace AspireUI.Server.Services;
 
+/// <summary>
+/// What an agent may do to this instance — over MCP at <c>/api/mcp</c>, or through the in-app chat,
+/// which calls exactly these methods.
+/// <para>
+/// Every tool declares the permission it needs with <c>[NeedsPerm]</c>, and <see cref="Require"/>
+/// reads that attribute off the calling method: the requirement is written once and cannot drift
+/// from what is enforced. An api token authenticates as its own user, so an agent can never do more
+/// than the person whose token it is.
+/// </para>
+/// </summary>
 [McpServerToolType]
-public class McpTools(CatalogService catalog, RunService run)
+public class McpTools(CatalogService catalog, RunService run, UserStore users, IHttpContextAccessor http)
 {
+    /// <summary>
+    /// Refuses unless the caller holds the permission the calling tool declares. It takes no argument
+    /// on purpose — the attribute is the source — and a tool that forgets to call it is caught by a
+    /// test that walks every tool as a user with nothing granted.
+    /// </summary>
+    private void Require([CallerMemberName] string method = "")
+    {
+        var perm = GetType().GetMethod(method)?.GetCustomAttribute<NeedsPermAttribute>()?.Perm
+            ?? throw new InvalidOperationException($"{method} declares no permission");
+        // No HttpContext means this is not a request at all (a background caller), and there is
+        // nobody to check.
+        if (http.HttpContext is null) return;
+        var id = http.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Perm.Has(id is null ? null : users.Get(id), perm))
+            throw new InvalidOperationException($"this needs the '{perm}' permission, which you do not have");
+    }
+
     private static string DataDir() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
     private static string DbPath() => Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(DataDir(), "aspireui.db");
     private static string WsRoot() => Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(DataDir(), "workspace");
@@ -22,57 +52,77 @@ public class McpTools(CatalogService catalog, RunService run)
         return new HostingService(Deps(), new PublishService(new CodeGenService()), deploy, proxy, TargetService.FromEnvironment());
     }
 
-    [McpServerTool, Description("List all AspireUI stacks (id, name, resource count).")]
-    public object ListStacks() => Stacks().List().Select(s => new { s.Id, s.Name, resources = s.Nodes.Count }).ToList();
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("List all AspireUI stacks (id, name, resource count).")]
+    public object ListStacks()
+    {
+        Require();
+        return Stacks().List().Select(s => new { s.Id, s.Name, resources = s.Nodes.Count }).ToList();
+    }
 
-    [McpServerTool, Description("Get one stack by id, including its resources (nodes) and edges.")]
-    public object? GetStack([Description("Stack id")] string id) => Stacks().Get(id);
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Get one stack by id, including its resources (nodes) and edges.")]
+    public object? GetStack([Description("Stack id")] string id)
+    {
+        Require();
+        return Stacks().Get(id);
+    }
 
-    [McpServerTool, Description("Search the curated app catalog (self-hostable container apps). Empty query returns the first 50.")]
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Search the curated app catalog (self-hostable container apps). Empty query returns the first 50.")]
     public object SearchApps([Description("Substring matched against label, group and description")] string query = "")
-        => catalog.GetPresets()
+    {
+        Require();
+        return catalog.GetPresets()
             .Where(p => string.IsNullOrEmpty(query) || $"{p.Label} {p.Group} {p.Description}".Contains(query, StringComparison.OrdinalIgnoreCase))
             .Select(p => new { p.Id, p.Label, p.Group, p.Description, p.Website })
             .Take(50).ToList();
+    }
 
-    [McpServerTool, Description("List hosting deployments (installed apps) with their state and URLs.")]
-    public object ListHosting() => Deps().List().Select(d => new { d.StackId, d.Name, d.State, d.Urls }).ToList();
+    [McpServerTool, NeedsPerm(Perm.Files), Description("List hosting deployments (installed apps) with their state and URLs.")]
+    public object ListHosting()
+    {
+        Require();
+        return Deps().List().Select(d => new { d.StackId, d.Name, d.State, d.Urls }).ToList();
+    }
 
-    [McpServerTool, Description("Start or retry a hosted app, identified by its stack id. Returns the resulting state.")]
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Start or retry a hosted app, identified by its stack id. Returns the resulting state.")]
     public string StartHosting([Description("Stack id")] string stackId)
     {
+        Require();
         if (Deps().GetByStack(stackId) is not { } d) return "no deployment for that stack";
         Hosting().Start(d.Id);
         return Deps().Get(d.Id)?.State ?? "unknown";
     }
 
-    [McpServerTool, Description("Stop a running hosted app, identified by its stack id.")]
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Stop a running hosted app, identified by its stack id.")]
     public string StopHosting([Description("Stack id")] string stackId)
     {
+        Require();
         if (Deps().GetByStack(stackId) is not { } d) return "no deployment for that stack";
         Hosting().Stop(d.Id);
         return "stopped";
     }
 
-    [McpServerTool, Description("Return the recent docker compose logs of a hosted app, identified by its stack id.")]
+    [McpServerTool, NeedsPerm(Perm.Files), Description("Return the recent docker compose logs of a hosted app, identified by its stack id.")]
     public string HostingLogs([Description("Stack id")] string stackId)
     {
+        Require();
         if (Deps().GetByStack(stackId) is not { } d) return "no deployment for that stack";
         return new DeployService().Logs(d.ComposeDir, d.Project).Log;
     }
 
-    [McpServerTool, Description("Create a new, empty stack. Returns its id.")]
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Create a new, empty stack. Returns its id.")]
     public object CreateStack([Description("Stack name")] string name)
     {
+        Require();
         var s = new StackModel(Guid.NewGuid().ToString("n"), string.IsNullOrWhiteSpace(name) ? "New stack" : name,
             "net10.0", new(), new(), new(), new(), new(), CreatedAt: DateTime.UtcNow.ToString("O"), CreatedBy: "mcp");
         Stacks().Save(s);
         return new { stackId = s.Id, s.Name };
     }
 
-    [McpServerTool, Description("Install a curated catalog app as a NEW stack (with its companion services + parameters), the same way the app store does. Find the appId with search_apps. Returns the new stack id.")]
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Install a curated catalog app as a NEW stack (with its companion services + parameters), the same way the app store does. Find the appId with search_apps. Returns the new stack id.")]
     public object InstallApp([Description("Catalog app id, e.g. 'immich'")] string appId, [Description("Optional stack name (defaults to the app label)")] string? name = null)
     {
+        Require();
         var p = catalog.GetPresets().FirstOrDefault(x => x.Id.Equals(appId, StringComparison.OrdinalIgnoreCase));
         if (p is null) return new { error = $"no app '{appId}' — use search_apps to find one" };
         var (nodes, edges) = PresetBuilder.Build(p);
@@ -84,9 +134,10 @@ public class McpTools(CatalogService catalog, RunService run)
         return new { stackId = s.Id, s.Name, resources = nodes.Count };
     }
 
-    [McpServerTool, Description("Add an Aspire resource (by add-method, e.g. 'AddPostgres', 'AddRedis') to an existing stack.")]
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Add an Aspire resource (by add-method, e.g. 'AddPostgres', 'AddRedis') to an existing stack.")]
     public object AddResource([Description("Stack id")] string stackId, [Description("Aspire add-method, e.g. AddPostgres")] string addMethod, [Description("Resource name (defaults from the method)")] string? name = null)
     {
+        Require();
         var store = Stacks();
         if (store.Get(stackId) is not { } s) return new { error = "no such stack" };
         var baseName = addMethod.StartsWith("Add") ? addMethod[3..] : addMethod;
@@ -98,17 +149,19 @@ public class McpTools(CatalogService catalog, RunService run)
         return new { stackId, added = rn };
     }
 
-    [McpServerTool, Description("Delete a stack by id (also undeploys it from hosting if deployed).")]
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Delete a stack by id (also undeploys it from hosting if deployed).")]
     public object DeleteStack([Description("Stack id")] string stackId)
     {
+        Require();
         if (Deps().GetByStack(stackId) is { } d) Hosting().Undeploy(d.Id);
         Stacks().Delete(stackId);
         return new { deleted = stackId };
     }
 
-    [McpServerTool, Description("Deploy a stack to hosting (install & run it persistently). Blocks while images pull. Returns the deployment state + URLs.")]
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Deploy a stack to hosting (install & run it persistently). Blocks while images pull. Returns the deployment state + URLs.")]
     public object DeployToHosting([Description("Stack id")] string stackId)
     {
+        Require();
         if (Stacks().Get(stackId) is not { } s) return new { error = "no such stack" };
         new CodeGenService().Materialize(s, Dir(stackId));
         var set = new SettingsStore(DbPath());
@@ -117,14 +170,19 @@ public class McpTools(CatalogService catalog, RunService run)
         return new { dep.State, dep.Urls, dep.LastError };
     }
 
-    [McpServerTool, Description("Run a stack in dev mode (dotnet run on the generated AppHost). Returns the run status.")]
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Run a stack in dev mode (dotnet run on the generated AppHost). Returns the run status.")]
     public object RunStack([Description("Stack id")] string stackId)
     {
+        Require();
         if (Stacks().Get(stackId) is not { } s) return new { error = "no such stack" };
         new CodeGenService().Materialize(s, Dir(stackId));
         return run.Start(stackId, Path.GetFullPath(Dir(stackId)));
     }
 
-    [McpServerTool, Description("Stop a dev run started with run_stack.")]
-    public object StopRun([Description("Stack id")] string stackId) => run.Stop(stackId);
+    [McpServerTool, NeedsPerm(Perm.OpenEditor), Description("Stop a dev run started with run_stack.")]
+    public object StopRun([Description("Stack id")] string stackId)
+    {
+        Require();
+        return run.Stop(stackId);
+    }
 }

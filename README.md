@@ -313,8 +313,12 @@ Auth is either the browser session cookie or a **personal access token**: create
 Agents can drive AspireUI through the built-in **MCP server** at **`/api/mcp`** (same Bearer auth). Tools:
 inspect stacks (`list_stacks`, `get_stack`), browse the catalog (`search_apps`), author
 (`create_stack`, `install_app`, `add_resource`, `delete_stack`), and run/host
-(`run_stack`, `stop_run`, `deploy_to_hosting`, `start_hosting`, `stop_hosting`, `hosting_logs`). Add it
-to an MCP-capable agent:
+(`run_stack`, `stop_run`, `deploy_to_hosting`, `start_hosting`, `stop_hosting`, `hosting_logs`).
+
+Every tool needs a [permission](docs/users-and-permissions.md) and refuses without it, so a token can
+never do more than the person it belongs to: the stack tools need *builder*, installing and hosting
+need *install & run apps*, and reading an app's state or logs needs *browse app files*. Add it to an
+MCP-capable agent:
 
 ```json
 {

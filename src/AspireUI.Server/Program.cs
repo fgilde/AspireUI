@@ -18,6 +18,8 @@ builder.Services.AddSingleton(_ => new StackStore(dbPath));
 builder.Services.AddSingleton(_ => new DeploymentStore(dbPath));
 builder.Services.AddSingleton(_ => new SettingsStore(dbPath));
 builder.Services.AddSingleton(_ => new CatalogService());
+// The agent tools check the caller's permissions, which means they need the request.
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpTools>();
 builder.Services.AddHostedService<BackupSchedulerService>();
 
