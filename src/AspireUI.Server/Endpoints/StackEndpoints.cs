@@ -572,6 +572,47 @@ public static class StackEndpoints
             return Results.NoContent();
         }).RequirePerm(Perm.Deploy);
 
+        // Anonymous by design — a registry cannot log in. The token in the path is the credential, and
+        // all it can do is update apps that already run the image it names.
+        app2.MapPost("/image-hook/{token}", async (string token, string? image, HttpContext ctx) =>
+        {
+            var expected = settings.GetValue("ImageHookToken");
+            if (string.IsNullOrEmpty(expected) || token != expected) return Results.NotFound();
+
+            var named = image;
+            if (string.IsNullOrWhiteSpace(named) && ctx.Request.ContentLength is > 0)
+            {
+                // Docker Hub posts {"repository":{"repo_name":"acme/app"}}; GitHub and the rest each
+                // have their own shape, so this reads the few fields that actually appear in the wild.
+                try
+                {
+                    using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+                    var root = doc.RootElement;
+                    named = Str(root, "image")
+                        ?? (root.TryGetProperty("repository", out var repo)
+                            ? Str(repo, "repo_name") ?? Str(repo, "full_name") ?? Str(repo, "name") : null)
+                        ?? (root.TryGetProperty("package", out var pkg) ? Str(pkg, "name") : null)
+                        ?? Str(root, "repository_name");
+                }
+                catch { }
+            }
+            if (string.IsNullOrWhiteSpace(named))
+                return Results.BadRequest(new { message = "no image in the request — pass ?image=owner/name" });
+
+            var wanted = named!.Split(':')[0].Trim().ToLowerInvariant();
+            var updated = new List<string>();
+            foreach (var d in deployments.List().Where(x => x.State is "running"))
+            {
+                if (!hosting.ImagesOf(d.Id).Any(img => img.Split(':')[0].ToLowerInvariant().EndsWith(wanted, StringComparison.Ordinal)))
+                    continue;
+                try { hosting.Update(d.Id); updated.Add(d.Name); } catch { }
+            }
+            if (updated.Count > 0)
+                _ = NotifyService.DispatchAll(settings, $"⬆️ {wanted} was pushed",
+                    "\n\nUpdated: " + string.Join(", ", updated));
+            return Results.Ok(new { image = wanted, updated });
+        }).AllowAnonymous();
+
         app2.MapPost("/clone-hook/{token}", async (string token, HttpContext ctx) =>
         {
             if (settings.GetValue($"clonehook:{token}") is not { } raw) return Results.NotFound();
@@ -1068,6 +1109,43 @@ public static class StackEndpoints
                     services = HostingService.NodeConfigs(s).Select(n => n.Name).ToList(),
                 })
                 : Results.NotFound()).RequirePerm(Perm.Configure);
+        // What a redeploy would change. The stack is published into a throwaway directory and put
+        // through exactly the same post-processing Deploy uses, including the app's existing port
+        // mapping — otherwise the diff would be a page of port noise and nothing else.
+        app2.MapPost("/stacks/{id}/hosting/diff", (string id) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            var deployed = Path.Combine(d.ComposeDir ?? "", "docker-compose.yaml");
+            if (!File.Exists(deployed)) return Results.BadRequest(new { message = "this app has never been deployed" });
+
+            var tmp = Path.Combine(wsRoot, "_diff", id);
+            try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { }
+            try
+            {
+                gen.Materialize(s, Dir(id));
+                var pub = publish.Publish(s, tmp, "compose", (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null);
+                if (!pub.Ok) return Results.UnprocessableEntity(new { message = pub.Log });
+
+                var dc = DashCfg();
+                var next = HostingService.ApplyRuntime(
+                    HostingService.InjectDockerfileBuilds(
+                        HostingService.EnsureCompanionDatabases(
+                            HostingService.ConfigureDashboard(
+                                HostingService.AddRestartPolicy(File.ReadAllText(Path.Combine(pub.OutputDir, "docker-compose.yaml"))),
+                                dc.Host, dc.Token)),
+                        s, Path.Combine(tmp, "src")),
+                    s.Limits, s.Healthchecks);
+                var ports = (d.Ports ?? new()).Where(p => p.Public && p.Host > 0).ToDictionary(p => p.Container, p => p.Host);
+                var keepInternal = (d.Ports ?? new()).Where(p => !p.Public).Select(p => p.Container).ToHashSet();
+                next = HostingService.PublishExposedPorts(next, ports, keepInternal);
+
+                var diff = TextDiff.Unified(File.ReadAllText(deployed), next);
+                return Results.Ok(new { diff.Changed, diff.Added, diff.Removed, diff.Text });
+            }
+            finally { try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { } }
+        }).RequirePerm(Perm.Deploy);
+
         app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
@@ -1143,6 +1221,25 @@ public static class StackEndpoints
             requestHost = ctx.Request.Host.Host,
         }));
         app2.MapGet("/hosting/detect-ip", () => Results.Ok(HostUrls.CandidateIPs())).RequirePerm(Perm.Settings);
+
+        // --- Image webhook: a registry says an image moved, the apps using it update themselves ---
+        string ImageHookToken()
+        {
+            if (settings.GetValue("ImageHookToken") is { Length: > 0 } existing) return existing;
+            var fresh = Guid.NewGuid().ToString("n");
+            settings.SetValue("ImageHookToken", fresh);
+            return fresh;
+        }
+        app2.MapGet("/hosting/image-hook", (HttpContext ctx) => Results.Ok(new
+        {
+            url = $"{ctx.Request.Scheme}://{ctx.Request.Host}/api/image-hook/{ImageHookToken()}",
+            token = ImageHookToken(),
+        })).RequirePerm(Perm.Settings);
+        app2.MapPost("/hosting/image-hook/rotate", () =>
+        {
+            settings.SetValue("ImageHookToken", "");
+            return Results.Ok(new { token = ImageHookToken() });
+        }).RequirePerm(Perm.Settings);
         app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
         {
             settings.SetValue("HostDashboard", b.HostDashboard ? "true" : "false");
@@ -1419,6 +1516,10 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record SchedulesRequest(List<AspireUI.Server.Models.AppSchedule>? Schedules);
     public record TagsRequest(List<string>? Tags);
+
+    private static string? Str(System.Text.Json.JsonElement e, string name) =>
+        e.ValueKind == System.Text.Json.JsonValueKind.Object && e.TryGetProperty(name, out var v)
+        && v.ValueKind == System.Text.Json.JsonValueKind.String ? v.GetString() : null;
     public record VolumePathRequest(string Path);
     public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);

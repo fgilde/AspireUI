@@ -4,6 +4,7 @@ import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Too
 import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
+import { DiffModal } from "../hosting/HostingActions";
 import type { Deployment, ServiceStatus } from "../model";
 import { hostingHealthLabel, hostingBroken } from "../model";
 import * as api from "../api";
@@ -41,6 +42,7 @@ export function Hosting() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [bulk, setBulk] = useState<string | null>(null);
   const [tagsFor, setTagsFor] = useState<Deployment | null>(null);
+  const [diffFor, setDiffFor] = useState<Deployment | null>(null);
   const [dashToken, setDashToken] = useState("");
   const [pubHost, setPubHost] = useState("");
   const [appStats, setAppStats] = useState<Record<string, AppStat>>({});
@@ -169,7 +171,7 @@ export function Hosting() {
                     })}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
                     onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
-                    onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)}
+                    onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)} onDiff={() => setDiffFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
               </Table.Tbody>
@@ -188,6 +190,7 @@ export function Hosting() {
         <TagsModal d={tagsFor} known={usedTags.map(([t]) => t)}
           onClose={() => setTagsFor(null)} onDone={() => { setTagsFor(null); load(); }} />
       )}
+      {diffFor && <DiffModal d={diffFor} onClose={() => setDiffFor(null)} onDone={load} />}
     </PageShell>
   );
 }
@@ -219,8 +222,8 @@ function TagsModal({ d, known, onClose, onDone }: {
   );
 }
 
-function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onTags, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
-  d: Deployment; picked: boolean; onPick: (on: boolean) => void; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onTags?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
+function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onTags, onDiff, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
+  d: Deployment; picked: boolean; onPick: (on: boolean) => void; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
 }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
@@ -283,7 +286,7 @@ function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDo
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
             <Menu.Dropdown>
-              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onTags={onTags} onOpenEditor={onOpenEditor} onChanged={onChanged} />
+              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onTags={onTags} onDiff={onDiff} onOpenEditor={onOpenEditor} onChanged={onChanged} />
             </Menu.Dropdown>
           </Menu>
         </Table.Td>

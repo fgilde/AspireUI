@@ -50,6 +50,10 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
 - **View logs** — live-streamed `docker compose logs` for the whole deployment or a single container,
   searchable, copyable, downloadable.
 - **Update (pull &amp; recreate)** — pulls newer images and recreates the containers.
+- **Preview changes** — what a redeploy would actually change, as a diff of the compose file: the
+  app is built into a throwaway directory and put through the same post-processing a deploy uses,
+  including this app's existing port mapping, so the diff is the change and not a page of port
+  noise. *Redeploy now* is one button away, and "nothing would change" is a useful answer too.
 - **Files (volumes)** — walk the app's named volumes: view a file in a dialog (pdf, images,
   markdown, office documents and audio, through the
   [MudEx](https://www.mudex.org/webcomponents) file viewer), download it, upload one, rename
@@ -122,6 +126,22 @@ being changed under you.
 
 Schedules are stored with the stack and need no redeploy — saving only automation does not touch the
 running app.
+
+## The image webhook
+
+**Settings → Hosting → General** shows a url like `…/api/image-hook/<token>`. POST to it and every
+**running** app whose compose file names the pushed image pulls and recreates itself, and the
+notification channels say which ones did.
+
+- Docker Hub's own webhook payload is understood; anything else can pass `?image=owner/name`.
+- The token in the url is the credential — there is no login, because a registry has none. Treat the
+  url as a secret, and rotate it from the same place if it leaks. All it can ever do is update apps
+  that already run the image it names.
+- Nothing that is not running is touched, and a tag is ignored: `acme/app:1.4` matches an app on
+  `acme/app`.
+
+For a schedule instead of a push, use *Automation → Update* — same effect, on your clock rather than
+the registry's.
 
 ## The bundled Aspire dashboard
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Code, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
+import { IconGitCompare, IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { AppHealthcheck, AppLimits, AppSchedule, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { SCHEDULE_LABELS } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
@@ -20,8 +20,8 @@ export const deploymentColor = (d?: { state: string; health?: string | null } | 
     : hostingColor(d.state);
 
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
-export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onTags, onChanged }: {
-  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onTags?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onTags, onDiff, onChanged }: {
+  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onChanged: () => void;
 }) {
   const user = useAuth().status?.user;
   const mayDeploy = can(user, PERM_DEPLOY);
@@ -57,6 +57,7 @@ export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, 
       {onBackups && mayDeploy && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onTags && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconTag size={14} />} onClick={onTags}>Tags…</Menu.Item>}
+      {onDiff && mayDeploy && <Menu.Item leftSection={<IconGitCompare size={14} />} onClick={onDiff}>Preview changes…</Menu.Item>}
       {onOpenEditor && canOpenEditor(user) && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       {mayDeploy && <>
         <Menu.Divider />
@@ -64,6 +65,65 @@ export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, 
         <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={wipe}>Undeploy + delete data</Menu.Item>
       </>}
     </>
+  );
+}
+
+// What a redeploy would change, before it changes it.
+export function DiffModal({ d, onClose, onDone }: { d: Deployment; onClose: () => void; onDone: () => void }) {
+  const [result, setResult] = useState<{ changed: boolean; added: number; removed: number; text: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.hostingDiff(d.stackId).then(setResult).catch(e => setError(e instanceof Error ? e.message : String(e)));
+  }, [d.stackId]);
+
+  const redeploy = async () => {
+    setBusy(true);
+    try { await api.hostingDeploy(d.stackId); toastOk(`Redeploying ${d.name}…`); onDone(); onClose(); }
+    catch (e) { toastErr(e, "Redeploy failed"); }
+    finally { setBusy(false); }
+  };
+
+  const line = (l: string, i: number) => {
+    const color = l.startsWith("+") ? "var(--mantine-color-green-text)"
+      : l.startsWith("-") ? "var(--mantine-color-red-text)"
+      : l.startsWith("@@") ? "var(--mantine-color-dimmed)" : undefined;
+    return <div key={i} style={{ color, whiteSpace: "pre" }}>{l === "@@" ? "⋯" : l}</div>;
+  };
+
+  return (
+    <Modal opened onClose={onClose} size="xl" title={<Title order={5}>Changes for {d.name}</Title>}>
+      <Stack gap="sm">
+        {error && <Alert color="red" icon={<IconAlertTriangle size={16} />}>{error}</Alert>}
+        {!result && !error && <Group gap="xs"><Loader size="sm" /><Text size="sm" c="dimmed">Building the app to compare…</Text></Group>}
+        {result && !result.changed && (
+          <Alert color="green" icon={<IconCheck size={16} />}>
+            The running app already matches the stack — a redeploy would change nothing.
+          </Alert>
+        )}
+        {result?.changed && (
+          <>
+            <Text size="sm">
+              <b>{result.added}</b> line(s) added, <b>{result.removed}</b> removed in the compose file
+              a redeploy would apply.
+            </Text>
+            <ScrollArea h={420} type="auto">
+              <Code block fz="xs">{result.text.split("\n").map(line)}</Code>
+            </ScrollArea>
+          </>
+        )}
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed">
+            Ports are compared against what this app already has, so a pinned port is not shown as a change.
+          </Text>
+          <Group gap="xs">
+            <Button variant="subtle" onClick={onClose}>Close</Button>
+            <Button loading={busy} disabled={!result} onClick={redeploy}>Redeploy now</Button>
+          </Group>
+        </Group>
+      </Stack>
+    </Modal>
   );
 }
 

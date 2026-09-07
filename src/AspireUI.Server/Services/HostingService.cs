@@ -481,6 +481,22 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return store.Get(id)!;
     }
 
+    /// <summary>
+    /// The images this app runs, read from its compose file. No docker call: the webhook that asks
+    /// "does anything here run this image" must be cheap enough to answer for every app.
+    /// </summary>
+    public List<string> ImagesOf(string id)
+    {
+        if (store.Get(id) is not { } d) return new();
+        var path = Path.Combine(d.ComposeDir ?? "", "docker-compose.yaml");
+        if (!File.Exists(path)) return new();
+        return Regex.Matches(File.ReadAllText(path), @"^\s+image:\s*""?([^""\s]+)""?\s*$", RegexOptions.Multiline)
+            .Select(m => m.Groups[1].Value)
+            .Where(i => !i.Contains("${", StringComparison.Ordinal))
+            .Distinct()
+            .ToList();
+    }
+
     public record ImageCheck(string Image, bool UpdateAvailable);
 
     /// <summary>

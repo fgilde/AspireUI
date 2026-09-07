@@ -116,6 +116,45 @@ function AppSourcesSection() {
   );
 }
 
+// A registry can tell AspireUI that an image moved; the apps running it update themselves.
+function ImageHookRow() {
+  const [hook, setHook] = useState<{ url: string; token: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.imageHook().then(setHook).catch(() => {}); }, []);
+  const rotate = async () => {
+    setBusy(true);
+    try { await api.rotateImageHook(); setHook(await api.imageHook()); toastOk("New webhook url — update it where you pasted it"); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(false); }
+  };
+  return (
+    <MStack gap="xs">
+      <Text fw={600} mt="sm">Image webhook</Text>
+      <Text size="xs" c="dimmed">
+        Give this url to a registry (Docker Hub, a GitHub Actions step, anything that can POST) and
+        every running app using the pushed image pulls and recreates itself. The url is the
+        credential, so treat it like one — and it can do nothing else.
+      </Text>
+      <Group gap="xs" align="center">
+        <Code style={{ flex: 1, overflowX: "auto" }}>{hook?.url ?? "…"}</Code>
+        {hook && (
+          <CopyButton value={hook.url}>
+            {({ copied, copy }) => (
+              <ActionIcon variant="default" onClick={copy} aria-label="Copy webhook url">
+                {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+              </ActionIcon>
+            )}
+          </CopyButton>
+        )}
+        <Button size="compact-sm" variant="default" loading={busy} onClick={rotate}>Rotate</Button>
+      </Group>
+      <Text size="10px" c="dimmed">
+        Add <Code>?image=owner/name</Code> if the caller sends no body. Docker Hub's own payload is understood.
+      </Text>
+    </MStack>
+  );
+}
+
 function GeneralHostingSection() {
   const [host, setHost] = useState(false);
   const [token, setToken] = useState("");
@@ -138,6 +177,7 @@ function GeneralHostingSection() {
           }}>Detect</Button>
         </Group>
         <Text size="xs" c="dimmed">Inside a container this may only find the docker-bridge IP (172.x) — then type the host's LAN IP manually.</Text>
+        <ImageHookRow />
         <Text fw={600} mt="sm">Aspire dashboard</Text>
         <Switch checked={host} onChange={e => setHost(e.currentTarget.checked)}
           label="Include the Aspire dashboard in hosting deployments"

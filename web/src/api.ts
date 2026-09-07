@@ -92,6 +92,13 @@ export const importInstance = (file: File, overwrite: boolean):
   return fetch(`${base}/instance/import?overwrite=${overwrite}`, { method: "POST", body }).then(ok);
 };
 
+export const hostingDiff = (stackId: string): Promise<{ changed: boolean; added: number; removed: number; text: string }> =>
+  fetch(`${base}/stacks/${stackId}/hosting/diff`, { method: "POST" }).then(ok);
+
+export const imageHook = (): Promise<{ url: string; token: string }> => fetch(`${base}/hosting/image-hook`).then(ok);
+export const rotateImageHook = (): Promise<{ token: string }> =>
+  fetch(`${base}/hosting/image-hook/rotate`, { method: "POST" }).then(ok);
+
 export const listTags = (): Promise<{ tag: string; count: number }[]> => fetch(`${base}/tags`).then(ok);
 export const setStackTags = (stackId: string, tags: string[]): Promise<string[]> =>
   fetch(`${base}/stacks/${stackId}/tags`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ tags }) }).then(ok);
