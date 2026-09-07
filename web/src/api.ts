@@ -39,6 +39,11 @@ export const login = (username: string, password: string): Promise<UserDto> =>
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
+export const hostingSchedules = (stackId: string): Promise<import("./model").AppSchedules> =>
+  fetch(`${base}/stacks/${stackId}/schedules`).then(ok);
+export const setHostingSchedules = (stackId: string, schedules: import("./model").AppSchedule[]): Promise<import("./model").AppSchedule[]> =>
+  fetch(`${base}/stacks/${stackId}/schedules`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ schedules }) }).then(ok);
+
 export const hostingRuntime = (stackId: string): Promise<import("./model").AppRuntime> =>
   fetch(`${base}/stacks/${stackId}/hosting/runtime`).then(ok);
 

@@ -21,7 +21,19 @@ public record StackModel(
     string? ExpireAt = null,
     string? ClonedFrom = null,
     AppLimits? Limits = null,
-    List<AppHealthcheck>? Healthchecks = null);
+    List<AppHealthcheck>? Healthchecks = null,
+    List<AppSchedule>? Schedules = null);
+
+/// <summary>
+/// Something the app should do by itself, on a clock: restart, stop, start, update (pull and
+/// recreate), check for updates (report only) or back up. Either daily at
+/// <paramref name="AtHour"/>:<paramref name="AtMinute"/> (UTC) or every
+/// <paramref name="EveryHours"/> hours. <paramref name="Days"/> narrows a daily schedule to
+/// <c>mon,wed,fri</c>. Auto-update is a schedule like any other, which is why there is no second
+/// mechanism for it.
+/// </summary>
+public record AppSchedule(string Action, int? EveryHours = null, int? AtHour = null, int AtMinute = 0,
+    string? Days = null, bool Enabled = true);
 
 /// <summary>
 /// What a hosted app may use. Applied to every container of the app, because "this app may have half

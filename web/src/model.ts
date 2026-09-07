@@ -480,6 +480,21 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
 
 export interface AppLimits { cpus?: number | null; memoryMb?: number | null; pidsLimit?: number | null; restart?: string | null }
 export interface AppHealthcheck { service: string; test: string; intervalSec: number; timeoutSec: number; retries: number; startPeriodSec: number }
+export interface AppSchedule {
+  action: string; everyHours?: number | null; atHour?: number | null; atMinute: number;
+  days?: string | null; enabled: boolean;
+}
+export interface AppSchedules { schedules: AppSchedule[]; actions: string[]; lastRuns: Record<string, string | null> }
+
+export const SCHEDULE_LABELS: Record<string, string> = {
+  restart: "Restart",
+  stop: "Stop",
+  start: "Start",
+  update: "Update (pull & recreate)",
+  "check-updates": "Check for updates (notify only)",
+  backup: "Back up volumes",
+};
+
 export interface AppRuntime { limits: AppLimits; healthchecks: AppHealthcheck[]; services: string[] }
 
 export interface AuditEntry {

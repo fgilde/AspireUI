@@ -83,16 +83,16 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
+    // A yaml double-quoted scalar, escaped by hand: JsonSerializer writes a quote as ", which is
+    // legal and unreadable.
+    private static string Quoted(string s) =>
+        "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+
     /// <summary>
     /// Writes the app's limits and health checks into the published compose file. Keys already in the
     /// file win — an image that ships a healthcheck, or a compose file that already caps itself, is
     /// left alone; only <c>restart</c> is replaced, because that is a policy and not a fact.
     /// </summary>
-    // A yaml double-quoted scalar, escaped by hand: JsonSerializer would write a quote as ",
-    // which is legal and unreadable.
-    private static string Quoted(string s) =>
-        "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
-
     public static string ApplyRuntime(string yaml, AppLimits? limits, IReadOnlyList<AppHealthcheck>? checks)
     {
         if ((limits is null || limits.IsEmpty) && (checks is null || checks.Count == 0)) return yaml;
@@ -479,6 +479,24 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         }
         catch (Exception ex) { store.SetState(id, "failed", ex.Message); }
         return store.Get(id)!;
+    }
+
+    public record ImageCheck(string Image, bool UpdateAvailable);
+
+    /// <summary>
+    /// Pulls each of the app's images and reports which ones brought something newer. The pull is the
+    /// check: docker says "Downloaded newer image" only when the local copy was behind.
+    /// </summary>
+    public List<ImageCheck> CheckImages(string id)
+    {
+        if (store.Get(id) is not { } d) return new();
+        var runner = R(d);
+        var images = runner.ConfigImages(d.ComposeDir, d.Project).Log
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !x.Contains(' ') && (x.Contains('/') || x.Contains(':'))).Distinct().ToList();
+        return images.Select(img => new ImageCheck(img,
+            runner.Docker(d.ComposeDir, $"pull {img}").Log.Contains("Downloaded newer image", StringComparison.OrdinalIgnoreCase)))
+            .ToList();
     }
 
     public Deployment? Update(string id)

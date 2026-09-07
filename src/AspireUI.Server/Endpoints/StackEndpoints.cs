@@ -902,17 +902,33 @@ public static class StackEndpoints
         app2.MapPost("/stacks/{id}/hosting/check-updates", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
-            var runner = targets.Runner(d.TargetId);
-            var images = runner.ConfigImages(d.ComposeDir, d.Project).Log
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(x => !x.Contains(' ') && (x.Contains('/') || x.Contains(':'))).Distinct().ToList();
-            var results = images.Select(img =>
+            var results = hosting.CheckImages(d.Id);
+            return Results.Ok(new
             {
-                var pull = runner.Docker(d.ComposeDir, $"pull {img}");
-                return new { image = img, updateAvailable = pull.Log.Contains("Downloaded newer image", StringComparison.OrdinalIgnoreCase) };
-            }).ToList();
-            return Results.Ok(new { images = results, anyUpdate = results.Any(r => r.updateAvailable) });
+                images = results.Select(r => new { image = r.Image, updateAvailable = r.UpdateAvailable }),
+                anyUpdate = results.Any(r => r.UpdateAvailable),
+            });
         });
+
+        // Scheduled actions live on the stack but are not part of its code, so this does not go through
+        // the edit lock: setting a nightly restart on a running app is the point of it.
+        app2.MapGet("/stacks/{id}/schedules", (string id) =>
+            store.Get(id) is { } s
+                ? Results.Ok(new
+                {
+                    schedules = s.Schedules ?? new List<AppSchedule>(),
+                    actions = AppScheduler.Actions,
+                    lastRuns = (s.Schedules ?? new()).GroupBy(x => x.Action)
+                        .ToDictionary(g => g.Key, g => settings.GetValue(AppScheduler.LastRunKey(id, g.Key))),
+                })
+                : Results.NotFound()).RequirePerm(Perm.Configure);
+        app2.MapPut("/stacks/{id}/schedules", (string id, SchedulesRequest b) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var clean = AppScheduler.Clean(b.Schedules);
+            store.Save(s with { Schedules = clean.Count == 0 ? null : clean });
+            return Results.Ok(clean);
+        }).RequirePerm(Perm.Configure);
         string BackupsRoot() => Path.Combine(wsRoot, "_backups");
         app2.MapPost("/stacks/{id}/hosting/backup", (string id) =>
             deployments.GetByStack(id) is { } d
@@ -1381,6 +1397,7 @@ public static class StackEndpoints
     public record NpmSettingsRequest(bool Enabled, string? BaseUrl, string? Email, string? Password, string? ForwardHost);
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets, bool Ssl = false, int CertificateId = 0);
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
+    public record SchedulesRequest(List<AspireUI.Server.Models.AppSchedule>? Schedules);
     public record VolumePathRequest(string Path);
     public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);

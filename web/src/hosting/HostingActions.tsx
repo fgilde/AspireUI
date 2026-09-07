@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
-import type { AppHealthcheck, AppLimits, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
+import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
+import { IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import type { AppHealthcheck, AppLimits, AppSchedule, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
+import { SCHEDULE_LABELS } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
@@ -76,18 +77,32 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   const [limits, setLimits] = useState<AppLimits>({});
   const [checks, setChecks] = useState<AppHealthcheck[]>([]);
   const [showLimits, setShowLimits] = useState(false);
+  const [schedules, setSchedules] = useState<AppSchedule[]>([]);
+  const [lastRuns, setLastRuns] = useState<Record<string, string | null>>({});
+  const [showSchedules, setShowSchedules] = useState(false);
+  // What came from the server, so Save can tell whether a redeploy is actually needed.
+  const [orig, setOrig] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [origEnv, setOrigEnv] = useState<Record<string, string[][]>>({});
   useEffect(() => {
     api.hostingConfig(d.stackId).then(c => {
       setCfg(c);
-      setEnv(Object.fromEntries(c.map(n => [n.nodeId, n.env.map(p => [...p])])));
+      const loaded = Object.fromEntries(c.map(n => [n.nodeId, n.env.map(p => [...p])]));
+      setEnv(loaded);
+      setOrigEnv(Object.fromEntries(Object.entries(loaded).map(([k, v]) => [k, v.filter(p => p[0].trim())])));
     }).catch(() => setCfg([]));
     api.hostingRuntime(d.stackId).then(r => {
       setLimits(r.limits ?? {});
       setChecks(r.healthchecks ?? []);
       // Opened by default when there is something to see, closed when there is not.
       setShowLimits(!!(r.limits?.cpus || r.limits?.memoryMb || r.limits?.pidsLimit || r.limits?.restart) || (r.healthchecks ?? []).length > 0);
+      setOrig(JSON.stringify([r.limits ?? {}, r.healthchecks ?? []]));
+    }).catch(() => {});
+    api.hostingSchedules(d.stackId).then(r => {
+      setSchedules(r.schedules ?? []);
+      setLastRuns(r.lastRuns ?? {});
+      setShowSchedules((r.schedules ?? []).length > 0);
     }).catch(() => {});
   }, [d.stackId]);
 
@@ -109,9 +124,18 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
     try {
       const clean = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, v.filter(p => p[0].trim())]));
       const portChanged = JSON.stringify(ports) !== JSON.stringify(d.ports ?? []);
-      await api.reconfigureHosting(d.stackId, clean, portChanged ? ports : undefined,
-        limits, checks.filter(c => c.test.trim()));
-      toastOk("Saved — redeploying…");
+      const envChanged = JSON.stringify(clean) !== JSON.stringify(origEnv);
+      const runtimeChanged = JSON.stringify([limits, checks.filter(c => c.test.trim())]) !== orig;
+
+      // Schedules are not part of the app's code, so setting one does not cost a redeploy.
+      await api.setHostingSchedules(d.stackId, schedules);
+      if (envChanged || portChanged || runtimeChanged) {
+        await api.reconfigureHosting(d.stackId, clean, portChanged ? ports : undefined,
+          limits, checks.filter(c => c.test.trim()));
+        toastOk("Saved — redeploying…");
+      } else {
+        toastOk("Saved");
+      }
       onDone(); onClose();
     } catch (e) { toastErr(e, "Save failed"); }
     finally { setSaving(false); }
@@ -158,7 +182,8 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
       {cfg === null ? <Loader size="sm" /> : (
         <Stack gap="md">
           <Alert color="yellow" icon={<IconAlertTriangle size={16} />} p="xs">
-            Saving stops the app, applies your changes and redeploys it. Brief downtime.
+            Changing variables, ports or limits stops the app, applies them and redeploys it — brief
+            downtime. Changing only the automation costs nothing.
           </Alert>
           <Group gap="xs" wrap="nowrap">
             <TextInput size="xs" style={{ flex: 1 }} placeholder="Filter variables…" value={q}
@@ -233,6 +258,73 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
                     For images that ship no health check of their own. A zero exit means healthy; an
                     unhealthy container shows up red on the app.
                   </Text>
+                </Stack>
+              )}
+              <Divider mt="sm" />
+            </div>
+          )}
+          {!q && (
+            <div>
+              <Group gap={6} mb={4} style={{ cursor: "pointer" }} onClick={() => setShowSchedules(v => !v)}>
+                <IconClock size={15} />
+                <Text fw={600} size="sm">Automation</Text>
+                <Text size="xs" c="dimmed">{showSchedules ? "hide" : schedules.length > 0 ? `${schedules.length} scheduled` : "show"}</Text>
+              </Group>
+              {showSchedules && (
+                <Stack gap="xs">
+                  {schedules.length === 0 && (
+                    <Text size="xs" c="dimmed">Nothing scheduled. Add a nightly update, a weekly restart, a daily backup…</Text>
+                  )}
+                  {schedules.map((s, i) => {
+                    const set = (patch: Partial<AppSchedule>) =>
+                      setSchedules(list => list.map((x, j) => j === i ? { ...x, ...patch } : x));
+                    const daily = s.atHour !== null && s.atHour !== undefined;
+                    return (
+                      <Group key={i} gap={8} wrap="nowrap" align="flex-end">
+                        <Select size="xs" w={200} allowDeselect={false} value={s.action}
+                          data={Object.entries(SCHEDULE_LABELS).map(([value, label]) => ({ value, label }))}
+                          onChange={v => set({ action: v ?? "restart" })} />
+                        <SegmentedControl size="xs" value={daily ? "daily" : "every"}
+                          data={[{ value: "daily", label: "daily at" }, { value: "every", label: "every" }]}
+                          onChange={(v: string) => set(v === "daily"
+                            ? { atHour: 4, atMinute: 0, everyHours: null }
+                            : { atHour: null, everyHours: 24 })} />
+                        {daily ? (
+                          <>
+                            <NumberInput size="xs" w={70} min={0} max={23} value={s.atHour ?? 4} suffix="h"
+                              onChange={v => set({ atHour: Number(v) || 0 })} />
+                            <NumberInput size="xs" w={80} min={0} max={59} value={s.atMinute ?? 0} suffix="min"
+                              onChange={v => set({ atMinute: Number(v) || 0 })} />
+                            <TextInput size="xs" w={120} placeholder="every day" value={s.days ?? ""}
+                              onChange={e => set({ days: e.currentTarget.value || null })} />
+                          </>
+                        ) : (
+                          <NumberInput size="xs" w={100} min={1} max={8760} value={s.everyHours ?? 24} suffix=" h"
+                            onChange={v => set({ everyHours: Number(v) || 1 })} />
+                        )}
+                        <Switch size="xs" checked={s.enabled} onChange={e => set({ enabled: e.currentTarget.checked })} />
+                        {lastRuns[s.action] && (
+                          <Tooltip label={`last run ${new Date(lastRuns[s.action]!).toLocaleString()}`} withArrow>
+                            <Text size="10px" c="dimmed">ran</Text>
+                          </Tooltip>
+                        )}
+                        <ActionIcon size="sm" variant="subtle" color="red" aria-label="Remove schedule"
+                          onClick={() => setSchedules(list => list.filter((_, j) => j !== i))}>
+                          <IconX size={14} />
+                        </ActionIcon>
+                      </Group>
+                    );
+                  })}
+                  <Group gap="xs">
+                    <Button size="compact-xs" variant="light" leftSection={<IconPlus size={13} />}
+                      onClick={() => setSchedules(list => [...list, { action: "restart", atHour: 4, atMinute: 0, everyHours: null, days: null, enabled: true }])}>
+                      Add
+                    </Button>
+                    <Text size="10px" c="dimmed">
+                      Times are UTC. Days is a list like <b>mon,wed,fri</b> — empty means every day.
+                      An interval starts counting when you save it.
+                    </Text>
+                  </Group>
                 </Stack>
               )}
               <Divider mt="sm" />

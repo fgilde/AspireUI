@@ -84,6 +84,32 @@ red on the overview and the app page, and the reason is in the health detail.
 
 Both are stored with the stack, so they survive a redeploy, travel with an export, and can be seeded.
 
+## Automation
+
+**Configure → Automation** gives an app its own clock. Each line is an action and when it runs:
+
+| Action | What it does |
+| --- | --- |
+| Restart | Stops and starts the app. |
+| Stop / Start | For an app that only needs to be up during office hours. |
+| Update (pull & recreate) | The auto-update: pulls newer images and recreates the containers. |
+| Check for updates | Pulls to see whether anything is newer and **notifies** — changes nothing. |
+| Back up volumes | Same snapshot the Backups dialog takes, on a schedule, with the same retention. |
+
+Either **daily at** a time (UTC, optionally narrowed to days like `mon,wed,fri`) or **every** N
+hours. An interval starts counting when you save it, so adding "every 24 h" at five in the afternoon
+does not restart the app at five in the afternoon. A daily schedule fires once in the minute it names
+and not again that day, and the scheduler ticks every five minutes — so 04:00 means "some time
+between 04:00 and 04:05".
+
+Auto-update is a schedule like any other on purpose: one mechanism, one place to look, and the same
+notification path as everything else. Turn *Check for updates* on with a webhook or Telegram
+configured under **Settings → Notifications** and you get told about a new version without anything
+being changed under you.
+
+Schedules are stored with the stack and need no redeploy — saving only automation does not touch the
+running app.
+
 ## The bundled Aspire dashboard
 
 Deployments can ship with the **Aspire dashboard** container (admin toggle under **Settings →
