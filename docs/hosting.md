@@ -64,6 +64,19 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
 - **Undeploy + delete data** — `docker compose down -v`. The app's volumes (database, files) are
   **deleted**. Use this to cleanly reinstall an app that got stuck half-initialized.
 
+## Tags and bulk actions
+
+Give an app **Tags…** from its menu — `prod`, `db`, `customer-a`, whatever you sort by. The Hosting
+page then shows one chip per tag with a count; clicking a chip narrows the list to it.
+
+Every row has a checkbox, and a selection turns the header into a bar that can **Start**, **Stop**,
+**Restart**, **Update** or **Back up** all of them. The actions run one after another rather than at
+once, on purpose: twenty simultaneous compose commands against one docker daemon is how you find out
+what a lock is. What fails stays visible on its own row, and the toast says how many of how many
+went through.
+
+Tags live on the stack, so they survive a redeploy and travel with an export.
+
 ## Limits & health
 
 **Configure → Limits & health** decides what an app may use and how it says it is well:

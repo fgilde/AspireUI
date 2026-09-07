@@ -92,6 +92,10 @@ export const importInstance = (file: File, overwrite: boolean):
   return fetch(`${base}/instance/import?overwrite=${overwrite}`, { method: "POST", body }).then(ok);
 };
 
+export const listTags = (): Promise<{ tag: string; count: number }[]> => fetch(`${base}/tags`).then(ok);
+export const setStackTags = (stackId: string, tags: string[]): Promise<string[]> =>
+  fetch(`${base}/stacks/${stackId}/tags`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ tags }) }).then(ok);
+
 export const hostingSchedules = (stackId: string): Promise<import("./model").AppSchedules> =>
   fetch(`${base}/stacks/${stackId}/schedules`).then(ok);
 export const setHostingSchedules = (stackId: string, schedules: import("./model").AppSchedule[]): Promise<import("./model").AppSchedule[]> =>

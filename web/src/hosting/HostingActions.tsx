@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import { IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { AppHealthcheck, AppLimits, AppSchedule, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { SCHEDULE_LABELS } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
@@ -20,8 +20,8 @@ export const deploymentColor = (d?: { state: string; health?: string | null } | 
     : hostingColor(d.state);
 
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
-export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onChanged }: {
-  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onTags, onChanged }: {
+  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onTags?: () => void; onChanged: () => void;
 }) {
   const user = useAuth().status?.user;
   const mayDeploy = can(user, PERM_DEPLOY);
@@ -56,6 +56,7 @@ export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, 
       {/* Backups are volume snapshots: an orchestrator target has none to take. */}
       {onBackups && mayDeploy && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
+      {onTags && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconTag size={14} />} onClick={onTags}>Tags…</Menu.Item>}
       {onOpenEditor && canOpenEditor(user) && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       {mayDeploy && <>
         <Menu.Divider />

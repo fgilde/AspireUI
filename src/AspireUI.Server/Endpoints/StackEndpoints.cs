@@ -910,6 +910,25 @@ public static class StackEndpoints
             });
         });
 
+        // Tags are for finding and acting on a group of apps, so they are not part of the code either
+        // and do not wait for the app to be stopped.
+        app2.MapGet("/tags", () => Results.Ok(store.List()
+            .SelectMany(s => s.Tags ?? new())
+            .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new { tag = g.Key, count = g.Count() })));
+        app2.MapPut("/stacks/{id}/tags", (string id, TagsRequest b) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var clean = (b.Tags ?? new())
+                .Select(t => t.Trim().Trim('#'))
+                .Where(t => t.Length is > 0 and <= 32)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(12).ToList();
+            store.Save(s with { Tags = clean.Count == 0 ? null : clean });
+            return Results.Ok(clean);
+        }).RequirePerm(Perm.Configure);
+
         // Scheduled actions live on the stack but are not part of its code, so this does not go through
         // the edit lock: setting a nightly restart on a running app is the point of it.
         app2.MapGet("/stacks/{id}/schedules", (string id) =>
@@ -1274,6 +1293,7 @@ public static class StackEndpoints
                     Urls = t.IsLocal ? d.Urls.Select(u => HostUrls.ForceHost(u, host)).ToList() : d.Urls,
                     Domains = HostingService.DomainUrls(hostsByTarget.GetValueOrDefault(d.Target) ?? new(), d),
                     TargetName = t.Name, TargetKind = t.Kind, TargetCompose = TargetKind.IsCompose(t.Kind),
+                    Tags = store.Get(d.StackId)?.Tags,
                 };
             }));
         });
@@ -1398,6 +1418,7 @@ public static class StackEndpoints
     public record DomainRequest(int? Id, List<string>? DomainNames, string? Scheme, string ForwardHost, int ForwardPort, bool Websockets, bool Ssl = false, int CertificateId = 0);
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record SchedulesRequest(List<AspireUI.Server.Models.AppSchedule>? Schedules);
+    public record TagsRequest(List<string>? Tags);
     public record VolumePathRequest(string Path);
     public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);

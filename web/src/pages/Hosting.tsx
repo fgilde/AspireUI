@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Tooltip, Select } from "@mantine/core";
+import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Tooltip, Select, Button, Checkbox, Modal, Stack as MStack, TagsInput } from "@mantine/core";
 import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
@@ -10,6 +10,7 @@ import * as api from "../api";
 import type { ContainerStat } from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
+import { toastOk, toastErr } from "../ui";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 
 // Containers named `aspireui-<stackId[..8]>-<service>-N` by compose.
@@ -36,11 +37,38 @@ export function Hosting() {
   const [filesFor, setFilesFor] = useState<Deployment | null>(null);
   const [moveFor, setMoveFor] = useState<Deployment | null>(null);
   const [targetFilter, setTargetFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState<string | null>(null);
+  const [tagsFor, setTagsFor] = useState<Deployment | null>(null);
   const [dashToken, setDashToken] = useState("");
   const [pubHost, setPubHost] = useState("");
   const [appStats, setAppStats] = useState<Record<string, AppStat>>({});
   const [summary, setSummary] = useState<{ diskFreeGb: number; diskTotalGb: number } | null>(null);
   const load = () => api.listHosting().then(setItems).catch(() => {});
+
+  // Tags in use, most-used first, and the rows the filters leave.
+  const usedTags = Object.entries(
+    items.flatMap(d => d.tags ?? []).reduce<Record<string, number>>((acc, t) => ({ ...acc, [t]: (acc[t] ?? 0) + 1 }), {}),
+  ).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const shown = items.filter(d =>
+    (!targetFilter || (d.targetId ?? "local") === targetFilter) &&
+    (!tagFilter || (d.tags ?? []).includes(tagFilter)));
+
+  // One action over the selection. Sequential on purpose: twenty parallel compose commands on one
+  // docker daemon is how you find out what a lock is.
+  const runBulk = async (name: string, action: (stackId: string) => Promise<unknown>) => {
+    const ids = shown.filter(d => picked.has(d.stackId)).map(d => d.stackId);
+    setBulk(name);
+    let ok = 0;
+    for (const id of ids) {
+      try { await action(id); ok++; } catch { /* keep going; the row shows what failed */ }
+    }
+    setBulk(null);
+    setPicked(new Set());
+    toastOk(`${name}: ${ok} of ${ids.length}`);
+    load();
+  };
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
   useEffect(() => { api.getDashboardSettings().then(s => { setDashToken(s.dashboardToken); setPubHost(s.publicHost ?? ""); }).catch(() => {}); }, []);
   useEffect(() => { const tick = () => api.hostingSummary().then(setSummary).catch(() => {}); tick(); const t = setInterval(tick, 30000); return () => clearInterval(t); }, []);
@@ -91,6 +119,32 @@ export function Hosting() {
                 <Select size="xs" w={200} clearable placeholder="All targets" value={targetFilter} onChange={setTargetFilter}
                   data={usedTargets.map(t => ({ value: t.id, label: `${t.name} (${items.filter(d => (d.targetId ?? "local") === t.id).length})` }))} />
               )}
+              {usedTags.length > 0 && (
+                <Group gap={4} wrap="wrap">
+                  {usedTags.map(([tag, count]) => (
+                    <Badge key={tag} variant={tagFilter === tag ? "filled" : "light"} color="gray"
+                      style={{ cursor: "pointer" }} onClick={() => setTagFilter(t => t === tag ? null : tag)}>
+                      {tag} {count}
+                    </Badge>
+                  ))}
+                </Group>
+              )}
+            </Group>
+          )}
+          {picked.size > 0 && (
+            <Group gap="xs" mb="md" p="xs" style={{ border: "1px solid var(--mantine-color-default-border)", borderRadius: 6 }}>
+              <Text size="sm" fw={500}>{picked.size} selected</Text>
+              <Button size="compact-xs" variant="light" loading={bulk === "start"}
+                onClick={() => runBulk("start", api.startHosting)}>Start</Button>
+              <Button size="compact-xs" variant="light" loading={bulk === "stop"}
+                onClick={() => runBulk("stop", api.stopHosting)}>Stop</Button>
+              <Button size="compact-xs" variant="light" loading={bulk === "restart"}
+                onClick={() => runBulk("restart", api.restartHosting)}>Restart</Button>
+              <Button size="compact-xs" variant="light" loading={bulk === "update"}
+                onClick={() => runBulk("update", api.updateHosting)}>Update</Button>
+              <Button size="compact-xs" variant="light" loading={bulk === "backup"}
+                onClick={() => runBulk("backup", api.backupHosting)}>Back up</Button>
+              <Button size="compact-xs" variant="subtle" onClick={() => setPicked(new Set())}>Clear</Button>
             </Group>
           )}
           {items.length === 0
@@ -98,13 +152,24 @@ export function Hosting() {
             : (
             <Table verticalSpacing="sm">
               <Table.Thead><Table.Tr>
+                <Table.Th w={34}>
+                  <Checkbox size="xs" aria-label="Select all shown"
+                    checked={shown.length > 0 && shown.every(d => picked.has(d.stackId))}
+                    indeterminate={shown.some(d => picked.has(d.stackId)) && !shown.every(d => picked.has(d.stackId))}
+                    onChange={e => setPicked(e.currentTarget.checked ? new Set(shown.map(d => d.stackId)) : new Set())} />
+                </Table.Th>
                 <Table.Th w={30} /><Table.Th>App</Table.Th><Table.Th>Status</Table.Th><Table.Th w={150}>Target</Table.Th><Table.Th>CPU · Mem</Table.Th><Table.Th>URLs</Table.Th><Table.Th /></Table.Tr></Table.Thead>
               <Table.Tbody>
-                {items.filter(d => !targetFilter || (d.targetId ?? "local") === targetFilter).map(d => (
+                {shown.map(d => (
                   <DeploymentRow key={d.id} d={d} onChanged={load} dashToken={dashToken} pubHost={pubHost} stat={appStats[d.stackId]}
+                    picked={picked.has(d.stackId)} onPick={on => setPicked(p => {
+                      const next = new Set(p);
+                      if (on) next.add(d.stackId); else next.delete(d.stackId);
+                      return next;
+                    })}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
                     onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
-                    onMove={() => setMoveFor(d)}
+                    onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
               </Table.Tbody>
@@ -119,12 +184,43 @@ export function Hosting() {
         <MoveAppModal stackId={moveFor.stackId} name={moveFor.name} current={moveFor.targetId ?? "local"}
           onClose={() => setMoveFor(null)} onDone={() => { setMoveFor(null); load(); }} />
       )}
+      {tagsFor && (
+        <TagsModal d={tagsFor} known={usedTags.map(([t]) => t)}
+          onClose={() => setTagsFor(null)} onDone={() => { setTagsFor(null); load(); }} />
+      )}
     </PageShell>
   );
 }
 
-function DeploymentRow({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
-  d: Deployment; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
+// Tags on an app: a plain list, and the ones already in use are offered.
+function TagsModal({ d, known, onClose, onDone }: {
+  d: Deployment; known: string[]; onClose: () => void; onDone: () => void;
+}) {
+  const [tags, setTags] = useState<string[]>(d.tags ?? []);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { await api.setStackTags(d.stackId, tags); toastOk("Tags saved"); onDone(); }
+    catch (e) { toastErr(e, "Could not save the tags"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Modal opened onClose={onClose} title={`Tags · ${d.name}`} centered>
+      <MStack gap="md">
+        <TagsInput label="Tags" data={known} value={tags} onChange={setTags} clearable
+          description="Press Enter for each one. Used to filter the list and to act on a group at once."
+          maxTags={12} data-autofocus />
+        <Group justify="flex-end">
+          <Button variant="subtle" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} loading={busy}>Save</Button>
+        </Group>
+      </MStack>
+    </Modal>
+  );
+}
+
+function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onTags, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
+  d: Deployment; picked: boolean; onPick: (on: boolean) => void; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onTags?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
 }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
@@ -139,11 +235,22 @@ function DeploymentRow({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal
     <>
       <Table.Tr>
         <Table.Td>
+          <Checkbox size="xs" checked={picked} aria-label={`Select ${d.name}`}
+            onChange={e => onPick(e.currentTarget.checked)} />
+        </Table.Td>
+        <Table.Td>
           <ActionIcon variant="subtle" size="sm" onClick={() => setOpen(o => !o)} aria-label="Expand resources">
             {open ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
           </ActionIcon>
         </Table.Td>
-        <Table.Td><Anchor fw={500} onClick={() => nav(`/app/${d.stackId}`)}>{d.name}</Anchor></Table.Td>
+        <Table.Td>
+          <Anchor fw={500} onClick={() => nav(`/app/${d.stackId}`)}>{d.name}</Anchor>
+          {(d.tags ?? []).length > 0 && (
+            <Group gap={3} mt={2}>
+              {(d.tags ?? []).map(t => <Badge key={t} size="xs" variant="light" color="gray">{t}</Badge>)}
+            </Group>
+          )}
+        </Table.Td>
         <Table.Td>
           <Group gap={6} wrap="nowrap">
             {d.state === "deploying" && <Loader size={12} color="yellow" />}
@@ -176,7 +283,7 @@ function DeploymentRow({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
             <Menu.Dropdown>
-              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onOpenEditor={onOpenEditor} onChanged={onChanged} />
+              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onTags={onTags} onOpenEditor={onOpenEditor} onChanged={onChanged} />
             </Menu.Dropdown>
           </Menu>
         </Table.Td>

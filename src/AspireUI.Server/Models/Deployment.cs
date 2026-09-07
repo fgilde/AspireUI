@@ -6,8 +6,10 @@ public record Deployment(string Id, string StackId, string Name, string ComposeD
     string? Health = null, string? HealthDetail = null,
     // Where this runs. Null means "local" — which is also every deployment made before targets existed.
     string? TargetId = null,
-    // Filled in when a deployment is read for the UI, never stored.
-    string? TargetName = null, string? TargetKind = null, bool? TargetCompose = null)
+    // Filled in when a deployment is read for the UI, never stored. Tags live on the stack, which is
+    // where the name lives too — a deployment is what is currently running of it.
+    string? TargetName = null, string? TargetKind = null, bool? TargetCompose = null,
+    List<string>? Tags = null)
 {
     public string Target => string.IsNullOrWhiteSpace(TargetId) ? DeployTarget.LocalId : TargetId!;
 }

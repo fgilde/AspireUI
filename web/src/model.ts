@@ -64,6 +64,8 @@ export interface Deployment {
   targetName?: string | null;
   targetKind?: string | null;
   targetCompose?: boolean | null;
+  // From the stack: what this app is tagged with, for finding and acting on a group at once.
+  tags?: string[] | null;
 }
 
 // A place to deploy to. "local" always exists and cannot be removed.
