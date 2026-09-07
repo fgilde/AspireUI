@@ -44,6 +44,23 @@ questions and tells you where to click, and the panel says it has no tools. Ever
 the instance needs an **OpenAI-compatible HTTP endpoint**, which every local server (Ollama, LocalAI,
 llama.cpp, vLLM) also speaks.
 
+## Configuring it from the AppHost
+
+The backend does not have to be filled in by hand. From an Aspire AppHost,
+[`Nextended.Aspire.Hosting.AspireUI`](seeding.md#from-aspire) points AspireUI at a model server that
+lives in the same stack:
+
+```csharp
+var ollama = builder.AddOllama("ollama").WithDataVolume();
+
+builder.AddAspireUI()
+    .WithOllamaAssistant(ollama, "llama3.2");
+```
+
+AspireUI waits for that resource and talks to it over the container network, so the url does not
+have to be known in advance. `WithAssistant(endpoint, model, apiKey)` takes a plain url instead, with
+the key coming from an Aspire parameter so it stays out of the manifest.
+
 ## The editor's own assistant
 
 Inside the stack editor the docked **Assistant** panel stays what it was: it rewrites the stack on

@@ -144,3 +144,17 @@ builder.AddAspireUI("aspireui")
     .WithS3Backups("aspireui-backups", accessKey, secretKey, endpoint: "https://minio.example.com")
     .WithAuditRetention(days: 90);
 ```
+
+Two of those calls cover whole areas rather than one setting each:
+
+| Call | What it writes |
+| --- | --- |
+| `.WithSettings(s => { s.PublicHost = "apps.example.com"; s.BackupIntervalHours = 12; })` | Every key from the table above, as typed properties instead of strings. Anything left null is not sent. |
+| `.WithAssistant(endpoint, model, apiKey)` | The [assistant's](ai-chat.md) backend. `.WithOllamaAssistant(ollama, "llama3.2")` and `.WithLocalAiAssistant(…)` take a model server that lives in the same Aspire stack — AspireUI waits for it and reaches it over the container network, so no url has to be known in advance. `.WithCliAssistant("claude")` uses an agent CLI on the host instead. |
+
+`.WithForcedSettings()` turns the fill-in-what-is-empty rule off and applies the settings on every
+start, which also overwrites what somebody changed in the UI. Off by default for that reason.
+
+The package's own reference, with every call and its overloads, is at
+[fgilde.github.io/Nextended](https://fgilde.github.io/Nextended/projects/aspire-aspireui)
+([Deutsch](https://fgilde.github.io/Nextended/de/projects/aspire-aspireui)).
