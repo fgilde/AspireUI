@@ -120,4 +120,30 @@ public class RemoteBackupTests
         svc.Save(new RemoteBackupConfig(RemoteBackupConfig.WebDav, BaseUrl: "https://cloud.example.com", User: "dav-user"));
         Assert.Equal("dav-user", svc.Config().User);
     }
+
+    [Fact]
+    public void An_s3_key_is_escaped_per_segment_and_the_signature_covers_that_path()
+    {
+        var pathStyle = new RemoteBackupConfig(RemoteBackupConfig.S3, Endpoint: "https://s3.example.com",
+            Bucket: "my-backups", Region: "eu-central-1", AccessKey: "AKIA", SecretKey: "shh");
+
+        var uri = RemoteBackupService.S3Uri(pathStyle, "stack id/2026-09-07 12:00/app data.tgz");
+        // AbsolutePath, not ToString: the latter unescapes for display, the former is what is sent
+        // and what the signature is computed over.
+        Assert.Equal("/my-backups/stack%20id/2026-09-07%2012%3A00/app%20data.tgz", uri.AbsolutePath);
+        Assert.Equal("s3.example.com", uri.Host);
+
+        // Virtual-host style puts the bucket in the host and not in the path.
+        var virtualHost = pathStyle with { PathStyle = false };
+        var vhUri = RemoteBackupService.S3Uri(virtualHost, "key.tgz");
+        Assert.Equal("my-backups.s3.example.com", vhUri.Host);
+        Assert.Equal("/key.tgz", vhUri.AbsolutePath);
+
+        // A listing keeps its query.
+        Assert.Contains("?list-type=2", RemoteBackupService.S3Uri(pathStyle, "", "list-type=2&prefix=a").ToString());
+
+        using var req = new HttpRequestMessage(HttpMethod.Put, uri);
+        RemoteBackupService.Sign(req, pathStyle, []);
+        Assert.Contains("Signature=", string.Join("", req.Headers.GetValues("Authorization")));
+    }
 }

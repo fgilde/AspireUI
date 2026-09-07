@@ -175,13 +175,16 @@ public class RemoteBackupService(SettingsStore settings, SecretStore secrets)
 
     // --- S3 ---------------------------------------------------------------------------------------
 
-    private static Uri S3Uri(RemoteBackupConfig c, string key, string? query = null)
+    public static Uri S3Uri(RemoteBackupConfig c, string key, string? query = null)
     {
         var endpoint = (c.Endpoint ?? "").TrimEnd('/');
         if (endpoint.Length == 0) endpoint = $"https://s3.{c.Region ?? "us-east-1"}.amazonaws.com";
-        var path = c.PathStyle ? $"/{c.Bucket}/{key}" : $"/{key}";
         var host = c.PathStyle ? endpoint : endpoint.Replace("://", $"://{c.Bucket}.");
-        return new Uri(host + Uri.EscapeUriString(path) + (query is null ? "" : "?" + query));
+        // Escaped per segment: a key is a path, and a space or a plus in one has to survive both the
+        // request and the signature — which is computed over exactly this path.
+        var segments = (c.PathStyle ? new[] { c.Bucket ?? "" } : []).Concat(key.Split('/'))
+            .Where(s => s.Length > 0).Select(Uri.EscapeDataString);
+        return new Uri(host + "/" + string.Join('/', segments) + (query is null ? "" : "?" + query));
     }
 
     private async Task<(bool ok, string? error)> S3Async(RemoteBackupConfig c, HttpMethod method, string key,
