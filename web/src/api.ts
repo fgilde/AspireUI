@@ -39,6 +39,9 @@ export const login = (username: string, password: string): Promise<UserDto> =>
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
+export const hostingRuntime = (stackId: string): Promise<import("./model").AppRuntime> =>
+  fetch(`${base}/stacks/${stackId}/hosting/runtime`).then(ok);
+
 export const audit = (params: { limit?: number; offset?: number; q?: string; user?: string; stack?: string } = {}):
   Promise<{ total: number; entries: import("./model").AuditEntry[]; retainDays: number }> =>
   fetch(`${base}/audit?` + new URLSearchParams(
@@ -345,8 +348,9 @@ export const hostingServices = (depId: string): Promise<import("./model").Servic
 export const hostingLogsUrl = (depId: string) => `${base}/hosting/${depId}/logs`;
 export const hostingConfig = (stackId: string): Promise<import("./model").NodeConfig[]> =>
   fetch(`${base}/stacks/${stackId}/hosting/config`).then(ok);
-export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[]): Promise<import("./model").Deployment> =>
-  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports }) }).then(ok);
+export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[],
+  limits?: import("./model").AppLimits, healthchecks?: import("./model").AppHealthcheck[]): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports, limits, healthchecks }) }).then(ok);
 
 export const listApiTokens = (): Promise<import("./model").ApiToken[]> => fetch(`${base}/api-tokens`).then(ok);
 export const createApiToken = (name: string): Promise<{ token: string; record: import("./model").ApiToken }> =>

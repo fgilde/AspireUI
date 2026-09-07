@@ -83,6 +83,71 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
+    /// <summary>
+    /// Writes the app's limits and health checks into the published compose file. Keys already in the
+    /// file win — an image that ships a healthcheck, or a compose file that already caps itself, is
+    /// left alone; only <c>restart</c> is replaced, because that is a policy and not a fact.
+    /// </summary>
+    // A yaml double-quoted scalar, escaped by hand: JsonSerializer would write a quote as ",
+    // which is legal and unreadable.
+    private static string Quoted(string s) =>
+        "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
+
+    public static string ApplyRuntime(string yaml, AppLimits? limits, IReadOnlyList<AppHealthcheck>? checks)
+    {
+        if ((limits is null || limits.IsEmpty) && (checks is null || checks.Count == 0)) return yaml;
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var outp = new List<string>();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
+            var name = svc.Success && InServicesSection(lines, i) ? svc.Groups[1].Value : null;
+            // The dashboard is ours, not the app's: it is not what a memory cap is aimed at.
+            if (name is null || name.Contains("dashboard"))
+            {
+                outp.Add(lines[i]);
+                continue;
+            }
+
+            var present = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (var j = i + 1; j < lines.Count; j++)
+            {
+                if (Regex.IsMatch(lines[j], @"^ {0,2}\S")) break;
+                if (Regex.Match(lines[j], @"^    (\S[^:]*):").Success)
+                    present.Add(Regex.Match(lines[j], @"^    (\S[^:]*):").Groups[1].Value);
+            }
+
+            outp.Add(lines[i]);
+            if (limits is { IsEmpty: false })
+            {
+                if (limits.Cpus is > 0 && !present.Contains("cpus"))
+                    outp.Add($"    cpus: {limits.Cpus.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+                if (limits.MemoryMb is > 0 && !present.Contains("mem_limit"))
+                    outp.Add($"    mem_limit: {limits.MemoryMb.Value}m");
+                if (limits.PidsLimit is > 0 && !present.Contains("pids_limit"))
+                    outp.Add($"    pids_limit: {limits.PidsLimit.Value}");
+            }
+            if (checks?.FirstOrDefault(c => string.Equals(c.Service, name, StringComparison.OrdinalIgnoreCase)) is { } hc
+                && !string.IsNullOrWhiteSpace(hc.Test) && !present.Contains("healthcheck"))
+            {
+                outp.Add("    healthcheck:");
+                outp.Add($"      test: [\"CMD-SHELL\", {Quoted(hc.Test)}]");
+                outp.Add($"      interval: {Math.Max(1, hc.IntervalSec)}s");
+                outp.Add($"      timeout: {Math.Max(1, hc.TimeoutSec)}s");
+                outp.Add($"      retries: {Math.Max(1, hc.Retries)}");
+                outp.Add($"      start_period: {Math.Max(0, hc.StartPeriodSec)}s");
+            }
+        }
+
+        var text = string.Join("\n", outp);
+        // A restart policy is already there (AddRestartPolicy puts one on everything), so this is a
+        // replacement rather than an insertion.
+        if (!string.IsNullOrWhiteSpace(limits?.Restart))
+            text = Regex.Replace(text, @"^(\s+)restart:.*$", "$1restart: " + limits!.Restart!.Trim(),
+                RegexOptions.Multiline);
+        return text;
+    }
+
     // Aspire publishes AddDockerfile resources as `image: ${X_IMAGE}` with no build section; add one so compose builds locally instead of trying to pull.
     public static string InjectDockerfileBuilds(string yaml, StackModel stack, string srcDir)
     {
@@ -369,7 +434,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose", cloneSrc);
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var raw = InjectDockerfileBuilds(EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken)), stack, Path.Combine(publishRoot, "src"));
+            var raw = ApplyRuntime(
+                InjectDockerfileBuilds(EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken)), stack, Path.Combine(publishRoot, "src")),
+                stack.Limits, stack.Healthchecks);
             var needsBuild = stack.Nodes.Any(n => n.AddMethod == "AddDockerfile");
             // Ports are per machine: what other apps on *this* target use, plus whatever else that
             // daemon already publishes (containers we did not create).

@@ -19,7 +19,26 @@ public record StackModel(
     bool FromGit = false,
     bool HasSource = false,
     string? ExpireAt = null,
-    string? ClonedFrom = null);
+    string? ClonedFrom = null,
+    AppLimits? Limits = null,
+    List<AppHealthcheck>? Healthchecks = null);
+
+/// <summary>
+/// What a hosted app may use. Applied to every container of the app, because "this app may have half
+/// a core" is the question people actually have; per-service caps are what the compose file is for.
+/// Null means no limit — the same as not writing the key at all.
+/// </summary>
+public record AppLimits(double? Cpus = null, int? MemoryMb = null, int? PidsLimit = null, string? Restart = null)
+{
+    public bool IsEmpty => Cpus is null && MemoryMb is null && PidsLimit is null && string.IsNullOrWhiteSpace(Restart);
+}
+
+/// <summary>
+/// A health check for one of the app's containers, for images that ship none. <paramref name="Test"/>
+/// is a shell command; a zero exit means healthy.
+/// </summary>
+public record AppHealthcheck(string Service, string Test, int IntervalSec = 30, int TimeoutSec = 5,
+    int Retries = 3, int StartPeriodSec = 10);
 
 public record StackNote(string Id, string Text, double X, double Y);
 public record StackGroup(string Id, string Label, double X, double Y, double Width, double Height, string? Color);

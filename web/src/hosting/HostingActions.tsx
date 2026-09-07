@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
-import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
+import { IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import type { AppHealthcheck, AppLimits, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
@@ -73,6 +73,9 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
   const [q, setQ] = useState("");
   const [ports, setPorts] = useState<PortMapping[]>(d.ports ?? []);
   const [domainOpen, setDomainOpen] = useState(false);
+  const [limits, setLimits] = useState<AppLimits>({});
+  const [checks, setChecks] = useState<AppHealthcheck[]>([]);
+  const [showLimits, setShowLimits] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,7 +83,21 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
       setCfg(c);
       setEnv(Object.fromEntries(c.map(n => [n.nodeId, n.env.map(p => [...p])])));
     }).catch(() => setCfg([]));
+    api.hostingRuntime(d.stackId).then(r => {
+      setLimits(r.limits ?? {});
+      setChecks(r.healthchecks ?? []);
+      // Opened by default when there is something to see, closed when there is not.
+      setShowLimits(!!(r.limits?.cpus || r.limits?.memoryMb || r.limits?.pidsLimit || r.limits?.restart) || (r.healthchecks ?? []).length > 0);
+    }).catch(() => {});
   }, [d.stackId]);
+
+  const checkFor = (service: string) => checks.find(c => c.service === service);
+  const setCheck = (service: string, patch: Partial<AppHealthcheck>) =>
+    setChecks(cs => {
+      const i = cs.findIndex(c => c.service === service);
+      if (i < 0) return [...cs, { service, test: "", intervalSec: 30, timeoutSec: 5, retries: 3, startPeriodSec: 10, ...patch }];
+      return cs.map((c, j) => j === i ? { ...c, ...patch } : c);
+    });
 
   const setPair = (id: string, i: number, which: 0 | 1, val: string) =>
     setEnv(e => ({ ...e, [id]: e[id].map((p, j) => j === i ? (which === 0 ? [val, p[1]] : [p[0], val]) : p) }));
@@ -92,7 +109,8 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
     try {
       const clean = Object.fromEntries(Object.entries(env).map(([k, v]) => [k, v.filter(p => p[0].trim())]));
       const portChanged = JSON.stringify(ports) !== JSON.stringify(d.ports ?? []);
-      await api.reconfigureHosting(d.stackId, clean, portChanged ? ports : undefined);
+      await api.reconfigureHosting(d.stackId, clean, portChanged ? ports : undefined,
+        limits, checks.filter(c => c.test.trim()));
       toastOk("Saved — redeploying…");
       onDone(); onClose();
     } catch (e) { toastErr(e, "Save failed"); }
@@ -165,6 +183,58 @@ export function ConfigureModal({ d, onClose, onDone }: { d: Deployment; onClose:
                 ))}
               </Stack>
               <Text size="10px" c="dimmed" mt={4}>Pin a host port (blank = auto), or make a port <b>internal</b> — reachable only inside the app, not from the host. Applied on save. A taken port falls back to auto.</Text>
+              <Divider mt="sm" />
+            </div>
+          )}
+          {!q && (
+            <div>
+              <Group gap={6} mb={4} style={{ cursor: "pointer" }} onClick={() => setShowLimits(v => !v)}>
+                <IconGauge size={15} />
+                <Text fw={600} size="sm">Limits &amp; health</Text>
+                <Text size="xs" c="dimmed">{showLimits ? "hide" : "show"}</Text>
+              </Group>
+              {showLimits && (
+                <Stack gap="xs">
+                  <Group gap={10} wrap="wrap" align="flex-end">
+                    <NumberInput size="xs" label="CPUs" description="cores, e.g. 1.5" w={110} min={0} max={128} step={0.5}
+                      decimalScale={2} value={limits.cpus ?? undefined} placeholder="no limit"
+                      onChange={v => setLimits(l => ({ ...l, cpus: v === "" ? null : Number(v) }))} />
+                    <NumberInput size="xs" label="Memory (MB)" w={130} min={0} max={1048576} step={128}
+                      value={limits.memoryMb ?? undefined} placeholder="no limit"
+                      onChange={v => setLimits(l => ({ ...l, memoryMb: v === "" ? null : Number(v) }))} />
+                    <NumberInput size="xs" label="Processes" description="pids" w={110} min={0} max={100000}
+                      value={limits.pidsLimit ?? undefined} placeholder="no limit"
+                      onChange={v => setLimits(l => ({ ...l, pidsLimit: v === "" ? null : Number(v) }))} />
+                    <Select size="xs" label="Restart" w={150} allowDeselect
+                      data={["unless-stopped", "always", "on-failure", "no"]}
+                      value={limits.restart ?? null} placeholder="unless-stopped"
+                      onChange={v => setLimits(l => ({ ...l, restart: v }))} />
+                  </Group>
+                  <Text size="10px" c="dimmed">
+                    Applied to every container of this app. A limit the app's own compose file already
+                    sets wins. Leave a field empty for no limit.
+                  </Text>
+                  {(cfg ?? []).map(n => {
+                    const hc = checkFor(n.name);
+                    return (
+                      <Group key={n.nodeId} gap={8} wrap="nowrap" align="flex-end">
+                        <TextInput size="xs" label={`Health check · ${n.name}`} style={{ flex: 1 }}
+                          placeholder="shell command, e.g. curl -fsS localhost:80 (empty = none)"
+                          value={hc?.test ?? ""} styles={{ input: { fontFamily: "monospace" } }}
+                          onChange={e => setCheck(n.name, { test: e.currentTarget.value })} />
+                        <NumberInput size="xs" label="every" w={80} min={1} max={3600} suffix="s"
+                          value={hc?.intervalSec ?? 30} onChange={v => setCheck(n.name, { intervalSec: Number(v) || 30 })} />
+                        <NumberInput size="xs" label="retries" w={80} min={1} max={50}
+                          value={hc?.retries ?? 3} onChange={v => setCheck(n.name, { retries: Number(v) || 3 })} />
+                      </Group>
+                    );
+                  })}
+                  <Text size="10px" c="dimmed">
+                    For images that ship no health check of their own. A zero exit means healthy; an
+                    unhealthy container shows up red on the app.
+                  </Text>
+                </Stack>
+              )}
               <Divider mt="sm" />
             </div>
           )}

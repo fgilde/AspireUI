@@ -46,19 +46,43 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
 
 - **Start / Stop** — `docker compose up -d` / `stop`.
 - **Configure (env vars)** — edit each resource's environment, then it stops, applies, and redeploys.
+  The same dialog holds **Limits & health** (see below) and the app's published ports.
 - **View logs** — live-streamed `docker compose logs` for the whole deployment or a single container,
   searchable, copyable, downloadable.
 - **Update (pull &amp; recreate)** — pulls newer images and recreates the containers.
 - **Files (volumes)** — walk the app's named volumes: view a file in a dialog (pdf, images,
   markdown, office documents and audio, through the
-  [MudEx](https://www.mudex.org/webcomponents) file viewer), download it, or delete it. Deleting
-  a folder takes everything under it, and the volume root itself is refused — that is what
-  *Undeploy + delete data* is for. Admin only, and only on a target with a Docker socket.
+  [MudEx](https://www.mudex.org/webcomponents) file viewer), download it, upload one, rename
+  anything, create a folder, or delete it. Deleting a folder takes everything under it, and the
+  volume root itself is refused — that is what *Undeploy + delete data* is for. An upload is
+  streamed straight into the container, so it never lands on the AspireUI host's disk on the way.
+  Needs the *browse* permission to look and the *write* permission to change anything, and only
+  works on a target with a Docker socket.
 - **Back up volumes** — snapshots the app's named volumes.
 - **Undeploy** — `docker compose down`. **Named volumes are kept** — your data survives, and a
   re-deploy picks it back up.
 - **Undeploy + delete data** — `docker compose down -v`. The app's volumes (database, files) are
   **deleted**. Use this to cleanly reinstall an app that got stuck half-initialized.
+
+## Limits & health
+
+**Configure → Limits & health** decides what an app may use and how it says it is well:
+
+| Field | Compose key | Meaning |
+| --- | --- | --- |
+| CPUs | `cpus` | Cores the app may use, e.g. `1.5`. |
+| Memory (MB) | `mem_limit` | Hard memory cap; the kernel kills the container above it. |
+| Processes | `pids_limit` | Cap on processes/threads — a fork bomb in one app stays in that app. |
+| Restart | `restart` | `unless-stopped` (default), `always`, `on-failure` or `no`. |
+| Health check | `healthcheck` | A shell command per container; a zero exit means healthy. |
+
+Limits go on **every container of the app**, because "this app may have half a core" is the question
+people have; a per-service cap is what the compose file itself is for — and a limit the app's own
+compose file already sets is left alone. The health check is per container and only added where the
+image ships none, so a well-built image keeps its own. An unhealthy container turns the app's badge
+red on the overview and the app page, and the reason is in the health detail.
+
+Both are stored with the stack, so they survive a redeploy, travel with an export, and can be seeded.
 
 ## The bundled Aspire dashboard
 

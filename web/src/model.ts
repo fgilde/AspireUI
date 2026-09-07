@@ -478,6 +478,10 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
   { id: PERM_AUDIT, label: "Activity log", description: "Read who did what, to which app, and when." },
 ];
 
+export interface AppLimits { cpus?: number | null; memoryMb?: number | null; pidsLimit?: number | null; restart?: string | null }
+export interface AppHealthcheck { service: string; test: string; intervalSec: number; timeoutSec: number; retries: number; startPeriodSec: number }
+export interface AppRuntime { limits: AppLimits; healthchecks: AppHealthcheck[]; services: string[] }
+
 export interface AuditEntry {
   id: number; at: string; userId?: string | null; user: string; method: string; route: string;
   action: string; targetId?: string | null; target?: string | null; status: number; ms: number;

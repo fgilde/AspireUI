@@ -1022,6 +1022,17 @@ public static class StackEndpoints
                 : Results.NotFound()).RequirePerm(Perm.Terminal);
         app2.MapGet("/stacks/{id}/hosting/config", (string id) =>
             store.Get(id) is { } s ? Results.Ok(HostingService.NodeConfigs(s)) : Results.NotFound()).RequirePerm(Perm.Configure);
+        // What the app may use and how it reports healthy. Deploy writes both into the compose file,
+        // so changing them means a redeploy — which is what reconfigure already does.
+        app2.MapGet("/stacks/{id}/hosting/runtime", (string id) =>
+            store.Get(id) is { } s
+                ? Results.Ok(new
+                {
+                    limits = s.Limits ?? new AppLimits(),
+                    healthchecks = s.Healthchecks ?? new List<AppHealthcheck>(),
+                    services = HostingService.NodeConfigs(s).Select(n => n.Name).ToList(),
+                })
+                : Results.NotFound()).RequirePerm(Perm.Configure);
         app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
@@ -1034,6 +1045,14 @@ public static class StackEndpoints
                 deployments.Upsert(d with { Ports = merged.Values.ToList() });
             }
             var updated = HostingService.ApplyEnvUpdates(s, body.Env ?? new());
+            // Null means "leave it alone"; an empty Limits object is how the UI clears the caps.
+            if (body.Limits is not null) updated = updated with { Limits = body.Limits.IsEmpty ? null : body.Limits };
+            if (body.Healthchecks is not null)
+                updated = updated with
+                {
+                    Healthchecks = body.Healthchecks.Where(h => !string.IsNullOrWhiteSpace(h.Test)).ToList() is { Count: > 0 } keep
+                        ? keep : null,
+                };
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var dc = DashCfg();
@@ -1351,7 +1370,8 @@ public static class StackEndpoints
     public record AssistRequest(string Prompt);
     public record AutoPresetRequest(string Url);
     public record ImportRequest(string Name, string ProgramCs, string? SidecarJson);
-    public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null);
+    public record ReconfigureRequest(Dictionary<string, List<string[]>> Env, List<AspireUI.Server.Models.PortMapping>? Ports = null,
+        AspireUI.Server.Models.AppLimits? Limits = null, List<AspireUI.Server.Models.AppHealthcheck>? Healthchecks = null);
     public record StoreExclusionsRequest(List<string>? Ids);
     public record AppSourceRequest(string? Name, string? Url);
     public record DashboardSettingsRequest(bool HostDashboard, string? DashboardToken, string? PublicHost = null);
