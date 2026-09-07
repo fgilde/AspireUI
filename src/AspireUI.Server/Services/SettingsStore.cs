@@ -53,6 +53,21 @@ public class SettingsStore
             values.GetValueOrDefault("AiCliTool"));
     }
 
+    /// <summary>Every key/value pair. Used by the instance export, which does not know the keys.</summary>
+    public Dictionary<string, string> All()
+    {
+        var all = new Dictionary<string, string>();
+        UsingConnection(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT key, value FROM settings";
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                if (!r.IsDBNull(1)) all[r.GetString(0)] = r.GetString(1);
+        });
+        return all;
+    }
+
     // Generic key/value access for settings outside the fixed AppSettings shape.
     public string? GetValue(string key)
     {

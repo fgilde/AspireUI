@@ -12,4 +12,5 @@
 - [Live Resources & Logs](live-resources.md)
 - [Users & permissions](users-and-permissions.md)
 - [Seeding an install](seeding.md)
+- [Export, import & support](instance-transfer.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)

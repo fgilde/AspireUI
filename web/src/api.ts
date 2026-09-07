@@ -39,6 +39,42 @@ export const login = (username: string, password: string): Promise<UserDto> =>
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
+// A download the browser performs itself, so the server can stream it and the file lands where the
+// user's downloads land.
+const download = async (url: string, fallbackName: string) => {
+  const res = await fetch(url, { method: "POST" });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  const blob = await res.blob();
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? fallbackName;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href; a.download = name; a.click();
+  URL.revokeObjectURL(href);
+  return name;
+};
+
+export const exportInstance = (withSecrets: boolean): Promise<string> =>
+  download(`${base}/instance/export?secretsToo=${withSecrets}`, "aspireui-instance.zip");
+export const supportBundle = (): Promise<string> =>
+  download(`${base}/instance/support-bundle`, "aspireui-support.zip");
+
+export interface ImportPreview {
+  version: number; exportedAt: string; appVersion?: string | null; containsSecrets: boolean;
+  users: { username: string; exists: boolean }[];
+  targets: { name: string; exists: boolean }[];
+  stacks: { name: string; exists: boolean }[];
+  settings: number; appSources: number;
+}
+export const previewInstanceImport = (file: File): Promise<ImportPreview> => {
+  const body = new FormData(); body.append("file", file, file.name);
+  return fetch(`${base}/instance/import/preview`, { method: "POST", body }).then(ok);
+};
+export const importInstance = (file: File, overwrite: boolean):
+  Promise<{ exportedAt: string; users: number; targets: number; settings: number; appSources: number; stacks: number; skipped: string[] }> => {
+  const body = new FormData(); body.append("file", file, file.name);
+  return fetch(`${base}/instance/import?overwrite=${overwrite}`, { method: "POST", body }).then(ok);
+};
+
 export const hostingSchedules = (stackId: string): Promise<import("./model").AppSchedules> =>
   fetch(`${base}/stacks/${stackId}/schedules`).then(ok);
 export const setHostingSchedules = (stackId: string, schedules: import("./model").AppSchedule[]): Promise<import("./model").AppSchedule[]> =>

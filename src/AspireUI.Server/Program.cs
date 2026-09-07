@@ -75,6 +75,7 @@ app.UseMiddleware<AuditMiddleware>();
 app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapAuditEndpoints();
+app.MapInstanceEndpoints();
 app.MapStackEndpoints();
 app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });

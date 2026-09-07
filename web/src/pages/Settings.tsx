@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox } from "@mantine/core";
-import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud, IconHistory } from "@tabler/icons-react";
+import { useEffect, useRef, useState } from "react";
+import { Group, Button, TextInput, NumberInput, PasswordInput, Stack as MStack, Text, Alert, SegmentedControl, Select, Autocomplete, Tabs, Badge, Loader, Switch, Code, CopyButton, ActionIcon, Anchor, Table, ScrollArea, Modal, Checkbox, Divider } from "@mantine/core";
+import { IconCheck, IconPlugConnected, IconAlertCircle, IconRobot, IconServer2, IconLayoutDashboard, IconTrash, IconPlus, IconCopy, IconBrandDocker, IconWorld, IconBell, IconDatabase, IconSparkles, IconAlertTriangle, IconFileImport, IconApps, IconRefresh, IconCloud, IconHistory, IconFileZip, IconUpload, IconDownload } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { TargetsSection } from "../hosting/TargetsPanel";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -339,6 +339,129 @@ function ApiTab() {
 
 // Docker housekeeping (admin) — see + clean up the images/containers/volumes AspireUI created via the
 // socket (dev-run + hosting). AspireUI's own container + data volume are protected (no remove button).
+// The instance as a file: take it with you, bring one over, or hand somebody a support bundle.
+function InstanceSection() {
+  const [withSecrets, setWithSecrets] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<api.ImportPreview | null>(null);
+  const [overwrite, setOverwrite] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const run = async (what: string, action: () => Promise<unknown>) => {
+    setBusy(what);
+    try { await action(); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(null); }
+  };
+
+  const pick = async (f: File | null) => {
+    setFile(f); setPreview(null);
+    if (!f) return;
+    try { setPreview(await api.previewInstanceImport(f)); }
+    catch (e) { toastErr(e, "That file could not be read"); setFile(null); }
+  };
+
+  const doImport = () => run("import", async () => {
+    const r = await api.importInstance(file!, overwrite);
+    toastOk(`Imported ${r.stacks} stack(s), ${r.users} account(s), ${r.targets} target(s)` +
+      (r.skipped.length > 0 ? ` — ${r.skipped.length} left alone` : ""));
+    setFile(null); setPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  });
+
+  const rows = (label: string, items: { name?: string; username?: string; exists: boolean }[]) =>
+    items.length === 0 ? null : (
+      <Text size="xs" key={label}>
+        <b>{label}:</b>{" "}
+        {items.map((i, n) => (
+          <Text span key={n} c={i.exists ? "dimmed" : undefined} td={i.exists ? "line-through" : undefined}>
+            {i.name ?? i.username}{n < items.length - 1 ? ", " : ""}
+          </Text>
+        ))}
+      </Text>
+    );
+
+  return (
+    <MStack gap="md" maw={620}>
+      <div>
+        <Text fw={600} size="sm">Export this instance</Text>
+        <Text size="xs" c="dimmed" mb="xs">
+          One zip with the stacks, the accounts (password hashes included, so a restore is a restore),
+          the deploy targets, the store sources and the settings. Enough to stand this instance up
+          somewhere else.
+        </Text>
+        <Group gap="sm">
+          <Button variant="default" leftSection={<IconDownload size={16} />} loading={busy === "export"}
+            onClick={() => run("export", () => api.exportInstance(withSecrets))}>Export</Button>
+          <Switch size="xs" checked={withSecrets} onChange={e => setWithSecrets(e.currentTarget.checked)}
+            label="include secrets" />
+        </Group>
+        {withSecrets && (
+          <Alert color="orange" variant="light" mt="xs" p="xs" icon={<IconAlertTriangle size={15} />}>
+            The file will contain the proxy password, api keys and every ssh key and certificate in
+            plain text. Without this switch they stay behind — a secret reference is worthless on
+            another machine anyway.
+          </Alert>
+        )}
+      </div>
+
+      <Divider />
+
+      <div>
+        <Text fw={600} size="sm">Import an instance</Text>
+        <Text size="xs" c="dimmed" mb="xs">
+          A merge, not a wipe: anything already here by that name is left alone unless you say
+          otherwise.
+        </Text>
+        <Group gap="sm">
+          <input ref={fileRef} type="file" accept=".zip,.json" hidden
+            onChange={e => pick(e.currentTarget.files?.[0] ?? null)} />
+          <Button variant="default" leftSection={<IconUpload size={16} />}
+            onClick={() => fileRef.current?.click()}>Choose file…</Button>
+          {file && <Text size="xs" c="dimmed">{file.name}</Text>}
+        </Group>
+        {preview && (
+          <MStack gap={6} mt="sm">
+            <Text size="xs" c="dimmed">
+              Written {new Date(preview.exportedAt).toLocaleString()}
+              {preview.appVersion ? ` by ${preview.appVersion}` : ""}
+              {preview.containsSecrets ? " · contains secrets" : ""}
+            </Text>
+            {rows("Stacks", preview.stacks)}
+            {rows("Accounts", preview.users)}
+            {rows("Targets", preview.targets)}
+            <Text size="xs" c="dimmed">
+              {preview.settings} setting(s), {preview.appSources} store source(s). Struck-through
+              entries already exist here.
+            </Text>
+            <Switch size="xs" checked={overwrite} onChange={e => setOverwrite(e.currentTarget.checked)}
+              label="overwrite what is already here" />
+            <Group>
+              <Button color={overwrite ? "red" : undefined} loading={busy === "import"} onClick={doImport}>
+                {overwrite ? "Import and overwrite" : "Import"}
+              </Button>
+            </Group>
+          </MStack>
+        )}
+      </div>
+
+      <Divider />
+
+      <div>
+        <Text fw={600} size="sm">Support bundle</Text>
+        <Text size="xs" c="dimmed" mb="xs">
+          What somebody needs to understand a broken install: versions, the environment check, every
+          app with its state, compose file and last 200 log lines, the recent activity and the
+          settings with every password, key and token redacted.
+        </Text>
+        <Button variant="default" leftSection={<IconFileZip size={16} />} loading={busy === "bundle"}
+          onClick={() => run("bundle", api.supportBundle)}>Download support bundle</Button>
+      </div>
+    </MStack>
+  );
+}
+
 function ImportTab() {
   const [maxMb, setMaxMb] = useState(20);
   const [gitignore, setGitignore] = useState(true);
@@ -353,6 +476,8 @@ function ImportTab() {
       <Switch checked={gitignore} onChange={e => setGitignore(e.currentTarget.checked)} label="Respect .gitignore"
         description="When a folder/ZIP contains .gitignore files, skip the files they ignore (root and nested)." />
       <Group><Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button></Group>
+      <Divider my="sm" />
+      <InstanceSection />
     </MStack>
   );
 }
