@@ -5,6 +5,7 @@ import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAler
 import { PageShell } from "../components/PageShell";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
 import { DiffModal } from "../hosting/HostingActions";
+import { ShellModal } from "../hosting/ShellModal";
 import type { Deployment, DeployTarget, ServiceStatus } from "../model";
 import { hostingHealthLabel, hostingBroken } from "../model";
 import * as api from "../api";
@@ -43,6 +44,7 @@ export function Hosting() {
   const [bulk, setBulk] = useState<string | null>(null);
   const [tagsFor, setTagsFor] = useState<Deployment | null>(null);
   const [diffFor, setDiffFor] = useState<Deployment | null>(null);
+  const [shellFor, setShellFor] = useState<Deployment | null>(null);
   const [view, setView] = useState<"list" | "fleet">("list");
   const [targets, setTargets] = useState<DeployTarget[]>([]);
   const [dashToken, setDashToken] = useState("");
@@ -230,7 +232,7 @@ export function Hosting() {
                                   <Menu.Dropdown>
                                     <HostingMenuItems d={d} onConfigure={() => setConfigFor(d)} onLogs={() => setLogsFor(d)}
                                       onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)}
-                                      onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
+                                      onTerminal={() => setTerminalFor(d)} onShell={() => setShellFor(d)} onFiles={() => setFilesFor(d)}
                                       onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)} onDiff={() => setDiffFor(d)}
                                       onOpenEditor={() => nav(`/editor/${d.stackId}`)} onChanged={load} />
                                   </Menu.Dropdown>
@@ -263,7 +265,8 @@ export function Hosting() {
                       return next;
                     })}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
-                    onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
+                    onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={() => setTerminalFor(d)}
+                    onShell={() => setShellFor(d)} onFiles={() => setFilesFor(d)}
                     onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)} onDiff={() => setDiffFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
@@ -284,6 +287,7 @@ export function Hosting() {
           onClose={() => setTagsFor(null)} onDone={() => { setTagsFor(null); load(); }} />
       )}
       {diffFor && <DiffModal d={diffFor} onClose={() => setDiffFor(null)} onDone={load} />}
+      {shellFor && <ShellModal d={shellFor} onClose={() => setShellFor(null)} />}
     </PageShell>
   );
 }
@@ -315,8 +319,8 @@ function TagsModal({ d, known, onClose, onDone }: {
   );
 }
 
-function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onTags, onDiff, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
-  d: Deployment; picked: boolean; onPick: (on: boolean) => void; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
+function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDomain, onTerminal, onShell, onFiles, onMove, onTags, onDiff, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
+  d: Deployment; picked: boolean; onPick: (on: boolean) => void; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onShell?: () => void; onFiles?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
 }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
@@ -379,7 +383,7 @@ function DeploymentRow({ d, picked, onPick, onConfigure, onLogs, onBackups, onDo
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
             <Menu.Dropdown>
-              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onTags={onTags} onDiff={onDiff} onOpenEditor={onOpenEditor} onChanged={onChanged} />
+              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onShell={onShell} onFiles={onFiles} onMove={onMove} onTags={onTags} onDiff={onDiff} onOpenEditor={onOpenEditor} onChanged={onChanged} />
             </Menu.Dropdown>
           </Menu>
         </Table.Td>

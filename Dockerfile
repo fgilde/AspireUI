@@ -38,7 +38,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS runtime
 ARG COMPOSE_VERSION=v2.32.4
 ARG TARGETARCH
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io unzip openssh-client \
+    && apt-get install -y --no-install-recommends docker.io unzip openssh-client util-linux \
     && rm -rf /var/lib/apt/lists/* \
     # docker.io ships the CLI but NOT the compose v2 plugin — drop the plugin binary in.
     && mkdir -p /usr/local/lib/docker/cli-plugins \

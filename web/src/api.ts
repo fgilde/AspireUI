@@ -107,6 +107,15 @@ export const setRemoteBackup = (c: RemoteBackup): Promise<void> =>
   fetch(`${base}/hosting/remote-backup`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(c) }).then(okVoid);
 export const testRemoteBackup = (): Promise<{ ok: boolean }> =>
   fetch(`${base}/hosting/remote-backup/test`, { method: "POST" }).then(ok);
+// The terminal talks WebSocket, which means an absolute url and the same-origin cookie.
+export const ptyUrl = (depId: string, container: string, cols: number, rows: number): string => {
+  const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+  return `${scheme}//${location.host}${base}/hosting/${depId}/pty` +
+    `?container=${encodeURIComponent(container)}&cols=${cols}&rows=${rows}`;
+};
+export const ptyAvailable = (depId: string): Promise<{ pty: boolean }> =>
+  fetch(`${base}/hosting/${depId}/pty/available`).then(ok);
+
 export const offsiteBackups = (stackId: string): Promise<{ stamp: string; files: string[] }[]> =>
   fetch(`${base}/stacks/${stackId}/hosting/backups/offsite`).then(ok);
 export const restoreOffsiteBackup = (stackId: string, stamp: string): Promise<import("./model").Deployment> =>

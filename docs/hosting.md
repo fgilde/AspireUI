@@ -49,6 +49,12 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
   The same dialog holds **Limits & health** (see below) and the app's published ports.
 - **View logs** — live-streamed `docker compose logs` for the whole deployment or a single container,
   searchable, copyable, downloadable.
+- **Shell (interactive)** — a real terminal in a running container over a WebSocket: line editing,
+  arrow keys, Ctrl-C, and full-screen programs like `top` and `vim`. `docker exec -it` needs a
+  terminal on the server's side too, so the exec is wrapped in `script`, which allocates one. Where
+  that is unavailable (a Windows dev box) the session still works, but without terminal semantics —
+  the dialog says so. Closing the dialog ends the session and kills the process. Only containers of
+  this app can be attached to, and it needs the *terminal* permission, same as the one-shot runner.
 - **Update (pull &amp; recreate)** — pulls newer images and recreates the containers.
 - **Preview changes** — what a redeploy would actually change, as a diff of the compose file: the
   app is built into a throwaway directory and put through the same post-processing a deploy uses,

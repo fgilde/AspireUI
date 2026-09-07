@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Code, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconCloudDownload, IconGitCompare, IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import { IconPrompt, IconCloudDownload, IconGitCompare, IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { AppHealthcheck, AppLimits, AppSchedule, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { SCHEDULE_LABELS } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
@@ -20,8 +20,8 @@ export const deploymentColor = (d?: { state: string; health?: string | null } | 
     : hostingColor(d.state);
 
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
-export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onTags, onDiff, onChanged }: {
-  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onShell, onFiles, onOpenEditor, onMove, onTags, onDiff, onChanged }: {
+  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onShell?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onTags?: () => void; onDiff?: () => void; onChanged: () => void;
 }) {
   const user = useAuth().status?.user;
   const mayDeploy = can(user, PERM_DEPLOY);
@@ -48,6 +48,7 @@ export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, 
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       {/* Also when stopped or crash-looping: that is exactly when a repair command is needed. */}
       {onTerminal && can(user, PERM_TERMINAL) && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
+      {onShell && can(user, PERM_TERMINAL) && <Menu.Item leftSection={<IconPrompt size={14} />} onClick={onShell}>Shell (interactive)…</Menu.Item>}
       {mayDeploy && <Menu.Item leftSection={<IconSearch size={14} />} onClick={checkUpdates}>Check for updates</Menu.Item>}
       {mayDeploy && <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>}
       {/* A target without a docker socket has no volumes to browse and no compose shell. */}

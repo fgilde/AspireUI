@@ -68,6 +68,8 @@ if (Directory.Exists(mediaDir))
         RequestPath = "/media",
         OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "public, max-age=604800",
     });
+// The terminal is a WebSocket; everything else on this server is a plain request.
+app.UseWebSockets();
 app.UseAuthentication();
 // Before UseAuthorization on purpose: a request that is refused is exactly the kind of activity the
 // log is for, and a refusal never reaches anything downstream of the authorization middleware.
@@ -76,6 +78,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapAuditEndpoints();
 app.MapInstanceEndpoints();
+app.MapPtyEndpoints();
 app.MapStackEndpoints();
 app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });
