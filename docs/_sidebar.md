@@ -11,4 +11,5 @@
 - [Umbrel & Unraid stores](app-stores.md)
 - [Live Resources & Logs](live-resources.md)
 - [Users & permissions](users-and-permissions.md)
+- [Seeding an install](seeding.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)

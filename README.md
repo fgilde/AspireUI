@@ -267,6 +267,14 @@ containers on the host; see the security note in `docker-compose.yml`.
 | `ASPIREUI_ADMIN_PASSWORD` | *(unset)*          | Password for the seeded admin (stored hashed) |
 | `ASPIREUI_SEED_STACK_NAME` | *(unset)*         | Seed a starter stack of this name on first start |
 | `ASPIREUI_SEED_STACK_PROJECTS` | *(unset)*     | `;`/`,`-separated project paths → one `AddProject` node each in the seeded stack |
+| `ASPIREUI_USERS` | *(unset)*                   | Accounts: `name:password[:permissions]`, `;`-separated ([seeding](docs/seeding.md)) |
+| `ASPIREUI_TARGETS` | *(unset)*                 | Deploy targets: `name=ssh://user@host?key=…`, `;`-separated |
+| `ASPIREUI_API_TOKENS` | *(unset)*              | Bearer tokens for automation: `name:username:token` |
+| `ASPIREUI_APP_SOURCES` | *(unset)*             | Store sources: `name=url`, `;`-separated |
+| `ASPIREUI_SEED_APPS` | *(unset)*               | Apps from the catalog: `id[=name]`, `,`/`;`-separated |
+| `ASPIREUI_SEED_DIR` / `ASPIREUI_SEED_GIT` | *(unset)* | Directories / repositories to import as stacks |
+| `ASPIREUI_SEED_FILE` | *(unset)*               | A seed file (or a directory with `aspireui.seed.json`) holding all of the above |
+| `ASPIREUI_SEED_DEPLOY` | `false`               | `true` = deploy the seeded stacks and apps once hosting is up |
 | `ASPIREUI_SET_<Key>` | *(unset)*              | **Seed any setting** from env (see below) — ships a pre-configured image |
 | `ASPIREUI_SET_FORCE` | `false`                | `true` = `ASPIREUI_SET_*` overrides existing values on every start (default: fill only what's unset) |
 

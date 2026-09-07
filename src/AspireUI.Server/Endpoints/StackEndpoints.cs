@@ -19,6 +19,7 @@ public static class StackEndpoints
         var gen = new CodeGenService();
         var import = new ImportService();
         var compose = new ComposeImporter();
+        var dirs = new DirImporter(import, compose);
         var export = new ExportService();
         var catalog = new CatalogService();
         var templates = new TemplateService();
@@ -53,6 +54,27 @@ public static class StackEndpoints
         domains.MigrateGlobalNpm();
         var hosting = new HostingService(deployments, publish, deploy, proxy, targets, orchestrator);
         _ = Task.Run(hosting.ReconcileOnStartup);
+        // A seed can ask for its stacks to be deployed. The seeder runs before there is any hosting to
+        // deploy with, so it leaves the ids here and this picks them up once.
+        _ = Task.Run(() =>
+        {
+            if (settings.GetValue(Seeder.PendingDeployKey) is not { Length: > 0 } raw) return;
+            settings.SetValue(Seeder.PendingDeployKey, "");
+            var ids = System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw) ?? [];
+            var host = settings.GetValue("PublicHost") is { Length: > 0 } h ? h : "localhost";
+            foreach (var id in ids)
+            {
+                if (store.Get(id) is not { } s || deployments.GetByStack(id) is not null) continue;
+                try
+                {
+                    gen.Materialize(s, Dir(id));
+                    var dc = DashCfg();
+                    hosting.Deploy(s, PublishRoot(id), host, dc.Host, dc.Token,
+                        (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null);
+                }
+                catch (Exception ex) { Console.Error.WriteLine($"seed: deploying {s.Name} failed — {ex.Message}"); }
+            }
+        });
 
         var app2 = app.MapGroup("/api").RequireAuthorization();
         app2.MapTargetEndpoints(targetStore, targets, secrets, deployments, provision);
@@ -324,7 +346,7 @@ public static class StackEndpoints
             if (s.RunAsIs && s.AppHostProject is { } ahp)
             {
                 var progDir = Path.Combine(Dir(id), Path.GetDirectoryName(ahp.Replace('/', Path.DirectorySeparatorChar)) ?? "");
-                var real = ReadAppHostEntry(progDir);
+                var real = DirImporter.ReadAppHostEntry(progDir);
                 if (!string.IsNullOrEmpty(real)) return Results.Text(real, "text/plain");
             }
             return Results.Text(gen.GenerateProgram(s), "text/plain");
@@ -414,68 +436,6 @@ public static class StackEndpoints
             return stack is null ? Results.UnprocessableEntity(error) : Persist(New(stack, ctx));
         }).RequirePerm(Perm.OpenEditor);
 
-        static string? MergeComposeYaml(string dir, string[]? files, Dictionary<string, string>? env)
-        {
-            var paths = files is { Length: > 0 }
-                ? files.Select(f => Path.Combine(dir, f)).ToList()
-                : (GitService.FindCompose(dir) is { } one ? new List<string> { one } : new List<string>());
-            paths = paths.Where(File.Exists).ToList();
-            if (paths.Count == 0) return null;
-            if (env is { Count: > 0 })
-                try { File.WriteAllText(Path.Combine(dir, ".env"), string.Join("\n", env.Select(kv => $"{kv.Key}={kv.Value}"))); } catch { }
-            return ComposeImporter.ResolveEnv(ComposeImporter.Merge(paths.Select(File.ReadAllText).ToList()), env);
-        }
-
-        // AppHost entry point: Program.cs (classic) or AppHost.cs (Aspire 9+), else the first .cs that builds the app.
-        static string ReadAppHostEntry(string projDir)
-        {
-            if (!Directory.Exists(projDir)) return "";
-            foreach (var name in new[] { "Program.cs", "AppHost.cs" })
-            {
-                var p = Path.Combine(projDir, name);
-                if (File.Exists(p)) return File.ReadAllText(p);
-            }
-            foreach (var cs in Directory.EnumerateFiles(projDir, "*.cs"))
-            {
-                var text = File.ReadAllText(cs);
-                if (text.Contains("CreateBuilder") || text.Contains("DistributedApplication")) return text;
-            }
-            return "";
-        }
-
-        // Shared import core: a directory already populated with source files (via git clone or a local upload)
-        // becomes a stack. Same logic for both — only how the dir gets filled differs.
-        (StackModel? stack, string? error) BuildFromDir(string sid, string dir, string? mode, string name, string[]? files, string[]? services, Dictionary<string, string>? env,
-            Dictionary<string, int>? ports = null)
-        {
-            var m = string.IsNullOrWhiteSpace(mode)
-                ? (GitService.FindManifest(dir) is not null ? "manifest"
-                    : GitService.FindComposeFiles(dir).Count > 0 ? "compose" : "apphost")
-                : mode!.ToLowerInvariant();
-            if (m is "manifest")
-            {
-                if (GitService.FindManifest(dir) is not { } json) return (null, $"no {GitService.ManifestName} in this repository");
-                // No name typed by the user → the app's own label wins over the repo/folder name.
-                var (ms, merr) = ManifestImporter.ToStack(sid, string.IsNullOrWhiteSpace(name) ? null : name, json);
-                return ms is null ? (null, merr) : (ms, null);
-            }
-            if (m is "apphost" or "runasis")
-            {
-                var appHostProject = GitService.FindAppHostRel(dir);
-                if (appHostProject is null) return (null, "no .NET Aspire AppHost project found (no .csproj referencing Aspire.Hosting.AppHost)");
-                var progDir = Path.Combine(dir, Path.GetDirectoryName(appHostProject.Replace('/', Path.DirectorySeparatorChar)) ?? "");
-                var programCs = ReadAppHostEntry(progDir);
-                // An imported AppHost runs verbatim (RunAsIs): keep the original files, lock the editor. Nodes are a best-effort
-                // parse for display only — real projects use patterns codegen can't round-trip, so we never regenerate over them.
-                var s = import.Import(sid, name, programCs, "{}")
-                    with { RunAsIs = true, AppHostProject = appHostProject, HasSource = true, ExtraFiles = [] };
-                return (s, null);
-            }
-            var yaml = MergeComposeYaml(dir, files, env);
-            if (yaml is null) return (null, "no docker-compose file found");
-            var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null, dir, ports);
-            return cs is null ? (null, cerr) : (cs with { HasSource = true, ExtraFiles = [] }, null);
-        }
         IResult GitPullRedeploy(string id, HttpContext ctx)
         {
             var cfgRaw = settings.GetValue($"git:{id}");
@@ -487,7 +447,7 @@ public static class StackEndpoints
             var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir, g.AuthToken);
             if (cerr is not null) return Results.UnprocessableEntity(new { message = cerr });
 
-            var (rebuilt, err) = BuildFromDir(id, dir, existing.RunAsIs ? "runasis" : "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts);
+            var (rebuilt, err) = dirs.Build(id, dir, existing.RunAsIs ? "runasis" : "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts);
             if (rebuilt is null) return Results.UnprocessableEntity(new { message = err });
             var updated = rebuilt with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true };
             store.Save(updated);
@@ -531,7 +491,7 @@ public static class StackEndpoints
             var manifestMode = mode == "manifest" || (mode.Length == 0 && GitService.FindManifest(dir) is not null);
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? (manifestMode ? "" : name ?? "git app") : b.Name!;
 
-            var (stack, err) = BuildFromDir(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
+            var (stack, err) = dirs.Build(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             stack = stack with { FromGit = true };
 
@@ -703,7 +663,7 @@ public static class StackEndpoints
             catch (Exception ex) { RmDir(); return Results.UnprocessableEntity(new { message = ex.Message }); }
 
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? "imported app" : b.Name!;
-            var (stack, err) = BuildFromDir(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
+            var (stack, err) = dirs.Build(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             store.Save(withMeta);

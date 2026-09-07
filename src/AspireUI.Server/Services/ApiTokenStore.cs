@@ -31,11 +31,15 @@ public class ApiTokenStore
 
     private static string Hash(string token) => Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
 
-    public (string Token, ApiToken Record) Create(string userId, string name)
+    // `value` is for seeding only: automation needs a token it already knows. Everywhere else the
+    // token is generated here and shown to the user exactly once.
+    public (string Token, ApiToken Record) Create(string userId, string name, string? value = null)
     {
-        var secret = "aspireui_" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(30)).Replace("+", "").Replace("/", "").Replace("=", "");
+        var secret = string.IsNullOrWhiteSpace(value)
+            ? "aspireui_" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(30)).Replace("+", "").Replace("/", "").Replace("=", "")
+            : value!.Trim();
         var id = "tok" + Guid.NewGuid().ToString("n")[..10];
-        var prefix = secret[..17];
+        var prefix = secret[..Math.Min(17, secret.Length)];
         var now = DateTime.UtcNow.ToString("O");
         Using(conn =>
         {

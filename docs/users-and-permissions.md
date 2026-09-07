@@ -59,6 +59,11 @@ The permissions dialog has a few one-click sets:
   the database and that is read as "all". Saving the dialog once turns it into a real list.
 - A **disabled** account has no permissions at all, whatever its list says.
 
+## Seeding accounts
+
+`ASPIREUI_USERS` creates accounts at start — `name:password[:permissions]`, with a preset name or a
+list of permission ids in the third field. See [Seeding an install](seeding.md).
+
 ## View modes
 
 Independent of permissions, a user can be limited to one of the two UIs — *Full* (builder, canvas)
