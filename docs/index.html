@@ -41,7 +41,7 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-[id] { scroll-margin-top: 74px; }
+[id] { scroll-margin-top: 82px; }
 body {
   margin: 0; background: var(--ink); color: var(--text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -65,12 +65,11 @@ p code, li code, td code { background: var(--ink-3); border: 1px solid var(--lin
 /* ---------------------------------------------------------------- nav */
 .nav { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(12px);
   background: rgba(7,7,11,.82); border-bottom: 1px solid var(--line); }
-.nav .wrap { display: flex; align-items: center; gap: 18px; height: 58px; }
-.brand { display: flex; align-items: center; gap: 9px; color: var(--text); font-weight: 700;
-  letter-spacing: -.02em; font-size: 17px; }
+.nav .wrap { display: flex; align-items: center; gap: 18px; height: 66px; }
+.brand { display: flex; align-items: center; }
 .brand:hover { text-decoration: none; }
-.brand img { width: 25px; height: 25px; }
-.brand span { color: var(--brand); }
+.brand img { height: 40px; width: auto; display: block; }
+.brand:hover img { filter: brightness(1.12); }
 .nav nav { display: flex; gap: 4px; margin-left: auto; }
 .nav nav a { color: var(--dim); font-size: 13.5px; font-weight: 500; padding: 6px 10px; border-radius: 7px; }
 .nav nav a:hover { color: var(--text); background: var(--brand-lo); text-decoration: none; }
@@ -114,6 +113,7 @@ quickrun-btn { display: inline-block; }
 .copy pre { margin: 0; padding: 11px 14px; flex: 1; min-width: 0; font-family: var(--mono);
   font-size: 12.5px; color: #b9b9cc; white-space: pre-wrap; overflow-wrap: anywhere; }
 .copy pre .c { color: var(--dim-2); }
+.copy.wide { max-width: none; margin-top: 30px; }
 .copy button { border: 0; border-left: 1px solid var(--line); background: var(--ink-3); color: var(--dim);
   font-family: var(--mono); font-size: 11px; letter-spacing: .08em; padding: 0 14px; cursor: pointer; }
 .copy button:hover { color: var(--text); background: var(--brand-lo); }
@@ -183,6 +183,8 @@ section { padding: 84px 0 0; }
 .hero-grid > *, .cols > *, .nt-grid > * { min-width: 0; }
 .prose p { color: #c3c3d2; margin: 0 0 15px; }
 .prose p.tight { font-size: 14.5px; color: var(--dim); }
+.shots { display: grid; gap: 26px; margin-top: 30px; }
+.shots-intro { color: #c3c3d2; margin: 34px 0 0; max-width: 68ch; }
 .shot { border: 1px solid var(--line-2); border-radius: 11px; width: 100%; display: block;
   box-shadow: 0 26px 60px -30px rgba(0,0,0,.95); }
 figure { margin: 0; }
@@ -271,7 +273,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--
 
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="#top"><img src="aspireui_transparent.svg" alt="">Aspire<span>UI</span></a>
+    <a class="brand" href="#top"><img src="aspireui_wordmark.svg" alt="AspireUI"></a>
     <nav>
       <a href="#canvas" lang="en">Canvas</a><a href="#canvas" lang="de">Canvas</a>
       <a href="#run" lang="en">Run</a><a href="#run" lang="de">Starten</a>
@@ -458,14 +460,13 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--
         Ressourcen-Limits und einen Healthcheck in der generierten Compose-Datei — und ein Menü für
         das, was man sonst über SSH macht: Dateien ansehen und bearbeiten, eine echte Shell im
         Container öffnen, vor einem Update erst den Diff lesen.</p>
-      <p lang="en">The store side installs 164 preconfigured apps — Immich, Jellyfin, Nextcloud,
-        Gitea, WordPress, n8n, Vaultwarden and the rest — with their volumes, ports, companion
-        databases and a freshly generated secret per install. Each one is a single JSON file, so
-        adding your own is a URL or a pull request, never a release of ours to wait for.</p>
-      <p lang="de">Der Store installiert 164 vorkonfigurierte Apps — Immich, Jellyfin, Nextcloud,
-        Gitea, WordPress, n8n, Vaultwarden und weitere — mit ihren Volumes, Ports, Begleit-Datenbanken
-        und einem pro Installation neu erzeugten Secret. Jede App ist eine einzige JSON-Datei; eine
-        eigene hinzuzufügen ist eine URL oder ein Pull Request, kein Warten auf ein Release von uns.</p>
+      <p lang="en">An app from the store arrives with its volumes, ports, companion databases and
+        a freshly generated secret already wired. Each one is a single JSON file, which is why adding
+        your own is a URL or a pull request rather than a release of ours to wait for.</p>
+      <p lang="de">Eine App aus dem Store kommt mit Volumes, Ports, Begleit-Datenbanken und einem
+        frisch erzeugten Secret bereits verdrahtet an. Jede ist eine einzige JSON-Datei; deshalb ist
+        eine eigene hinzuzufügen eine URL oder ein Pull Request und kein Warten auf ein Release von
+        uns.</p>
       <p class="tight" lang="en">Not only on this machine, and not only once: an app can be installed
         onto several targets at once, and a running one can be moved or copied — with its data — from
         one target to another.</p>
@@ -487,44 +488,53 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--
   </div>
 </div></section>
 
-<!-- =========================================================== 04 proxmox -->
+<!-- ================================================= 04 hosting platform -->
 <section id="proxmox"><div class="wrap">
   <div class="sec-head">
     <span class="sec-no">04</span>
-    <h2 lang="en">On your own Proxmox host</h2>
-    <h2 lang="de">Auf dem eigenen Proxmox-Host</h2>
+    <h2 lang="en">Or ignore Aspire entirely</h2>
+    <h2 lang="de">Oder Aspire komplett ignorieren</h2>
     <span class="rule"></span>
   </div>
   <div class="cols">
     <div class="prose">
-      <p lang="en">This is where a lot of it actually ends up, so it is worth being precise about the
-        shape that works. On a Proxmox VE host, one script takes you from nothing to a URL: it
-        creates a clean Debian VM, installs Docker, starts AspireUI with the socket mounted, and
-        prints <code>http://&lt;vm-ip&gt;:8080</code>.</p>
-      <p lang="de">Genau dort landet vieles davon am Ende, deshalb lohnt es sich, die funktionierende
-        Form präzise zu beschreiben. Auf einem Proxmox-VE-Host führt ein Skript von nichts zu einer
-        URL: Es erstellt eine frische Debian-VM, installiert Docker, startet AspireUI mit
-        eingebundenem Socket und gibt <code>http://&lt;vm-ip&gt;:8080</code> aus.</p>
+      <p lang="en">None of the three sections above has to interest you. Put AspireUI on a machine in
+        your own network and use it the way people use Umbrel or Cosmos Server: open the store, pick one
+        of 164 preconfigured apps, install it, get a URL. No canvas, no C#, no Aspire knowledge — the two shots at
+        the bottom of this section are the entire workflow, taken from a live instance.</p>
+      <p lang="de">Keiner der drei Abschnitte darüber muss einen interessieren. AspireUI auf eine
+        Maschine im eigenen Netz stellen und so benutzen, wie andere Umbrel oder Cosmos Server
+        benutzen: Store öffnen, eine von 164 vorkonfigurierten Apps aussuchen, installieren, URL
+        bekommen. Kein Canvas, kein C#,
+        keine Aspire-Kenntnisse — die zwei Bilder am Ende dieses Abschnitts sind der ganze
+        Arbeitsablauf, aufgenommen auf einer laufenden Instanz.</p>
 
-      <div class="copy">
-        <pre id="pve"><span class="c"># on the Proxmox host, as root</span>
-IP=192.168.1.50/24 GW=192.168.1.1 RAM=8192 CORES=4 \
-    bash deploy/pve-install-aspireui.sh</pre>
-        <button type="button" data-copy="#pve">COPY</button>
-      </div>
+      <p lang="en">The difference is underneath. Every installed app is an ordinary Aspire stack and
+        an ordinary Compose file, so nothing ends up in a format only this tool can read — and on the
+        day you do want to look, you open it and everything is there.</p>
+      <p lang="de">Der Unterschied liegt darunter. Jede installierte App ist ein gewöhnlicher
+        Aspire-Stack und eine gewöhnliche Compose-Datei; nichts landet in einem Format, das nur
+        dieses Werkzeug lesen kann — und an dem Tag, an dem man doch hineinsehen will, ist alles da.</p>
+
+      <p lang="en"><b>A Proxmox host is the shortest way there.</b> One script goes from nothing to a
+        working URL: it creates a clean Debian VM, installs Docker, starts AspireUI with the socket
+        mounted, and prints the address.</p>
+      <p lang="de"><b>Ein Proxmox-Host ist der kürzeste Weg dahin.</b> Ein Skript führt von nichts zu
+        einer funktionierenden URL: Es erstellt eine frische Debian-VM, installiert Docker, startet
+        AspireUI mit eingebundenem Socket und gibt die Adresse aus.</p>
 
       <p style="margin-top:22px" lang="en"><b>A VM, not an LXC container.</b> Hosting starts
-        <em>other</em> containers through the Docker socket, which needs real Docker. That is
-        straightforward in a VM and fiddly with Docker-in-LXC on PVE. It also keeps a
-        root-equivalent socket inside one disposable place — which is the honest reason for the extra
-        VM, not a preference. Tear the whole thing down with
-        <code>qm stop &lt;vmid&gt; &amp;&amp; qm destroy &lt;vmid&gt;</code>.</p>
+        <em>other</em> containers through the Docker socket, which needs real Docker: straightforward
+        in a VM, fiddly with Docker-in-LXC on PVE. It also keeps a root-equivalent socket inside one
+        disposable place — the honest reason for the extra VM, not a preference. Tear it all down
+        again with <code>qm stop &lt;vmid&gt; &amp;&amp; qm destroy &lt;vmid&gt;</code>.</p>
       <p style="margin-top:22px" lang="de"><b>Eine VM, kein LXC-Container.</b> Hosting startet
-        <em>andere</em> Container über den Docker-Socket, und das braucht echtes Docker. In einer VM
-        ist das unkompliziert, Docker-in-LXC auf PVE ist fummelig. Außerdem bleibt so ein
-        root-äquivalenter Socket an einem wegwerfbaren Ort — das ist der ehrliche Grund für die
-        zusätzliche VM, keine Geschmacksfrage. Alles wieder weg mit
+        <em>andere</em> Container über den Docker-Socket, und das braucht echtes Docker: in einer VM
+        unkompliziert, Docker-in-LXC auf PVE fummelig. Außerdem bleibt so ein root-äquivalenter
+        Socket an einem wegwerfbaren Ort — der ehrliche Grund für die zusätzliche VM, keine
+        Geschmacksfrage. Alles wieder weg mit
         <code>qm stop &lt;vmid&gt; &amp;&amp; qm destroy &lt;vmid&gt;</code>.</p>
+
     </div>
 
     <div>
@@ -575,18 +585,66 @@ IP=192.168.1.50/24 GW=192.168.1.1 RAM=8192 CORES=4 \
           </circle>
         </svg>
       </div>
-      <p class="prose" style="margin-top:20px" lang="en">Put Nginx Proxy Manager in front once, and
-        AspireUI manages that same instance from <b>Settings → Hosting</b>: a hosted app is given a
-        hostname and a Let's Encrypt certificate from its own menu, without a second admin UI in the
-        loop. Set the public host once and every app URL is built from it. Proxmox snapshots cover
-        the VM; the scheduled volume backups cover the app data, and a copy of each goes off the box.</p>
-      <p class="prose" style="margin-top:20px" lang="de">Einmal Nginx Proxy Manager davor, und
-        AspireUI verwaltet genau diese Instanz aus <b>Settings → Hosting</b>: Eine gehostete App
-        bekommt Hostname und Let's-Encrypt-Zertifikat aus ihrem eigenen Menü, ohne Umweg über eine
-        zweite Admin-Oberfläche. Den Public Host einmal setzen, und jede App-URL wird daraus gebaut.
-        Proxmox-Snapshots sichern die VM, die geplanten Volume-Backups sichern die App-Daten — und
-        von jedem geht eine Kopie von der Kiste herunter.</p>
+
+      <div class="prose" style="margin-top:22px">
+        <p lang="en"><b>A real domain per app.</b> Put Nginx Proxy Manager in front once, and
+          AspireUI drives that same instance from <b>Settings → Hosting</b>: a hosted app is given a
+          hostname and a Let's Encrypt certificate from its own menu, without a second admin UI in
+          the loop. Set the public host once and every app URL is built from it.</p>
+        <p lang="de"><b>Eine echte Domain pro App.</b> Einmal Nginx Proxy Manager davor, und AspireUI
+          steuert genau diese Instanz aus <b>Settings → Hosting</b>: Eine gehostete App bekommt
+          Hostname und Let's-Encrypt-Zertifikat aus ihrem eigenen Menü, ohne Umweg über eine zweite
+          Admin-Oberfläche. Den Public Host einmal setzen, und jede App-URL wird daraus gebaut.</p>
+
+        <p lang="en">Proxmox snapshots cover the VM. The scheduled volume backups cover the app data,
+          with a copy of each going to S3, WebDAV or another machine over scp. The two are not
+          substitutes for one another.</p>
+        <p lang="de">Proxmox-Snapshots sichern die VM. Die geplanten Volume-Backups sichern die
+          App-Daten, und von jedem geht eine Kopie nach S3, auf WebDAV oder per scp auf eine andere
+          Maschine. Das eine ersetzt das andere nicht.</p>
+
+        <p class="tight" lang="en">Nothing here is Proxmox-specific. A NAS, a spare mini PC, a VPS
+          or an existing Docker host work the same way, and this repository doubles as an
+          <a href="docs.html#/app-stores.md">Umbrel community store and an Unraid template</a> if
+          that is where you already live.</p>
+        <p class="tight" lang="de">Nichts davon ist Proxmox-spezifisch. Ein NAS, ein übriger
+          Mini-PC, ein VPS oder ein bestehender Docker-Host funktionieren genauso, und dieses
+          Repository ist zugleich ein <a href="docs.html#/app-stores.md">Umbrel-Community-Store und
+          ein Unraid-Template</a>, falls man dort schon zu Hause ist.</p>
+      </div>
     </div>
+  </div>
+
+  <div class="copy wide">
+    <pre id="pve"><span class="c"># on the Proxmox host, as root</span>
+curl -fsSLO https://raw.githubusercontent.com/fgilde/AspireUI/master/deploy/pve-install-aspireui.sh
+IP=192.168.1.50/24 GW=192.168.1.1 RAM=8192 CORES=4 bash pve-install-aspireui.sh</pre>
+    <button type="button" data-copy="#pve">COPY</button>
+  </div>
+
+  <p class="shots-intro" lang="en"><b>Your own projects come from a repository.</b> Paste a git URL:
+    if it holds a <code>docker-compose.yml</code>, an <code>aspireui-app.json</code> or an Aspire
+    AppHost, AspireUI builds it and deploys it as a hosted app — branch, compose file, services and
+    environment are picked in the dialog. Pull and redeploy later from the app's own menu, or let a
+    webhook do it when the repository or the image moves.</p>
+  <p class="shots-intro" lang="de"><b>Eigene Projekte kommen aus einem Repository.</b> Eine
+    Git-URL einsetzen: Enthält sie eine <code>docker-compose.yml</code>, eine
+    <code>aspireui-app.json</code> oder einen Aspire-AppHost, baut AspireUI sie und deployt sie als
+    gehostete App — Branch, Compose-Datei, Services und Umgebung wählt man im Dialog. Später aus dem
+    Menü der App neu ziehen und deployen, oder einen Webhook das tun lassen, wenn sich Repository
+    oder Image bewegt.</p>
+
+  <div class="shots">
+    <figure>
+      <img class="shot" src="screenshots/hosting-live.png" alt="A live AspireUI instance with two stacks and seven hosted apps" loading="lazy">
+      <figcaption lang="en">A live instance — two stacks, seven hosted apps, each reachable on its own domain</figcaption>
+      <figcaption lang="de">Eine laufende Instanz — zwei Stacks, sieben gehostete Apps, jede über ihre eigene Domain erreichbar</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="screenshots/app-store.png" alt="The AspireUI app store, apps grouped by category" loading="lazy">
+      <figcaption lang="en">The store — apps by category, install in one click, secrets generated per install</figcaption>
+      <figcaption lang="de">Der Store — Apps nach Kategorie, Installation mit einem Klick, Secrets pro Installation neu erzeugt</figcaption>
+    </figure>
   </div>
 </div></section>
 
@@ -775,7 +833,7 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
 <footer>
   <div class="wrap foot">
     <div>
-      <a class="brand" href="#top" style="margin-bottom:14px"><img src="aspireui_transparent.svg" alt="">Aspire<span>UI</span></a>
+      <a class="brand" href="#top" style="margin-bottom:16px"><img src="aspireui_wordmark.svg" alt="AspireUI" style="height:34px"></a>
       <div class="foot-links">
         <a href="docs.html" lang="en">Documentation</a><a href="docs.html" lang="de">Dokumentation</a>
         <a href="https://github.com/fgilde/AspireUI" target="_blank" rel="noopener">GitHub</a>
