@@ -95,6 +95,23 @@ export const importInstance = (file: File, overwrite: boolean):
 export const hostingDiff = (stackId: string): Promise<{ changed: boolean; added: number; removed: number; text: string }> =>
   fetch(`${base}/stacks/${stackId}/hosting/diff`, { method: "POST" }).then(ok);
 
+export interface RemoteBackup {
+  kind: string; endpoint?: string | null; region?: string | null; bucket?: string | null;
+  accessKey?: string | null; secretKey?: string | null; pathStyle: boolean;
+  baseUrl?: string | null; user?: string | null; password?: string | null;
+  host?: string | null; port: number; path?: string | null; keyFile?: string | null;
+  hasSecretKey?: boolean; hasPassword?: boolean; kinds?: string[];
+}
+export const getRemoteBackup = (): Promise<RemoteBackup> => fetch(`${base}/hosting/remote-backup`).then(ok);
+export const setRemoteBackup = (c: RemoteBackup): Promise<void> =>
+  fetch(`${base}/hosting/remote-backup`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(c) }).then(okVoid);
+export const testRemoteBackup = (): Promise<{ ok: boolean }> =>
+  fetch(`${base}/hosting/remote-backup/test`, { method: "POST" }).then(ok);
+export const offsiteBackups = (stackId: string): Promise<{ stamp: string; files: string[] }[]> =>
+  fetch(`${base}/stacks/${stackId}/hosting/backups/offsite`).then(ok);
+export const restoreOffsiteBackup = (stackId: string, stamp: string): Promise<import("./model").Deployment> =>
+  fetch(`${base}/stacks/${stackId}/hosting/backups/offsite/${stamp}/restore`, { method: "POST" }).then(ok);
+
 export const imageHook = (): Promise<{ url: string; token: string }> => fetch(`${base}/hosting/image-hook`).then(ok);
 export const rotateImageHook = (): Promise<{ token: string }> =>
   fetch(`${base}/hosting/image-hook/rotate`, { method: "POST" }).then(ok);

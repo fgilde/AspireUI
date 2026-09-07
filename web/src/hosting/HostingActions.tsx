@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, SegmentedControl, Switch, Select, Code, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconGitCompare, IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
+import { IconCloudDownload, IconGitCompare, IconTag, IconClock, IconGauge, IconFolderPlus, IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { AppHealthcheck, AppLimits, AppSchedule, Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import { SCHEDULE_LABELS } from "../model";
 import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
@@ -483,7 +483,12 @@ const fmtSize = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` :
 export function BackupsModal({ d, onClose, onChanged }: { d: Deployment; onClose: () => void; onChanged?: () => void }) {
   const [list, setList] = useState<BackupInfo[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const load = () => api.listBackups(d.stackId).then(setList).catch(() => setList([]));
+  // Off-site snapshots are only asked for when a target is configured; the endpoint says so itself.
+  const [offsite, setOffsite] = useState<{ stamp: string; files: string[] }[] | null>(null);
+  const load = () => {
+    api.listBackups(d.stackId).then(setList).catch(() => setList([]));
+    api.offsiteBackups(d.stackId).then(setOffsite).catch(() => setOffsite(null));
+  };
   useEffect(() => { load(); }, [d.stackId]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const create = async () => {
@@ -497,6 +502,16 @@ export function BackupsModal({ d, onClose, onChanged }: { d: Deployment; onClose
   const del = (stamp: string) =>
     confirmDelete(`this backup (${stamp})`, "Deletes the snapshot archives from disk.")
       .then(okd => { if (okd) api.deleteBackup(d.stackId, stamp).then(load).catch(toastErr); });
+  const restoreOffsite = (stamp: string) =>
+    confirmDelete(`restore "${d.name}" from the off-site copy (${stamp})`,
+      "The snapshot is fetched back to this machine, the app stops, its volume data is REPLACED, then it restarts.")
+      .then(okd => {
+        if (!okd) return;
+        toastOk("Fetching and restoring…");
+        api.restoreOffsiteBackup(d.stackId, stamp)
+          .then(() => { onChanged?.(); toastOk("Restored from off-site"); load(); })
+          .catch(e => toastErr(e, "Off-site restore failed"));
+      });
 
   return (
     <Modal opened onClose={onClose} size="lg" title={<Title order={5}>Backups · {d.name}</Title>}>
@@ -505,6 +520,26 @@ export function BackupsModal({ d, onClose, onChanged }: { d: Deployment; onClose
           <Text size="xs" c="dimmed">Snapshots of this app's named volumes (database, files). Kept on the AspireUI host.</Text>
           <Button size="xs" leftSection={<IconArchive size={14} />} loading={busy} onClick={create}>Back up now</Button>
         </Group>
+        {offsite !== null && offsite.length > 0 && (
+          <div>
+            <Text size="xs" fw={600} mb={4}>Off-site</Text>
+            <Stack gap={4}>
+              {offsite.filter(o => !(list ?? []).some(b => b.stamp === o.stamp)).map(o => (
+                <Group key={o.stamp} justify="space-between" wrap="nowrap" px="xs" py={4}
+                  style={{ border: "1px dashed var(--mantine-color-default-border)", borderRadius: 8 }}>
+                  <Text size="xs" ff="monospace">{o.stamp} · {o.files.length} file(s)</Text>
+                  <Tooltip label="Fetch back and restore" withArrow>
+                    <ActionIcon variant="subtle" color="orange" aria-label="Restore from off-site"
+                      onClick={() => restoreOffsite(o.stamp)}><IconCloudDownload size={16} /></ActionIcon>
+                  </Tooltip>
+                </Group>
+              ))}
+            </Stack>
+            <Text size="10px" c="dimmed" mt={4}>
+              Snapshots that are only off-site. The ones below are here as well.
+            </Text>
+          </div>
+        )}
         {list === null ? <Loader size="sm" /> : list.length === 0 ? (
           <Text size="sm" c="dimmed">No backups yet. Use “Back up now” to create one.</Text>
         ) : (

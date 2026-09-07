@@ -47,9 +47,27 @@ public class BackupSchedulerService : BackgroundService
     private static void BackupAndPrune(HostingService hosting, SettingsStore settings, string deploymentId)
     {
         var retain = int.TryParse(settings.GetValue("BackupRetain"), out var r) && r > 0 ? r : 7;
-        hosting.Backup(deploymentId, BackupsRoot());
+        var dir = hosting.Backup(deploymentId, BackupsRoot());
+        Offsite(settings, deploymentId, dir);
         foreach (var old in hosting.ListBackups(deploymentId, BackupsRoot()).OrderByDescending(b => b.Stamp).Skip(retain))
             hosting.DeleteBackup(deploymentId, BackupsRoot(), old.Stamp);
+    }
+
+    // A scheduled backup that only ever lands on the same disk is a backup of that disk being fine.
+    private static void Offsite(SettingsStore settings, string deploymentId, string? dir)
+    {
+        if (dir is null || !Directory.Exists(dir)) return;
+        var remote = new RemoteBackupService(settings, new SecretStore(Db(), DataDir()));
+        if (!remote.Config().Enabled) return;
+        var store = new DeploymentStore(Db());
+        if (store.Get(deploymentId) is not { } d) return;
+        var stamp = Path.GetFileName(dir);
+        foreach (var file in Directory.GetFiles(dir))
+        {
+            var (ok, error) = remote.UploadAsync(file, $"{d.StackId}/{stamp}/{Path.GetFileName(file)}")
+                .GetAwaiter().GetResult();
+            if (!ok) Console.Error.WriteLine($"backup: off-site copy of {Path.GetFileName(file)} failed — {error}");
+        }
     }
 
     // Per-app schedules. Anything that fails is left to the next tick: a scheduler that stops at the

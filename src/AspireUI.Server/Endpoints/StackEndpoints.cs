@@ -990,10 +990,91 @@ public static class StackEndpoints
             return Results.Ok(clean);
         }).RequirePerm(Perm.Configure);
         string BackupsRoot() => Path.Combine(wsRoot, "_backups");
-        app2.MapPost("/stacks/{id}/hosting/backup", (string id) =>
-            deployments.GetByStack(id) is { } d
-                ? Results.Ok(new { dir = hosting.Backup(d.Id, BackupsRoot()) })
-                : Results.NotFound()).RequirePerm(Perm.Deploy);
+        var remoteBackups = new RemoteBackupService(settings, secrets);
+
+        // A backup on the same disk as the app is a backup of the disk being fine. When an off-site
+        // target is configured, every file of the snapshot goes there as well.
+        async Task<(int sent, string? error)> OffsiteAsync(Deployment d, string? dir)
+        {
+            if (dir is null || !remoteBackups.Config().Enabled || !Directory.Exists(dir)) return (0, null);
+            var stamp = Path.GetFileName(dir);
+            var sent = 0;
+            string? firstError = null;
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                var (ok, error) = await remoteBackups.UploadAsync(file, $"{d.StackId}/{stamp}/{Path.GetFileName(file)}");
+                if (ok) sent++;
+                else firstError ??= error;
+            }
+            return (sent, firstError);
+        }
+
+        app2.MapPost("/stacks/{id}/hosting/backup", async (string id) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            var dir = hosting.Backup(d.Id, BackupsRoot());
+            var (sent, error) = await OffsiteAsync(d, dir);
+            return Results.Ok(new { dir, offsite = sent, offsiteError = error });
+        }).RequirePerm(Perm.Deploy);
+
+        // --- Off-site copies -------------------------------------------------------------------
+        app2.MapGet("/hosting/remote-backup", () =>
+        {
+            var c = remoteBackups.Config();
+            // Secrets go out as a marker, never as themselves; saving an empty one keeps what is there.
+            return Results.Ok(new
+            {
+                c.Kind, c.Endpoint, c.Region, c.Bucket, c.AccessKey, c.PathStyle,
+                c.BaseUrl, c.User, c.Host, c.Port, c.Path, c.KeyFile,
+                hasSecretKey = !string.IsNullOrEmpty(c.SecretKey),
+                hasPassword = !string.IsNullOrEmpty(c.Password),
+                kinds = RemoteBackupConfig.Kinds,
+            });
+        }).RequirePerm(Perm.Settings);
+        app2.MapPut("/hosting/remote-backup", (RemoteBackupConfig b) =>
+        {
+            remoteBackups.Save(b);
+            return Results.NoContent();
+        }).RequirePerm(Perm.Settings);
+        app2.MapPost("/hosting/remote-backup/test", async () =>
+        {
+            var (ok, error) = await remoteBackups.TestAsync();
+            return ok ? Results.Ok(new { ok }) : Results.BadRequest(new { message = error });
+        }).RequirePerm(Perm.Settings);
+
+        // What is off-site for this app, grouped into the snapshots it came from.
+        app2.MapGet("/stacks/{id}/hosting/backups/offsite", async (string id) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            var (keys, error) = await remoteBackups.ListAsync(d.StackId + "/");
+            if (error is not null) return Results.BadRequest(new { message = error });
+            return Results.Ok(keys
+                .Select(k => k.Split('/'))
+                .Where(parts => parts.Length >= 3)
+                .GroupBy(parts => parts[^2])
+                .OrderByDescending(g => g.Key, StringComparer.Ordinal)
+                .Select(g => new { stamp = g.Key, files = g.Select(parts => parts[^1]).OrderBy(x => x).ToList() }));
+        }).RequirePerm(Perm.Deploy);
+
+        // Fetch a snapshot back to this machine and restore it the same way a local one is restored.
+        app2.MapPost("/stacks/{id}/hosting/backups/offsite/{stamp}/restore", async (string id, string stamp) =>
+        {
+            if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
+            var (keys, error) = await remoteBackups.ListAsync($"{d.StackId}/{stamp}/");
+            if (error is not null) return Results.BadRequest(new { message = error });
+            if (keys.Count == 0) return Results.NotFound();
+
+            var dir = Path.Combine(BackupsRoot(), d.StackId, stamp);
+            Directory.CreateDirectory(dir);
+            foreach (var key in keys)
+            {
+                var (ok, err) = await remoteBackups.DownloadAsync(key, Path.Combine(dir, Path.GetFileName(key)));
+                if (!ok) return Results.BadRequest(new { message = $"{key}: {err}" });
+            }
+            return hosting.Restore(d.Id, BackupsRoot(), stamp)
+                ? Results.Ok(hosting.Refresh(d.Id) ?? deployments.Get(d.Id))
+                : Results.BadRequest(new { message = "the files came back but the restore failed" });
+        }).RequirePerm(Perm.Deploy);
         app2.MapGet("/stacks/{id}/hosting/backups", (string id) =>
             deployments.GetByStack(id) is { } d ? Results.Ok(hosting.ListBackups(d.Id, BackupsRoot())) : Results.NotFound());
         app2.MapPost("/stacks/{id}/hosting/backups/{stamp}/restore", (string id, string stamp) =>

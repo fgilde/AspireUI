@@ -210,6 +210,96 @@ function AutoBackupSection() {
       </Group>
       <Text size="xs" c="dimmed">Backs up every running app's named volumes on schedule and prunes older snapshots. Restore/download from an app's <b>Backups…</b> dialog. {lastRun ? `Last run ${new Date(lastRun).toLocaleString()}.` : "Not run yet."}</Text>
       <Group><Button onClick={save} leftSection={saved ? <IconCheck size={16} /> : undefined}>{saved ? "Saved" : "Save"}</Button></Group>
+      <OffsiteBackupSection />
+    </MStack>
+  );
+}
+
+// Where a snapshot goes so it is not on the same disk as the app it came from.
+function OffsiteBackupSection() {
+  const [c, setC] = useState<api.RemoteBackup | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => { api.getRemoteBackup().then(setC).catch(() => {}); }, []);
+  if (!c) return <Loader size="sm" />;
+
+  const set = (patch: Partial<api.RemoteBackup>) => setC(prev => ({ ...prev!, ...patch }));
+  const save = async () => {
+    setBusy("save");
+    try { await api.setRemoteBackup(c); setC(await api.getRemoteBackup()); toastOk("Saved"); }
+    catch (e) { toastErr(e); }
+    finally { setBusy(null); }
+  };
+  const test = async () => {
+    setBusy("test");
+    try { await api.testRemoteBackup(); toastOk("Wrote a file and removed it again — the target works"); }
+    catch (e) { toastErr(e, "The target did not accept a file"); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <MStack gap="md">
+      <Text fw={600} mt="lg">Off-site copies</Text>
+      <Text size="xs" c="dimmed">
+        Every snapshot — scheduled or taken by hand — is also copied here. A backup that only ever
+        lands on the same disk as the app is a backup of that disk being fine.
+      </Text>
+      <SegmentedControl maw={420} value={c.kind || ""} onChange={v => set({ kind: v })}
+        data={[{ value: "", label: "Off" }, { value: "s3", label: "S3" }, { value: "webdav", label: "WebDAV" }, { value: "sftp", label: "ssh / scp" }]} />
+
+      {c.kind === "s3" && (
+        <MStack gap="xs" maw={520}>
+          <TextInput label="Endpoint" placeholder="https://s3.eu-central-1.amazonaws.com or a MinIO url"
+            value={c.endpoint ?? ""} onChange={e => set({ endpoint: e.currentTarget.value })}
+            description="Blank uses AWS in the region below." />
+          <Group grow>
+            <TextInput label="Bucket" value={c.bucket ?? ""} onChange={e => set({ bucket: e.currentTarget.value })} />
+            <TextInput label="Region" value={c.region ?? ""} onChange={e => set({ region: e.currentTarget.value })}
+              placeholder="eu-central-1" />
+          </Group>
+          <Group grow>
+            <TextInput label="Access key" value={c.accessKey ?? ""} onChange={e => set({ accessKey: e.currentTarget.value })} />
+            <PasswordInput label="Secret key" value={c.secretKey ?? ""} onChange={e => set({ secretKey: e.currentTarget.value })}
+              placeholder={c.hasSecretKey ? "•••••• (leave blank to keep)" : ""} />
+          </Group>
+          <Switch checked={c.pathStyle} onChange={e => set({ pathStyle: e.currentTarget.checked })}
+            label="Path-style urls" description="On for MinIO and most S3-compatible services, off for AWS-style virtual hosts." />
+        </MStack>
+      )}
+
+      {c.kind === "webdav" && (
+        <MStack gap="xs" maw={520}>
+          <TextInput label="Base url" placeholder="https://cloud.example.com/remote.php/dav/files/me/backups"
+            value={c.baseUrl ?? ""} onChange={e => set({ baseUrl: e.currentTarget.value })} />
+          <Group grow>
+            <TextInput label="User" value={c.user ?? ""} onChange={e => set({ user: e.currentTarget.value })} />
+            <PasswordInput label="Password" value={c.password ?? ""} onChange={e => set({ password: e.currentTarget.value })}
+              placeholder={c.hasPassword ? "•••••• (leave blank to keep)" : ""}
+              description="An app password, not the account one." />
+          </Group>
+        </MStack>
+      )}
+
+      {c.kind === "sftp" && (
+        <MStack gap="xs" maw={520}>
+          <Group grow>
+            <TextInput label="Host" value={c.host ?? ""} onChange={e => set({ host: e.currentTarget.value })} />
+            <NumberInput label="Port" value={c.port} onChange={v => set({ port: Number(v) || 22 })} min={1} max={65535} />
+          </Group>
+          <Group grow>
+            <TextInput label="User" value={c.user ?? ""} onChange={e => set({ user: e.currentTarget.value })} />
+            <TextInput label="Directory" placeholder="/srv/backups/aspireui" value={c.path ?? ""}
+              onChange={e => set({ path: e.currentTarget.value })} />
+          </Group>
+          <TextInput label="Private key file" placeholder="/data/keys/id_ed25519" value={c.keyFile ?? ""}
+            onChange={e => set({ keyFile: e.currentTarget.value })}
+            description="A path inside this container. Key auth only — scp has nowhere to type a password." />
+        </MStack>
+      )}
+
+      <Group>
+        <Button onClick={save} loading={busy === "save"}>Save</Button>
+        {c.kind && <Button variant="default" onClick={test} loading={busy === "test"}>Test</Button>}
+      </Group>
     </MStack>
   );
 }

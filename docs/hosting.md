@@ -112,6 +112,25 @@ red on the overview and the app page, and the reason is in the health detail.
 
 Both are stored with the stack, so they survive a redeploy, travel with an export, and can be seeded.
 
+## Off-site backups
+
+**Settings → Hosting → Backups → Off-site copies** sends every snapshot — scheduled or taken by
+hand — somewhere that is not this disk. Three kinds:
+
+| Kind | What it needs | Notes |
+| --- | --- | --- |
+| **S3** | endpoint, bucket, region, access key, secret key | Anything that speaks S3: AWS, MinIO, Backblaze, Wasabi, Hetzner. *Path-style urls* on for most, off for AWS-style virtual hosts. Signed with SigV4 in-process — no cloud SDK. |
+| **WebDAV** | base url, user, password | Nextcloud, ownCloud, a plain apache. Use an app password. Folders on the way are created. |
+| **ssh / scp** | host, port, user, directory, private key file | Key auth only: `scp` has nowhere to type a password. The key is a path inside the container. |
+
+**Test** writes a small file and deletes it again, which is the only honest way to say a target
+works. The S3 secret key and the WebDAV password go into the encrypted secret store, not into the
+settings table, and saving with the field left blank keeps the one that is already there.
+
+A snapshot goes off-site under `<stack id>/<stamp>/<volume>.tgz`. The **Backups…** dialog lists the
+snapshots that exist *only* off-site above the local ones, and **fetch back and restore** downloads
+that snapshot to this machine and then restores it exactly the way a local one is restored.
+
 ## Automation
 
 **Configure → Automation** gives an app its own clock. Each line is an action and when it runs:
