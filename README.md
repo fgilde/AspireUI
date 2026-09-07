@@ -291,6 +291,8 @@ only written when that setting is still empty (so a user's later change sticks);
 | **Hosting dashboard** | `HostDashboard` (`true`/`false`), `DashboardToken` |
 | **Nginx Proxy Manager** | `NpmEnabled` (`true`/`false`), `NpmBaseUrl`, `NpmEmail`, `NpmPassword`, `NpmForwardHost` |
 | **Activity log** | `AuditRetainDays` (days to keep, `0` = keep everything; default 90) |
+| **Off-site backups** | `BackupRemoteKind` (`s3`/`webdav`/`sftp`), `BackupS3Endpoint`, `BackupS3Region`, `BackupS3Bucket`, `BackupS3AccessKey`, `BackupS3SecretKey`, `BackupS3PathStyle`, `BackupWebDavUrl`, `BackupWebDavUser`, `BackupWebDavPassword`, `BackupSftpHost`, `BackupSftpPort`, `BackupSftpUser`, `BackupSftpPath`, `BackupSftpKeyFile` |
+| **Single sign-on** | `OidcEnabled` (`true`/`false`), `OidcAuthority`, `OidcClientId`, `OidcClientSecret`, `OidcScopes`, `OidcLabel`, `OidcUsernameClaim`, `OidcGroupsClaim`, `OidcAdminGroup`, `OidcAutoCreate`, `OidcDefaultPermissions` |
 
 ```bash
 docker run -d -p 8080:8080 -v aspireui-data:/data -v /var/run/docker.sock:/var/run/docker.sock \

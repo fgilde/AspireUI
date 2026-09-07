@@ -105,4 +105,19 @@ public class RemoteBackupTests
         }
         Assert.NotEqual(Sig("one"), Sig("two"));
     }
+
+    [Fact]
+    public void The_ssh_user_and_the_webdav_user_are_not_the_same_user()
+    {
+        var (svc, _, _) = Fresh();
+        svc.Save(new RemoteBackupConfig(RemoteBackupConfig.WebDav, BaseUrl: "https://cloud.example.com", User: "dav-user"));
+        Assert.Equal("dav-user", svc.Config().User);
+
+        svc.Save(new RemoteBackupConfig(RemoteBackupConfig.Sftp, Host: "nas.local", User: "deploy", Path: "/srv/backups"));
+        Assert.Equal("deploy", svc.Config().User);
+
+        // And switching back finds the other one again.
+        svc.Save(new RemoteBackupConfig(RemoteBackupConfig.WebDav, BaseUrl: "https://cloud.example.com", User: "dav-user"));
+        Assert.Equal("dav-user", svc.Config().User);
+    }
 }

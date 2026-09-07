@@ -35,8 +35,19 @@ public class RemoteBackupService(SettingsStore settings, SecretStore secrets)
 
     // Settings hold everything but the two values worth encrypting; those hold a secret-store
     // reference and are resolved on the way out.
-    public RemoteBackupConfig Config() => new(
-        Kind: settings.GetValue("BackupRemoteKind") ?? RemoteBackupConfig.None,
+    public RemoteBackupConfig Config()
+    {
+        var kind = settings.GetValue("BackupRemoteKind") ?? RemoteBackupConfig.None;
+        // WebDAV and ssh both have a user; they are different users, so they get different keys. The
+        // fallback is for installs configured before ssh had its own.
+        var user = kind == RemoteBackupConfig.Sftp
+            ? settings.GetValue("BackupSftpUser") ?? settings.GetValue("BackupWebDavUser")
+            : settings.GetValue("BackupWebDavUser");
+        return Build(kind, user);
+    }
+
+    private RemoteBackupConfig Build(string kind, string? user) => new(
+        Kind: kind,
         Endpoint: settings.GetValue("BackupS3Endpoint"),
         Region: settings.GetValue("BackupS3Region"),
         Bucket: settings.GetValue("BackupS3Bucket"),
@@ -44,7 +55,7 @@ public class RemoteBackupService(SettingsStore settings, SecretStore secrets)
         SecretKey: secrets.Resolve(settings.GetValue("BackupS3SecretKey")),
         PathStyle: (settings.GetValue("BackupS3PathStyle") ?? "true") == "true",
         BaseUrl: settings.GetValue("BackupWebDavUrl"),
-        User: settings.GetValue("BackupWebDavUser"),
+        User: user,
         Password: secrets.Resolve(settings.GetValue("BackupWebDavPassword")),
         Host: settings.GetValue("BackupSftpHost"),
         Port: int.TryParse(settings.GetValue("BackupSftpPort"), out var p) && p > 0 ? p : 22,
@@ -60,7 +71,7 @@ public class RemoteBackupService(SettingsStore settings, SecretStore secrets)
         settings.SetValue("BackupS3AccessKey", c.AccessKey?.Trim());
         settings.SetValue("BackupS3PathStyle", c.PathStyle ? "true" : "false");
         settings.SetValue("BackupWebDavUrl", c.BaseUrl?.Trim());
-        settings.SetValue("BackupWebDavUser", c.User?.Trim());
+        settings.SetValue(c.Kind == RemoteBackupConfig.Sftp ? "BackupSftpUser" : "BackupWebDavUser", c.User?.Trim());
         settings.SetValue("BackupSftpHost", c.Host?.Trim());
         settings.SetValue("BackupSftpPort", c.Port.ToString());
         settings.SetValue("BackupSftpPath", c.Path?.Trim());

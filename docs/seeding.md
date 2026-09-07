@@ -137,5 +137,10 @@ builder.AddAspireUI("aspireui")
     .WithSshTarget("nas", "nas.local", "deploy", keyFile: "./keys/id_ed25519")
     .WithApps("vaultwarden", "gitea")
     .WithSeedFromDirectory("./seed")
-    .WithAutoDeploy();
+    .WithAutoDeploy()
+    // And the settings that used to need a trip through the UI:
+    .WithSingleSignOn("https://id.example.com/realms/main", "aspireui", ssoSecret,
+        adminGroup: "aspireui-admins")
+    .WithS3Backups("aspireui-backups", accessKey, secretKey, endpoint: "https://minio.example.com")
+    .WithAuditRetention(days: 90);
 ```
