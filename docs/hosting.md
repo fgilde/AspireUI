@@ -68,6 +68,17 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
 - **Undeploy + delete data** — `docker compose down -v`. The app's volumes (database, files) are
   **deleted**. Use this to cleanly reinstall an app that got stuck half-initialized.
 
+## Fleet view
+
+With apps on more than one machine, the Hosting page offers **List** and **Fleet**. Fleet groups the
+apps by the machine they run on and puts each machine's own facts on its card: reachable or not, the
+docker version the last probe saw, free disk, and how many of its apps are running or broken. The
+selection checkboxes and the app menu work exactly as they do in the list, so a bulk action can be
+aimed at one machine's apps.
+
+A machine that hosts nothing is only shown if it is this one — an empty card for every target you
+have ever added is noise.
+
 ## Tags and bulk actions
 
 Give an app **Tags…** from its menu — `prod`, `db`, `customer-a`, whatever you sort by. The Hosting

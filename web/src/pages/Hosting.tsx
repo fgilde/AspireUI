@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Tooltip, Select, Button, Checkbox, Modal, Stack as MStack, TagsInput } from "@mantine/core";
+import { Table, Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Tooltip, Select, Button, Checkbox, Modal, Stack as MStack, TagsInput, SegmentedControl, Paper } from "@mantine/core";
 import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAlertTriangle, IconFileText, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
 import { DiffModal } from "../hosting/HostingActions";
-import type { Deployment, ServiceStatus } from "../model";
+import type { Deployment, DeployTarget, ServiceStatus } from "../model";
 import { hostingHealthLabel, hostingBroken } from "../model";
 import * as api from "../api";
 import type { ContainerStat } from "../api";
@@ -43,6 +43,8 @@ export function Hosting() {
   const [bulk, setBulk] = useState<string | null>(null);
   const [tagsFor, setTagsFor] = useState<Deployment | null>(null);
   const [diffFor, setDiffFor] = useState<Deployment | null>(null);
+  const [view, setView] = useState<"list" | "fleet">("list");
+  const [targets, setTargets] = useState<DeployTarget[]>([]);
   const [dashToken, setDashToken] = useState("");
   const [pubHost, setPubHost] = useState("");
   const [appStats, setAppStats] = useState<Record<string, AppStat>>({});
@@ -73,6 +75,8 @@ export function Hosting() {
   };
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); }, []);
   useEffect(() => { api.getDashboardSettings().then(s => { setDashToken(s.dashboardToken); setPubHost(s.publicHost ?? ""); }).catch(() => {}); }, []);
+  // Only the fleet view needs the machines themselves; the list only needs what runs on them.
+  useEffect(() => { if (view === "fleet") api.listTargets().then(setTargets).catch(() => {}); }, [view]);
   useEffect(() => { const tick = () => api.hostingSummary().then(setSummary).catch(() => {}); tick(); const t = setInterval(tick, 30000); return () => clearInterval(t); }, []);
 
   const itemsRef = useRef<Deployment[]>([]);
@@ -99,7 +103,7 @@ export function Hosting() {
 
   // Only targets that actually host something are worth filtering by.
   const usedTargets = Array.from(new Map(items.map(d => [d.targetId ?? "local",
-    { id: d.targetId ?? "local", name: d.targetName ?? "This machine" }])).values());
+    { id: d.targetId ?? "local", name: d.targetName ?? "This machine", kind: d.targetKind ?? "local" }])).values());
   const runningCount = items.filter(d => d.state === "running" && !hostingBroken(d)).length;
   const brokenCount = items.filter(hostingBroken).length;
   const diskPct = summary && summary.diskTotalGb > 0 ? Math.round((1 - summary.diskFreeGb / summary.diskTotalGb) * 100) : null;
@@ -120,6 +124,10 @@ export function Hosting() {
               {usedTargets.length > 1 && (
                 <Select size="xs" w={200} clearable placeholder="All targets" value={targetFilter} onChange={setTargetFilter}
                   data={usedTargets.map(t => ({ value: t.id, label: `${t.name} (${items.filter(d => (d.targetId ?? "local") === t.id).length})` }))} />
+              )}
+              {usedTargets.length > 1 && (
+                <SegmentedControl size="xs" value={view} onChange={v => setView(v as "list" | "fleet")}
+                  data={[{ value: "list", label: "List" }, { value: "fleet", label: "Fleet" }]} />
               )}
               {usedTags.length > 0 && (
                 <Group gap={4} wrap="wrap">
@@ -151,7 +159,92 @@ export function Hosting() {
           )}
           {items.length === 0
             ? <Text c="dimmed" size="sm">No stacks deployed to hosting yet. Open a stack and choose <b>Deploy to hosting</b>.</Text>
-            : (
+            : view === "fleet" ? (
+            <MStack gap="md">
+              {(targets.length > 0 ? targets : usedTargets.map(t => ({ id: t.id, name: t.name, kind: t.kind } as DeployTarget))).map(t => {
+                const mine = shown.filter(d => (d.targetId ?? "local") === t.id);
+                if (mine.length === 0 && t.id !== "local") return null;
+                const running = mine.filter(d => d.state === "running").length;
+                const broken = mine.filter(hostingBroken).length;
+                const probe = t.probe;
+                return (
+                  <Paper key={t.id} withBorder p="md" radius="md">
+                    <Group justify="space-between" wrap="wrap" mb={mine.length > 0 ? "sm" : 0}>
+                      <Group gap={8}>
+                        {targetIcon(t.kind ?? "local")}
+                        <Text fw={600}>{t.name}</Text>
+                        <Badge size="sm" variant="light" color="gray">{t.kind ?? "local"}</Badge>
+                        {t.default && <Badge size="sm" variant="light" color="indigo">default</Badge>}
+                      </Group>
+                      <Group gap="md">
+                        <Text size="sm"><b>{running}</b>/{mine.length} running</Text>
+                        {broken > 0 && <Text size="sm" c="red"><b>{broken}</b> broken</Text>}
+                        {probe && (
+                          <Tooltip label={probe.error ?? probe.checkedAt ?? ""} withArrow disabled={!probe.error && !probe.checkedAt}>
+                            <Badge size="sm" variant="light" color={probe.ok ? "green" : "red"}>
+                              {probe.ok ? (probe.version ? `docker ${probe.version}` : "reachable") : "unreachable"}
+                            </Badge>
+                          </Tooltip>
+                        )}
+                        {probe?.diskFreeMb != null && probe.diskFreeMb > 0 && (
+                          <Text size="sm" c={probe.diskFreeMb < 2048 ? "red" : "dimmed"}>
+                            {(probe.diskFreeMb / 1024).toFixed(1)} GB free
+                          </Text>
+                        )}
+                        {t.id === "local" && summary && summary.diskTotalGb > 0 && (
+                          <Text size="sm" c={diskPct !== null && diskPct >= 90 ? "red" : "dimmed"}>
+                            {summary.diskFreeGb} GB free of {summary.diskTotalGb} GB
+                          </Text>
+                        )}
+                      </Group>
+                    </Group>
+                    {mine.length === 0
+                      ? <Text size="xs" c="dimmed">Nothing deployed here.</Text>
+                      : (
+                      <Table verticalSpacing={6} fz="sm">
+                        <Table.Tbody>
+                          {mine.map(d => (
+                            <Table.Tr key={d.id}>
+                              <Table.Td w={34}>
+                                <Checkbox size="xs" checked={picked.has(d.stackId)} aria-label={`Select ${d.name}`}
+                                  onChange={e => setPicked(p => {
+                                    const next = new Set(p);
+                                    if (e.currentTarget.checked) next.add(d.stackId); else next.delete(d.stackId);
+                                    return next;
+                                  })} />
+                              </Table.Td>
+                              <Table.Td><Anchor onClick={() => nav(`/app/${d.stackId}`)}>{d.name}</Anchor></Table.Td>
+                              <Table.Td w={140}>
+                                <Badge size="sm" color={deploymentColor(d)} variant="light">{hostingHealthLabel(d) ?? d.state}</Badge>
+                              </Table.Td>
+                              <Table.Td>
+                                <Group gap={4}>
+                                  {(d.tags ?? []).map(x => <Badge key={x} size="xs" variant="light" color="gray">{x}</Badge>)}
+                                </Group>
+                              </Table.Td>
+                              <Table.Td w={40}>
+                                <Menu position="bottom-end" withArrow>
+                                  <Menu.Target>
+                                    <ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon>
+                                  </Menu.Target>
+                                  <Menu.Dropdown>
+                                    <HostingMenuItems d={d} onConfigure={() => setConfigFor(d)} onLogs={() => setLogsFor(d)}
+                                      onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)}
+                                      onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
+                                      onMove={() => setMoveFor(d)} onTags={() => setTagsFor(d)} onDiff={() => setDiffFor(d)}
+                                      onOpenEditor={() => nav(`/editor/${d.stackId}`)} onChanged={load} />
+                                  </Menu.Dropdown>
+                                </Menu>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>)}
+                  </Paper>
+                );
+              })}
+            </MStack>
+            ) : (
             <Table verticalSpacing="sm">
               <Table.Thead><Table.Tr>
                 <Table.Th w={34}>
