@@ -151,6 +151,26 @@ export const setHostingSchedules = (stackId: string, schedules: import("./model"
 export const hostingRuntime = (stackId: string): Promise<import("./model").AppRuntime> =>
   fetch(`${base}/stacks/${stackId}/hosting/runtime`).then(ok);
 
+// --- The in-app assistant: sessions, and turns that may operate the instance ---------------------
+export interface ChatStatus {
+  configured: boolean; tools: boolean; model?: string | null; provider?: string | null;
+  toolCount: number; totalTools: number;
+}
+export interface ChatSession { id: string; userId: string; title: string; createdAt: string; updatedAt: string; messages: number }
+export interface ChatMessage { id: number; sessionId: string; role: string; content: string; at: string; tools?: string | null }
+export interface ChatToolCall { name: string; arguments: string; result: string; ok: boolean }
+
+export const chatStatus = (): Promise<ChatStatus> => fetch(`${base}/chat/status`).then(ok);
+export const chatSessions = (): Promise<ChatSession[]> => fetch(`${base}/chat/sessions`).then(ok);
+export const newChat = (title?: string): Promise<ChatSession> =>
+  fetch(`${base}/chat/sessions`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title }) }).then(ok);
+export const chatSession = (id: string): Promise<{ session: ChatSession; messages: ChatMessage[] }> =>
+  fetch(`${base}/chat/sessions/${id}`).then(ok);
+export const deleteChat = (id: string): Promise<void> =>
+  fetch(`${base}/chat/sessions/${id}`, { method: "DELETE" }).then(okVoid);
+export const chatAsk = (id: string, prompt: string): Promise<{ reply: string; tools: ChatToolCall[]; toolsAvailable: boolean }> =>
+  fetch(`${base}/chat/sessions/${id}/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
+
 export const audit = (params: { limit?: number; offset?: number; q?: string; user?: string; stack?: string } = {}):
   Promise<{ total: number; entries: import("./model").AuditEntry[]; retainDays: number }> =>
   fetch(`${base}/audit?` + new URLSearchParams(

@@ -3,6 +3,7 @@
 - [Building Stacks](building-stacks.md)
 - [Importing](importing.md)
 - [AI Assistant](ai-assistant.md)
+- [The assistant chat](ai-chat.md)
 - [Running & Deploying](running-and-deploying.md)
 - [Hosting (install & forget)](hosting.md)
 - [Deploy targets (remote & cloud)](deploy-targets.md)

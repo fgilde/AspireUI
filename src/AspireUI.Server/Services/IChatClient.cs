@@ -12,6 +12,17 @@ public interface IChatClient
     Task<string> CompleteAsync(string system, string user, AppSettings s);
 }
 
+/// <summary>
+/// A chat that can call tools. Separate from <see cref="IChatClient"/> because only an
+/// OpenAI-compatible http backend can do it: a CLI tool takes a prompt and gives back text, and
+/// there is nowhere in that to put a function call.
+/// </summary>
+public interface IToolChatClient
+{
+    Task<System.Text.Json.Nodes.JsonObject> ReplyAsync(System.Text.Json.Nodes.JsonArray messages,
+        System.Text.Json.Nodes.JsonArray? tools, AppSettings s, CancellationToken ct = default);
+}
+
 public class RoutingChatClient(HttpChatClient http, CliChatClient cli) : IChatClient
 {
     public Task<string> CompleteAsync(string system, string user, AppSettings s) =>
@@ -117,8 +128,46 @@ public class CliChatClient : IChatClient
     }
 }
 
-public class HttpChatClient(HttpClient http) : IChatClient
+public class HttpChatClient(HttpClient http) : IChatClient, IToolChatClient
 {
+    /// <summary>
+    /// One round of an OpenAI-style chat: the messages so far, the tools the caller is willing to
+    /// allow, and back comes the assistant's message — either an answer or a request to call
+    /// something. The message list is passed through as-is, because a tool result has a shape
+    /// (<c>role: tool</c>, <c>tool_call_id</c>) that is not worth a model of our own.
+    /// </summary>
+    public async Task<System.Text.Json.Nodes.JsonObject> ReplyAsync(System.Text.Json.Nodes.JsonArray messages,
+        System.Text.Json.Nodes.JsonArray? tools, AppSettings s, CancellationToken ct = default)
+    {
+        var url = $"{ApiRoot(s.AiBaseUrl)}/chat/completions";
+        var body = new System.Text.Json.Nodes.JsonObject
+        {
+            ["model"] = s.AiModel,
+            ["messages"] = messages.DeepClone(),
+        };
+        if (tools is { Count: > 0 })
+        {
+            body["tools"] = tools.DeepClone();
+            body["tool_choice"] = "auto";
+        }
+
+        var req = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
+        };
+        if (!string.IsNullOrEmpty(s.AiApiKey))
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", s.AiApiKey);
+
+        var resp = await http.SendAsync(req, ct);
+        if (!resp.IsSuccessStatusCode) throw Failed(url, s.AiModel, resp);
+
+        var text = await resp.Content.ReadAsStringAsync(ct);
+        var node = System.Text.Json.Nodes.JsonNode.Parse(text)?.AsObject()
+            ?? throw new InvalidOperationException($"{url} returned something that is not json");
+        return node["choices"]?[0]?["message"]?.AsObject().DeepClone().AsObject()
+            ?? throw new InvalidOperationException($"{url} returned no message: {(text.Length > 200 ? text[..200] : text)}");
+    }
+
     // Both spellings are common in the wild: "https://api.openai.com" (no path) and
     // "https://integrate.api.nvidia.com/v1" or ".../v1beta/openai" (version already in the URL).
     // Appending /v1 blindly produced /v1/v1/chat/completions and a 404, so it is only added when the

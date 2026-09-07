@@ -310,6 +310,10 @@ The whole product is a REST API. The OpenAPI spec is at **`/openapi/v1.json`** w
 Auth is either the browser session cookie or a **personal access token**: create one under
 **Settings → API &amp; Agents** and send it as `Authorization: Bearer <token>` on any `/api/...` call.
 
+The same tools drive the **in-app assistant**: with an AI backend configured, a button in the bottom
+right corner of every page opens a chat with sessions that can answer questions *and* operate the
+instance — with your permissions and nobody else's. See [docs/ai-chat.md](docs/ai-chat.md).
+
 Agents can drive AspireUI through the built-in **MCP server** at **`/api/mcp`** (same Bearer auth). Tools:
 inspect stacks (`list_stacks`, `get_stack`), browse the catalog (`search_apps`), author
 (`create_stack`, `install_app`, `add_resource`, `delete_stack`), and run/host

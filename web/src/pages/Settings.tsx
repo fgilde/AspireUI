@@ -961,8 +961,8 @@ function EnvTab() {
 
 const EMPTY: AppSettings = { aiBaseUrl: "", aiApiKey: "", aiModel: "", aiProviderLabel: "" };
 
-export function Settings() {
-  useTitle("Settings");
+// The AI backend the assistant and the chat both use.
+function AssistantSection() {
   const [settings, setSettings] = useState<AppSettings>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -973,10 +973,6 @@ export function Settings() {
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
   const kind = settings.aiKind === "cli" ? "cli" : "http";
-  const { status } = useAuth();
-  const user = status?.user;
-  const maySettings = can(user, PERM_SETTINGS);
-  const mayHosting = maySettings || can(user, PERM_TARGETS) || can(user, PERM_STORE);
 
   useEffect(() => { api.getSettings().then(setSettings); api.getAiCliTools().then(setCliTools).catch(() => {}); }, []);
 
@@ -1018,92 +1014,129 @@ export function Settings() {
   };
 
   return (
+    <>
+            <Text c="dimmed" size="sm" mb="lg">
+              Configure the AI backend used by the assistant. Either an OpenAI-compatible HTTP endpoint
+              (LocalAI, Ollama, OpenAI, …) or a locally-installed agent CLI on this server.
+            </Text>
+
+            <MStack gap="md">
+              <SegmentedControl
+                value={kind}
+                onChange={v => setSettings({ ...settings, aiKind: v })}
+                data={[{ label: "HTTP endpoint", value: "http" }, { label: "Local CLI", value: "cli" }]}
+              />
+
+              {kind === "http" ? (
+                <>
+                  <TextInput
+                    label="Base URL"
+                    description="With or without the version segment: http://localhost:11434 and https://integrate.api.nvidia.com/v1 both work."
+                    placeholder="http://localhost:8080"
+                    value={settings.aiBaseUrl ?? ""}
+                    onChange={e => setSettings({ ...settings, aiBaseUrl: e.currentTarget.value })}
+                  />
+                  <PasswordInput
+                    label="API key"
+                    placeholder="sk-..."
+                    value={settings.aiApiKey ?? ""}
+                    onChange={e => setSettings({ ...settings, aiApiKey: e.currentTarget.value })}
+                  />
+                  {modelField}
+                </>
+              ) : (
+                <>
+                  <Select
+                    label="CLI tool"
+                    description="Must be installed and on PATH on the server running AspireUI."
+                    placeholder="Pick an installed agent CLI"
+                    data={cliTools}
+                    value={settings.aiCliTool ?? null}
+                    onChange={v => setSettings({ ...settings, aiCliTool: v })}
+                  />
+                  {modelField}
+                  <Text size="xs" c="dimmed">Model required for ollama/llm; ignored by claude/gemini/codex.</Text>
+                </>
+              )}
+              {detectMsg && <Text size="xs" c="dimmed">{detectMsg}</Text>}
+
+              <TextInput
+                label="Provider label"
+                placeholder="e.g. OpenAI, Ollama, Claude CLI"
+                value={settings.aiProviderLabel ?? ""}
+                onChange={e => setSettings({ ...settings, aiProviderLabel: e.currentTarget.value })}
+              />
+
+              {saved && (
+                <Alert color="green" icon={<IconCheck size={16} />} variant="light">
+                  Settings saved.
+                </Alert>
+              )}
+              {testResult && (
+                <Alert color={testResult.ok ? "green" : "red"} variant="light"
+                  icon={testResult.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
+                  {testResult.ok
+                    ? `Connection OK${testResult.model ? ` — model "${testResult.model}"` : ""}${testResult.ms != null ? ` (${testResult.ms} ms)` : ""}.`
+                    : `Test failed: ${testResult.error}`}
+                </Alert>
+              )}
+
+              <Group justify="space-between">
+                <Button variant="default" leftSection={<IconPlugConnected size={16} />} onClick={test} loading={testing}>
+                  Test connection
+                </Button>
+                <Button onClick={save} loading={saving}>Save</Button>
+              </Group>
+
+              <Alert variant="light" color="grape" icon={<IconSparkles size={16} />} p="xs">
+                <Text size="xs">
+                  With a backend configured, the assistant is reachable from every page — the button
+                  in the bottom right corner. It can also <b>operate this instance</b> through the
+                  same tools the MCP server exposes, with your permissions and nobody else's, and it
+                  shows what it called. That needs an HTTP endpoint: a local CLI cannot call functions.
+                </Text>
+              </Alert>
+            </MStack>
+    </>
+  );
+}
+
+// One place for everything model-shaped: the backend the assistant uses, and the tokens and MCP
+// endpoint an outside agent uses. They are the same subject from two sides.
+function AiAgentsTab() {
+  return (
+    <Tabs defaultValue="assistant" variant="outline">
+      <Tabs.List mb="lg">
+        <Tabs.Tab value="assistant" leftSection={<IconRobot size={14} />}>Assistant</Tabs.Tab>
+        <Tabs.Tab value="agents" leftSection={<IconPlugConnected size={14} />}>Agents &amp; API</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value="assistant"><AssistantSection /></Tabs.Panel>
+      <Tabs.Panel value="agents"><ApiTab /></Tabs.Panel>
+    </Tabs>
+  );
+}
+
+export function Settings() {
+  useTitle("Settings");
+  const { status } = useAuth();
+  const user = status?.user;
+  const maySettings = can(user, PERM_SETTINGS);
+  const mayHosting = maySettings || can(user, PERM_TARGETS) || can(user, PERM_STORE);
+
+  return (
     <PageShell title="Settings" container="md">
-          <Tabs defaultValue="ai" orientation="vertical" variant="pills">
+          <Tabs defaultValue={mayHosting ? "hosting" : "ai"} orientation="vertical" variant="pills">
             <Tabs.List mr="lg">
-              <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
               {mayHosting && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
+              <Tabs.Tab value="ai" leftSection={<IconSparkles size={15} />}>AI &amp; Agents</Tabs.Tab>
               {can(user, PERM_DOCKER) && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
-              {can(user, PERM_AUDIT) && <Tabs.Tab value="activity" leftSection={<IconHistory size={15} />}>Activity</Tabs.Tab>}
               {maySettings && <Tabs.Tab value="sso" leftSection={<IconKey size={15} />}>Sign-in</Tabs.Tab>}
+              {can(user, PERM_AUDIT) && <Tabs.Tab value="activity" leftSection={<IconHistory size={15} />}>Activity</Tabs.Tab>}
               {maySettings && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
-              <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="ai" style={{ flex: 1 }}>
-          <Text c="dimmed" size="sm" mb="lg">
-            Configure the AI backend used by the assistant. Either an OpenAI-compatible HTTP endpoint
-            (LocalAI, Ollama, OpenAI, …) or a locally-installed agent CLI on this server.
-          </Text>
-
-          <MStack gap="md">
-            <SegmentedControl
-              value={kind}
-              onChange={v => setSettings({ ...settings, aiKind: v })}
-              data={[{ label: "HTTP endpoint", value: "http" }, { label: "Local CLI", value: "cli" }]}
-            />
-
-            {kind === "http" ? (
-              <>
-                <TextInput
-                  label="Base URL"
-                  description="With or without the version segment: http://localhost:11434 and https://integrate.api.nvidia.com/v1 both work."
-                  placeholder="http://localhost:8080"
-                  value={settings.aiBaseUrl ?? ""}
-                  onChange={e => setSettings({ ...settings, aiBaseUrl: e.currentTarget.value })}
-                />
-                <PasswordInput
-                  label="API key"
-                  placeholder="sk-..."
-                  value={settings.aiApiKey ?? ""}
-                  onChange={e => setSettings({ ...settings, aiApiKey: e.currentTarget.value })}
-                />
-                {modelField}
-              </>
-            ) : (
-              <>
-                <Select
-                  label="CLI tool"
-                  description="Must be installed and on PATH on the server running AspireUI."
-                  placeholder="Pick an installed agent CLI"
-                  data={cliTools}
-                  value={settings.aiCliTool ?? null}
-                  onChange={v => setSettings({ ...settings, aiCliTool: v })}
-                />
-                {modelField}
-                <Text size="xs" c="dimmed">Model required for ollama/llm; ignored by claude/gemini/codex.</Text>
-              </>
-            )}
-            {detectMsg && <Text size="xs" c="dimmed">{detectMsg}</Text>}
-
-            <TextInput
-              label="Provider label"
-              placeholder="e.g. OpenAI, Ollama, Claude CLI"
-              value={settings.aiProviderLabel ?? ""}
-              onChange={e => setSettings({ ...settings, aiProviderLabel: e.currentTarget.value })}
-            />
-
-            {saved && (
-              <Alert color="green" icon={<IconCheck size={16} />} variant="light">
-                Settings saved.
-              </Alert>
-            )}
-            {testResult && (
-              <Alert color={testResult.ok ? "green" : "red"} variant="light"
-                icon={testResult.ok ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}>
-                {testResult.ok
-                  ? `Connection OK${testResult.model ? ` — model "${testResult.model}"` : ""}${testResult.ms != null ? ` (${testResult.ms} ms)` : ""}.`
-                  : `Test failed: ${testResult.error}`}
-              </Alert>
-            )}
-
-            <Group justify="space-between">
-              <Button variant="default" leftSection={<IconPlugConnected size={16} />} onClick={test} loading={testing}>
-                Test connection
-              </Button>
-              <Button onClick={save} loading={saving}>Save</Button>
-            </Group>
-          </MStack>
+              <AiAgentsTab />
             </Tabs.Panel>
             {mayHosting && (
               <Tabs.Panel value="hosting" style={{ flex: 1 }}>
@@ -1130,9 +1163,6 @@ export function Settings() {
                 <ImportTab />
               </Tabs.Panel>
             )}
-            <Tabs.Panel value="api" style={{ flex: 1 }}>
-              <ApiTab />
-            </Tabs.Panel>
             <Tabs.Panel value="env" style={{ flex: 1 }}>
               <EnvTab />
             </Tabs.Panel>

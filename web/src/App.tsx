@@ -15,6 +15,7 @@ import { useViewMode } from "./viewMode";
 import { can, canOpenEditor, PERM_USERS } from "./model";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelp } from "./ShortcutsHelp";
+import { AssistantFab } from "./chat/AssistantFab";
 
 function Home() {
   const { mode } = useViewMode();
@@ -30,7 +31,7 @@ function Home() {
 function AuthedExtras() {
   const { status } = useAuth();
   if (!status?.authenticated) return null;
-  return <><CommandPalette /><ShortcutsHelp /></>;
+  return <><CommandPalette /><ShortcutsHelp /><AssistantFab /></>;
 }
 
 function UsersGate({ children }: { children: ReactNode }) {

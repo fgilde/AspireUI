@@ -20,7 +20,19 @@ builder.Services.AddSingleton(_ => new SettingsStore(dbPath));
 builder.Services.AddSingleton(_ => new CatalogService());
 // The agent tools check the caller's permissions, which means they need the request.
 builder.Services.AddHttpContextAccessor();
+// The agent tools are a service in their own right: the MCP transport resolves them, and so does the
+// in-app chat. Scoped, because they check the permissions of whoever is asking.
+builder.Services.AddSingleton(InstancePaths.FromEnvironment());
+builder.Services.AddScoped<McpTools>();
 builder.Services.AddMcpServer().WithHttpTransport().WithTools<McpTools>();
+
+// The chat backend, once: an OpenAI-compatible endpoint or a local CLI. Only the http one can call
+// tools, so it is registered under both interfaces and the CLI path answers without them.
+builder.Services.AddSingleton(_ => new HttpChatClient(new HttpClient { Timeout = TimeSpan.FromMinutes(5) }));
+builder.Services.AddSingleton<CliChatClient>();
+builder.Services.AddSingleton<IChatClient>(sp =>
+    new RoutingChatClient(sp.GetRequiredService<HttpChatClient>(), sp.GetRequiredService<CliChatClient>()));
+builder.Services.AddSingleton<IToolChatClient>(sp => sp.GetRequiredService<HttpChatClient>());
 builder.Services.AddHostedService<BackupSchedulerService>();
 
 builder.Services.AddAuthentication("smart")
@@ -82,6 +94,7 @@ app.MapAuditEndpoints();
 app.MapInstanceEndpoints();
 app.MapPtyEndpoints();
 app.MapOidcEndpoints();
+app.MapChatEndpoints();
 app.MapStackEndpoints();
 app.MapMethods("/api/{**rest}", new[] { "GET", "HEAD", "POST", "PUT", "DELETE", "PATCH" }, () => Results.NotFound());
 app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = cacheHeaders });

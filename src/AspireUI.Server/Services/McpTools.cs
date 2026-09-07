@@ -19,8 +19,11 @@ namespace AspireUI.Server.Services;
 /// </para>
 /// </summary>
 [McpServerToolType]
-public class McpTools(CatalogService catalog, RunService run, UserStore users, IHttpContextAccessor http)
+public class McpTools(CatalogService catalog, RunService run, UserStore users, IHttpContextAccessor http,
+    InstancePaths? paths = null)
 {
+    private readonly InstancePaths _paths = paths ?? InstancePaths.FromEnvironment();
+
     /// <summary>
     /// Refuses unless the caller holds the permission the calling tool declares. It takes no argument
     /// on purpose — the attribute is the source — and a tool that forgets to call it is caught by a
@@ -38,14 +41,13 @@ public class McpTools(CatalogService catalog, RunService run, UserStore users, I
             throw new InvalidOperationException($"this needs the '{perm}' permission, which you do not have");
     }
 
-    private static string DataDir() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
-    private static string DbPath() => Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(DataDir(), "aspireui.db");
-    private static string WsRoot() => Environment.GetEnvironmentVariable("WORKSPACE_DIR") ?? Path.Combine(DataDir(), "workspace");
-    private static string Dir(string id) => Path.Combine(WsRoot(), id);
-    private static string PublishRoot(string id) => Path.Combine(WsRoot(), "_publish", id);
-    private static StackStore Stacks() => new(DbPath());
-    private static DeploymentStore Deps() => new(DbPath());
-    private static HostingService Hosting()
+    private string DbPath() => _paths.Db;
+    private string WsRoot() => _paths.Workspace;
+    private string Dir(string id) => Path.Combine(WsRoot(), id);
+    private string PublishRoot(string id) => Path.Combine(WsRoot(), "_publish", id);
+    private StackStore Stacks() => new(DbPath());
+    private DeploymentStore Deps() => new(DbPath());
+    private HostingService Hosting()
     {
         var deploy = new DeployService();
         var proxy = new ProxyService(deploy, Path.Combine(WsRoot(), "_proxy"), Environment.GetEnvironmentVariable("HOSTING_BASE_DOMAIN") ?? "localhost");

@@ -6,9 +6,6 @@ using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Http;
 
 // The agent surface: one list of tools, each with a permission that is actually enforced.
-// In the integration collection because the tools read DB_PATH from the environment, and so do the
-// test factories — two of those running at once would be one database.
-[Collection("ServerIntegration")]
 public class AgentToolTests
 {
     private static (McpTools tools, UserStore users, User user) Tools(params string[] permissions)
@@ -16,10 +13,6 @@ public class AgentToolTests
         var root = Path.Combine(Path.GetTempPath(), "aspireui-agent-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(root);
         var db = Path.Combine(root, "aspireui.db");
-        // The tools read these from the environment, so a test gets its own database and workspace.
-        Environment.SetEnvironmentVariable("DB_PATH", db);
-        Environment.SetEnvironmentVariable("WORKSPACE_DIR", Path.Combine(root, "workspace"));
-
         var users = new UserStore(db);
         var created = users.Create("agent", "hash", isAdmin: false);
         users.SetPermissions(created.Id, permissions.ToList());
@@ -29,7 +22,8 @@ public class AgentToolTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, created.Id)], "test")),
         };
         var accessor = new HttpContextAccessor { HttpContext = ctx };
-        return (new McpTools(new CatalogService(), new RunService(graph: new ResourceGraphService()), users, accessor),
+        return (new McpTools(new CatalogService(), new RunService(graph: new ResourceGraphService()), users, accessor,
+                new InstancePaths(db, Path.Combine(root, "workspace"))),
             users, users.Get(created.Id)!);
     }
 
