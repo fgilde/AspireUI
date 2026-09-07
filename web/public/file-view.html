@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AspireUI — file</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1a1b1e; color: #c1c2c5;
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      /* A custom element is inline by default and would collapse to nothing. */
+      mudex-file-display { display: block; width: 100%; height: 100%; }
+      #state { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 10px; text-align: center; padding: 24px; }
+      #state a { color: #4dabf7; }
+      .spin { width: 26px; height: 26px; border: 2px solid #373a40; border-top-color: #4dabf7;
+        border-radius: 50%; animation: spin .8s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg) } }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <!--
+      The file viewer, in a frame of its own on purpose. mudex.js brings MudBlazor's global css and a
+      .NET WebAssembly runtime with it; both would land in the app's own document and restyle it. Here
+      they are contained, and closing the dialog disposes the frame and everything in it.
+
+      Query: ?url=<file url>&type=<content type>&name=<file name>
+    -->
+    <div id="state"><div class="spin"></div><div id="msg">Loading the viewer…</div></div>
+    <div id="host" class="hidden" style="position:absolute; inset:0;"></div>
+
+    <script>
+      (function () {
+        var q = new URLSearchParams(location.search);
+        var url = q.get("url");
+        var type = q.get("type") || "";
+        var name = q.get("name") || "file";
+        var msg = document.getElementById("msg");
+        var state = document.getElementById("state");
+        var host = document.getElementById("host");
+
+        function fail(text) {
+          state.innerHTML = "";
+          var p = document.createElement("div");
+          p.textContent = text;
+          var a = document.createElement("a");
+          a.href = url + "&download=true";
+          a.textContent = "Download " + name + " instead";
+          state.appendChild(p);
+          state.appendChild(a);
+        }
+
+        if (!url) { fail("No file was given."); return; }
+
+        var element = document.createElement("mudex-file-display");
+        element.setAttribute("url", url);
+        if (type) element.setAttribute("content-type", type);
+        element.setAttribute("file-name", name);
+        element.setAttribute("show-file-name", "true");
+        host.appendChild(element);
+
+        var script = document.createElement("script");
+        script.src = "https://www.mudex.org/wc/mudex.js";
+        // The runtime is a few megabytes from mudex.org on first use. Without a network the viewer
+        // cannot come up at all, so say so and offer the download rather than spin forever.
+        script.onerror = function () { fail("The file viewer could not be loaded (mudex.org unreachable)."); };
+        script.onload = function () {
+          var timeout = setTimeout(function () {
+            fail("The file viewer did not start.");
+          }, 60000);
+          window.MudEx.ready.then(function () {
+            clearTimeout(timeout);
+            if (window.MudEx.setDarkMode) window.MudEx.setDarkMode(true);
+            state.classList.add("hidden");
+            host.classList.remove("hidden");
+          }).catch(function () {
+            clearTimeout(timeout);
+            fail("The file viewer failed to start.");
+          });
+        };
+        msg.textContent = "Loading the viewer…";
+        document.head.appendChild(script);
+      })();
+    </script>
+  </body>
+</html>

@@ -86,6 +86,16 @@ public class DeployService
         return (data, err);
     }
 
+    // Delete one entry inside a volume. The mount is writable here, which is the whole point, so the
+    // path is checked rather than trusted: SafeRel drops `..`, and an empty result would mean /data
+    // itself — deleting a whole volume is what the volume list is for, not this.
+    public DeployResult VolumeRm(string volume, string relPath)
+    {
+        var rel = SafeRel(relPath);
+        if (rel.Length == 0) return new(false, "refusing to delete the volume root");
+        return RunArgv(60_000, "run", "--rm", "-v", $"{volume}:/data", "alpine", "rm", "-rf", "--", "/data/" + rel);
+    }
+
     // Volume contents as a tar stream we read ourselves. A bind mount would land on the *daemon's* host,
     // which is the wrong machine as soon as the target is remote — stdout always comes back to us.
     public (byte[]? data, string? error) VolumeTarOut(string volume) =>

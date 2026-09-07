@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
-import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange } from "@tabler/icons-react";
+import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
@@ -490,18 +490,59 @@ export function TerminalModal({ d, onClose }: { d: Deployment; onClose: () => vo
   );
 }
 
-// Browse deployment's named volumes: walk directories, download files via read-only mounts.
+// One file, shown rather than downloaded. The viewer is mudex-file-display (pdf, images, office
+// documents, markdown, audio, archives), and it runs in an iframe of its own: it brings MudBlazor's
+// global css and a .NET WebAssembly runtime along, which have no business in this document.
+function FileViewModal({ d, vol, path, onClose }: { d: Deployment; vol: string; path: string; onClose: () => void }) {
+  const name = path.split("/").pop() || path;
+  const url = api.volumeFileUrl(d.id, vol, path);
+  const src = `/file-view.html?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}`;
+  return (
+    <Modal opened onClose={onClose} size="90%" zIndex={500}
+      title={<Group gap={8}><IconFile size={18} /><Title order={5}>{name}</Title></Group>}>
+      <Stack gap="xs">
+        <iframe src={src} title={name} style={{ width: "100%", height: "72vh", border: 0, borderRadius: 6, background: "var(--mantine-color-dark-8)" }} />
+        <Group justify="space-between">
+          <Text size="xs" c="dimmed" ff="monospace" truncate>{vol}/{path}</Text>
+          <Anchor size="sm" href={api.volumeFileUrl(d.id, vol, path, true)} target="_blank">
+            <Group gap={4}><IconDownload size={14} /> Download</Group>
+          </Anchor>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+// Browse deployment's named volumes: walk directories, view, download and delete files.
 export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
   const [vols, setVols] = useState<{ name: string; sizeMb: number }[] | null>(null);
   const [vol, setVol] = useState<string | null>(null);
   const [path, setPath] = useState("");
   const [entries, setEntries] = useState<{ name: string; dir: boolean; size: number }[] | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
   useEffect(() => { api.listVolumes(d.id).then(v => { setVols(v); if (v[0]) setVol(v[0].name); }).catch(() => setVols([])); }, [d.id]);
   useEffect(() => {
     if (!vol) return;
     setEntries(null);
     api.lsVolume(d.id, vol, path).then(setEntries).catch(() => setEntries([]));
-  }, [d.id, vol, path]);
+  }, [d.id, vol, path, reload]);
+
+  // A directory goes with everything in it, which is why the question says which one it is.
+  const remove = async (e: { name: string; dir: boolean }) => {
+    const rel = path ? `${path}/${e.name}` : e.name;
+    if (!await confirmDelete(e.dir ? `the folder ${e.name}` : e.name,
+      e.dir ? `Everything under ${vol}/${rel} is deleted inside the app's volume. This can't be undone.`
+            : `${vol}/${rel} is deleted inside the app's volume. This can't be undone.`)) return;
+    setBusy(e.name);
+    try {
+      await api.deleteVolumeFile(d.id, vol!, rel);
+      toastOk(`Deleted ${e.name}`);
+      setReload(n => n + 1);
+    } catch (err) { toastErr(err, "Could not delete"); }
+    setBusy(null);
+  };
   const crumbs = path.split("/").filter(Boolean);
   const goUp = () => setPath(crumbs.slice(0, -1).join("/"));
   const fmt = (n: number) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
@@ -537,16 +578,34 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
                         : <Text size="sm" style={{ flex: 1 }} truncate>{e.name}</Text>}
                       {!e.dir && <Text size="xs" c="dimmed" ff="monospace">{fmt(e.size)}</Text>}
                       {!e.dir && (
-                        <Anchor href={api.volumeFileUrl(d.id, vol!, path ? `${path}/${e.name}` : e.name)} target="_blank" style={{ display: "flex" }}>
-                          <IconDownload size={15} />
-                        </Anchor>
+                        <Tooltip label="View" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="gray" aria-label={`View ${e.name}`}
+                            onClick={() => setViewing(path ? `${path}/${e.name}` : e.name)}>
+                            <IconEye size={15} />
+                          </ActionIcon>
+                        </Tooltip>
                       )}
+                      {!e.dir && (
+                        <Tooltip label="Download" withArrow>
+                          <Anchor href={api.volumeFileUrl(d.id, vol!, path ? `${path}/${e.name}` : e.name, true)}
+                            target="_blank" style={{ display: "flex" }} aria-label={`Download ${e.name}`}>
+                            <IconDownload size={15} />
+                          </Anchor>
+                        </Tooltip>
+                      )}
+                      <Tooltip label="Delete" withArrow>
+                        <ActionIcon size="sm" variant="subtle" color="red" loading={busy === e.name}
+                          aria-label={`Delete ${e.name}`} onClick={() => remove(e)}>
+                          <IconTrash size={15} />
+                        </ActionIcon>
+                      </Tooltip>
                     </Group>
                   ))}
                 </Stack>)}
             </ScrollArea>
           </>)}
       </Stack>
+      {viewing && vol && <FileViewModal d={d} vol={vol} path={viewing} onClose={() => setViewing(null)} />}
     </Modal>
   );
 }

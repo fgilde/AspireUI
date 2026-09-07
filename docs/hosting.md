@@ -49,6 +49,11 @@ Every hosted app has the same controls (overview card menu, Hosting page, or the
 - **View logs** — live-streamed `docker compose logs` for the whole deployment or a single container,
   searchable, copyable, downloadable.
 - **Update (pull &amp; recreate)** — pulls newer images and recreates the containers.
+- **Files (volumes)** — walk the app's named volumes: view a file in a dialog (pdf, images,
+  markdown, office documents and audio, through the
+  [MudEx](https://www.mudex.org/webcomponents) file viewer), download it, or delete it. Deleting
+  a folder takes everything under it, and the volume root itself is refused — that is what
+  *Undeploy + delete data* is for. Admin only, and only on a target with a Docker socket.
 - **Back up volumes** — snapshots the app's named volumes.
 - **Undeploy** — `docker compose down`. **Named volumes are kept** — your data survives, and a
   re-deploy picks it back up.

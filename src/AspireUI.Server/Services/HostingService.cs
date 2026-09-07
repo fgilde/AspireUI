@@ -634,6 +634,15 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return R(d).VolumeCat($"{d.Project}_{vol}", relPath);
     }
 
+    // The volume has to belong to this deployment: the name that reaches docker is built from the
+    // deployment's own project prefix, so a made-up volume name cannot address someone else's data.
+    public (bool ok, string? error) DeleteVolumeFile(string id, string vol, string relPath)
+    {
+        if (store.Get(id) is not { } d || !VolumesOf(id).Contains(vol)) return (false, "no such volume");
+        var r = R(d).VolumeRm($"{d.Project}_{vol}", relPath);
+        return (r.Ok, r.Ok ? null : r.Log);
+    }
+
     // Streamed out of the volume rather than written through a bind mount: a mount lands on the
     // *daemon's* host, which is another machine as soon as the target is remote. stdout comes back here.
     public string? Backup(string id, string backupsRoot)

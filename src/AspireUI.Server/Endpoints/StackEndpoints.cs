@@ -978,12 +978,21 @@ public static class StackEndpoints
         app2.MapGet("/hosting/{id}/volumes/{vol}/ls", (string id, string vol, string? path) =>
             Results.Ok(hosting.BrowseVolume(id, vol, path ?? "")))
             .RequireAuthorization(p => p.RequireRole("Admin"));
-        app2.MapGet("/hosting/{id}/volumes/{vol}/file", (string id, string vol, string path) =>
+        // `download` keeps the old behaviour, a file the browser saves. Without it the file is served
+        // inline with the content type its extension implies, which is what a viewer needs: a PDF or an
+        // image handed out as application/octet-stream can only be downloaded, not shown.
+        app2.MapGet("/hosting/{id}/volumes/{vol}/file", (string id, string vol, string path, bool? download) =>
         {
             var (data, error) = hosting.ReadVolumeFile(id, vol, path);
             if (data is null) return Results.BadRequest(new { message = error ?? "could not read file" });
             var name = path.Replace('\\', '/').Split('/').LastOrDefault() ?? "file";
-            return Results.File(data, "application/octet-stream", name);
+            if (download == true) return Results.File(data, "application/octet-stream", name);
+            return Results.File(data, MimeOf(name));
+        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapDelete("/hosting/{id}/volumes/{vol}/file", (string id, string vol, string path) =>
+        {
+            var (ok, error) = hosting.DeleteVolumeFile(id, vol, path);
+            return ok ? Results.NoContent() : Results.BadRequest(new { message = error ?? "could not delete" });
         }).RequireAuthorization(p => p.RequireRole("Admin"));
         app2.MapPost("/hosting/{id}/exec", (string id, ExecRequest b) =>
         {
@@ -1277,6 +1286,12 @@ public static class StackEndpoints
         }
         catch { return new(); }
     }
+
+    private static readonly Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider Mimes = new();
+    // Anything the table does not know stays a byte stream: a wrong content type makes a browser render
+    // a file as something it is not, which is worse than offering it for download.
+    private static string MimeOf(string name) =>
+        Mimes.TryGetContentType(name, out var mime) ? mime : "application/octet-stream";
 
     private static readonly HttpClient Web = CreateWebClient();
     private static HttpClient CreateWebClient()

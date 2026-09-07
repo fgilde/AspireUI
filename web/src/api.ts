@@ -302,8 +302,11 @@ export const listVolumes = (depId: string): Promise<{ name: string; sizeMb: numb
   fetch(`${base}/hosting/${depId}/volumes`).then(ok);
 export const lsVolume = (depId: string, vol: string, path: string): Promise<{ name: string; dir: boolean; size: number }[]> =>
   fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/ls?path=${encodeURIComponent(path)}`).then(ok);
-export const volumeFileUrl = (depId: string, vol: string, path: string): string =>
-  `${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/file?path=${encodeURIComponent(path)}`;
+export const volumeFileUrl = (depId: string, vol: string, path: string, download = false): string =>
+  `${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/file?path=${encodeURIComponent(path)}${download ? "&download=true" : ""}`;
+export const deleteVolumeFile = (depId: string, vol: string, path: string): Promise<void> =>
+  fetch(`${base}/hosting/${depId}/volumes/${encodeURIComponent(vol)}/file?path=${encodeURIComponent(path)}`,
+    { method: "DELETE" }).then(okVoid);
 export const getBackupSettings = (): Promise<{ intervalHours: number; retain: number; lastRun?: string | null }> =>
   fetch(`${base}/hosting/backup-settings`).then(ok);
 export const setBackupSettings = (intervalHours: number, retain: number): Promise<void> =>

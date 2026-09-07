@@ -32,4 +32,17 @@ public class DeployServiceProjectTests
         Assert.Contains("compose -p p down", calls);
         Assert.Contains("compose -p p ps --format json", calls);
     }
+    [Fact]
+    public void VolumeRm_refuses_a_path_that_would_mean_the_whole_volume()
+    {
+        var (svc, _) = Fake();
+        // `..` and `.` are dropped from the path, so these all reduce to /data itself. Deleting a whole
+        // volume is what the volume list is for; the file browser must not do it by accident.
+        foreach (var path in new[] { "", "/", "..", "../..", "./", "./../" })
+        {
+            var r = svc.VolumeRm("app_data", path);
+            Assert.False(r.Ok, $"{path} should have been refused");
+            Assert.Contains("refusing", r.Log);
+        }
+    }
 }
