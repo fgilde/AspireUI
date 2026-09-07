@@ -21,6 +21,7 @@ entry adds exactly that one.
 | `ASPIREUI_SEED_DIR` | Directories (or compose files) to import as stacks, `;`-separated |
 | `ASPIREUI_SEED_GIT` | Repositories to import as stacks: `url[#branch][\|subdir]`, `;`-separated |
 | `ASPIREUI_SEED_FILE` | A seed file, or a directory holding `aspireui.seed.json` |
+| `ASPIREUI_SEED` | A whole seed document inline, as JSON — what the Aspire integration writes |
 | `ASPIREUI_SEED_DEPLOY` | `true` = deploy the seeded stacks and apps once hosting is up |
 
 The older `ASPIREUI_ADMIN_USERNAME` / `ASPIREUI_ADMIN_PASSWORD` (first admin, first run only),

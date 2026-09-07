@@ -285,6 +285,32 @@ public class SeedTests
     }
 
     [Fact]
+    public void A_whole_document_can_arrive_in_one_variable()
+    {
+        var s = Fresh();
+        // What the Aspire integration writes: one JSON document, nothing to mount.
+        Seed(s, new()
+        {
+            ["ASPIREUI_SEED"] = """
+            {
+              "users": [{ "username": "ops", "password": "opspassword1", "permissions": ["deploy", "files"] }],
+              "targets": [{ "name": "nas", "kind": "ssh", "host": "nas.local", "user": "deploy", "key": "KEY" }],
+              "tokens": [{ "name": "pipeline", "username": "ops", "token": "aspireui_from_apphost" }],
+              "apps": [{ "id": "gitea" }],
+              "deploy": true
+            }
+            """,
+        });
+
+        var ops = s.Users.FindByUsername("ops")!;
+        Assert.Equal(new[] { Perm.Deploy, Perm.Files }, ops.Permissions);
+        Assert.Equal("nas.local", Assert.Single(s.Targets.List(), t => t.Name == "nas").Ssh!.Host);
+        Assert.Equal(ops.Id, s.Tokens.ResolveUserId("aspireui_from_apphost"));
+        Assert.Single(s.Stacks.List());
+        Assert.NotEmpty(s.Settings.GetValue(Seeder.PendingDeployKey)!);
+    }
+
+    [Fact]
     public void A_broken_seed_file_does_not_stop_the_rest()
     {
         var s = Fresh();

@@ -79,6 +79,11 @@ public static class Seeder
                 catch (Exception ex) { Console.Error.WriteLine($"seed: {path} could not be read: {ex.Message}"); }
         }
 
+        // A whole document can also arrive in one env var — that is what the Aspire integration writes.
+        if (V("ASPIREUI_SEED") is { Length: > 0 } inline)
+            try { if (SeedParse.Doc(inline) is { } parsed) doc = SeedDoc.Merge(doc, parsed); }
+            catch (Exception ex) { Console.Error.WriteLine($"seed: ASPIREUI_SEED could not be read: {ex.Message}"); }
+
         return SeedDoc.Merge(doc, new SeedDoc(
             Users: SeedParse.Users(V("ASPIREUI_USERS")),
             Targets: SeedParse.Targets(V("ASPIREUI_TARGETS")),
