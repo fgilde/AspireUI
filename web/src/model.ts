@@ -443,7 +443,7 @@ export interface AppSettings {
   aiCliTool?: string | null;
 }
 
-export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[]; permissions?: string[] }
+export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[]; permissions?: string[]; twoFactor?: boolean }
 export const PERM_OPEN_EDITOR = "open-editor";
 export const PERM_DEPLOY = "deploy";
 export const PERM_CONFIGURE = "configure";

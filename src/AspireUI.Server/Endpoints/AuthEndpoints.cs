@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AspireUI.Server.Models;
 using AspireUI.Server.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -18,13 +19,18 @@ public static class AuthEndpoints
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
         Directory.CreateDirectory(dataDir);
         var store = app.Services.GetRequiredService<UserStore>();
+        // The half-finished login between password and code travels as a protected ticket rather than
+        // as a session: nothing is signed in until the second factor is in.
+        var tickets = app.Services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("aspireui.2fa");
         var hasher = new PasswordHasher<User>();
         var envHealth = new EnvHealth();
         var api = app.MapGroup("/api");
 
         static UserDto ToDto(User u) => new(u.Id, u.Username, u.IsAdmin, u.CreatedAt, u.Disabled, u.MustChangePassword,
             u.ViewModes ?? new() { "full", "simple" },
-            u.IsAdmin ? Perm.All.ToList() : u.Permissions ?? Perm.All.ToList());
+            u.IsAdmin ? Perm.All.ToList() : u.Permissions ?? Perm.All.ToList(),
+            u.TotpEnabled);
 
         static async Task SignInUserAsync(HttpContext ctx, User user)
         {
@@ -96,8 +102,44 @@ public static class AuthEndpoints
             if (result == PasswordVerificationResult.Failed) return InvalidCredentials();
             if (user.Disabled) return Results.Json(new { message = "account is disabled" }, statusCode: StatusCodes.Status403Forbidden);
 
+            if (user.TotpEnabled)
+                return Results.Ok(new
+                {
+                    twoFactorRequired = true,
+                    ticket = tickets.Protect($"{user.Id}|{DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds()}"),
+                });
+
             await SignInUserAsync(ctx, user);
             return Results.Ok(ToDto(user));
+        });
+
+        // Second half of a login: the ticket says which account passed the password, the code proves
+        // the phone. A recovery code is accepted here too and is then spent.
+        api.MapPost("/auth/login/2fa", async (HttpContext ctx, TwoFactorLoginRequest body) =>
+        {
+            string payload;
+            try { payload = tickets.Unprotect(body.Ticket ?? ""); }
+            catch { return InvalidCredentials(); }
+
+            var parts = payload.Split('|');
+            if (parts.Length != 2 || !long.TryParse(parts[1], out var expires)
+                || DateTimeOffset.FromUnixTimeSeconds(expires) < DateTimeOffset.UtcNow)
+                return Results.Json(new { message = "that took too long — sign in again" }, statusCode: StatusCodes.Status401Unauthorized);
+
+            if (store.Get(parts[0]) is not { Disabled: false } user || !user.TotpEnabled) return InvalidCredentials();
+
+            if (TotpService.Verify(user.TotpSecret, body.Code))
+            {
+                await SignInUserAsync(ctx, user);
+                return Results.Ok(ToDto(user));
+            }
+            if (TotpService.UseRecoveryCode(user.RecoveryCodes ?? new(), body.Code, out var left))
+            {
+                store.SetTotp(user.Id, user.TotpSecret, true, left);
+                await SignInUserAsync(ctx, user);
+                return Results.Ok(new { user = ToDto(user), recoveryCodeUsed = true, recoveryCodesLeft = left.Count });
+            }
+            return Results.Json(new { message = "that code is not right" }, statusCode: StatusCodes.Status401Unauthorized);
         });
 
         api.MapPost("/auth/change-password", async (HttpContext ctx, ChangePasswordRequest body) =>
@@ -110,6 +152,57 @@ public static class AuthEndpoints
             store.SetPassword(id, hasher.HashPassword(HasherUser, body.NewPassword), mustChange: false);
             await Task.CompletedTask;
             return Results.NoContent();
+        }).RequireAuthorization();
+
+        // Enrolment is two steps on purpose: a secret nobody has proved yet must not lock anybody out.
+        api.MapPost("/auth/2fa/setup", (HttpContext ctx) =>
+        {
+            if (ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value is not { } id || store.Get(id) is not { } user)
+                return Results.Unauthorized();
+            if (user.TotpEnabled) return Results.Conflict(new { message = "two-factor is already on" });
+
+            var secret = TotpService.NewSecret();
+            store.SetTotp(user.Id, secret, enabled: false, recoveryCodes: null);
+            return Results.Ok(new { secret, uri = TotpService.EnrolmentUri(secret, user.Username) });
+        }).RequireAuthorization();
+
+        api.MapPost("/auth/2fa/enable", (HttpContext ctx, TwoFactorCodeRequest body) =>
+        {
+            if (ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value is not { } id || store.Get(id) is not { } user)
+                return Results.Unauthorized();
+            if (string.IsNullOrWhiteSpace(user.TotpSecret)) return Results.BadRequest(new { message = "start the setup first" });
+            if (!TotpService.Verify(user.TotpSecret, body.Code))
+                return Results.BadRequest(new { message = "that code is not right — check the clock on your phone" });
+
+            var (plain, hashed) = TotpService.NewRecoveryCodes();
+            store.SetTotp(user.Id, user.TotpSecret, enabled: true, recoveryCodes: hashed);
+            // The only time these are ever readable.
+            return Results.Ok(new { recoveryCodes = plain });
+        }).RequireAuthorization();
+
+        api.MapPost("/auth/2fa/disable", (HttpContext ctx, TwoFactorDisableRequest body) =>
+        {
+            if (ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value is not { } id || store.Get(id) is not { } user)
+                return Results.Unauthorized();
+            // Turning it off needs the password again: a borrowed session must not be able to.
+            if (hasher.VerifyHashedPassword(HasherUser, user.PasswordHash, body.Password ?? "") == PasswordVerificationResult.Failed)
+                return Results.BadRequest(new { message = "that password is not right" });
+
+            store.SetTotp(user.Id, null, enabled: false, recoveryCodes: null);
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        api.MapPost("/auth/2fa/recovery-codes", (HttpContext ctx, TwoFactorDisableRequest body) =>
+        {
+            if (ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value is not { } id || store.Get(id) is not { } user)
+                return Results.Unauthorized();
+            if (!user.TotpEnabled) return Results.BadRequest(new { message = "two-factor is not on" });
+            if (hasher.VerifyHashedPassword(HasherUser, user.PasswordHash, body.Password ?? "") == PasswordVerificationResult.Failed)
+                return Results.BadRequest(new { message = "that password is not right" });
+
+            var (plain, hashed) = TotpService.NewRecoveryCodes();
+            store.SetTotp(user.Id, user.TotpSecret, true, hashed);
+            return Results.Ok(new { recoveryCodes = plain });
         }).RequireAuthorization();
 
         api.MapPost("/auth/logout", async (HttpContext ctx) =>
@@ -202,6 +295,15 @@ public static class AuthEndpoints
             return Results.NoContent();
         }).RequireAuthorization(policy => policy.RequireRole("Admin"));
 
+        // The way back for somebody whose phone is gone and whose recovery codes are gone with it.
+        users.MapDelete("/{id}/2fa", (string id, HttpContext ctx) =>
+        {
+            if (store.Get(id) is null) return Results.NotFound();
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
+            store.SetTotp(id, null, enabled: false, recoveryCodes: null);
+            return Results.NoContent();
+        });
+
         users.MapPut("/{id}/disabled", (string id, SetDisabledRequest body, HttpContext ctx) =>
         {
             var user = store.Get(id);
@@ -223,4 +325,7 @@ public static class AuthEndpoints
     public record SetAdminRequest(bool IsAdmin);
     public record SetViewModesRequest(List<string>? Modes);
     public record SetPermissionsRequest(List<string>? Permissions);
+    public record TwoFactorLoginRequest(string? Ticket, string? Code);
+    public record TwoFactorCodeRequest(string? Code);
+    public record TwoFactorDisableRequest(string? Password);
 }

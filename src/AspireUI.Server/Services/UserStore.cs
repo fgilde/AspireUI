@@ -25,7 +25,8 @@ public class UserStore
                                "id TEXT PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT, " +
                                "is_admin INTEGER, created_at TEXT)";
             cmd.ExecuteNonQuery();
-            foreach (var col in new[] { "disabled INTEGER DEFAULT 0", "must_change_password INTEGER DEFAULT 0", "view_modes TEXT", "permissions TEXT" })
+            foreach (var col in new[] { "disabled INTEGER DEFAULT 0", "must_change_password INTEGER DEFAULT 0", "view_modes TEXT", "permissions TEXT",
+                                        "totp_secret TEXT", "totp_enabled INTEGER DEFAULT 0", "recovery_codes TEXT" })
                 try { using var alter = conn.CreateCommand(); alter.CommandText = $"ALTER TABLE users ADD COLUMN {col}"; alter.ExecuteNonQuery(); }
                 catch { }
         });
@@ -39,7 +40,8 @@ public class UserStore
         action(conn);
     }
 
-    private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password, view_modes, permissions";
+    private const string Cols = "id, username, password_hash, is_admin, created_at, disabled, must_change_password, view_modes, permissions, " +
+                                "totp_secret, totp_enabled, recovery_codes";
     // NULL = never set (legacy user, everything allowed); "" = explicitly emptied (nothing allowed).
     private static List<string>? Csv(SqliteDataReader r, int i) =>
         r.IsDBNull(i)
@@ -48,7 +50,8 @@ public class UserStore
     private static User Read(SqliteDataReader r) => new(
         r.GetString(0), r.GetString(1), r.GetString(2), r.GetInt64(3) != 0, r.GetString(4),
         !r.IsDBNull(5) && r.GetInt64(5) != 0, !r.IsDBNull(6) && r.GetInt64(6) != 0,
-        Csv(r, 7), Csv(r, 8));
+        Csv(r, 7), Csv(r, 8),
+        r.IsDBNull(9) ? null : r.GetString(9), !r.IsDBNull(10) && r.GetInt64(10) != 0, Csv(r, 11));
 
     public int Count()
     {
@@ -158,6 +161,21 @@ public class UserStore
         using var cmd = conn.CreateCommand();
         cmd.CommandText = "UPDATE users SET permissions=$p WHERE id=$i";
         cmd.Parameters.AddWithValue("$p", string.Join(",", perms));
+        cmd.Parameters.AddWithValue("$i", id);
+        cmd.ExecuteNonQuery();
+    });
+
+    /// <summary>
+    /// Starts or finishes enrolment. A secret with <paramref name="enabled"/> false is one the user is
+    /// still setting up: it costs them nothing if they walk away.
+    /// </summary>
+    public void SetTotp(string id, string? secret, bool enabled, List<string>? recoveryCodes) => UsingConnection(conn =>
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "UPDATE users SET totp_secret=$s, totp_enabled=$e, recovery_codes=$r WHERE id=$i";
+        cmd.Parameters.AddWithValue("$s", (object?)secret ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$e", enabled ? 1 : 0);
+        cmd.Parameters.AddWithValue("$r", recoveryCodes is null ? DBNull.Value : string.Join(",", recoveryCodes));
         cmd.Parameters.AddWithValue("$i", id);
         cmd.ExecuteNonQuery();
     });

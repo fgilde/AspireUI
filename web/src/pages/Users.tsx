@@ -3,7 +3,7 @@ import {
   ActionIcon, Alert, Badge, Button, Group, PasswordInput,
   Stack as MStack, Switch, Table, TextInput, Menu, Modal, Checkbox, Text,
 } from "@mantine/core";
-import { IconAlertCircle, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid } from "@tabler/icons-react";
+import { IconAlertCircle, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid, IconDeviceMobileOff } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { UserDto } from "../model";
 import { can, PERMISSIONS, PERM_PRESETS } from "../model";
@@ -120,6 +120,13 @@ export function Users() {
     }
   };
 
+  // The way back in for somebody whose phone and recovery codes are both gone.
+  const clearTwoFactor = async (u: UserDto) => {
+    setError(null);
+    try { await api.adminClearTwoFactor(u.id); await refresh(); }
+    catch (e) { setError(errorMessage(e, "Failed to remove two-factor.")); }
+  };
+
   const toggleDisabled = async (u: UserDto) => {
     setError(null);
     try { await api.adminSetDisabled(u.id, !u.disabled); await refresh(); }
@@ -173,6 +180,7 @@ export function Users() {
                         ? <Badge color="red" variant="light">Disabled</Badge>
                         : <Badge color="green" variant="light">Active</Badge>}
                       {u.mustChangePassword && <Badge ml={4} color="yellow" variant="light">Must change pw</Badge>}
+                      {u.twoFactor && <Badge ml={4} color="teal" variant="light">2FA</Badge>}
                     </Table.Td>
                     <Table.Td>{new Date(u.createdAt).toLocaleDateString()}</Table.Td>
                     <Table.Td>
@@ -184,6 +192,11 @@ export function Users() {
                             disabled={u.isAdmin && lastAdmin}
                             onClick={() => toggleAdmin(u)}>{u.isAdmin ? "Remove admin" : "Make admin"}</Menu.Item>}
                           <Menu.Item leftSection={<IconLayoutGrid size={14} />} onClick={() => openPermissions(u)}>Permissions…</Menu.Item>
+                          {u.twoFactor && (
+                            <Menu.Item leftSection={<IconDeviceMobileOff size={14} />} onClick={() => clearTwoFactor(u)}>
+                              Remove two-factor
+                            </Menu.Item>
+                          )}
                           <Menu.Item leftSection={u.disabled ? <IconLockOpen size={14} /> : <IconLock size={14} />}
                             disabled={!u.disabled && lastAdmin}
                             onClick={() => toggleDisabled(u)}>{u.disabled ? "Enable" : "Disable"}</Menu.Item>

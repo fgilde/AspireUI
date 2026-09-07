@@ -5,6 +5,7 @@ import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
+import { TwoFactorCard } from "../auth/TwoFactorCard";
 
 export function Profile() {
   useTitle("Profile");
@@ -66,6 +67,9 @@ export function Profile() {
               <Button onClick={change} loading={busy} disabled={!oldPassword || !newPassword}>Change password</Button>
             </Group>
           </MStack>
+
+          <Divider my="xl" />
+          <TwoFactorCard />
     </PageShell>
   );
 }

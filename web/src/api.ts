@@ -34,8 +34,25 @@ async function okVoid(r: Response) {
 export const authStatus = (): Promise<AuthStatus> => fetch(`${base}/auth/status`).then(okAuth);
 export const setup = (username: string, password: string): Promise<UserDto> =>
   fetch(`${base}/auth/setup`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }) }).then(okAuth);
-export const login = (username: string, password: string): Promise<UserDto> =>
+// A login either signs in or stops at the second factor and hands back a ticket to finish with.
+export type LoginResult = UserDto | { twoFactorRequired: true; ticket: string };
+export const isTwoFactorChallenge = (r: LoginResult): r is { twoFactorRequired: true; ticket: string } =>
+  (r as { twoFactorRequired?: boolean }).twoFactorRequired === true;
+
+export const login = (username: string, password: string): Promise<LoginResult> =>
   fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }) }).then(okAuth);
+export const loginTwoFactor = (ticket: string, code: string): Promise<unknown> =>
+  fetch(`${base}/auth/login/2fa`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ticket, code }) }).then(okAuth);
+export const twoFactorSetup = (): Promise<{ secret: string; uri: string }> =>
+  fetch(`${base}/auth/2fa/setup`, { method: "POST" }).then(ok);
+export const twoFactorEnable = (code: string): Promise<{ recoveryCodes: string[] }> =>
+  fetch(`${base}/auth/2fa/enable`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) }).then(ok);
+export const twoFactorDisable = (password: string): Promise<void> =>
+  fetch(`${base}/auth/2fa/disable`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }).then(okVoid);
+export const twoFactorRecoveryCodes = (password: string): Promise<{ recoveryCodes: string[] }> =>
+  fetch(`${base}/auth/2fa/recovery-codes`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }).then(ok);
+export const adminClearTwoFactor = (id: string): Promise<void> =>
+  fetch(`${base}/users/${id}/2fa`, { method: "DELETE" }).then(okVoid);
 export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method: "POST" }).then(() => undefined);
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 

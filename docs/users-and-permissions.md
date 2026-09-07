@@ -65,6 +65,25 @@ The permissions dialog has a few one-click sets:
 `ASPIREUI_USERS` creates accounts at start — `name:password[:permissions]`, with a preset name or a
 list of permission ids in the third field. See [Seeding an install](seeding.md).
 
+## Two-factor authentication
+
+Any account can add a second factor under **Profile → Two-factor authentication**: scan the QR code
+with an authenticator app, type the code it shows, and write down the eight **recovery codes** that
+appear once. From then on signing in asks for a code after the password.
+
+- The QR code is drawn in your browser. The shared secret never goes to a third party to be turned
+  into a picture.
+- Between password and code nothing is signed in: the half-finished login is a five-minute encrypted
+  ticket, not a session.
+- A recovery code works wherever the app's code does, and is spent when used. The codes are kept as
+  hashes, so a copy of the database is not a copy of your second factor.
+- Turning it off, or asking for new recovery codes, needs the password again — a borrowed session
+  cannot do either.
+- **Phone gone, codes gone?** An admin can remove the second factor from the *Users* page. Only an
+  admin, and never for another admin's account unless they are one themselves.
+
+The list shows a **2FA** badge for accounts that have it on.
+
 ## The activity log
 
 **Settings → Activity** lists everything that changed something: who did it, which app it was about,

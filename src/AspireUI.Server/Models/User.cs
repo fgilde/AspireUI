@@ -2,11 +2,14 @@ namespace AspireUI.Server.Models;
 
 public record User(string Id, string Username, string PasswordHash, bool IsAdmin, string CreatedAt,
     bool Disabled = false, bool MustChangePassword = false, List<string>? ViewModes = null,
-    List<string>? Permissions = null);
+    List<string>? Permissions = null,
+    // The second factor. TotpSecret exists as soon as enrolment starts; only TotpEnabled decides
+    // whether a login has to prove it.
+    string? TotpSecret = null, bool TotpEnabled = false, List<string>? RecoveryCodes = null);
 
 public record UserDto(string Id, string Username, bool IsAdmin, string CreatedAt,
     bool Disabled = false, bool MustChangePassword = false, List<string>? ViewModes = null,
-    List<string>? Permissions = null);
+    List<string>? Permissions = null, bool TwoFactor = false);
 
 /// <summary>
 /// What a non-admin may do. An admin has all of them; a user whose list is <c>null</c> also has all
