@@ -444,10 +444,45 @@ export interface AppSettings {
 }
 
 export interface UserDto { id: string; username: string; isAdmin: boolean; createdAt: string; disabled?: boolean; mustChangePassword?: boolean; viewModes?: string[]; permissions?: string[] }
-// Permission token for opening the builder/editor.
 export const PERM_OPEN_EDITOR = "open-editor";
-// Whether user may open the builder/editor; admins always may, others need grant.
-export const canOpenEditor = (u?: UserDto | null): boolean => !!u && (u.isAdmin || !u.permissions || u.permissions.includes(PERM_OPEN_EDITOR));
+export const PERM_DEPLOY = "deploy";
+export const PERM_CONFIGURE = "configure";
+export const PERM_FILES = "files";
+export const PERM_FILES_WRITE = "files-write";
+export const PERM_TERMINAL = "terminal";
+export const PERM_TARGETS = "targets";
+export const PERM_STORE = "store";
+export const PERM_SETTINGS = "settings";
+export const PERM_DOCKER = "docker";
+export const PERM_USERS = "users";
+
+// Admins may everything; a user with no list at all is an install that predates permissions and keeps
+// what it had. The server checks the same thing again — this only decides what is worth showing.
+export const can = (u: UserDto | null | undefined, perm: string): boolean =>
+  !!u && !u.disabled && (u.isAdmin || !u.permissions || u.permissions.includes(perm));
+export const canOpenEditor = (u?: UserDto | null): boolean => can(u, PERM_OPEN_EDITOR);
+
+export const PERMISSIONS: { id: string; label: string; description: string }[] = [
+  { id: PERM_OPEN_EDITOR, label: "Builder / editor", description: "Create, change and delete stacks, import code, run them locally. Off = the app-store view only." },
+  { id: PERM_DEPLOY, label: "Install & run apps", description: "Install, start, stop, update, undeploy, move and back up hosted apps." },
+  { id: PERM_CONFIGURE, label: "Configure apps", description: "Change a hosted app's environment variables, ports and domain." },
+  { id: PERM_FILES, label: "Browse app files", description: "List, view and download files in an app's volumes." },
+  { id: PERM_FILES_WRITE, label: "Delete app files", description: "Delete files and folders in an app's volumes." },
+  { id: PERM_TERMINAL, label: "Terminal in containers", description: "Run commands inside an app's containers." },
+  { id: PERM_TARGETS, label: "Deploy targets", description: "Add, change and remove the machines apps are deployed to." },
+  { id: PERM_STORE, label: "App store", description: "Manage store sources and which apps are hidden." },
+  { id: PERM_SETTINGS, label: "Global settings", description: "Proxy, notifications, backup schedule, dashboard and import settings." },
+  { id: PERM_DOCKER, label: "Docker host", description: "See and prune the host's images, containers and volumes." },
+  { id: PERM_USERS, label: "Users", description: "Create users and grant them permissions. Only an admin can make an admin." },
+];
+
+export const PERM_PRESETS: { label: string; perms: string[] }[] = [
+  { label: "Everything", perms: PERMISSIONS.map(p => p.id) },
+  { label: "Operator", perms: [PERM_DEPLOY, PERM_CONFIGURE, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL, PERM_OPEN_EDITOR] },
+  { label: "App user", perms: [PERM_DEPLOY, PERM_CONFIGURE, PERM_FILES] },
+  { label: "Viewer", perms: [PERM_FILES] },
+  { label: "Nothing", perms: [] },
+];
 export interface AuthStatus { needsSetup: boolean; authenticated: boolean; user: UserDto | null }
 export interface EnvHealth {
   dotnet: { ok: boolean; version: string };

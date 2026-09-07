@@ -40,8 +40,8 @@ export const logout = (): Promise<void> => fetch(`${base}/auth/logout`, { method
 export const envHealth = (): Promise<EnvHealth> => fetch(`${base}/env/health`).then(okAuth);
 
 export const listUsers = (): Promise<UserDto[]> => fetch(`${base}/users`).then(ok);
-export const createUser = (username: string, password: string, isAdmin: boolean): Promise<UserDto> =>
-  fetch(`${base}/users`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, isAdmin }) }).then(ok);
+export const createUser = (username: string, password: string, isAdmin: boolean, permissions?: string[], viewModes?: string[]): Promise<UserDto> =>
+  fetch(`${base}/users`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password, isAdmin, permissions, viewModes }) }).then(ok);
 export const deleteUser = (id: string): Promise<void> => fetch(`${base}/users/${id}`, { method: "DELETE" }).then(okVoid);
 export const adminSetPassword = (id: string, password: string, mustChange: boolean): Promise<void> =>
   fetch(`${base}/users/${id}/password`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ password, mustChange }) }).then(okVoid);

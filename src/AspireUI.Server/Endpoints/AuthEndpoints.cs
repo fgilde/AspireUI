@@ -17,9 +17,7 @@ public static class AuthEndpoints
         var dataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AspireUI");
         Directory.CreateDirectory(dataDir);
-        var dbPath = Environment.GetEnvironmentVariable("DB_PATH") ?? Path.Combine(dataDir, "aspireui.db");
-
-        var store = new UserStore(dbPath);
+        var store = app.Services.GetRequiredService<UserStore>();
         var hasher = new PasswordHasher<User>();
         var envHealth = new EnvHealth();
         var api = app.MapGroup("/api");
@@ -38,6 +36,21 @@ public static class AuthEndpoints
             if (user.IsAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+        }
+
+        static List<string> ViewModesOf(List<string>? modes)
+        {
+            var m = (modes ?? new()).Where(x => x is "full" or "simple").Distinct().ToList();
+            return m.Count == 0 ? new() { "full", "simple" } : m;
+        }
+
+        // A user manager can hand out only what they hold themselves, or granting permissions would be
+        // a way to collect them.
+        List<string> Grantable(HttpContext ctx, List<string>? wanted)
+        {
+            var actor = ctx.User.FindFirst(ClaimTypes.NameIdentifier)?.Value is { } aid ? store.Get(aid) : null;
+            return (wanted ?? new()).Where(Perm.All.Contains).Distinct()
+                .Where(p => IsAdminActor(ctx) || Perm.Has(actor, p)).ToList();
         }
 
         static IResult InvalidCredentials() =>
@@ -116,52 +129,66 @@ public static class AuthEndpoints
             });
         });
 
-        var users = api.MapGroup("/users").RequireAuthorization(policy => policy.RequireRole("Admin"));
+        // Managing users is a permission of its own, but everything that could turn a user manager into
+        // an admin stays with the admins: the admin flag, and anyone who already is an admin.
+        var users = api.MapGroup("/users").RequirePerm(Perm.Users);
+        bool IsAdminActor(HttpContext ctx) => ctx.User.IsInRole("Admin");
+        IResult? AdminsOnly(HttpContext ctx, string id) =>
+            !IsAdminActor(ctx) && store.Get(id) is { IsAdmin: true }
+                ? Results.Json(new { message = "only an admin can change an admin account" }, statusCode: StatusCodes.Status403Forbidden)
+                : null;
 
         users.MapGet("/", () => Results.Ok(store.List().Select(ToDto)));
 
-        users.MapPost("/", (CreateUserRequest body) =>
+        users.MapPost("/", (CreateUserRequest body, HttpContext ctx) =>
         {
             if (string.IsNullOrWhiteSpace(body.Username)) return Results.BadRequest(new { message = "username required" });
             if (body.Password.Length < 8) return Results.BadRequest(new { message = "password must be at least 8 characters" });
             if (store.FindByUsername(body.Username) is not null) return Results.Conflict(new { message = "username already exists" });
+            if (body.IsAdmin && !IsAdminActor(ctx))
+                return Results.Json(new { message = "only an admin can create an admin" }, statusCode: StatusCodes.Status403Forbidden);
 
             var hash = hasher.HashPassword(HasherUser, body.Password);
             var user = store.Create(body.Username, hash, body.IsAdmin);
-            return Results.Ok(ToDto(user));
+            if (!body.IsAdmin)
+                store.SetPermissions(user.Id, Grantable(ctx, body.Permissions ?? Perm.Default.ToList()));
+            if (body.ViewModes is { Count: > 0 }) store.SetViewModes(user.Id, ViewModesOf(body.ViewModes));
+            return Results.Ok(ToDto(store.Get(user.Id)!));
         });
 
-        users.MapDelete("/{id}", (string id) =>
+        users.MapDelete("/{id}", (string id, HttpContext ctx) =>
         {
             var user = store.Get(id);
             if (user is null) return Results.NotFound();
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
             if (user.IsAdmin && store.AdminCount() <= 1)
                 return Results.BadRequest(new { message = "cannot delete the last admin" });
             store.Delete(id);
             return Results.NoContent();
         });
 
-        users.MapPut("/{id}/password", (string id, SetPasswordRequest body) =>
+        users.MapPut("/{id}/password", (string id, SetPasswordRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is null) return Results.NotFound();
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
             if (body.Password.Length < 8) return Results.BadRequest(new { message = "password must be at least 8 characters" });
             store.SetPassword(id, hasher.HashPassword(HasherUser, body.Password), body.MustChange);
             return Results.NoContent();
         });
 
-        users.MapPut("/{id}/view-modes", (string id, SetViewModesRequest body) =>
+        users.MapPut("/{id}/view-modes", (string id, SetViewModesRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is null) return Results.NotFound();
-            var modes = (body.Modes ?? new()).Where(m => m is "full" or "simple").Distinct().ToList();
-            if (modes.Count == 0) modes = new() { "full", "simple" };
-            store.SetViewModes(id, modes);
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
+            store.SetViewModes(id, ViewModesOf(body.Modes));
             return Results.NoContent();
         });
 
-        users.MapPut("/{id}/permissions", (string id, SetPermissionsRequest body) =>
+        users.MapPut("/{id}/permissions", (string id, SetPermissionsRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is null) return Results.NotFound();
-            store.SetPermissions(id, (body.Permissions ?? new()).Where(Perm.All.Contains).Distinct().ToList());
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
+            store.SetPermissions(id, Grantable(ctx, body.Permissions));
             return Results.NoContent();
         });
 
@@ -173,12 +200,13 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { message = "cannot demote the last admin" });
             store.SetAdmin(id, body.IsAdmin);
             return Results.NoContent();
-        });
+        }).RequireAuthorization(policy => policy.RequireRole("Admin"));
 
-        users.MapPut("/{id}/disabled", (string id, SetDisabledRequest body) =>
+        users.MapPut("/{id}/disabled", (string id, SetDisabledRequest body, HttpContext ctx) =>
         {
             var user = store.Get(id);
             if (user is null) return Results.NotFound();
+            if (AdminsOnly(ctx, id) is { } denied) return denied;
             if (body.Disabled && user.IsAdmin && store.AdminCount() <= 1)
                 return Results.BadRequest(new { message = "cannot disable the last admin" });
             store.SetDisabled(id, body.Disabled);
@@ -187,7 +215,8 @@ public static class AuthEndpoints
     }
 
     public record AuthRequest(string Username, string Password);
-    public record CreateUserRequest(string Username, string Password, bool IsAdmin);
+    public record CreateUserRequest(string Username, string Password, bool IsAdmin,
+        List<string>? Permissions = null, List<string>? ViewModes = null);
     public record ChangePasswordRequest(string OldPassword, string NewPassword);
     public record SetPasswordRequest(string Password, bool MustChange);
     public record SetDisabledRequest(bool Disabled);

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Modal, Title, Stack, TextInput, NumberInput, Switch, Select, Loader, Divider, Alert, ScrollArea, Group, Button, ActionIcon, Text, Tooltip, CopyButton, Badge, Anchor } from "@mantine/core";
 import { IconPlayerPlay, IconPlayerStop, IconTrash, IconPencil, IconRefresh, IconReload, IconArchive, IconAdjustments, IconPlus, IconX, IconAlertTriangle, IconFileText, IconSearch, IconDownload, IconUpload, IconCopy, IconCheck, IconMaximize, IconMinimize, IconArrowBackUp, IconWorld, IconTerminal2, IconFolder, IconFolderOpen, IconFile, IconDatabase, IconArrowsExchange, IconEye } from "@tabler/icons-react";
 import type { Deployment, NodeConfig, PortMapping, BackupInfo, DomainInfo } from "../model";
+import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES_WRITE, PERM_TERMINAL } from "../model";
+import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 
@@ -17,9 +19,11 @@ export const deploymentColor = (d?: { state: string; health?: string | null } | 
     : hostingColor(d.state);
 
 // Menu items shown everywhere; onChanged reloads caller; onConfigure/onLogs open shared modals.
-export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onChanged }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onChanged: () => void;
+export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onOpenEditor, onMove, onChanged }: {
+  d: Deployment; onConfigure: () => void; onLogs: () => void; onBackups?: () => void; onDomain?: () => void; onTerminal?: () => void; onFiles?: () => void; onOpenEditor?: () => void; onMove?: () => void; onChanged: () => void;
 }) {
+  const user = useAuth().status?.user;
+  const mayDeploy = can(user, PERM_DEPLOY);
   const stop = () => { toastOk(`Stopping ${d.name}…`); api.stopHosting(d.stackId).then(onChanged).catch(toastErr); };
   const start = () => { toastOk(`${d.state === "failed" ? "Retrying" : "Starting"} ${d.name}…`); api.startHosting(d.stackId).then(onChanged).catch(toastErr); };
   const restart = () => { toastOk(`Restarting ${d.name}…`); api.restartHosting(d.stackId).then(onChanged).then(() => toastOk("Restarted")).catch(toastErr); };
@@ -33,28 +37,30 @@ export function HostingMenuItems({ d, canEdit, onConfigure, onLogs, onBackups, o
     .then(okd => { if (okd) api.undeployHosting(d.stackId, true).then(onChanged).then(() => toastOk("Undeployed + data wiped")).catch(toastErr); });
   return (
     <>
-      {d.state === "running"
+      {mayDeploy && (d.state === "running"
         ? <Menu.Item leftSection={<IconPlayerStop size={14} />} onClick={stop}>Stop</Menu.Item>
         : d.state === "deploying"
         ? <Menu.Item leftSection={<Loader size={12} />} disabled>Deploying…</Menu.Item>
-        : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={start}>{d.state === "failed" ? "Retry" : "Start"}</Menu.Item>}
-      {d.state === "running" && <Menu.Item leftSection={<IconReload size={14} />} onClick={restart}>Restart</Menu.Item>}
-      <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>
+        : <Menu.Item leftSection={<IconPlayerPlay size={14} />} onClick={start}>{d.state === "failed" ? "Retry" : "Start"}</Menu.Item>)}
+      {mayDeploy && d.state === "running" && <Menu.Item leftSection={<IconReload size={14} />} onClick={restart}>Restart</Menu.Item>}
+      {can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconAdjustments size={14} />} onClick={onConfigure}>Configure (env vars)</Menu.Item>}
       <Menu.Item leftSection={<IconFileText size={14} />} onClick={() => onLogs()}>View logs</Menu.Item>
       {/* Also when stopped or crash-looping: that is exactly when a repair command is needed. */}
-      {onTerminal && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
-      <Menu.Item leftSection={<IconSearch size={14} />} onClick={checkUpdates}>Check for updates</Menu.Item>
-      <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>
+      {onTerminal && can(user, PERM_TERMINAL) && <Menu.Item leftSection={<IconTerminal2 size={14} />} onClick={onTerminal}>Terminal…</Menu.Item>}
+      {mayDeploy && <Menu.Item leftSection={<IconSearch size={14} />} onClick={checkUpdates}>Check for updates</Menu.Item>}
+      {mayDeploy && <Menu.Item leftSection={<IconRefresh size={14} />} onClick={update}>Update (pull &amp; recreate)</Menu.Item>}
       {/* A target without a docker socket has no volumes to browse and no compose shell. */}
-      {onFiles && d.targetCompose !== false && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
-      {onMove && <Menu.Item leftSection={<IconArrowsExchange size={14} />} onClick={onMove}>Move or copy to another target…</Menu.Item>}
+      {onFiles && can(user, PERM_FILES) && d.targetCompose !== false && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={onFiles}>Files (volumes)…</Menu.Item>}
+      {onMove && mayDeploy && <Menu.Item leftSection={<IconArrowsExchange size={14} />} onClick={onMove}>Move or copy to another target…</Menu.Item>}
       {/* Backups are volume snapshots: an orchestrator target has none to take. */}
-      {onBackups && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
-      {onDomain && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
-      {onOpenEditor && canEdit && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
-      <Menu.Divider />
-      <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={undeploy}>Undeploy</Menu.Item>
-      <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={wipe}>Undeploy + delete data</Menu.Item>
+      {onBackups && mayDeploy && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
+      {onDomain && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
+      {onOpenEditor && canOpenEditor(user) && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
+      {mayDeploy && <>
+        <Menu.Divider />
+        <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={undeploy}>Undeploy</Menu.Item>
+        <Menu.Item color="red" leftSection={<IconTrash size={14} />} onClick={wipe}>Undeploy + delete data</Menu.Item>
+      </>}
     </>
   );
 }
@@ -515,6 +521,7 @@ function FileViewModal({ d, vol, path, onClose }: { d: Deployment; vol: string; 
 
 // Browse deployment's named volumes: walk directories, view, download and delete files.
 export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => void }) {
+  const mayDelete = can(useAuth().status?.user, PERM_FILES_WRITE);
   const [vols, setVols] = useState<{ name: string; sizeMb: number }[] | null>(null);
   const [vol, setVol] = useState<string | null>(null);
   const [path, setPath] = useState("");
@@ -593,12 +600,14 @@ export function VolumesModal({ d, onClose }: { d: Deployment; onClose: () => voi
                           </Anchor>
                         </Tooltip>
                       )}
-                      <Tooltip label="Delete" withArrow>
-                        <ActionIcon size="sm" variant="subtle" color="red" loading={busy === e.name}
-                          aria-label={`Delete ${e.name}`} onClick={() => remove(e)}>
-                          <IconTrash size={15} />
-                        </ActionIcon>
-                      </Tooltip>
+                      {mayDelete && (
+                        <Tooltip label="Delete" withArrow>
+                          <ActionIcon size="sm" variant="subtle" color="red" loading={busy === e.name}
+                            aria-label={`Delete ${e.name}`} onClick={() => remove(e)}>
+                            <IconTrash size={15} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
                     </Group>
                   ))}
                 </Stack>)}

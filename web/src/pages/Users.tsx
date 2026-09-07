@@ -6,8 +6,9 @@ import {
 import { IconAlertCircle, IconTrash, IconDots, IconKey, IconLock, IconLockOpen, IconPlus, IconShield, IconShieldOff, IconLayoutGrid } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { UserDto } from "../model";
-import { canOpenEditor, PERM_OPEN_EDITOR } from "../model";
+import { can, PERMISSIONS, PERM_PRESETS } from "../model";
 import { VIEW_MODE_SWITCH } from "../viewMode";
+import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 
@@ -22,6 +23,27 @@ function errorMessage(e: unknown, fallback: string): string {
   }
 }
 
+// "Everything" reads better than eleven of eleven, and an old user with no list at all is exactly that.
+function permsLabel(u: UserDto): string {
+  const n = PERMISSIONS.filter(p => can(u, p.id)).length;
+  return n === PERMISSIONS.length ? "Everything" : n === 0 ? "Look only" : `${n} of ${PERMISSIONS.length}`;
+}
+
+function PermissionChecklist({ value, onChange, enabled }: {
+  value: string[]; onChange: (v: string[]) => void; enabled: (id: string) => boolean;
+}) {
+  const toggle = (id: string, on: boolean) =>
+    onChange(on ? [...value, id] : value.filter(x => x !== id));
+  return (
+    <MStack gap="xs">
+      {PERMISSIONS.map(p => (
+        <Checkbox key={p.id} label={p.label} description={p.description} disabled={!enabled(p.id)}
+          checked={value.includes(p.id)} onChange={e => toggle(p.id, e.currentTarget.checked)} />
+      ))}
+    </MStack>
+  );
+}
+
 export function Users() {
   useTitle("Users");
   const [users, setUsers] = useState<UserDto[]>([]);
@@ -31,6 +53,13 @@ export function Users() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [addPerms, setAddPerms] = useState<string[]>(PERMISSIONS.map(p => p.id));
+
+  // Only an admin hands out the admin flag, and nobody hands out a permission they do not hold —
+  // the server refuses either way, so the form does not offer it.
+  const me = useAuth().status?.user;
+  const iAmAdmin = !!me?.isAdmin;
+  const grantable = (id: string) => iAmAdmin || can(me, id);
 
   const refresh = () => api.listUsers().then(setUsers);
   useEffect(() => { refresh(); }, []);
@@ -43,8 +72,8 @@ export function Users() {
     if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setBusy(true);
     try {
-      await api.createUser(username, password, isAdmin);
-      setUsername(""); setPassword(""); setIsAdmin(false);
+      await api.createUser(username, password, isAdmin, isAdmin ? undefined : addPerms.filter(grantable));
+      setUsername(""); setPassword(""); setIsAdmin(false); setAddPerms(PERMISSIONS.map(p => p.id));
       setAddOpen(false);
       await refresh();
     } catch (e) {
@@ -63,19 +92,19 @@ export function Users() {
   const [vmTarget, setVmTarget] = useState<UserDto | null>(null);
   const [vmFull, setVmFull] = useState(true);
   const [vmSimple, setVmSimple] = useState(true);
-  const [vmEditor, setVmEditor] = useState(true);
+  const [vmPerms, setVmPerms] = useState<string[]>([]);
   const openPermissions = (u: UserDto) => {
     const m = u.viewModes ?? ["full", "simple"];
     setVmFull(m.includes("full")); setVmSimple(m.includes("simple"));
-    setVmEditor(canOpenEditor(u)); setVmTarget(u);
+    setVmPerms(PERMISSIONS.map(p => p.id).filter(id => can(u, id)));
+    setVmTarget(u);
   };
   const submitPermissions = async () => {
     if (!vmTarget) return;
     const modes = [vmFull && "full", vmSimple && "simple"].filter(Boolean) as string[];
-    const perms = [vmEditor && PERM_OPEN_EDITOR].filter(Boolean) as string[];
     try {
       await api.adminSetViewModes(vmTarget.id, modes);
-      await api.adminSetPermissions(vmTarget.id, perms);
+      await api.adminSetPermissions(vmTarget.id, vmPerms.filter(grantable));
       setVmTarget(null); await refresh();
     }
     catch (e) { setError(errorMessage(e, "Failed to set permissions.")); }
@@ -134,7 +163,11 @@ export function Users() {
                 return (
                   <Table.Tr key={u.id} style={u.disabled ? { opacity: 0.55 } : undefined}>
                     <Table.Td>{u.username}</Table.Td>
-                    <Table.Td>{u.isAdmin && <Badge color="indigo" variant="light">Admin</Badge>}</Table.Td>
+                    <Table.Td>
+                      {u.isAdmin
+                        ? <Badge color="indigo" variant="light">Admin</Badge>
+                        : <Badge color="gray" variant="light">{permsLabel(u)}</Badge>}
+                    </Table.Td>
                     <Table.Td>
                       {u.disabled
                         ? <Badge color="red" variant="light">Disabled</Badge>
@@ -147,9 +180,9 @@ export function Users() {
                         <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${u.username}`}><IconDots size={16} /></ActionIcon></Menu.Target>
                         <Menu.Dropdown>
                           <Menu.Item leftSection={<IconKey size={14} />} onClick={() => { setPwTarget(u); setPwValue(""); setPwForce(true); }}>Set password…</Menu.Item>
-                          <Menu.Item leftSection={u.isAdmin ? <IconShieldOff size={14} /> : <IconShield size={14} />}
+                          {iAmAdmin && <Menu.Item leftSection={u.isAdmin ? <IconShieldOff size={14} /> : <IconShield size={14} />}
                             disabled={u.isAdmin && lastAdmin}
-                            onClick={() => toggleAdmin(u)}>{u.isAdmin ? "Remove admin" : "Make admin"}</Menu.Item>
+                            onClick={() => toggleAdmin(u)}>{u.isAdmin ? "Remove admin" : "Make admin"}</Menu.Item>}
                           <Menu.Item leftSection={<IconLayoutGrid size={14} />} onClick={() => openPermissions(u)}>Permissions…</Menu.Item>
                           <Menu.Item leftSection={u.disabled ? <IconLockOpen size={14} /> : <IconLock size={14} />}
                             disabled={!u.disabled && lastAdmin}
@@ -166,18 +199,25 @@ export function Users() {
             </Table.Tbody>
           </Table>
 
-          <Modal opened={!!vmTarget} onClose={() => setVmTarget(null)} title={`Permissions — ${vmTarget?.username}`} centered>
+          <Modal opened={!!vmTarget} onClose={() => setVmTarget(null)} title={`Permissions — ${vmTarget?.username}`} centered size="lg">
             <MStack gap="md">
+              {vmTarget?.isAdmin && (
+                <Alert color="blue" variant="light">An admin may everything; these boxes take effect if the admin flag is removed.</Alert>
+              )}
               {VIEW_MODE_SWITCH && <>
                 <Text size="sm" fw={600}>View modes</Text>
                 <Text size="xs" c="dimmed" mt={-8}>Which UI modes may this user use? Both = they get an in-app toggle.</Text>
                 <Checkbox label="Full (builder / canvas)" checked={vmFull} onChange={e => setVmFull(e.currentTarget.checked)} />
                 <Checkbox label="Simple (app store)" checked={vmSimple} onChange={e => setVmSimple(e.currentTarget.checked)} />
-                <Text size="sm" fw={600} mt="xs">Capabilities</Text>
               </>}
-              <Checkbox label="May open the builder/editor"
-                description="On = this user works in the builder (canvas, stacks). Off = the app-store view only; the 'Open in editor' action is hidden and editor routes are blocked."
-                checked={vmEditor} onChange={e => setVmEditor(e.currentTarget.checked)} />
+              <Group gap="xs" align="center">
+                <Text size="sm" fw={600}>Permissions</Text>
+                {PERM_PRESETS.map(p => (
+                  <Button key={p.label} size="compact-xs" variant="light"
+                    onClick={() => setVmPerms(p.perms.filter(grantable))}>{p.label}</Button>
+                ))}
+              </Group>
+              <PermissionChecklist value={vmPerms} onChange={setVmPerms} enabled={grantable} />
               <Group justify="flex-end"><Button onClick={submitPermissions} disabled={!vmFull && !vmSimple}>Save</Button></Group>
             </MStack>
           </Modal>
@@ -195,7 +235,18 @@ export function Users() {
               <TextInput label="Username" value={username} onChange={e => setUsername(e.currentTarget.value)} data-autofocus />
               <PasswordInput label="Password" description="At least 8 characters"
                 value={password} onChange={e => setPassword(e.currentTarget.value)} />
-              <Switch label="Admin" checked={isAdmin} onChange={e => setIsAdmin(e.currentTarget.checked)} />
+              {iAmAdmin && <Switch label="Admin" description="An admin may everything, permissions included."
+                checked={isAdmin} onChange={e => setIsAdmin(e.currentTarget.checked)} />}
+              {!isAdmin && <>
+                <Group gap="xs" align="center">
+                  <Text size="sm" fw={600}>Permissions</Text>
+                  {PERM_PRESETS.map(p => (
+                    <Button key={p.label} size="compact-xs" variant="light"
+                      onClick={() => setAddPerms(p.perms.filter(grantable))}>{p.label}</Button>
+                  ))}
+                </Group>
+                <PermissionChecklist value={addPerms} onChange={setAddPerms} enabled={grantable} />
+              </>}
               <Group justify="flex-end">
                 <Button variant="subtle" onClick={() => setAddOpen(false)}>Cancel</Button>
                 <Button onClick={addUser} loading={busy}>Add user</Button>

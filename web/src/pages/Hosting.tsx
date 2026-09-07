@@ -5,8 +5,7 @@ import { IconDots, IconExternalLink, IconChevronRight, IconChevronDown, IconAler
 import { PageShell } from "../components/PageShell";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
 import type { Deployment, ServiceStatus } from "../model";
-import { canOpenEditor, hostingHealthLabel, hostingBroken } from "../model";
-import { useAuth } from "../auth/AuthContext";
+import { hostingHealthLabel, hostingBroken } from "../model";
 import * as api from "../api";
 import type { ContainerStat } from "../api";
 import { useTitle } from "../useTitle";
@@ -26,8 +25,6 @@ export const healthOf = (status: string): "healthy" | "unhealthy" | "starting" |
 
 export function Hosting() {
   const nav = useNavigate();
-  const { status } = useAuth();
-  const canEdit = canOpenEditor(status?.user);
   useTitle("Hosting");
   const [items, setItems] = useState<Deployment[]>([]);
   const [configFor, setConfigFor] = useState<Deployment | null>(null);
@@ -39,7 +36,6 @@ export function Hosting() {
   const [filesFor, setFilesFor] = useState<Deployment | null>(null);
   const [moveFor, setMoveFor] = useState<Deployment | null>(null);
   const [targetFilter, setTargetFilter] = useState<string | null>(null);
-  const isAdmin = !!status?.user?.isAdmin;
   const [dashToken, setDashToken] = useState("");
   const [pubHost, setPubHost] = useState("");
   const [appStats, setAppStats] = useState<Record<string, AppStat>>({});
@@ -105,10 +101,10 @@ export function Hosting() {
                 <Table.Th w={30} /><Table.Th>App</Table.Th><Table.Th>Status</Table.Th><Table.Th w={150}>Target</Table.Th><Table.Th>CPU · Mem</Table.Th><Table.Th>URLs</Table.Th><Table.Th /></Table.Tr></Table.Thead>
               <Table.Tbody>
                 {items.filter(d => !targetFilter || (d.targetId ?? "local") === targetFilter).map(d => (
-                  <DeploymentRow key={d.id} d={d} canEdit={canEdit} onChanged={load} dashToken={dashToken} pubHost={pubHost} stat={appStats[d.stackId]}
+                  <DeploymentRow key={d.id} d={d} onChanged={load} dashToken={dashToken} pubHost={pubHost} stat={appStats[d.stackId]}
                     onConfigure={() => setConfigFor(d)} onLogs={(svc) => { setLogsService(svc); setLogsFor(d); }}
-                    onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={isAdmin ? () => setTerminalFor(d) : undefined} onFiles={isAdmin ? () => setFilesFor(d) : undefined}
-                    onMove={isAdmin ? () => setMoveFor(d) : undefined}
+                    onBackups={() => setBackupsFor(d)} onDomain={() => setDomainFor(d)} onTerminal={() => setTerminalFor(d)} onFiles={() => setFilesFor(d)}
+                    onMove={() => setMoveFor(d)}
                     onOpenEditor={() => nav(`/editor/${d.stackId}`)} />
                 ))}
               </Table.Tbody>
@@ -127,8 +123,8 @@ export function Hosting() {
   );
 }
 
-function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
-  d: Deployment; canEdit: boolean; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
+function DeploymentRow({ d, onConfigure, onLogs, onBackups, onDomain, onTerminal, onFiles, onMove, onOpenEditor, onChanged, dashToken, pubHost, stat }: {
+  d: Deployment; onConfigure: () => void; onLogs: (service?: string) => void; onBackups: () => void; onDomain: () => void; onTerminal?: () => void; onFiles?: () => void; onMove?: () => void; onOpenEditor: () => void; onChanged: () => void; dashToken: string; pubHost: string; stat?: AppStat;
 }) {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
@@ -180,7 +176,7 @@ function DeploymentRow({ d, canEdit, onConfigure, onLogs, onBackups, onDomain, o
           <Menu position="bottom-end" withArrow>
             <Menu.Target><ActionIcon variant="subtle" aria-label={`Actions for ${d.name}`}><IconDots size={16} /></ActionIcon></Menu.Target>
             <Menu.Dropdown>
-              <HostingMenuItems d={d} canEdit={canEdit} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onOpenEditor={onOpenEditor} onChanged={onChanged} />
+              <HostingMenuItems d={d} onConfigure={onConfigure} onLogs={onLogs} onBackups={onBackups} onDomain={onDomain} onTerminal={onTerminal} onFiles={onFiles} onMove={onMove} onOpenEditor={onOpenEditor} onChanged={onChanged} />
             </Menu.Dropdown>
           </Menu>
         </Table.Td>

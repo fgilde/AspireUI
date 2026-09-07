@@ -7,6 +7,7 @@ import { useAppTheme } from "./ThemeProvider";
 import { useAuth } from "./auth/AuthContext";
 import * as api from "./api";
 import type { Stack } from "./model";
+import { can, PERM_USERS } from "./model";
 
 // Global command palette (Ctrl/Cmd+K): navigation, open a stack, switch theme.
 export function CommandPalette() {
@@ -19,7 +20,7 @@ export function CommandPalette() {
   const actions: SpotlightActionData[] = useMemo(() => [
     { id: "home", label: "Stacks", description: "Go to the stacks overview", leftSection: <IconHome size={18} />, onClick: () => nav("/") },
     { id: "settings", label: "Settings", description: "AI provider & config", leftSection: <IconSettings size={18} />, onClick: () => nav("/settings") },
-    ...(status?.user?.isAdmin ? [{ id: "users", label: "Users", description: "Manage users", leftSection: <IconUsers size={18} />, onClick: () => nav("/users") }] : []),
+    ...(can(status?.user, PERM_USERS) ? [{ id: "users", label: "Users", description: "Manage users", leftSection: <IconUsers size={18} />, onClick: () => nav("/users") }] : []),
     ...stacks.map(s => ({
       id: "stack-" + s.id, label: s.name, description: `Open stack (${s.nodes.length} resources)`,
       leftSection: <IconStack2 size={18} />, onClick: () => nav(`/editor/${s.id}`),

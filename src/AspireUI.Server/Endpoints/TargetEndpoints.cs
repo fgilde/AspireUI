@@ -12,7 +12,7 @@ public static class TargetEndpoints
         SecretStore secrets, DeploymentStore deployments, ProvisionService provision)
     {
         var grp = api.MapGroup("/targets");
-        var admin = api.MapGroup("/targets").RequireAuthorization(p => p.RequireRole("Admin"));
+        var admin = api.MapGroup("/targets").RequirePerm(Perm.Targets);
 
         // What a target looks like to the client: no secret values, only whether one is set.
         object Dto(DeployTarget t) => new

@@ -4,6 +4,7 @@ import { Menu, UnstyledButton, Avatar, Group, Text, Badge } from "@mantine/core"
 import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
+import { can, PERM_USERS } from "../model";
 import { useAppTheme } from "../ThemeProvider";
 import { HelpModal } from "../HelpButton";
 import { ThemeDrawer } from "../ThemeDrawer";
@@ -38,7 +39,7 @@ export function UserMenu() {
             </Group>
           </Menu.Label>
           <Menu.Item leftSection={<IconUser size={14} />} onClick={() => nav("/profile")}>Profile</Menu.Item>
-          {user.isAdmin && <Menu.Item leftSection={<IconUsers size={14} />} onClick={() => nav("/users")}>Users</Menu.Item>}
+          {can(user, PERM_USERS) && <Menu.Item leftSection={<IconUsers size={14} />} onClick={() => nav("/users")}>Users</Menu.Item>}
           <Menu.Item leftSection={<IconServer size={14} />} onClick={() => nav("/hosting")}>Hosting</Menu.Item>
           <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => nav("/settings")}>Settings</Menu.Item>
 

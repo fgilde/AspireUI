@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, MultiSelect, Stack as MStack } from "@mantine/core";
 import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub, IconCloud } from "@tabler/icons-react";
 import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice, DeployTarget } from "../model";
-import { buildPresetNodes, instantiateSnippet } from "../model";
+import { buildPresetNodes, can, instantiateSnippet, PERM_STORE } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { AppInfoModal, type AppInfo } from "../components/AppInfoModal";
 import { AddResourceDialog } from "../editor/AddResourceDialog";
@@ -66,7 +66,7 @@ const packageItem = (rt: ResourceType): Item => ({
 
 export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void; onInstalled: () => void }) {
   const { status } = useAuth();
-  const isAdmin = !!status?.user?.isAdmin;
+  const mayStore = can(status?.user, PERM_STORE);
   const [items, setItems] = useState<Item[] | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
@@ -185,7 +185,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
     setInstalling(null);
   };
 
-  const visible = (items ?? []).filter(it => isAdmin || !excluded.has(it.id));   // non-admins never see excluded
+  const visible = (items ?? []).filter(it => mayStore || !excluded.has(it.id));   // a hidden app stays hidden unless you may unhide it
   const groups = useMemo(() =>
     [...new Set(visible.map(i => i.group))].sort((a, b) => a === "Custom" ? 1 : b === "Custom" ? -1 : a.localeCompare(b)),
     [visible]);
@@ -229,7 +229,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
               {hidden && <Badge size="xs" variant="light" color="gray">Hidden</Badge>}
             </Group>
           </div>
-          {isAdmin && (
+          {mayStore && (
             <Tooltip label={hidden ? "Hidden from the store for other users — click to show" : "Hide from the store for other users"} withArrow multiline w={220}>
               <ActionIcon variant="subtle" color={hidden ? "orange" : "gray"} size="sm" onClick={() => toggleExclude(it.id)} aria-label="Toggle store visibility">
                 {hidden ? <IconEyeOff size={15} /> : <IconEye size={15} />}

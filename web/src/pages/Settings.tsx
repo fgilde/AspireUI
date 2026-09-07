@@ -5,21 +5,24 @@ import { PageShell } from "../components/PageShell";
 import { TargetsSection } from "../hosting/TargetsPanel";
 import { confirmDelete, toastOk, toastErr } from "../ui";
 import type { AppSettings, EnvHealth, ApiToken, DockerImage, DockerVolume, DockerContainer } from "../model";
-import { APP_VERSION, BUILD_INFO } from "../model";
+import { APP_VERSION, BUILD_INFO, can, PERM_DOCKER, PERM_SETTINGS, PERM_STORE, PERM_TARGETS } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { useAuth } from "../auth/AuthContext";
 
 function HostingTab() {
+  const user = useAuth().status?.user;
+  const maySettings = can(user, PERM_SETTINGS);
+  const mayTargets = can(user, PERM_TARGETS);
   return (
-    <Tabs defaultValue="general" variant="outline">
+    <Tabs defaultValue={maySettings ? "general" : mayTargets ? "targets" : "sources"} variant="outline">
       <Tabs.List mb="lg">
-        <Tabs.Tab value="general" leftSection={<IconServer2 size={14} />}>General</Tabs.Tab>
-        <Tabs.Tab value="targets" leftSection={<IconCloud size={14} />}>Deploy targets</Tabs.Tab>
-        <Tabs.Tab value="proxy" leftSection={<IconWorld size={14} />}>Proxy</Tabs.Tab>
-        <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>
-        <Tabs.Tab value="backups" leftSection={<IconDatabase size={14} />}>Backups</Tabs.Tab>
-        <Tabs.Tab value="sources" leftSection={<IconApps size={14} />}>App sources</Tabs.Tab>
+        {maySettings && <Tabs.Tab value="general" leftSection={<IconServer2 size={14} />}>General</Tabs.Tab>}
+        {mayTargets && <Tabs.Tab value="targets" leftSection={<IconCloud size={14} />}>Deploy targets</Tabs.Tab>}
+        {maySettings && <Tabs.Tab value="proxy" leftSection={<IconWorld size={14} />}>Proxy</Tabs.Tab>}
+        {maySettings && <Tabs.Tab value="notifications" leftSection={<IconBell size={14} />}>Notifications</Tabs.Tab>}
+        {maySettings && <Tabs.Tab value="backups" leftSection={<IconDatabase size={14} />}>Backups</Tabs.Tab>}
+        {can(user, PERM_STORE) && <Tabs.Tab value="sources" leftSection={<IconApps size={14} />}>App sources</Tabs.Tab>}
       </Tabs.List>
       <Tabs.Panel value="general"><GeneralHostingSection /></Tabs.Panel>
       <Tabs.Panel value="targets"><TargetsSection /></Tabs.Panel>
@@ -520,7 +523,9 @@ export function Settings() {
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
   const kind = settings.aiKind === "cli" ? "cli" : "http";
   const { status } = useAuth();
-  const isAdmin = !!status?.user?.isAdmin;
+  const user = status?.user;
+  const maySettings = can(user, PERM_SETTINGS);
+  const mayHosting = maySettings || can(user, PERM_TARGETS) || can(user, PERM_STORE);
 
   useEffect(() => { api.getSettings().then(setSettings); api.getAiCliTools().then(setCliTools).catch(() => {}); }, []);
 
@@ -566,9 +571,9 @@ export function Settings() {
           <Tabs defaultValue="ai" orientation="vertical" variant="pills">
             <Tabs.List mr="lg">
               <Tabs.Tab value="ai" leftSection={<IconRobot size={15} />}>AI assistant</Tabs.Tab>
-              {isAdmin && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
-              {isAdmin && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
-              {isAdmin && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
+              {mayHosting && <Tabs.Tab value="hosting" leftSection={<IconLayoutDashboard size={15} />}>Hosting</Tabs.Tab>}
+              {can(user, PERM_DOCKER) && <Tabs.Tab value="docker" leftSection={<IconBrandDocker size={15} />}>Docker</Tabs.Tab>}
+              {maySettings && <Tabs.Tab value="import" leftSection={<IconFileImport size={15} />}>Import</Tabs.Tab>}
               <Tabs.Tab value="api" leftSection={<IconPlugConnected size={15} />}>API &amp; Agents</Tabs.Tab>
               <Tabs.Tab value="env" leftSection={<IconServer2 size={15} />}>Environment</Tabs.Tab>
             </Tabs.List>
@@ -647,17 +652,17 @@ export function Settings() {
             </Group>
           </MStack>
             </Tabs.Panel>
-            {isAdmin && (
+            {mayHosting && (
               <Tabs.Panel value="hosting" style={{ flex: 1 }}>
                 <HostingTab />
               </Tabs.Panel>
             )}
-            {isAdmin && (
+            {can(user, PERM_DOCKER) && (
               <Tabs.Panel value="docker" style={{ flex: 1 }}>
                 <DockerTab />
               </Tabs.Panel>
             )}
-            {isAdmin && (
+            {maySettings && (
               <Tabs.Panel value="import" style={{ flex: 1 }}>
                 <ImportTab />
               </Tabs.Panel>

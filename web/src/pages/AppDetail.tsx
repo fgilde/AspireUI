@@ -4,8 +4,7 @@ import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, But
 import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX, IconWorld } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus } from "../model";
-import { canOpenEditor, hostingBroken, hostingHealthLabel } from "../model";
-import { useAuth } from "../auth/AuthContext";
+import { hostingBroken, hostingHealthLabel } from "../model";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
@@ -18,9 +17,6 @@ import { toastOk, toastErr } from "../ui";
 export function AppDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { status } = useAuth();
-  const canEdit = canOpenEditor(status?.user);
-  const isAdmin = !!status?.user?.isAdmin;
   const [d, setD] = useState<Deployment | null | undefined>(undefined);
   const [svcs, setSvcs] = useState<ServiceStatus[]>([]);
   const [stat, setStat] = useState<AppStat>();
@@ -77,10 +73,10 @@ export function AppDetail() {
       <Menu position="bottom-end" withArrow>
         <Menu.Target><ActionIcon variant="subtle" aria-label="Actions"><IconDots size={18} /></ActionIcon></Menu.Target>
         <Menu.Dropdown>
-          <HostingMenuItems d={d} canEdit={canEdit} onConfigure={() => setConfig(true)} onLogs={(svc?: string) => { setLogsSvc(svc); setLogsOpen(true); }}
+          <HostingMenuItems d={d} onConfigure={() => setConfig(true)} onLogs={(svc?: string) => { setLogsSvc(svc); setLogsOpen(true); }}
             onBackups={() => setBackups(true)} onDomain={() => setDomain(true)}
-            onTerminal={isAdmin ? () => setTerminal(true) : undefined} onFiles={isAdmin ? () => setFiles(true) : undefined}
-            onMove={isAdmin ? () => setMove(true) : undefined}
+            onTerminal={() => setTerminal(true)} onFiles={() => setFiles(true)}
+            onMove={() => setMove(true)}
             onOpenEditor={() => nav(`/editor/${d.stackId}`)} onChanged={load} />
         </Menu.Dropdown>
       </Menu>

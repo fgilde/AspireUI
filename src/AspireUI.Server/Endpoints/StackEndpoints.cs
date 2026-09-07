@@ -58,7 +58,7 @@ public static class StackEndpoints
         app2.MapTargetEndpoints(targetStore, targets, secrets, deployments, provision);
         var docker = new DockerService(deploy);
         var devProxy = new DevProxyService(deploy);
-        var dockerGrp = app2.MapGroup("/docker").RequireAuthorization(p => p.RequireRole("Admin"));
+        var dockerGrp = app2.MapGroup("/docker").RequirePerm(Perm.Docker);
         dockerGrp.MapGet("/images", () => Results.Ok(docker.Images()));
         dockerGrp.MapGet("/volumes", () => Results.Ok(docker.Volumes()));
         dockerGrp.MapGet("/containers", () => Results.Ok(docker.Containers()));
@@ -160,9 +160,9 @@ public static class StackEndpoints
             var id = string.IsNullOrWhiteSpace(body.Id) ? "snip" + Guid.NewGuid().ToString("n")[..8] : body.Id;
             snippets.Save(body with { Id = id });
             return Results.Ok(new { id });
-        });
+        }).RequirePerm(Perm.OpenEditor);
         app2.MapDelete("/snippets/{id}", (string id) =>
-            snippets.Delete(id) ? Results.NoContent() : Results.NotFound());
+            snippets.Delete(id) ? Results.NoContent() : Results.NotFound()).RequirePerm(Perm.OpenEditor);
 
         app2.MapPost("/catalog/auto-preset", async (AutoPresetRequest body) =>
         {
@@ -181,7 +181,7 @@ public static class StackEndpoints
                 return Results.Ok(new { ok = true, code, nodes = frag.Nodes, edges = frag.Edges });
             }
             catch (Exception ex) { return Results.Ok(new { ok = false, reason = ex.Message }); }
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
@@ -192,12 +192,12 @@ public static class StackEndpoints
         {
             settings.SetValue("StoreExclusions", string.Join(",", (body.Ids ?? new()).Distinct()));
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Store);
 
         // Extra app sources: admin-managed manifest URLs, fetched on demand and cached on disk.
         var appSources = new AppSourceService(settings, CatalogService.AppSourceCacheDir());
         app2.MapGet("/store/sources", () => Results.Ok(appSources.List()))
-            .RequireAuthorization(p => p.RequireRole("Admin"));
+            .RequirePerm(Perm.Store);
         app2.MapPost("/store/sources", async (AppSourceRequest b) =>
         {
             var (source, error) = appSources.Add(b.Name ?? "", b.Url ?? "");
@@ -206,12 +206,12 @@ public static class StackEndpoints
             var all = appSources.List().Select(s => s.Id == refreshed.Id ? refreshed : s).ToList();
             settings.SetValue("AppSources", System.Text.Json.JsonSerializer.Serialize(all, gitJson));
             return Results.Ok(refreshed);
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Store);
         app2.MapDelete("/store/sources/{id}", (string id) =>
             appSources.Remove(id) ? Results.NoContent() : Results.NotFound())
-            .RequireAuthorization(p => p.RequireRole("Admin"));
+            .RequirePerm(Perm.Store);
         app2.MapPost("/store/sources/refresh", async () => Results.Ok(await appSources.RefreshAllAsync()))
-            .RequireAuthorization(p => p.RequireRole("Admin"));
+            .RequirePerm(Perm.Store);
         app2.MapGet("/templates", () => templates.List()
             .Concat(userTemplates.List().Select(t => new TemplateInfo("user:" + t.Id, t.Name, t.Description)))
             .ToList());
@@ -221,9 +221,9 @@ public static class StackEndpoints
             var id = Guid.NewGuid().ToString("n");
             userTemplates.Save(id, string.IsNullOrWhiteSpace(body.Name) ? s.Name : body.Name, body.Description ?? "", s);
             return Results.Ok(new TemplateInfo("user:" + id, body.Name ?? s.Name, body.Description ?? ""));
-        });
+        }).RequirePerm(Perm.OpenEditor);
         app2.MapDelete("/templates/user/{id}", (string id) =>
-            userTemplates.Delete(id) ? Results.NoContent() : Results.NotFound());
+            userTemplates.Delete(id) ? Results.NoContent() : Results.NotFound()).RequirePerm(Perm.OpenEditor);
         app2.MapGet("/stacks", () => store.List());
         app2.MapGet("/stacks/{id}", (string id) =>
             store.Get(id) is { } s
@@ -233,12 +233,12 @@ public static class StackEndpoints
                     deployment = deployments.GetByStack(id) })
                 : Results.NotFound());
 
-        app2.MapPost("/stacks", (StackModel body, HttpContext ctx) => Persist(New(body, ctx)));
+        app2.MapPost("/stacks", (StackModel body, HttpContext ctx) => Persist(New(body, ctx))).RequirePerm(Perm.OpenEditor);
 
         app2.MapPost("/stacks/{id}/duplicate", (string id, HttpContext ctx) =>
             store.Get(id) is { } s
                 ? Persist(New(s, ctx) with { Name = s.Name + " copy" })
-                : Results.NotFound());
+                : Results.NotFound()).RequirePerm(Perm.OpenEditor);
 
         app2.MapPost("/stacks/from-template/{templateId}", (string templateId, HttpContext ctx) =>
         {
@@ -246,10 +246,10 @@ public static class StackEndpoints
                 ? userTemplates.Get(templateId["user:".Length..])
                 : templates.Create(templateId);
             return s is not null ? Persist(New(s, ctx)) : Results.NotFound();
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
-            LockGuard(id) ?? (store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id })));
+            LockGuard(id) ?? (store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }))).RequirePerm(Perm.OpenEditor);
 
         void DeleteStackFully(string id)
         {
@@ -283,7 +283,7 @@ public static class StackEndpoints
             if (LockGuard(id) is { } r) return r;
             DeleteStackFully(id);
             return Results.NoContent();
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapPatch("/stacks/{id}/nodes/{nodeId}", (string id, string nodeId, NodeModel patch) =>
         {
@@ -301,7 +301,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.Add(edge with { Id = "e" + Guid.NewGuid().ToString("n")[..8] });
             return Persist(s);
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapDelete("/stacks/{id}/edges/{edgeId}", (string id, string edgeId) =>
         {
@@ -309,7 +309,7 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             s.Edges.RemoveAll(e => e.Id == edgeId);
             return Persist(s);
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapGet("/stacks/{id}/export", (string id) =>
         {
@@ -378,7 +378,7 @@ public static class StackEndpoints
                 return Results.UnprocessableEntity(new { reply = result.Reply, errors });
             }
             return Results.Ok(new { reply = result.Reply, stack = forced });
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         // Assistant "code mode": rewrite the generated Program.cs to satisfy the request, then parse it
         // back into the graph. Robust for backends that don't produce our node-graph JSON reliably.
@@ -405,14 +405,14 @@ public static class StackEndpoints
             {
                 return Results.Problem(detail: ex.Message, statusCode: StatusCodes.Status502BadGateway);
             }
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         // Docker Compose import: services -> AddContainer nodes, ports/env/depends_on mapped.
         app2.MapPost("/stacks/import-compose", (ComposeRequest body, HttpContext ctx) =>
         {
             var (stack, error) = compose.Import(Guid.NewGuid().ToString("n"), body.Name, body.Yaml);
             return stack is null ? Results.UnprocessableEntity(error) : Persist(New(stack, ctx));
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         static string? MergeComposeYaml(string dir, string[]? files, Dictionary<string, string>? env)
         {
@@ -542,7 +542,7 @@ public static class StackEndpoints
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
             return Results.Ok(withMeta);
-        });
+        }).RequirePerm(Perm.OpenEditor);
         app2.MapGet("/stacks/{id}/git", (string id) =>
         {
             var cfgRaw = settings.GetValue($"git:{id}");
@@ -550,7 +550,7 @@ public static class StackEndpoints
             var g = System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(cfgRaw, gitJson)!;
             return Results.Ok(new { url = g.Url, branch = g.Branch, subdir = g.Subdir, webhookPath = $"/api/git/hook/{g.Token}" });
         });
-        app2.MapPost("/stacks/{id}/git/pull", (string id, HttpContext ctx) => GitPullRedeploy(id, ctx));
+        app2.MapPost("/stacks/{id}/git/pull", (string id, HttpContext ctx) => GitPullRedeploy(id, ctx)).RequirePerm(Perm.Deploy);
         app2.MapPost("/git/hook/{token}", (string token, HttpContext ctx) =>
         {
             var sid = settings.GetValue($"githook:{token}");
@@ -598,13 +598,13 @@ public static class StackEndpoints
             settings.SetValue($"clonehook:{tok}", System.Text.Json.JsonSerializer.Serialize(b with { SourceStackId = id }, gitJson));
             var toks = CloneHookTokens(id); toks.Add(tok); SaveCloneHookTokens(id, toks);
             return Results.Ok(new { token = tok, webhookPath = $"/api/clone-hook/{tok}" });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Deploy);
         app2.MapDelete("/stacks/{id}/clone-hooks/{token}", (string id, string token) =>
         {
             settings.SetValue($"clonehook:{token}", null);
             var toks = CloneHookTokens(id); toks.Remove(token); SaveCloneHookTokens(id, toks);
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Deploy);
 
         app2.MapPost("/clone-hook/{token}", async (string token, HttpContext ctx) =>
         {
@@ -667,7 +667,7 @@ public static class StackEndpoints
         {
             var s = import.Import(id, req.Name, req.ProgramCs, req.SidecarJson ?? "");
             return Persist(s);
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapGet("/import/settings", () => Results.Ok(new
         {
@@ -679,7 +679,7 @@ public static class StackEndpoints
             if (b.MaxFileMb is > 0) settings.SetValue("MaxImportFileMb", b.MaxFileMb.ToString());
             if (b.RespectGitignore is { } rg) settings.SetValue("RespectGitignore", rg ? "true" : "false");
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
 
         app2.MapPost("/import/local", (LocalImportRequest b, HttpContext ctx) =>
         {
@@ -709,7 +709,7 @@ public static class StackEndpoints
             store.Save(withMeta);
             gen.Materialize(withMeta, dir);
             return Results.Ok(withMeta);
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapPost("/stacks/{id}/open", (string id, OpenIdeRequest r) =>
         {
@@ -734,7 +734,7 @@ public static class StackEndpoints
                 catch { /* try next candidate */ }
             }
             return Results.Ok(new { ok = false, error = $"Could not launch {r.Ide}. Make sure it's installed and on PATH, and that AspireUI runs on your machine." });
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         string PublicHost(HttpContext ctx)
         {
@@ -758,8 +758,8 @@ public static class StackEndpoints
             if (store.Get(id) is not { } s) return Results.NotFound();
             gen.Materialize(s, Dir(id));
             return Results.Ok(WithHost(run.Start(id, Path.GetFullPath(Dir(id)), s.RunAsIs ? s.AppHostProject : null), ctx));
-        });
-        app2.MapPost("/stacks/{id}/stop", (string id) => { devProxy.Teardown(id); return Results.Ok(run.Stop(id)); });
+        }).RequirePerm(Perm.OpenEditor);
+        app2.MapPost("/stacks/{id}/stop", (string id) => { devProxy.Teardown(id); return Results.Ok(run.Stop(id)); }).RequirePerm(Perm.OpenEditor);
         app2.MapGet("/stacks/{id}/status", (string id, HttpContext ctx) => Results.Ok(WithHost(run.Status(id), ctx)));
         app2.MapGet("/fs", (string? path) =>
         {
@@ -820,7 +820,7 @@ public static class StackEndpoints
         {
             var (ok, message) = await graph.ExecuteCommandAsync(id, name, body.ResourceType ?? "", body.Command, ctx.RequestAborted);
             return ok ? Results.Ok(new { ok, message }) : Results.Json(new { ok, message }, statusCode: StatusCodes.Status502BadGateway);
-        });
+        }).RequirePerm(Perm.OpenEditor);
         app2.MapGet("/stacks/{id}/resources/{name}/logs", async (string id, string name, HttpContext ctx) =>
         {
             ctx.Response.Headers.ContentType = "text/event-stream";
@@ -849,12 +849,12 @@ public static class StackEndpoints
             foreach (var d in new[] { PublishRoot(id), LegacyPublishDir(id) })
                 try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { }
             return Results.Ok(publish.Publish(s, PublishRoot(id), t, (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null));
-        });
+        }).RequirePerm(Perm.Deploy);
 
         app2.MapPost("/stacks/{id}/deploy", (string id) =>
             File.Exists(Path.Combine(PublishOut(id), "docker-compose.yaml"))
                 ? Results.Ok(deploy.Up(PublishOut(id)))
-                : Results.Conflict(new { message = "publish first" }));
+                : Results.Conflict(new { message = "publish first" })).RequirePerm(Perm.Deploy);
 
         // Monaco code editor: Roslyn-backed IntelliSense over the posted code (compile-only, no
         // execution). The LSP endpoints analyze the body's `code` and don't need the stack to exist;
@@ -884,12 +884,12 @@ public static class StackEndpoints
                     HasSource = cur.HasSource, FromGit = cur.FromGit, AppHostProject = cur.AppHostProject,
                     RunAsIs = cur.RunAsIs, HostingUrlPath = cur.HostingUrlPath,
                     CreatedAt = cur.CreatedAt, CreatedBy = cur.CreatedBy });
-        });
+        }).RequirePerm(Perm.OpenEditor);
 
         app2.MapPost("/stacks/{id}/deploy/down", (string id) =>
             Directory.Exists(PublishOut(id))
                 ? Results.Ok(deploy.Down(PublishOut(id)))
-                : Results.Conflict(new { message = "nothing deployed" }));
+                : Results.Conflict(new { message = "nothing deployed" })).RequirePerm(Perm.Deploy);
 
         // --- Hosting (persistent compose deploy, tracked, separate from dev Run) ---
         // Admin-controlled: host the Aspire dashboard with each deployment? + a browser token so AspireUI
@@ -904,25 +904,25 @@ public static class StackEndpoints
             var dc = DashCfg();
             return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token,
                 (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, body?.TargetId));
-        });
+        }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
             hosting.Stop(d.Id);
             return Results.Ok(deployments.Get(d.Id));
-        });
+        }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/start", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
             hosting.Start(d.Id);
             return Results.Ok(deployments.Get(d.Id));
-        });
+        }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/restart", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
             deploy.RestartProject(d.ComposeDir, d.Project);
             return Results.Ok(hosting.Refresh(d.Id) ?? deployments.Get(d.Id));
-        });
+        }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/undeploy", (string id, bool? wipe) =>
         {
             // Idempotent: no deployment = already undeployed, not an error.
@@ -930,9 +930,9 @@ public static class StackEndpoints
             RemoveCloneHooks(id); // app left hosting → its clone-hooks go (already-spun-up clones stay)
             RemoveAllDomainHosts(id); // and its bound NPM domains (dead target otherwise)
             return Results.NoContent();
-        });
+        }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
-            deployments.GetByStack(id) is { } d ? Results.Ok(hosting.Update(d.Id)) : Results.NotFound());
+            deployments.GetByStack(id) is { } d ? Results.Ok(hosting.Update(d.Id)) : Results.NotFound()).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/check-updates", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
@@ -951,17 +951,17 @@ public static class StackEndpoints
         app2.MapPost("/stacks/{id}/hosting/backup", (string id) =>
             deployments.GetByStack(id) is { } d
                 ? Results.Ok(new { dir = hosting.Backup(d.Id, BackupsRoot()) })
-                : Results.NotFound());
+                : Results.NotFound()).RequirePerm(Perm.Deploy);
         app2.MapGet("/stacks/{id}/hosting/backups", (string id) =>
             deployments.GetByStack(id) is { } d ? Results.Ok(hosting.ListBackups(d.Id, BackupsRoot())) : Results.NotFound());
         app2.MapPost("/stacks/{id}/hosting/backups/{stamp}/restore", (string id, string stamp) =>
             deployments.GetByStack(id) is not { } d ? Results.NotFound()
                 : hosting.Restore(d.Id, BackupsRoot(), stamp)
                     ? Results.Ok(hosting.Refresh(d.Id) ?? deployments.Get(d.Id))
-                    : Results.BadRequest(new { message = "restore failed" }));
+                    : Results.BadRequest(new { message = "restore failed" })).RequirePerm(Perm.Deploy);
         app2.MapDelete("/stacks/{id}/hosting/backups/{stamp}", (string id, string stamp) =>
             deployments.GetByStack(id) is { } d && hosting.DeleteBackup(d.Id, BackupsRoot(), stamp)
-                ? Results.NoContent() : Results.NotFound());
+                ? Results.NoContent() : Results.NotFound()).RequirePerm(Perm.Deploy);
         app2.MapGet("/stacks/{id}/hosting/backups/{stamp}/download", (string id, string stamp) =>
         {
             if (deployments.GetByStack(id) is not { } d || hosting.BackupDir(d.Id, BackupsRoot(), stamp) is not { } dir)
@@ -974,10 +974,10 @@ public static class StackEndpoints
         });
         app2.MapGet("/hosting/{id}/services", (string id) => Results.Ok(hosting.Services(id)));
         app2.MapGet("/hosting/{id}/volumes", (string id) => Results.Ok(hosting.VolumeSizes(id)))
-            .RequireAuthorization(p => p.RequireRole("Admin"));
+            .RequirePerm(Perm.Files);
         app2.MapGet("/hosting/{id}/volumes/{vol}/ls", (string id, string vol, string? path) =>
             Results.Ok(hosting.BrowseVolume(id, vol, path ?? "")))
-            .RequireAuthorization(p => p.RequireRole("Admin"));
+            .RequirePerm(Perm.Files);
         // `download` keeps the old behaviour, a file the browser saves. Without it the file is served
         // inline with the content type its extension implies, which is what a viewer needs: a PDF or an
         // image handed out as application/octet-stream can only be downloaded, not shown.
@@ -988,12 +988,12 @@ public static class StackEndpoints
             var name = path.Replace('\\', '/').Split('/').LastOrDefault() ?? "file";
             if (download == true) return Results.File(data, "application/octet-stream", name);
             return Results.File(data, MimeOf(name));
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Files);
         app2.MapDelete("/hosting/{id}/volumes/{vol}/file", (string id, string vol, string path) =>
         {
             var (ok, error) = hosting.DeleteVolumeFile(id, vol, path);
             return ok ? Results.NoContent() : Results.BadRequest(new { message = error ?? "could not delete" });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.FilesWrite);
         app2.MapPost("/hosting/{id}/exec", (string id, ExecRequest b) =>
         {
             if (deployments.Get(id) is not { } d) return Results.NotFound();
@@ -1017,16 +1017,16 @@ public static class StackEndpoints
                 return Results.BadRequest(new { message = "container is not part of this app" });
             var r = targets.Runner(d.TargetId).Exec(b.Container, b.Cmd);
             return Results.Ok(new { ok = r.Ok, output = r.Log });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Terminal);
         // Compose services of an app, running or not — the terminal needs them for a one-off repair container.
         app2.MapGet("/hosting/{id}/compose-services", (string id) =>
             deployments.Get(id) is { } d
                 ? Results.Ok(targets.Runner(d.TargetId).Docker(d.ComposeDir, $"compose -p {d.Project} config --services").Log
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())
                     .Where(s => s.Length > 0 && !s.Contains(' ') && !s.Contains("dashboard")).ToList())
-                : Results.NotFound()).RequireAuthorization(p => p.RequireRole("Admin"));
+                : Results.NotFound()).RequirePerm(Perm.Terminal);
         app2.MapGet("/stacks/{id}/hosting/config", (string id) =>
-            store.Get(id) is { } s ? Results.Ok(HostingService.NodeConfigs(s)) : Results.NotFound());
+            store.Get(id) is { } s ? Results.Ok(HostingService.NodeConfigs(s)) : Results.NotFound()).RequirePerm(Perm.Configure);
         app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
@@ -1043,7 +1043,7 @@ public static class StackEndpoints
             gen.Materialize(updated, Dir(id));
             var dc = DashCfg();
             return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, (updated.FromGit || updated.HasSource) ? Path.GetFullPath(Dir(id)) : null));
-        });
+        }).RequirePerm(Perm.Configure);
         // Move an app to another target: data goes with it unless asked otherwise.
         app2.MapPost("/stacks/{id}/hosting/move", (string id, MoveRequest b, HttpContext ctx) =>
         {
@@ -1056,7 +1056,7 @@ public static class StackEndpoints
                 (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, b.TargetId, b.WithData);
             return r.Ok ? Results.Ok(new { r.Ok, r.Log, deployment = r.Deployment })
                 : Results.BadRequest(new { message = r.Log, deployment = r.Deployment });
-        });
+        }).RequirePerm(Perm.Deploy);
 
         // Copy an app to another target: a second, independent instance (its own stack, its own data).
         app2.MapPost("/stacks/{id}/hosting/copy", (string id, MoveRequest b, HttpContext ctx) =>
@@ -1083,7 +1083,7 @@ public static class StackEndpoints
             if (b.WithData && srcDep is not null && dep.State != "failed")
                 log = hosting.CopyData(srcDep, dep).Log;
             return Results.Ok(new { stackId = newId, deployment = dep, log });
-        });
+        }).RequirePerm(Perm.Deploy);
 
         app2.MapGet("/hosting/dashboard-settings", (HttpContext ctx) => Results.Ok(new
         {
@@ -1093,14 +1093,14 @@ public static class StackEndpoints
             publicHostSetting = settings.GetValue("PublicHost") ?? "",
             requestHost = ctx.Request.Host.Host,
         }));
-        app2.MapGet("/hosting/detect-ip", () => Results.Ok(HostUrls.CandidateIPs())).RequireAuthorization(p => p.RequireRole("Admin"));
+        app2.MapGet("/hosting/detect-ip", () => Results.Ok(HostUrls.CandidateIPs())).RequirePerm(Perm.Settings);
         app2.MapPut("/hosting/dashboard-settings", (DashboardSettingsRequest b) =>
         {
             settings.SetValue("HostDashboard", b.HostDashboard ? "true" : "false");
             settings.SetValue("DashboardToken", b.DashboardToken ?? "");
             settings.SetValue("PublicHost", b.PublicHost?.Trim() ?? "");
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
 
         // Kept at their old paths, now backed by the local target's domain configuration: "this machine"
         // is a target like any other, and its Nginx Proxy Manager lives with it.
@@ -1122,7 +1122,7 @@ public static class StackEndpoints
                 hasPassword = !string.IsNullOrEmpty(n?.PasswordRef),
                 forwardHost = n?.ForwardHost ?? "",
             });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapPut("/hosting/npm-settings", (NpmSettingsRequest b) =>
         {
             var t = LocalTarget();
@@ -1135,39 +1135,39 @@ public static class StackEndpoints
                         b.ForwardHost ?? cur?.ForwardHost ?? "")),
             });
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapPost("/hosting/npm/test", async (NpmSettingsRequest b) =>
         {
             var cur = LocalTarget().Domains?.Npm;
             var pw = b.Password is { Length: > 0 } ? b.Password : secrets.Resolve(cur?.PasswordRef) ?? "";
             var (ok, error) = await NpmService.TestAsync(new NpmConfig(true, b.BaseUrl ?? "", b.Email ?? "", pw, b.ForwardHost ?? ""));
             return Results.Ok(new { ok, error });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapGet("/hosting/backup-settings", () => Results.Ok(new
         {
             intervalHours = int.TryParse(settings.GetValue("BackupIntervalHours"), out var h) ? h : 0,
             retain = int.TryParse(settings.GetValue("BackupRetain"), out var r) ? r : 7,
             lastRun = settings.GetValue("BackupLastRun"),
-        })).RequireAuthorization(p => p.RequireRole("Admin"));
+        })).RequirePerm(Perm.Settings);
         app2.MapPut("/hosting/backup-settings", (BackupSettingsRequest b) =>
         {
             settings.SetValue("BackupIntervalHours", Math.Max(0, b.IntervalHours).ToString());
             settings.SetValue("BackupRetain", (b.Retain <= 0 ? 7 : b.Retain).ToString());
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapGet("/hosting/notify-settings", () => Results.Ok(new
         {
             webhookUrl = settings.GetValue("NotifyWebhookUrl") ?? "",
             telegramToken = settings.GetValue("NotifyTelegramToken") ?? "",
             telegramChat = settings.GetValue("NotifyTelegramChat") ?? "",
-        })).RequireAuthorization(p => p.RequireRole("Admin"));
+        })).RequirePerm(Perm.Settings);
         app2.MapPut("/hosting/notify-settings", (NotifySettingsRequest b) =>
         {
             settings.SetValue("NotifyWebhookUrl", b.WebhookUrl?.Trim() ?? "");
             settings.SetValue("NotifyTelegramToken", b.TelegramToken?.Trim() ?? "");
             settings.SetValue("NotifyTelegramChat", b.TelegramChat?.Trim() ?? "");
             return Results.NoContent();
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapPost("/hosting/notify/test", async (NotifySettingsRequest b) =>
         {
             const string title = "🔔 AspireUI test notification";
@@ -1179,7 +1179,7 @@ public static class StackEndpoints
             if (!string.IsNullOrWhiteSpace(url)) { any = true; var (ok, e) = await NotifyService.SendAsync(url!, title, body); err ??= ok ? null : $"webhook: {e}"; }
             if (!string.IsNullOrWhiteSpace(tok) && !string.IsNullOrWhiteSpace(chat)) { any = true; var (ok, e) = await NotifyService.SendTelegramAsync(tok!, chat!, title + body); err ??= ok ? null : $"telegram: {e}"; }
             return Results.Ok(new { ok = any && err is null, error = any ? err : "no channel configured" });
-        }).RequireAuthorization(p => p.RequireRole("Admin"));
+        }).RequirePerm(Perm.Settings);
         app2.MapGet("/stacks/{id}/hosting/domain", async (string id, HttpContext ctx) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
@@ -1213,19 +1213,19 @@ public static class StackEndpoints
                 return Results.Ok(pr);
             }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
-        });
+        }).RequirePerm(Perm.Configure);
         app2.MapDelete("/stacks/{id}/hosting/domain/{proxyId:int}", async (string id, int proxyId, string? hostname) =>
         {
             var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
             try { await domains.DeleteAsync(t, proxyId, hostname); RemoveDomainHost(id, proxyId); return Results.NoContent(); }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
-        });
+        }).RequirePerm(Perm.Configure);
         app2.MapPost("/stacks/{id}/hosting/domain/{proxyId:int}/enabled", async (string id, int proxyId, EnabledRequest b) =>
         {
             var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
             try { await domains.SetEnabledAsync(t, proxyId, b.Enabled); return Results.NoContent(); }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
-        });
+        }).RequirePerm(Perm.Configure);
 
         // Every target answers for its own apps: its own proxy for domains, and its own address for
         // URLs — rewriting a remote app's URL to the request host would point at the wrong machine.

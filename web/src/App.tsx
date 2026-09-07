@@ -12,7 +12,7 @@ import { LoginPage } from "./auth/LoginPage";
 import { SetupWizard } from "./auth/SetupWizard";
 import { useAuth } from "./auth/AuthContext";
 import { useViewMode } from "./viewMode";
-import { canOpenEditor } from "./model";
+import { can, canOpenEditor, PERM_USERS } from "./model";
 import { CommandPalette } from "./CommandPalette";
 import { ShortcutsHelp } from "./ShortcutsHelp";
 
@@ -33,9 +33,9 @@ function AuthedExtras() {
   return <><CommandPalette /><ShortcutsHelp /></>;
 }
 
-function AdminOnly({ children }: { children: ReactNode }) {
+function UsersGate({ children }: { children: ReactNode }) {
   const { status } = useAuth();
-  return status?.user?.isAdmin ? children : <Navigate to="/" replace />;
+  return can(status?.user, PERM_USERS) ? children : <Navigate to="/" replace />;
 }
 
 function EditorGate({ children }: { children: ReactNode }) {
@@ -56,7 +56,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/hosting" element={<Hosting />} />
         <Route path="/app/:id" element={<AppDetail />} />
-        <Route path="/users" element={<AdminOnly><Users /></AdminOnly>} />
+        <Route path="/users" element={<UsersGate><Users /></UsersGate>} />
       </Routes>
     </AuthGate>
   );

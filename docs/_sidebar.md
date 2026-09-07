@@ -10,4 +10,5 @@
 - [App manifest (submit an app)](app-manifest.md)
 - [Umbrel & Unraid stores](app-stores.md)
 - [Live Resources & Logs](live-resources.md)
+- [Users & permissions](users-and-permissions.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)

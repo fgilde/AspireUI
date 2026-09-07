@@ -12,7 +12,7 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld,
 } from "@tabler/icons-react";
-import { runStateColor, canOpenEditor, hostingBroken, hostingHealthLabel, type Stack, type RunStatus, type Deployment } from "../model";
+import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -83,7 +83,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const nav = useNavigate();
   const { status } = useAuth();
   const canEdit = canOpenEditor(status?.user);
-  const isAdmin = !!status?.user?.isAdmin;
+  const mayDeploy = can(status?.user, PERM_DEPLOY);
   useTitle(simple ? "Apps" : "Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [deps, setDeps] = useState<Record<string, Deployment>>({});
@@ -298,8 +298,8 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
 
   const headerActions = (
     <>
-              <Button variant={simple ? "filled" : "default"} leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install from Store</Button>
-              {!simple && <>
+              {mayDeploy && <Button variant={simple ? "filled" : "default"} leftSection={<IconDownload size={16} />} onClick={() => setInstallOpen(true)}>Install from Store</Button>}
+              {!simple && canEdit && <>
               <Button.Group>
                 <Tooltip label="Create a new empty stack" withArrow>
                   <Button leftSection={<IconPlus size={16} />} onClick={() => setOpen(true)}>
@@ -451,10 +451,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                         <Menu.Dropdown onClick={e => e.stopPropagation()}>
                           {dep ? (
                             <>
-                              <HostingMenuItems d={dep} canEdit={canEdit} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
+                              <HostingMenuItems d={dep} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
                                 onBackups={() => setBackupsFor(dep)} onDomain={() => setDomainFor(dep)}
-                                onTerminal={isAdmin ? () => setTerminalFor(dep) : undefined} onFiles={isAdmin ? () => setFilesFor(dep) : undefined}
-                                onMove={isAdmin ? () => setMoveFor(dep) : undefined}
+                                onTerminal={() => setTerminalFor(dep)} onFiles={() => setFilesFor(dep)}
+                                onMove={() => setMoveFor(dep)}
                                 onOpenEditor={() => nav(`/editor/${s.id}`)} onChanged={loadDeps} />
                               <Menu.Divider />
                               {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
