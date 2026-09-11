@@ -1,6 +1,7 @@
 <p align="center"><img src="docs/aspireui_wordmark.svg" alt="AspireUI" width="540" /></p>
 
 <p align="center">
+  <a href="https://quickrun.org/run?repo=fgilde/AspireUI"><img src="https://quickrun.org/badge.svg" alt="Build"></a>
   <a href="https://github.com/fgilde/AspireUI/actions/workflows/docker-publish.yml"><img src="https://github.com/fgilde/AspireUI/actions/workflows/docker-publish.yml/badge.svg" alt="Build"></a>
   <a href="https://github.com/fgilde/AspireUI/pkgs/container/aspireui"><img src="https://img.shields.io/badge/ghcr.io-fgilde%2Faspireui-2496ED?logo=docker&logoColor=white" alt="Container image"></a>
   <a href="https://github.com/fgilde/AspireUI/releases"><img src="https://img.shields.io/github/v/tag/fgilde/AspireUI?label=release&sort=semver" alt="Release"></a>
@@ -33,12 +34,7 @@
 
 <sub>Read the <a href="https://fgilde.github.io/AspireUI/docs.html">docs</a>, or start at the <a href="https://fgilde.github.io/AspireUI/">website</a>.</sub>
 
-<h1>
-  <img src="docs/aspireui_transparent.svg" alt="AspireUI" width="50" align="center">
-  AspireUI
-</h1>
 
-[![QuickRun](https://quickrun.org/badge.svg)](https://quickrun.org/run?repo=fgilde/AspireUI)
 
 Visually build, import, and run .NET Aspire AppHost projects.
 
