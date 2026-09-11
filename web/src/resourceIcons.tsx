@@ -72,6 +72,7 @@ const MAP: Record<string, Visual> = {
   acestep:             { tabler: IconMusic, color: "#F59E0B" },
   museforge:           { img: "/media/museforge/logo.webp", color: "#7C3AED" },
   videola:             { img: "https://fgilde.github.io/videola/videola-icon.png", color: "#F43F5E" },
+  gtrade:              { img: "https://fgilde.github.io/G-Trade/gtrade-192.png", color: "#F59E0B" },
   coworkee:            { img: "/media/coworkee/logo.png", color: "#7C3AED" },
   havewa:              { img: "/media/havewa/logo.png", color: "#0EA5A4" },
   yuvomi:              { img: "https://raw.githubusercontent.com/ulsklyc/yuvomi/main/deploy/umbrel/icon.svg", color: "#0EA5E9" },

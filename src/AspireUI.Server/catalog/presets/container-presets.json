@@ -4230,6 +4230,32 @@
     ]
   },
   {
+    "id": "gtrade",
+    "label": "G-Trade",
+    "group": "Tools",
+    "image": "ghcr.io/fgilde/gtrade:latest",
+    "port": 8080,
+    "icon": "gtrade",
+    "description": "G-Trade — a trading bot that runs on your own machine and writes down why it did nothing. Broker and crypto accounts behind one interface, fixed rules or a language model as the signal source, thirteen pre-trade checks that each log their reason, and an append-only, hash-chained decision log. Open the URL and create the owner account; connect the 'sim' venue for a full tour without a broker. For anything long-lived set GTRADE_SECRET_KEY (base64, 32 bytes) and keep it away from the data volume — otherwise G-Trade writes a key file next to the database and a backup without that file cannot be decrypted. GTRADE_HALT=1 blocks every outgoing order. Simulator-tested only so far: use a sandbox account.",
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "tags": [
+      "trading",
+      "finance",
+      "crypto",
+      "broker",
+      "bot",
+      "self-hosted"
+    ],
+    "website": "https://fgilde.github.io/G-Trade/",
+    "language": "C#",
+    "logo": "https://fgilde.github.io/G-Trade/gtrade-512.png"
+  },
+  {
     "id": "librephotos",
     "label": "LibrePhotos",
     "group": "Media",

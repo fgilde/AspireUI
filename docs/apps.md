@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **164 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **165 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -134,7 +134,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/nodered.png" width="22" height="22" alt=""> | **[Node-RED](https://nodered.org)** | Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/octoprint.png" width="22" height="22" alt=""> | **[OctoPrint](https://octoprint.org)** | OctoPrint — web control & monitoring for a 3D printer. Starts into the setup wizard; to print, pass the printer's serial device. |
 
-## Tools <sub>(82)</sub>
+## Tools <sub>(83)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -162,6 +162,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/freshrss.png" width="22" height="22" alt=""> | **[FreshRSS](https://freshrss.org)** | A free, self-hostable news aggregator… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ghost.png" width="22" height="22" alt=""> | **[Ghost](https://ghost.org)** | Independent technology for modern publishing, memberships, subscriptions and newsletters. MySQL companion (Ghost 5 requires MySQL). Set… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/ghostfolio.png" width="22" height="22" alt=""> | **[Ghostfolio](https://ghostfol.io)** | Open Source Wealth Management Software. Angular + NestJS + Prisma + Nx + TypeScript 🤍 Postgres + Redis companions. ACCESS_TOKEN_SALT &… |
+| <img src="https://fgilde.github.io/G-Trade/gtrade-192.png" width="22" height="22" alt=""> | **[G-Trade](https://fgilde.github.io/G-Trade/)** | G-Trade — a trading bot that runs on your own machine and writes down why it did nothing. Broker and crypto accounts behind one interface, fixed rules or a…  |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gitea.png" width="22" height="22" alt=""> | **[Gitea](https://about.gitea.com)** | Git with a cup of tea! Painless self-hosted all-in-one software development service, including Git hosting, code review, team… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gokapi.png" width="22" height="22" alt=""> | **[Gokapi](https://github.com/Forceu/Gokapi)** | Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gotify.png" width="22" height="22" alt=""> | **[Gotify](https://gotify.net)** | A simple server for sending and receiving messages in real-time per WebSocket. (Includes a sleek web-ui) Gotify — simple self-hosted… |
@@ -224,4 +225,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*164 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*165 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
