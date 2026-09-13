@@ -430,7 +430,10 @@ Every secret a target needs is stored one of two ways:
 
 - **Encrypted in the database** (AES-GCM). The key comes from `ASPIREUI_SECRET_KEY` (base64 32 bytes, or
   any passphrase) when set — use that in a container deploy, so the database alone is worthless —
-  otherwise from a key file created next to the workspace on first use, readable by the owner only.
+  otherwise from `_keys/secrets.key` next to the database, created on first use and readable by the
+  owner only. That file is as important as the database: back the two up together, and keep the key
+  file on the same volume, or every stored secret becomes unreadable the next time the container is
+  replaced.
   ```bash
   # generate one
   openssl rand -base64 32

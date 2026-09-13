@@ -92,6 +92,58 @@ public class SecretStoreTests
     }
 
     [Fact]
+    public void A_secret_survives_a_container_that_is_replaced_under_the_same_volume()
+    {
+        var volume = Temp("vol");
+        var firstContainer = Temp("c1");
+        var secondContainer = Temp("c2");
+        try
+        {
+            var db = Path.Combine(volume, "aspireui.db");
+            var before = new SecretStore(db, firstContainer);
+            var reference = before.Put("npm-admin-password", "npm password");
+
+            var after = new SecretStore(db, secondContainer);
+
+            Assert.Equal("npm-admin-password", after.Resolve(reference));
+        }
+        finally { Clean(volume, firstContainer, secondContainer); }
+    }
+
+    [Fact]
+    public void The_key_an_older_version_left_outside_the_volume_is_adopted()
+    {
+        var volume = Temp("vol");
+        var legacy = Temp("old");
+        try
+        {
+            var legacyKey = Path.Combine(legacy, "_keys", "secrets.key");
+            Directory.CreateDirectory(Path.GetDirectoryName(legacyKey)!);
+            var material = Convert.ToBase64String(new byte[32]);
+            File.WriteAllText(legacyKey, material);
+
+            var db = Path.Combine(volume, "aspireui.db");
+            var store = new SecretStore(db, legacy);
+            store.Put("anything");
+
+            Assert.Equal(material, File.ReadAllText(Path.Combine(volume, "_keys", "secrets.key")).Trim());
+        }
+        finally { Clean(volume, legacy); }
+    }
+
+    private static string Temp(string tag)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"aspireui-{tag}-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    private static void Clean(params string[] dirs)
+    {
+        foreach (var d in dirs) { try { Directory.Delete(d, true); } catch { } }
+    }
+
+    [Fact]
     public void The_database_never_holds_the_plaintext()
     {
         var s = New(out var dir);

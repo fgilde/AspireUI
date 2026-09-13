@@ -10,7 +10,13 @@ namespace AspireUI.Server.Services;
 //   "sec:<id>"    the value itself, AES-GCM encrypted in the database. The key comes from
 //                 ASPIREUI_SECRET_KEY (base64, 32 bytes) when set — that is what a container deploy
 //                 should use, because then the database alone is worthless — otherwise from a key file
-//                 next to the workspace, created on first use with owner-only permissions.
+//                 next to the database, created on first use with owner-only permissions.
+//
+//                 Next to the database, because that is the path a deployment puts on a volume. An
+//                 earlier version kept it next to the process' own data directory instead, which in a
+//                 container is the image layer: replacing the container threw the key away and left
+//                 every stored secret undecryptable. That key is adopted on first use if it is still
+//                 there, so upgrading does not lose the secrets it can still read.
 //   "env:NAME"    / "file:PATH": nothing secret is stored at all, we read it where it already lives.
 //
 // A ref is safe to hand to the UI; the value never leaves the server except to the process we start.
@@ -19,16 +25,18 @@ public class SecretStore
     private readonly string _connString;
     private readonly SqliteConnection? _keepAlive;
     private readonly string _keyPath;
+    private readonly string? _legacyKeyPath;
     private byte[]? _key;
 
-    public SecretStore(string dbPath = "aspireui.db", string? keyDir = null)
+    public SecretStore(string dbPath = "aspireui.db", string? legacyKeyDir = null)
     {
         _connString = dbPath == ":memory:"
             ? $"Data Source=SecretStore-{Guid.NewGuid():n};Mode=Memory;Cache=Shared"
             : $"Data Source={dbPath}";
         if (dbPath == ":memory:") { _keepAlive = new SqliteConnection(_connString); _keepAlive.Open(); }
-        _keyPath = Path.Combine(keyDir ?? Path.GetDirectoryName(Path.GetFullPath(dbPath == ":memory:" ? "." : dbPath))!,
-            "_keys", "secrets.key");
+        var dbDir = Path.GetDirectoryName(Path.GetFullPath(dbPath == ":memory:" ? "." : dbPath))!;
+        _keyPath = Path.Combine(dbDir, "_keys", "secrets.key");
+        _legacyKeyPath = legacyKeyDir is null ? null : Path.Combine(legacyKeyDir, "_keys", "secrets.key");
         UsingConnection(conn =>
         {
             using var cmd = conn.CreateCommand();
@@ -64,6 +72,7 @@ public class SecretStore
             // A passphrase instead of a base64 key: derive one, so a human-typed value still works.
             return _key = SHA256.HashData(Encoding.UTF8.GetBytes(fromEnv.Trim()));
         }
+        AdoptLegacyKey();
         if (File.Exists(_keyPath))
         {
             try
@@ -78,6 +87,20 @@ public class SecretStore
         File.WriteAllText(_keyPath, Convert.ToBase64String(key));
         FileGuard.OwnerOnly(_keyPath);
         return _key = key;
+    }
+
+    // The key an older version left outside the volume still decrypts what it encrypted, so move it
+    // to where it belongs rather than minting a new one and losing everything.
+    private void AdoptLegacyKey()
+    {
+        if (_legacyKeyPath is null || File.Exists(_keyPath) || !File.Exists(_legacyKeyPath)) return;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_keyPath)!);
+            File.Copy(_legacyKeyPath, _keyPath);
+            FileGuard.OwnerOnly(_keyPath);
+        }
+        catch { }
     }
 
     // Stores a value and returns its ref. An empty value stores nothing and returns null.
