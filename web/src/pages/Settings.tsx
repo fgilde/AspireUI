@@ -352,7 +352,7 @@ function NpmSettingsSection() {
   useEffect(() => { api.getNpmSettings().then(s => {
     setEnabled(s.enabled); setBaseUrl(s.baseUrl); setEmail(s.email); setHasPassword(s.hasPassword);
   }).catch(() => {}); }, []);
-  const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined, forwardHost: "" });
+  const body = () => ({ enabled, baseUrl: baseUrl.trim(), email: email.trim(), password: password || undefined });
   const save = async () => { await api.setNpmSettings(body()); setHasPassword(hasPassword || !!password); setPassword(""); setSaved(true); setTimeout(() => setSaved(false), 2000); };
   const runTest = async () => { setTesting(true); setTest(null); try { setTest(await api.testNpm(body())); } catch (e) { setTest({ ok: false, error: e instanceof Error ? e.message : String(e) }); } finally { setTesting(false); } };
   return (

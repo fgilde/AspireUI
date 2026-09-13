@@ -84,14 +84,14 @@ export function SetupWizard() {
 
   const testNpm = async () => {
     setTesting(true); setNpmTest(null);
-    try { setNpmTest(await api.testNpm({ enabled: true, baseUrl: npmUrl.trim(), email: npmEmail.trim(), password: npmPass, forwardHost: "" })); }
+    try { setNpmTest(await api.testNpm({ enabled: true, baseUrl: npmUrl.trim(), email: npmEmail.trim(), password: npmPass })); }
     catch (e) { setNpmTest({ ok: false, error: e instanceof Error ? e.message : String(e) }); }
     finally { setTesting(false); }
   };
   const finish = async (saveNpm: boolean) => {
     setBusy(true);
     try {
-      if (saveNpm) await api.setNpmSettings({ enabled: npmEnabled, baseUrl: npmUrl.trim(), email: npmEmail.trim(), password: npmPass || undefined, forwardHost: "" });
+      if (saveNpm) await api.setNpmSettings({ enabled: npmEnabled, baseUrl: npmUrl.trim(), email: npmEmail.trim(), password: npmPass || undefined });
       toastOk("Setup complete");
       nav("/");
     } catch (e) { toastErr(e); } finally { setBusy(false); }

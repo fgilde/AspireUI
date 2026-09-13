@@ -495,7 +495,7 @@ export const dockerRemove = (kind: "images" | "containers" | "volumes", id: stri
 export const dockerPrune = (kind: "images" | "containers"): Promise<{ log: string }> =>
   fetch(`${base}/docker/prune`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }) }).then(ok);
 
-type NpmSettingsBody = { enabled: boolean; baseUrl: string; email: string; password?: string | null; forwardHost: string };
+type NpmSettingsBody = { enabled: boolean; baseUrl: string; email: string; password?: string | null; forwardHost?: string };
 export const getNpmSettings = (): Promise<import("./model").NpmSettings> => fetch(`${base}/hosting/npm-settings`).then(ok);
 export const setNpmSettings = (b: NpmSettingsBody): Promise<void> =>
   fetch(`${base}/hosting/npm-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(() => undefined);
