@@ -125,6 +125,12 @@ must not keep the server down.
 `settings` takes the same keys as `ASPIREUI_SET_<Key>` and, like it, only fills in what is still
 empty so a change made in the UI is not overwritten on the next restart.
 
+The `Npm*` keys are the one set that does not stay in the settings table: they become the local
+target's domain configuration (what **Settings → Hosting → Nginx Proxy Manager** edits). The same
+rule applies — they take effect while nobody has set that up in the UI, and on every start with
+`ASPIREUI_SET_FORCE=true`. Switching NPM off in the UI counts as set up; the seed does not switch it
+back on.
+
 ## From Aspire
 
 The [`Nextended.Aspire.Hosting.AspireUI`](https://www.nuget.org/packages/Nextended.Aspire.Hosting.AspireUI)

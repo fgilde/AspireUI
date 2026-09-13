@@ -316,26 +316,96 @@ public class DomainTargetTests
         return (new DomainService(store, new SecretStore(db, dir), settings), store, settings, dir);
     }
 
+    // What the Aspire package's WithNginxProxyManager puts into the container's environment.
+    private static Dictionary<string, string?> NpmEnv(string url = "http://npm.local:81", string password = "secret", bool force = false) => new()
+    {
+        ["ASPIREUI_SET_NpmEnabled"] = "true",
+        ["ASPIREUI_SET_NpmBaseUrl"] = url,
+        ["ASPIREUI_SET_NpmEmail"] = "me@example.com",
+        ["ASPIREUI_SET_NpmPassword"] = password,
+        ["ASPIREUI_SET_NpmForwardHost"] = "10.0.0.5",
+        ["ASPIREUI_SET_FORCE"] = force ? "true" : null,
+    };
+
+    // One container start: the seeder fills the settings table, then the domain configuration follows.
+    private static void Start(DomainService svc, SettingsStore settings, Dictionary<string, string?> env)
+    {
+        Seeder.SeedSettings(settings, env);
+        svc.ApplySeededNpm(force: env.GetValueOrDefault("ASPIREUI_SET_FORCE") == "true");
+    }
+
     [Fact]
-    public void The_old_global_npm_settings_become_the_local_targets_domain_configuration()
+    public void The_seeded_npm_settings_become_the_local_targets_domain_configuration()
     {
         var (svc, store, settings, dir) = New();
         try
         {
-            settings.SetValue("NpmEnabled", "true");
-            settings.SetValue("NpmBaseUrl", "http://npm.local:81");
-            settings.SetValue("NpmEmail", "me@example.com");
-            settings.SetValue("NpmPassword", "secret");
-            svc.MigrateGlobalNpm();
+            Start(svc, settings, NpmEnv());
             var local = store.Get(DeployTarget.LocalId)!;
             Assert.Equal(DomainService.KindNpm, svc.KindOf(local));
             Assert.True(svc.Configured(local));
             var npm = svc.Npm(local)!;
             Assert.Equal("http://npm.local:81", npm.BaseUrl);
             Assert.Equal("secret", npm.Password);
-            // Running it again must not wipe what is already there.
-            svc.MigrateGlobalNpm();
-            Assert.Equal(DomainService.KindNpm, svc.KindOf(store.Get(DeployTarget.LocalId)!));
+            Assert.Equal("10.0.0.5", npm.ForwardHost);
+
+            var updatedAt = local.UpdatedAt;
+            Start(svc, settings, NpmEnv());
+            Assert.Equal(updatedAt, store.Get(DeployTarget.LocalId)!.UpdatedAt);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void Npm_added_to_the_apphost_after_the_first_start_still_arrives()
+    {
+        var (svc, store, settings, dir) = New();
+        try
+        {
+            Start(svc, settings, new());
+            Assert.Equal(DomainService.KindNone, svc.KindOf(store.Get(DeployTarget.LocalId)!));
+
+            Start(svc, settings, NpmEnv());
+            var local = store.Get(DeployTarget.LocalId)!;
+            Assert.Equal(DomainService.KindNpm, svc.KindOf(local));
+            Assert.Equal("http://npm.local:81", svc.Npm(local)!.BaseUrl);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void What_somebody_set_in_the_ui_beats_the_seed_unless_it_is_forced()
+    {
+        var (svc, store, settings, dir) = New();
+        try
+        {
+            Start(svc, settings, NpmEnv());
+            var local = store.Get(DeployTarget.LocalId)!;
+            store.Upsert(local with { Domains = local.Domains! with { Npm = local.Domains!.Npm! with { BaseUrl = "http://mine:81" } } });
+
+            Start(svc, settings, NpmEnv());
+            Assert.Equal("http://mine:81", svc.Npm(store.Get(DeployTarget.LocalId)!)!.BaseUrl);
+
+            Start(svc, settings, NpmEnv(url: "http://forced:81", password: "newer", force: true));
+            var npm = svc.Npm(store.Get(DeployTarget.LocalId)!)!;
+            Assert.Equal("http://forced:81", npm.BaseUrl);
+            Assert.Equal("newer", npm.Password);
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void Npm_switched_off_in_the_ui_is_not_switched_back_on_by_the_seed()
+    {
+        var (svc, store, settings, dir) = New();
+        try
+        {
+            Start(svc, settings, NpmEnv());
+            var local = store.Get(DeployTarget.LocalId)!;
+            store.Upsert(local with { Domains = local.Domains! with { Kind = DomainService.KindNone } });
+
+            Start(svc, settings, NpmEnv());
+            Assert.Equal(DomainService.KindNone, svc.KindOf(store.Get(DeployTarget.LocalId)!));
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
     }

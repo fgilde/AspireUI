@@ -51,7 +51,7 @@ public static class StackEndpoints
         var provision = new ProvisionService(targetStore, targets, secrets);
         var orchestrator = new OrchestratorService(deployments, publish, targets, secrets);
         var domains = new DomainService(targetStore, secrets, settings);
-        domains.MigrateGlobalNpm();
+        domains.ApplySeededNpm(force: string.Equals(Environment.GetEnvironmentVariable("ASPIREUI_SET_FORCE"), "true", StringComparison.OrdinalIgnoreCase));
         var hosting = new HostingService(deployments, publish, deploy, proxy, targets, orchestrator);
         _ = Task.Run(hosting.ReconcileOnStartup);
         // A seed can ask for its stacks to be deployed. The seeder runs before there is any hosting to

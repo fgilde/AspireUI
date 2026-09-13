@@ -17,23 +17,36 @@ public class DomainService(TargetStore targets, SecretStore secrets, SettingsSto
     public const string KindAzure = "azure";
     public const string KindManual = "manual";
 
-    // The old global NPM settings become the local target's domain configuration, once.
-    public void MigrateGlobalNpm()
+    // The seeded NPM settings — ASPIREUI_SET_Npm*, a seed file's settings block, the Aspire package's
+    // WithNginxProxyManager — describe the local target's domain configuration. They follow the rule
+    // every seeded setting follows: applied while nobody has set this up in the UI, and on every start
+    // when ASPIREUI_SET_FORCE says so. Turning NPM off in the UI keeps the url, which is how a
+    // deliberate "off" is told apart from "never set up".
+    public void ApplySeededNpm(bool force = false)
     {
         if (targets.Get(DeployTarget.LocalId) is not { } local) return;
-        if (local.Domains is not null) return;
-        var baseUrl = settings.GetValue("NpmBaseUrl") ?? "";
+        var baseUrl = (settings.GetValue("NpmBaseUrl") ?? "").Trim();
         var enabled = (settings.GetValue("NpmEnabled") ?? "false") == "true";
-        if (!enabled || string.IsNullOrWhiteSpace(baseUrl))
+        var cur = local.Domains?.Npm;
+        if (!enabled || baseUrl.Length == 0)
         {
-            targets.Upsert(local with { Domains = new TargetDomains(KindNone) });
+            if (local.Domains is null) targets.Upsert(local with { Domains = new TargetDomains(KindNone) });
             return;
         }
-        var pwRef = secrets.Put(settings.GetValue("NpmPassword"), "npm password (this machine)");
+        if (!force && !string.IsNullOrWhiteSpace(cur?.BaseUrl)) return;
+
+        var email = settings.GetValue("NpmEmail") ?? "";
+        var forwardHost = settings.GetValue("NpmForwardHost") ?? "";
+        var password = settings.GetValue("NpmPassword");
+        var unchanged = KindOf(local) == KindNpm && cur is not null
+            && cur.BaseUrl == baseUrl && cur.Email == email && cur.ForwardHost == forwardHost
+            && (string.IsNullOrEmpty(password) || secrets.Resolve(cur.PasswordRef) == password);
+        if (unchanged) return;
+
+        var pwRef = secrets.Replace(cur?.PasswordRef, password, "npm password (this machine)");
         targets.Upsert(local with
         {
-            Domains = new TargetDomains(KindNpm, new TargetNpm(baseUrl,
-                settings.GetValue("NpmEmail") ?? "", pwRef, settings.GetValue("NpmForwardHost") ?? "")),
+            Domains = new TargetDomains(KindNpm, new TargetNpm(baseUrl, email, pwRef, forwardHost)),
         });
     }
 
