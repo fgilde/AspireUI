@@ -453,7 +453,7 @@ public static class StackEndpoints
             var (_, cerr) = GitService.CloneInto(g.Url, g.Branch, g.Subdir, dir, g.AuthToken);
             if (cerr is not null) return Results.UnprocessableEntity(new { message = cerr });
 
-            var (rebuilt, err) = dirs.Build(id, dir, existing.RunAsIs ? "runasis" : "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts);
+            var (rebuilt, err) = dirs.Build(id, dir, existing.RunAsIs ? "runasis" : g.Mode ?? "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts, g.Image, g.Port);
             if (rebuilt is null) return Results.UnprocessableEntity(new { message = err });
             var updated = rebuilt with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true };
             store.Save(updated);
@@ -472,10 +472,19 @@ public static class StackEndpoints
             var r = GitService.Inspect(b.Url, b.Branch, b.Subdir, b.AuthToken);
             if (r.Error is not null) return Results.UnprocessableEntity(new { message = r.Error });
             var apps = r.Manifest is null ? new List<ContainerPreset>() : ManifestImporter.Parse(r.Manifest).apps;
+            // A GitHub repository with a Dockerfile usually publishes its image to ghcr.io under the same
+            // name. Offer it only when the registry confirms it is there.
+            var suggested = r.HasDockerfile && apps.Count == 0 && ImageRegistry.SuggestFor(b.Url) is { } guess && ImageRegistry.Exists(guess) ? guess : null;
             return Results.Ok(new
             {
-                r.HasCompose, r.HasAppHost, r.Name, composeFiles = r.ComposeFiles ?? new(),
+                r.HasCompose, r.HasAppHost, r.HasDockerfile, r.Name, composeFiles = r.ComposeFiles ?? new(),
                 manifest = apps.Count == 0 ? null : new { file = GitService.ManifestName, app = apps[0].Label, apps[0].Image, apps[0].Port },
+                dockerfile = r.Dockerfile is null ? null : new
+                {
+                    r.Dockerfile.Port, r.Dockerfile.Volumes,
+                    env = r.Dockerfile.Env.Select(e => new { key = e.Key, value = e.Value }).ToList(),
+                    suggestedImage = suggested,
+                },
             });
         });
         app2.MapPost("/git/branches", (GitImportRequest b) =>
@@ -497,13 +506,15 @@ public static class StackEndpoints
             var manifestMode = mode == "manifest" || (mode.Length == 0 && GitService.FindManifest(dir) is not null);
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? (manifestMode ? "" : name ?? "git app") : b.Name!;
 
-            var (stack, err) = dirs.Build(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
+            var (stack, err) = dirs.Build(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts, b.Image, b.Port);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             stack = stack with { FromGit = true };
 
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services, b.ServicePorts), gitJson));
+            var effectiveMode = mode.Length == 0 ? DirImporter.ModeFor(dir) : mode;
+            settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services, b.ServicePorts,
+                Mode: effectiveMode, Image: b.Image, Port: b.Port), gitJson));
             settings.SetValue($"githook:{token}", sid);
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
@@ -710,7 +721,7 @@ public static class StackEndpoints
             catch (Exception ex) { RmDir(); return Results.UnprocessableEntity(new { message = ex.Message }); }
 
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? "imported app" : b.Name!;
-            var (stack, err) = dirs.Build(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts);
+            var (stack, err) = dirs.Build(sid, dir, b.Mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts, b.Image, b.Port);
             if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             store.Save(withMeta);
@@ -1605,12 +1616,12 @@ public static class StackEndpoints
     public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
-    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
-    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null);
+    public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Image = null, int? Port = null);
+    public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Mode = null, string? Image = null, int? Port = null);
     public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null, string? TargetId = null);
     public record EnabledRequest(bool Enabled);
     public record HostingDeployRequest(string? TargetId = null);
     public record MoveRequest(string TargetId, bool WithData = true, bool KeepSource = false);
     public record SourceFile(string Path, string Content);
-    public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null, Dictionary<string, int>? ServicePorts = null);
+    public record LocalImportRequest(string? Name, string? Mode, List<SourceFile> Sources, string[]? Files = null, string[]? Services = null, Dictionary<string, string>? Env = null, Dictionary<string, int>? ServicePorts = null, string? Image = null, int? Port = null);
 }

@@ -39,15 +39,19 @@ public class DirImporter(ImportService import, ComposeImporter compose)
         return "";
     }
 
-    /// <summary>The kind of import a directory asks for when nobody says: manifest, then compose, then AppHost.</summary>
+    /// <summary>The kind of import a directory asks for when nobody says: manifest, compose, AppHost, then a bare Dockerfile.</summary>
     public static string ModeFor(string dir) =>
         GitService.FindManifest(dir) is not null ? "manifest"
-        : GitService.FindComposeFiles(dir).Count > 0 ? "compose" : "apphost";
+        : GitService.FindComposeFiles(dir).Count > 0 ? "compose"
+        : GitService.FindAppHostRel(dir) is not null ? "apphost"
+        : DockerfileReader.Find(dir) is not null ? "dockerfile" : "apphost";
 
     public (StackModel? stack, string? error) Build(string sid, string dir, string? mode, string name,
-        string[]? files, string[]? services, Dictionary<string, string>? env, Dictionary<string, int>? ports = null)
+        string[]? files, string[]? services, Dictionary<string, string>? env, Dictionary<string, int>? ports = null,
+        string? image = null, int? port = null)
     {
         var m = string.IsNullOrWhiteSpace(mode) ? ModeFor(dir) : mode!.ToLowerInvariant();
+        if (m is "dockerfile") return BuildFromDockerfile(sid, dir, name, env, image, port);
         if (m is "manifest")
         {
             if (GitService.FindManifest(dir) is not { } json) return (null, $"no {GitService.ManifestName} in this repository");
@@ -71,5 +75,47 @@ public class DirImporter(ImportService import, ComposeImporter compose)
         if (yaml is null) return (null, "no docker-compose file found");
         var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null, dir, ports);
         return cs is null ? (null, cerr) : (cs with { HasSource = true, ExtraFiles = [] }, null);
+    }
+
+    // One resource, described by the Dockerfile: the published image when there is one, the build
+    // otherwise. The repository stays with the stack either way, so a pull can rebuild it.
+    private static (StackModel? stack, string? error) BuildFromDockerfile(string sid, string dir, string name,
+        Dictionary<string, string>? env, string? image, int? port)
+    {
+        if (DockerfileReader.Read(dir) is not { } df) return (null, "no Dockerfile in this repository");
+        var target = port is > 0 ? port : df.Port;
+        if (target is null) return (null, "the Dockerfile has no EXPOSE — give the port the app listens on");
+
+        var resource = ResourceName(name);
+        var withs = new List<WithCall> { new("WithHttpEndpoint", [$"targetPort: {target}"]) };
+        var volumeNames = new HashSet<string>();
+        foreach (var path in df.Volumes)
+        {
+            var baseName = ResourceName(path.Trim('/').Split('/').LastOrDefault() ?? "data");
+            var vol = baseName;
+            for (var i = 2; !volumeNames.Add(vol); i++) vol = $"{baseName}{i}";
+            withs.Add(new WithCall("WithVolume", [ComposeImporter.Quote($"{resource}-{vol}"), ComposeImporter.Quote(path)]));
+        }
+        foreach (var (k, v) in env ?? new())
+            withs.Add(new WithCall("WithEnvironment", [ComposeImporter.Quote(k), ComposeImporter.Quote(v)]));
+
+        var (addMethod, addArgs) = string.IsNullOrWhiteSpace(image)
+            ? ("AddDockerfile", new List<string> { ComposeImporter.Quote(".") })
+            : ("AddContainer", new List<string> { ComposeImporter.Quote(image!.Trim()) });
+        var node = new NodeModel("n" + Guid.NewGuid().ToString("n")[..8], VarName(resource), addMethod, resource, withs, 60, 60, addArgs);
+        return (new StackModel(sid, name, "net10.0", [node], [], [], [], []) with { HasSource = true }, null);
+    }
+
+    private static string ResourceName(string s)
+    {
+        var slug = new string(s.ToLowerInvariant().Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray()).Trim('-');
+        while (slug.Contains("--")) slug = slug.Replace("--", "-");
+        return slug.Length == 0 ? "app" : slug;
+    }
+
+    private static string VarName(string resource)
+    {
+        var v = new string(resource.Where(char.IsAsciiLetterOrDigit).ToArray());
+        return v.Length == 0 || char.IsDigit(v[0]) ? "app" + v : v;
     }
 }

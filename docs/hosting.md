@@ -22,9 +22,12 @@ Two entry points, same result:
   name and any required secret (session/app secrets are generated for you, editable before install).
   Packages ask for their configuration in the same add dialog as the canvas, then deploy.
 - **App store → From Git**: paste any repository with an [`aspireui-app.json`](app-manifest.md), a
-  `docker-compose` file, or an Aspire AppHost. Same steps as [Import from Git](importing.md) — branch,
-  compose file, services, env vars — but it deploys straight to hosting instead of opening the editor.
-  If the repository carries a manifest, AspireUI offers the app exactly as its author defined it.
+  `docker-compose` file, a bare `Dockerfile`, or an Aspire AppHost. Same steps as
+  [Import from Git](importing.md) — branch, compose file, services, env vars — but it deploys straight
+  to hosting instead of opening the editor. If the repository carries a manifest, AspireUI offers the
+  app exactly as its author defined it. With only a Dockerfile, it reads the port, volumes and
+  settings from it, pulls the image the repository publishes when the registry has one under the
+  repository's name, and builds the Dockerfile on the host otherwise.
 - **Editor → Deploy** (advanced): build/import any stack, then use the **Deploy** button (or the
   Publish panel's **Hosting** card) to deploy that exact stack.
 

@@ -221,7 +221,7 @@ public class ComposeImporter
         _ => [],
     };
 
-    private static string Quote(string s) => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+    internal static string Quote(string s) => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
     private static string Sanitize(string s)
     {
         var cleaned = new string(s.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());

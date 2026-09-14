@@ -16,7 +16,7 @@ public static class GitService
 
     public record ComposeFileDto(string Path, string Content);
     public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error, List<ComposeFileDto>? ComposeFiles = null,
-        string? Manifest = null);
+        string? Manifest = null, bool HasDockerfile = false, DockerfileInfo? Dockerfile = null);
 
     public static string? FindManifest(string dir)
     {
@@ -36,7 +36,9 @@ public static class GitService
                 .Select(f => new ComposeFileDto(f, TryRead(System.IO.Path.Combine(root, f))))
                 .ToList();
             var hasAppHost = FindAppHost(root) is not null;
-            return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles, FindManifest(root));
+            var dockerfile = DockerfileReader.Read(root);
+            return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles, FindManifest(root),
+                dockerfile is not null, dockerfile);
         }
         catch (Exception e) { return new(false, false, null, e.Message); }
         finally { Cleanup(dir); }

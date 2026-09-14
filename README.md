@@ -172,7 +172,8 @@ at **https://fgilde.github.io/AspireUI/docs.html**.
 - **WebDataStudio** on any database resource: one switch adds a browser database studio
   (PostgreSQL, MySQL, SQL Server, Oracle, MongoDB, Redis …) with its connections already wired
 - NuGet packages panel for the AppHost project
-- Import an existing AppHost from `.cs`, `.csproj`, or a `.zip`, or from a `docker-compose.yml`
+- Import an existing AppHost from `.cs`, `.csproj`, or a `.zip`, from a `docker-compose.yml`, or from a
+  repository that has nothing but a `Dockerfile`
 - Demo templates to start from a working example
 - Built-in AI assistant to help build and modify stacks
 - Themes, command palette (Ctrl/⌘+K), saveable dock layouts, undo/redo

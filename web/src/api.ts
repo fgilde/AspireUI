@@ -311,7 +311,7 @@ export const setImportSettings = (b: { maxFileMb?: number; respectGitignore?: bo
 export const detectIps = (): Promise<string[]> => fetch(`${base}/hosting/detect-ip`).then(ok);
 export const setDashboardSettings = (hostDashboard: boolean, dashboardToken: string, publicHost?: string): Promise<void> =>
   fetch(`${base}/hosting/dashboard-settings`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hostDashboard, dashboardToken, publicHost }) }).then(okVoid);
-export const localImportProgress = (b: { name?: string; mode?: string; sources: SourceFile[]; files?: string[]; services?: string[]; env?: Record<string, string>; servicePorts?: Record<string, number> }, onProgress: (pct: number) => void): Promise<Stack> =>
+export const localImportProgress = (b: { name?: string; mode?: string; sources: SourceFile[]; files?: string[]; services?: string[]; env?: Record<string, string>; servicePorts?: Record<string, number>; image?: string; port?: number }, onProgress: (pct: number) => void): Promise<Stack> =>
   new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${base}/import/local`);
@@ -430,9 +430,10 @@ export const execInContainer = (depId: string, container: string, cmd: string): 
 export const execFreshContainer = (depId: string, service: string, cmd: string): Promise<{ ok: boolean; output: string }> =>
   fetch(`${base}/hosting/${depId}/exec`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ container: "", service, cmd, fresh: true }) }).then(ok);
 export const composeServices = (depId: string): Promise<string[]> => fetch(`${base}/hosting/${depId}/compose-services`).then(ok);
-export const gitInspect = (b: { url: string; branch?: string; subdir?: string; authToken?: string }): Promise<{ hasCompose: boolean; hasAppHost: boolean; name?: string; composeFiles: { path: string; content: string }[]; manifest?: { file: string; app: string; image: string; port: number } | null }> =>
+export type DockerfileInfo = { port?: number | null; volumes: string[]; env: { key: string; value: string }[]; suggestedImage?: string | null };
+export const gitInspect = (b: { url: string; branch?: string; subdir?: string; authToken?: string }): Promise<{ hasCompose: boolean; hasAppHost: boolean; hasDockerfile?: boolean; name?: string; composeFiles: { path: string; content: string }[]; manifest?: { file: string; app: string; image: string; port: number } | null; dockerfile?: DockerfileInfo | null }> =>
   fetch(`${base}/git/inspect`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
-export const gitImport = (b: { url: string; branch?: string; subdir?: string; name?: string; mode?: string; authToken?: string; files?: string[]; env?: Record<string, string>; services?: string[]; servicePorts?: Record<string, number> }): Promise<import("./model").Stack> =>
+export const gitImport = (b: { url: string; branch?: string; subdir?: string; name?: string; mode?: string; authToken?: string; files?: string[]; env?: Record<string, string>; services?: string[]; servicePorts?: Record<string, number>; image?: string; port?: number }): Promise<import("./model").Stack> =>
   fetch(`${base}/git/import`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
 export const gitBranches = (url: string, authToken?: string): Promise<{ branches: string[] }> =>
   fetch(`${base}/git/branches`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, authToken }) }).then(ok);

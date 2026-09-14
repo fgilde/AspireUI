@@ -2,6 +2,10 @@
 
 Bring an existing Aspire AppHost into AspireUI as an editable stack, from a **.cs** file, a
 **.csproj**, or a **.zip** of the project — or convert a **docker-compose.yml** into an Aspire stack.
+A repository with nothing but a **Dockerfile** works too: its last stage says which port, volumes
+and settings the image has, and the import pulls the image the repository publishes (a GitHub
+repository's `ghcr.io/<owner>/<repo>`, checked against the registry) or, if there is none, builds the
+Dockerfile on the host.
 
 Use the **Import** menu on the Stacks overview (next to New Stack / demos).
 

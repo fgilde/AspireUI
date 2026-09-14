@@ -6,16 +6,57 @@ import { toastOk, toastErr } from "../ui";
 
 type ComposeFile = { path: string; content: string };
 type Manifest = { file: string; app: string; image: string; port: number };
-type Detected = { hasCompose: boolean; hasAppHost: boolean; name?: string; composeFiles: ComposeFile[]; manifest?: Manifest | null };
+type Detected = { hasCompose: boolean; hasAppHost: boolean; hasDockerfile?: boolean; name?: string; composeFiles: ComposeFile[]; manifest?: Manifest | null; dockerfile?: api.DockerfileInfo | null };
 type EnvVar = { name: string; def: string; secret: boolean };
 type Service = { name: string; image: string; proxy: boolean; port?: number };
-type Step = "form" | "choice" | "files" | "services" | "env";
+type Step = "form" | "choice" | "files" | "services" | "env" | "dockerfile";
+
+const isSecretName = (name: string) => /(PASSWORD|SECRET|KEY|TOKEN|PAT)/i.test(name);
+const waysIn = (d: Detected) => [!!d.manifest, d.hasAppHost, d.hasCompose, !!d.hasDockerfile].filter(Boolean).length;
+
+// The last stage of a Dockerfile is the image it produces: its port, volumes and settings. Mirrors
+// DockerfileReader on the server, for files that are still in the browser.
+const parseDockerfile = (text: string): api.DockerfileInfo => {
+  const lines: string[] = [];
+  let cur = "";
+  for (const raw of text.replace(/\r\n/g, "\n").split("\n")) {
+    const l = raw.trim();
+    if (!l || l.startsWith("#")) continue;
+    if (l.endsWith("\\")) { cur += l.slice(0, -1) + " "; continue; }
+    lines.push((cur + l).trim()); cur = "";
+  }
+  const lastFrom = lines.reduce((i, l, idx) => /^FROM\s/i.test(l) ? idx : i, -1);
+  let port: number | null = null;
+  const volumes: string[] = [];
+  const env: { key: string; value: string }[] = [];
+  const noise = /^(PATH|HOME|LANG|LANGUAGE|LC_ALL|DEBIAN_FRONTEND|PYTHONUNBUFFERED|PYTHONDONTWRITEBYTECODE|ASPNETCORE_URLS|ASPNETCORE_HTTP_PORTS)$|_VERSION$/i;
+  for (const l of lines.slice(Math.max(0, lastFrom))) {
+    const sp = l.indexOf(" ");
+    if (sp < 0) continue;
+    const instr = l.slice(0, sp).toUpperCase(), rest = l.slice(sp + 1).trim();
+    if (instr === "EXPOSE") { const m = rest.match(/\d{2,5}/); if (m && port === null) port = Number(m[0]); }
+    else if (instr === "VOLUME") {
+      const vals = rest.startsWith("[") ? [...rest.matchAll(/"([^"]+)"/g)].map(m => m[1]) : rest.split(/\s+/).map(v => v.replace(/"/g, ""));
+      for (const v of vals) if (v.startsWith("/") && !volumes.includes(v)) volumes.push(v);
+    } else if (instr === "ENV") {
+      const pairs = rest.includes("=")
+        ? [...rest.matchAll(/([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*"|'[^']*'|\S*)/g)].map(m => [m[1], m[2]])
+        : (() => { const i = rest.indexOf(" "); return i > 0 ? [[rest.slice(0, i), rest.slice(i + 1)]] : []; })();
+      for (const [k, v0] of pairs) {
+        const v = v0.replace(/^(["'])(.*)\1$/, "$2");
+        if (noise.test(k) || v.includes("$") || env.some(e => e.key === k)) continue;
+        env.push({ key: k, value: v });
+      }
+    }
+  }
+  return { port, volumes, env };
+};
 
 const scanEnv = (contents: string[]): EnvVar[] => {
   const seen = new Map<string, string>();
   const re = /\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}/g;
   for (const c of contents) { let m: RegExpExecArray | null; while ((m = re.exec(c))) if (!seen.has(m[1])) seen.set(m[1], m[2] ?? ""); }
-  return [...seen].map(([name, def]) => ({ name, def, secret: /(PASSWORD|SECRET|KEY|TOKEN|PAT)/i.test(name) }));
+  return [...seen].map(([name, def]) => ({ name, def, secret: isSecretName(name) }));
 };
 
 const parseServices = (contents: string[]): Service[] => {
@@ -77,6 +118,8 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
   const [envVars, setEnvVars] = useState<EnvVar[]>([]);
   const [envVals, setEnvVals] = useState<Record<string, string>>({});
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [image, setImage] = useState("");
+  const [port, setPort] = useState<number | "">("");
 
   const req = () => ({ url: url.trim(), branch: branch.trim() || undefined, subdir: subdir.trim() || undefined, authToken: authToken.trim() || undefined });
   const contentsOf = (files: string[]) => (detected?.composeFiles ?? []).filter(f => files.includes(f.path)).map(f => f.content);
@@ -102,7 +145,7 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, authToken]);
 
-  const doImport = async (m: string, files?: string[], env?: Record<string, string>, svcs?: string[]) => {
+  const doImport = async (m: string, files?: string[], env?: Record<string, string>, svcs?: string[], extra?: { image?: string; port?: number }) => {
     setBusy(true);
     const ports = Object.fromEntries(Object.entries(servicePorts)
       .filter(([svc, v]) => Number(v) > 0 && (svcs ?? []).includes(svc))
@@ -110,8 +153,8 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     const withPorts = Object.keys(ports).length ? ports : undefined;
     try {
       const s = local
-        ? await api.localImportProgress({ name: name.trim() || local.name, mode: m, sources: local.sources, files, services: svcs, env, servicePorts: withPorts }, setUploadPct)
-        : await api.gitImport({ ...req(), name: name.trim() || undefined, mode: m, files, env, services: svcs, servicePorts: withPorts });
+        ? await api.localImportProgress({ name: name.trim() || local.name, mode: m, sources: local.sources, files, services: svcs, env, servicePorts: withPorts, ...extra }, setUploadPct)
+        : await api.gitImport({ ...req(), name: name.trim() || undefined, mode: m, files, env, services: svcs, servicePorts: withPorts, ...extra });
       toastOk(`Imported "${s.name}"`);
       onImported(s.id);
     } catch (e) { toastErr(e, "Import failed"); } finally { setBusy(false); setUploadPct(null); }
@@ -143,26 +186,48 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     else toServices(initial);
   };
 
+  // One container from the Dockerfile: the image the repository publishes if the registry has it,
+  // the Dockerfile itself otherwise. Its ENV defaults become the fields.
+  const startDockerfile = (df: api.DockerfileInfo | null | undefined) => {
+    const d = df ?? { volumes: [], env: [] };
+    setImage(d.suggestedImage ?? "");
+    setPort(d.port ?? "");
+    setEnvVars(d.env.map(e => ({ name: e.key, def: e.value, secret: isSecretName(e.key) })));
+    setEnvVals(Object.fromEntries(d.env.map(e => [e.key, e.value])));
+    setStep("dockerfile");
+  };
+
+  const proceed = (d: Detected, m: string) =>
+    m === "compose" ? startCompose(d.composeFiles) : m === "dockerfile" ? startDockerfile(d.dockerfile) : doImport(m);
+
+  const envField = (v: EnvVar) => {
+    const set = (val: string) => setEnvVals(p => ({ ...p, [v.name]: val }));
+    return v.secret
+      ? <PasswordInput key={v.name} label={v.name} value={envVals[v.name] ?? ""} onChange={e => set(e.currentTarget.value)} />
+      : <TextInput key={v.name} label={v.name} placeholder={v.def || undefined} value={envVals[v.name] ?? ""} onChange={e => set(e.currentTarget.value)} />;
+  };
+
   const inspect = async () => {
     if (!url.trim()) { toastErr("Enter a repository URL"); return; }
     setBusy(true);
     try {
       const d = await api.gitInspect(req());
-      if (!d.hasCompose && !d.hasAppHost && !d.manifest) { toastErr(`No ${"aspireui-app.json"}, no .NET Aspire AppHost and no docker-compose file found in this repo`); return; }
+      if (!d.hasCompose && !d.hasAppHost && !d.manifest && !d.hasDockerfile) { toastErr("No aspireui-app.json, no .NET Aspire AppHost, no docker-compose file and no Dockerfile found in this repo"); return; }
       setDetected(d);
-      const alternatives = [!!d.manifest, d.hasAppHost, d.hasCompose].filter(Boolean).length;
-      if (alternatives > 1) { setMode(d.manifest ? "manifest" : "apphost"); setStep("choice"); }
+      if (waysIn(d) > 1) { setMode(d.manifest ? "manifest" : d.hasAppHost ? "apphost" : "compose"); setStep("choice"); }
       else if (d.manifest) await doImport("manifest");
       else if (d.hasAppHost) await doImport("apphost");
-      else startCompose(d.composeFiles);
+      else if (d.hasCompose) startCompose(d.composeFiles);
+      else startDockerfile(d.dockerfile);
     } catch (e) { toastErr(e, "Could not read the repository"); } finally { setBusy(false); }
   };
 
   const backTo = (target: Step) => { if (target === "form" && local) onClose(); else setStep(target); };
-  const backFromServices = () => backTo((detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
+  const choiceOrForm = (): Step => detected && waysIn(detected) > 1 ? "choice" : "form";
+  const backFromServices = () => backTo((detected?.composeFiles.length ?? 0) > 1 ? "files" : choiceOrForm());
   const portless = services.filter(s => !s.port && selServices.includes(s.name));
 
-  const backFromEnv = () => backTo(services.length > 1 ? "services" : (detected?.composeFiles.length ?? 0) > 1 ? "files" : detected?.hasAppHost ? "choice" : "form");
+  const backFromEnv = () => backTo(services.length > 1 ? "services" : (detected?.composeFiles.length ?? 0) > 1 ? "files" : choiceOrForm());
 
   // Local (folder/zip) source: detect right away, no clone — then the same steps as git.
   useEffect(() => {
@@ -172,14 +237,16 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     const hasAppHost = local.sources.some(s => /\.csproj$/i.test(s.path) && /(Aspire\.AppHost\.Sdk|<IsAspireHost>\s*true)/i.test(b64Text(s.content)));
     const manifestSrc = local.sources.find(s => s.path === "aspireui-app.json");
     const manifest = manifestSrc ? parseManifest(b64Text(manifestSrc.content)) : null;
-    if (composeFiles.length === 0 && !hasAppHost && !manifest) { toastErr("No aspireui-app.json, no .NET Aspire AppHost and no docker-compose file found in these files"); onClose(); return; }
-    const d = { hasCompose: composeFiles.length > 0, hasAppHost, name: local.name, composeFiles, manifest };
+    const dockerfileSrc = local.sources.find(s => s.path === "Dockerfile");
+    const dockerfile = dockerfileSrc ? parseDockerfile(b64Text(dockerfileSrc.content)) : null;
+    if (composeFiles.length === 0 && !hasAppHost && !manifest && !dockerfile) { toastErr("No aspireui-app.json, no .NET Aspire AppHost, no docker-compose file and no Dockerfile found in these files"); onClose(); return; }
+    const d: Detected = { hasCompose: composeFiles.length > 0, hasAppHost, hasDockerfile: !!dockerfile, name: local.name, composeFiles, manifest, dockerfile };
     setDetected(d);
-    const alternatives = [!!manifest, hasAppHost, d.hasCompose].filter(Boolean).length;
-    if (alternatives > 1) { setMode(manifest ? "manifest" : "apphost"); setStep("choice"); }
+    if (waysIn(d) > 1) { setMode(manifest ? "manifest" : hasAppHost ? "apphost" : "compose"); setStep("choice"); }
     else if (manifest) doImport("manifest");
     else if (d.hasAppHost) doImport("apphost");
-    else startCompose(d.composeFiles);
+    else if (d.hasCompose) startCompose(d.composeFiles);
+    else startDockerfile(dockerfile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -197,8 +264,8 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             {hosting
-              ? <>Clones a repository and deploys it straight to hosting — a <b>docker-compose</b> file or an existing <b>.NET Aspire AppHost</b>. No editor, and you can put it on a domain right after.</>
-              : <>Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file to resources.</>}
+              ? <>Clones a repository and deploys it straight to hosting — a <b>docker-compose</b> file, a bare <b>Dockerfile</b> or an existing <b>.NET Aspire AppHost</b>. No editor, and you can put it on a domain right after.</>
+              : <>Clones a repository and imports it. AspireUI runs an existing <b>.NET Aspire AppHost</b> as-is, or maps a <b>docker-compose</b> file or a bare <b>Dockerfile</b> to resources.</>}
           </Text>
           <TextInput label="Stack name" placeholder="auto from repo name if blank" value={name}
             onChange={e => setName(e.currentTarget.value)} />
@@ -232,6 +299,7 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
             {detected.manifest && <Badge size="sm" variant="light" color="teal">aspireui-app.json</Badge>}
             {detected.hasAppHost && <Badge size="sm" variant="light" color="violet">Aspire AppHost</Badge>}
             {detected.hasCompose && <Badge size="sm" variant="light" color="blue">Compose</Badge>}
+            {detected.hasDockerfile && <Badge size="sm" variant="light" color="cyan">Dockerfile</Badge>}
           </Group>
           <Text size="sm" c="dimmed">This repo offers more than one way in — pick one.</Text>
           <Radio.Group value={mode} onChange={setMode}>
@@ -242,13 +310,51 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
               )}
               {detected.hasAppHost && <Radio value="apphost" label={<span><b>Run the Aspire AppHost</b><Text size="xs" c="dimmed">Keeps and runs the project; edit later via the visual editor.</Text></span>} />}
               {detected.hasCompose && <Radio value="compose" label={<span><b>Docker Compose</b><Text size="xs" c="dimmed">Maps compose services to AddContainer / AddDockerfile resources you can edit.</Text></span>} />}
+              {detected.hasDockerfile && <Radio value="dockerfile" label={<span><b>Dockerfile</b><Text size="xs" c="dimmed">One container from the Dockerfile — the image the repository publishes if there is one, built here otherwise.</Text></span>} />}
             </Stack>
           </Radio.Group>
           <Group justify="space-between">
             <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => backTo("form")}>Back</Button>
             <Group>
               <Button variant="default" onClick={onClose}>Cancel</Button>
-              <Button loading={busy} onClick={() => mode === "compose" ? startCompose(detected.composeFiles) : doImport(mode)}>Continue</Button>
+              <Button loading={busy} onClick={() => proceed(detected, mode)}>Continue</Button>
+            </Group>
+          </Group>
+        </Stack>
+      )}
+
+      {step === "dockerfile" && detected && (
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">One container from the repository's <b>Dockerfile</b>. With an image it is pulled; without one the Dockerfile is built on the host, which takes a while the first time.</Text>
+          <TextInput label="Image" placeholder="leave empty to build from the Dockerfile" value={image} onChange={e => setImage(e.currentTarget.value)}
+            description={detected.dockerfile?.suggestedImage
+              ? "Found on the registry under the repository's own name."
+              : local ? undefined : "No published image found under the repository's name — enter one, or leave it empty to build."}
+            rightSection={detected.dockerfile?.suggestedImage && image.trim() === detected.dockerfile.suggestedImage
+              ? <Badge size="xs" variant="light" color="teal">verified</Badge> : undefined}
+            rightSectionWidth={detected.dockerfile?.suggestedImage && image.trim() === detected.dockerfile.suggestedImage ? 72 : undefined} />
+          {!detected.dockerfile?.port && (
+            <NumberInput label="Container port" description="The Dockerfile has no EXPOSE — which port does the app listen on?"
+              min={1} max={65535} hideControls placeholder="e.g. 3000" value={port} onChange={v => setPort(v === "" ? "" : Number(v))} />
+          )}
+          {(detected.dockerfile?.volumes.length ?? 0) > 0 && (
+            <Text size="xs" c="dimmed">Volumes: {detected.dockerfile!.volumes.map(v => <code key={v} style={{ marginRight: 6 }}>{v}</code>)}</Text>
+          )}
+          {envVars.length > 0 && (
+            <>
+              <Text size="xs" c="dimmed">Settings the Dockerfile declares — change what you need, the rest keeps its default.</Text>
+              <Stack gap="xs">{envVars.map(envField)}</Stack>
+            </>
+          )}
+          <Group justify="space-between">
+            <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={() => backTo(choiceOrForm())}>Back</Button>
+            <Group>
+              <Button variant="default" onClick={onClose}>Cancel</Button>
+              <Button loading={busy} leftSection={<IconBrandGithub size={16} />}
+                disabled={!detected.dockerfile?.port && !(Number(port) > 0)}
+                onClick={() => doImport("dockerfile", undefined, envVals, undefined, { image: image.trim() || undefined, port: Number(port) > 0 ? Number(port) : undefined })}>
+                {hosting ? "Install" : "Import"}
+              </Button>
             </Group>
           </Group>
         </Stack>
@@ -314,14 +420,7 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
       {step === "env" && (
         <Stack gap="md">
           <Text size="sm" c="dimmed">This compose uses environment variables. Fill them in — values are stored with the stack and written to its <code>.env</code>.</Text>
-          <Stack gap="xs">
-            {envVars.map(v => {
-              const set = (val: string) => setEnvVals(p => ({ ...p, [v.name]: val }));
-              return v.secret
-                ? <PasswordInput key={v.name} label={v.name} value={envVals[v.name] ?? ""} onChange={e => set(e.currentTarget.value)} />
-                : <TextInput key={v.name} label={v.name} placeholder={v.def || undefined} value={envVals[v.name] ?? ""} onChange={e => set(e.currentTarget.value)} />;
-            })}
-          </Stack>
+          <Stack gap="xs">{envVars.map(envField)}</Stack>
           <Group justify="space-between">
             <Button variant="subtle" color="gray" leftSection={<IconArrowLeft size={14} />} onClick={backFromEnv}>Back</Button>
             <Group>
