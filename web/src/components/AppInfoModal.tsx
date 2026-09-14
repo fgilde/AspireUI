@@ -11,6 +11,7 @@ export interface AppInfo {
   logo?: string | null; card?: string | null; github?: string | null;
   stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null;
   submitter?: string | null; source?: string | null;
+  sources?: { id: string; label: string; image: string; github?: string | null; note?: string | null; default?: boolean }[] | null;
 }
 
 const fmtStars = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
@@ -111,6 +112,18 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
             {info.image && info.port ? " · " : ""}
             {info.port ? `Port ${info.port}` : ""}
           </Text>
+        )}
+        {(info.sources?.length ?? 0) > 1 && (
+          <MStack gap={2}>
+            <Text size="xs" c="dimmed">Sources — picked at install:</Text>
+            {info.sources!.map(s => (
+              <Text key={s.id} size="xs" c="dimmed">
+                • <b>{s.label}</b>{s.default ? " (default)" : ""} — <Text span ff="monospace" size="xs">{s.image}</Text>
+                {s.github && <> · <Anchor href={s.github} target="_blank" size="xs">GitHub</Anchor></>}
+                {s.note && <> — {s.note}</>}
+              </Text>
+            ))}
+          </MStack>
         )}
 
         <Group justify="flex-end" mt="xs">

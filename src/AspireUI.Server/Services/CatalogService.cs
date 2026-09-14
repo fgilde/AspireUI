@@ -28,8 +28,13 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     string? UrlPath = null,
     string? Logo = null, string? Card = null, string? Github = null,
     int? Stars = null, string? License = null, string? Language = null, List<string>? Topics = null,
-    string? Submitter = null, string? Source = null);
+    string? Submitter = null, string? Source = null,
+    List<PresetSource>? Sources = null);
 public record PresetFile(string Name, string Content);
+// One place the same app can be pulled from. `image` on the app is the default and appears here as
+// the entry marked default; the others — a maintained fork, a mirror — are offered at install time.
+// Ports, volumes and env are the app's, not the source's.
+public record PresetSource(string Id, string Label, string Image, string? Github = null, string? Note = null, bool Default = false);
 // Companion node in preset; wires env references and offers resource alternatives.
 public record PresetCompanion(string Key, string AddMethod, string ResourceName, string? Image, int? Port, List<List<string>>? Env, string? Role,
     List<List<string>>? Volumes = null);

@@ -96,6 +96,11 @@ matching resource that is already on the canvas instead of starting a second one
   `card`, `screenshots` (URLs), `tags`, `website`, `github`, `license`, `language`.
 - **Provenance** — `submitter` and `source` are shown in the details dialog, so users can see where
   an app came from.
+- **`sources`** — the same app from more than one place: the official image and a maintained fork,
+  say. `image` stays the default and appears in the list as the entry marked `"default": true`; the
+  install dialog offers the rest, and `install_app` or a seed take one by id (`metube@fgilde`). Each
+  entry has `id`, `label`, `image`, and optionally `github` and a one-line `note` on what differs.
+  Ports, volumes and env are the app's, not the source's — a fork that changes them is its own app.
 
 A file may also be an **array** of app objects — handy for a small collection in one file.
 

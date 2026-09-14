@@ -57,7 +57,8 @@ public record SeedToken(string Name, string Username, string Token);
 public record SeedAppSource(string Name, string Url);
 
 /// <summary>An app from the store, by catalog id. Name overrides the app's own label.</summary>
-public record SeedApp(string Id, string? Name = null, bool? Deploy = null);
+/// <summary>An app from the catalog. <c>Source</c> picks one of the sources an app lists; the short form is <c>id@source=name</c>.</summary>
+public record SeedApp(string Id, string? Name = null, bool? Deploy = null, string? Source = null);
 
 /// <summary>
 /// A stack. Exactly one source: Projects (AddProject nodes), Compose (yaml text or a file path),
@@ -216,9 +217,12 @@ public static class SeedParse
         foreach (var entry in (raw ?? "").Split([';', ',', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var eq = entry.IndexOf('=');
-            list.Add(eq > 0
-                ? new SeedApp(entry[..eq].Trim(), entry[(eq + 1)..].Trim())
-                : new SeedApp(entry.Trim()));
+            var idPart = (eq > 0 ? entry[..eq] : entry).Trim();
+            var name = eq > 0 ? entry[(eq + 1)..].Trim() : null;
+            var at = idPart.IndexOf('@');
+            list.Add(at > 0
+                ? new SeedApp(idPart[..at], name, Source: idPart[(at + 1)..])
+                : new SeedApp(idPart, name));
         }
         return list;
     }

@@ -246,6 +246,12 @@ public static class Seeder
                 Console.Error.WriteLine($"seed: no app '{a.Id}' in the catalog");
                 continue;
             }
+            if (PresetBuilder.ForSource(preset, a.Source) is not { } chosen)
+            {
+                Console.Error.WriteLine($"seed: app '{a.Id}' has no source '{a.Source}'");
+                continue;
+            }
+            preset = chosen;
             var name = string.IsNullOrWhiteSpace(a.Name) ? preset.Label : a.Name!.Trim();
             if (Exists(stacks, name)) continue;
 

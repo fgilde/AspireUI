@@ -17,7 +17,7 @@ entry adds exactly that one.
 | `ASPIREUI_TARGETS` | Deploy targets: `name=uri`, `;`-separated |
 | `ASPIREUI_API_TOKENS` | Bearer tokens: `name:username:token`, `;`-separated |
 | `ASPIREUI_APP_SOURCES` | Store sources: `name=url`, `;`-separated |
-| `ASPIREUI_SEED_APPS` | Apps from the catalog: `id[=name]`, `,`/`;`-separated |
+| `ASPIREUI_SEED_APPS` | Apps from the catalog: `id[@source][=name]`, `,`/`;`-separated |
 | `ASPIREUI_SEED_DIR` | Directories (or compose files) to import as stacks, `;`-separated |
 | `ASPIREUI_SEED_GIT` | Repositories to import as stacks: `url[#branch][\|subdir]`, `;`-separated |
 | `ASPIREUI_SEED_FILE` | A seed file, or a directory holding `aspireui.seed.json` |
@@ -75,7 +75,7 @@ to exist (seed it in the same run) and the token inherits that user's permission
 ### Apps and stacks
 
 ```
-ASPIREUI_SEED_APPS=vaultwarden,gitea=Code
+ASPIREUI_SEED_APPS=vaultwarden,gitea=Code,metube@fgilde
 ASPIREUI_SEED_DIR=/seed/edge;/seed/tools/docker-compose.yml
 ASPIREUI_SEED_GIT=https://github.com/acme/app.git#main|deploy
 ASPIREUI_SEED_DEPLOY=true

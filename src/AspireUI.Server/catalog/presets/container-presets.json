@@ -4704,6 +4704,22 @@
     "label": "MeTube",
     "group": "Media",
     "image": "ghcr.io/alexta69/metube:latest",
+    "sources": [
+      {
+        "id": "official",
+        "label": "Official (alexta69)",
+        "image": "ghcr.io/alexta69/metube:latest",
+        "github": "https://github.com/alexta69/metube",
+        "default": true
+      },
+      {
+        "id": "fgilde",
+        "label": "fgilde/metube",
+        "image": "ghcr.io/fgilde/metube:latest",
+        "github": "https://github.com/fgilde/metube",
+        "note": "A fork kept in step with upstream, published from its own build."
+      }
+    ],
     "port": 8081,
     "icon": "metube",
     "description": "MeTube — self-hosted web UI for yt-dlp; download video/audio from YouTube and hundreds of sites.",

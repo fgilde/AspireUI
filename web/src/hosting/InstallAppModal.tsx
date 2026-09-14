@@ -40,7 +40,7 @@ const presetItem = (p: ContainerPreset): Item => ({
   id: `preset:${p.id}`, kind: "app", label: p.label, group: p.group, icon: p.icon || "", description: p.description,
   featured: FEATURED.has(p.id),
   info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App",
-    logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics, submitter: p.submitter, source: p.source },
+    logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics, submitter: p.submitter, source: p.source, sources: p.sources },
   submitter: p.submitter,
   preset: p,
   install: () => createPresetStack(p),
@@ -49,7 +49,8 @@ const presetItem = (p: ContainerPreset): Item => ({
 const createPresetStack = (p: ContainerPreset, opts?: InstallOptions) => {
   const choices: Record<string, CompanionChoice> = Object.fromEntries(
     Object.entries(opts?.params ?? {}).map(([key, value]) => [`param:${key}`, { mode: "value", value } as CompanionChoice]));
-  const { nodes, edges } = buildPresetNodes(p, [], Object.keys(choices).length ? choices : undefined);
+  const image = p.sources?.find(s => s.id === opts?.sourceId)?.image ?? p.image;
+  const { nodes, edges } = buildPresetNodes({ ...p, image }, [], Object.keys(choices).length ? choices : undefined);
   return api.createStack({ name: opts?.name || p.label, targetFramework: "net10.0", nodes, edges,
     rawStatements: [], extraFiles: p.files ?? [], extraPackages: [], hostingUrlPath: p.urlPath ?? null });
 };
@@ -223,6 +224,11 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
               {it.submitter && (
                 <Tooltip label={`Submitted by ${it.submitter} — not maintained by AspireUI`} withArrow>
                   <Badge size="xs" variant="light" color="orange">Community</Badge>
+                </Tooltip>
+              )}
+              {(it.preset?.sources?.length ?? 0) > 1 && (
+                <Tooltip label="More than one place to pull it from — you pick at install" withArrow>
+                  <Badge size="xs" variant="light" color="cyan">{it.preset!.sources!.length} sources</Badge>
                 </Tooltip>
               )}
               <Text size="10px" c="dimmed" truncate>{it.group}</Text>

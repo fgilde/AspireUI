@@ -30,6 +30,14 @@ public static class PresetBuilder
         return null;
     }
 
+    /// <summary>The preset as it installs from one of its sources; null when the id is not one of them.</summary>
+    public static ContainerPreset? ForSource(ContainerPreset p, string? sourceId)
+    {
+        if (string.IsNullOrWhiteSpace(sourceId)) return p;
+        var src = (p.Sources ?? new()).FirstOrDefault(s => s.Id.Equals(sourceId.Trim(), StringComparison.OrdinalIgnoreCase));
+        return src is null ? null : p with { Image = src.Image, Github = src.Github ?? p.Github };
+    }
+
     public static (List<NodeModel> Nodes, List<EdgeModel> Edges) Build(ContainerPreset p)
     {
         var taken = new HashSet<string>();

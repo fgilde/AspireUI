@@ -121,12 +121,16 @@ public class McpTools(CatalogService catalog, RunService run, UserStore users, I
         return new { stackId = s.Id, s.Name };
     }
 
-    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Install a curated catalog app as a NEW stack (with its companion services + parameters), the same way the app store does. Find the appId with search_apps. Returns the new stack id.")]
-    public object InstallApp([Description("Catalog app id, e.g. 'immich'")] string appId, [Description("Optional stack name (defaults to the app label)")] string? name = null)
+    [McpServerTool, NeedsPerm(Perm.Deploy), Description("Install a curated catalog app as a NEW stack (with its companion services + parameters), the same way the app store does. Find the appId with search_apps. An app that lists several sources (official image, a fork) takes one of their ids as `source`; without it the default is used. Returns the new stack id.")]
+    public object InstallApp([Description("Catalog app id, e.g. 'immich'")] string appId, [Description("Optional stack name (defaults to the app label)")] string? name = null,
+        [Description("Optional source id, for an app that lists several sources")] string? source = null)
     {
         Require();
         var p = catalog.GetPresets().FirstOrDefault(x => x.Id.Equals(appId, StringComparison.OrdinalIgnoreCase));
         if (p is null) return new { error = $"no app '{appId}' — use search_apps to find one" };
+        if (PresetBuilder.ForSource(p, source) is not { } chosen)
+            return new { error = $"'{appId}' has no source '{source}' — one of: {string.Join(", ", (p.Sources ?? new()).Select(s => s.Id))}" };
+        p = chosen;
         var (nodes, edges) = PresetBuilder.Build(p);
         var files = (p.Files ?? new()).Select(f => new ExtraFile(f.Name, f.Content)).ToList();
         var s = new StackModel(Guid.NewGuid().ToString("n"), string.IsNullOrWhiteSpace(name) ? p.Label : name!,

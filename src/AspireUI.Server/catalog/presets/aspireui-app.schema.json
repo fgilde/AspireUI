@@ -56,6 +56,42 @@
           "type": "string",
           "description": "Publicly pullable image with a tag, e.g. ghcr.io/acme/app:latest."
         },
+        "sources": {
+          "type": "array",
+          "description": "Other places the same app can be pulled from — a maintained fork, a mirror. `image` is the default and appears here as the entry marked default. Ports, volumes and env are the app's, not the source's; a fork that changes them is its own app.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "image"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "label": {
+                "type": "string"
+              },
+              "image": {
+                "type": "string",
+                "description": "Publicly pullable image with a tag."
+              },
+              "github": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string",
+                "description": "One line on what differs."
+              },
+              "default": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
         "port": {
           "type": "integer",
           "minimum": 1,
