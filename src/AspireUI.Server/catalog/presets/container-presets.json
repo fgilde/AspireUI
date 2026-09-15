@@ -96,6 +96,97 @@
     ]
   },
   {
+    "id": "ninerouter",
+    "label": "9Router",
+    "group": "AI Apps",
+    "image": "decolua/9router:latest",
+    "sources": [
+      {
+        "id": "dockerhub",
+        "label": "Docker Hub",
+        "image": "decolua/9router:latest",
+        "github": "https://github.com/decolua/9router",
+        "default": true
+      },
+      {
+        "id": "ghcr",
+        "label": "GitHub Container Registry",
+        "image": "ghcr.io/decolua/9router:latest",
+        "github": "https://github.com/decolua/9router",
+        "note": "The same image from GitHub's registry — no anonymous pull limit."
+      }
+    ],
+    "port": 20128,
+    "icon": "9router",
+    "description": "9Router — a gateway between your coding tools (Claude Code, Codex, Cursor, Cline, Copilot) and 40+ model providers. It tracks what each subscription has left, falls back to a cheaper or free provider when one runs out, translates between the OpenAI and Claude formats, and compresses tool results to cut tokens. Point a tool at http://<host>:20128/v1 and add providers in the dashboard. Sign in with the password below — a fresh one is generated per install, and until the default is changed 9Router refuses sign-in from anywhere but the machine it runs on. The Headroom sidecar that does the token compression comes with it; switch it on under Endpoint → Token Saver → Headroom.",
+    "env": [
+      [
+        "DATA_DIR",
+        "/app/data"
+      ],
+      [
+        "NODE_ENV",
+        "production"
+      ],
+      [
+        "HOSTNAME",
+        "0.0.0.0"
+      ],
+      [
+        "HEADROOM_URL",
+        "http://${headroom}:8787"
+      ]
+    ],
+    "params": [
+      {
+        "key": "password",
+        "env": "INITIAL_PASSWORD",
+        "default": "",
+        "secret": true,
+        "hint": "The dashboard password. Generated for you — replace it with something you can type if you prefer; leaving 9Router's own default (123456) would block sign-in from anywhere but the host."
+      },
+      {
+        "key": "jwt-secret",
+        "env": "JWT_SECRET",
+        "default": "",
+        "secret": true,
+        "hint": "Signs the dashboard's session cookies. Generated for you; changing it later signs everyone out."
+      }
+    ],
+    "companions": [
+      {
+        "key": "headroom",
+        "addMethod": "AddContainer",
+        "resourceName": "ninerouter-headroom",
+        "image": "ghcr.io/chopratejas/headroom:latest",
+        "port": 8787
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ]
+    ],
+    "website": "https://9router.com",
+    "github": "https://github.com/decolua/9router",
+    "stars": 28874,
+    "license": "MIT",
+    "language": "JavaScript",
+    "topics": [
+      "ai-gateway",
+      "llm-gateway",
+      "claude-code",
+      "codex",
+      "cursor",
+      "cline",
+      "copilot",
+      "openai-proxy",
+      "token-saver",
+      "free-ai"
+    ]
+  },
+  {
     "id": "comfyui",
     "label": "ComfyUI",
     "group": "AI Apps",

@@ -41,8 +41,8 @@
         },
         "id": {
           "type": "string",
-          "description": "Stable, unique, lowercase kebab-case id. Also the resource name prefix and the volume prefix.",
-          "pattern": "^[a-z0-9][a-z0-9-]*$"
+          "description": "Stable, unique, lowercase kebab-case id, starting with a letter. It names the Aspire resource and prefixes the volumes, and Aspire refuses a resource name that starts with anything else.",
+          "pattern": "^[a-z][a-z0-9-]*$"
         },
         "label": {
           "type": "string",

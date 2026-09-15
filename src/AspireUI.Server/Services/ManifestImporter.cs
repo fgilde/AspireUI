@@ -22,6 +22,11 @@ public static class ManifestImporter
             var bad = apps.FirstOrDefault(a => string.IsNullOrWhiteSpace(a.Id) || string.IsNullOrWhiteSpace(a.Image) || a.Port <= 0);
             if (apps.Count == 0) return (new(), "the manifest contains no app");
             if (bad is not null) return (new(), $"app '{bad.Id}': id, image and port are required");
+            // The id becomes an Aspire resource name, and Aspire only accepts one that starts with an
+            // ASCII letter. Caught here, where it can be explained, rather than as a build error on deploy.
+            var badId = apps.FirstOrDefault(a => !System.Text.RegularExpressions.Regex.IsMatch(a.Id, "^[a-z][a-z0-9-]*$"));
+            if (badId is not null)
+                return (new(), $"app '{badId.Id}': the id must start with a letter and hold only lowercase letters, digits and hyphens — it names an Aspire resource");
             return (apps, null);
         }
         catch (JsonException e) { return (new(), $"the manifest is not valid JSON: {e.Message}"); }

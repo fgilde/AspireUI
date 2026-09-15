@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **165 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **166 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -9,10 +9,11 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 > Auto-generated from `catalog/presets/container-presets.json`. Icons via
 > [dashboard-icons](https://github.com/homarr-labs/dashboard-icons).
 
-## AI Apps <sub>(20)</sub>
+## AI Apps <sub>(21)</sub>
 
 | | App | What it is |
 |---|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/9router.png" width="22" height="22" alt=""> | **[9Router](https://9router.com)** | 9Router — a gateway between your coding tools (Claude Code, Codex, Cursor, Cline, Copilot) and 40+ model providers. It tracks what each subscription has left, falls back to a cheaper or free provider…  |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/acestep.png" width="22" height="22" alt=""> | **[ACE-Step (music)](https://github.com/ace-step/ACE-Step)** | ACE-Step: A Step Towards Music Generation Foundation Model GPU recommended. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/anythingllm.png" width="22" height="22" alt=""> | **[AnythingLLM](https://anythingllm.com)** | Stop renting your intelligence. Own it with AnythingLLM. Everything you need for a powerful local-first agent experience |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/comfyui.png" width="22" height="22" alt=""> | **[ComfyUI](https://github.com/comfyanonymous/ComfyUI)** | The most powerful and modular diffusion model GUI, api and backend with a graph/nodes interface. GPU recommended. |
@@ -225,4 +226,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*165 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*166 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

@@ -62,3 +62,25 @@ public class PresetSourcesTests
         Assert.Equal("ghcr.io/fgilde/metube:latest", PresetBuilder.ForSource(p, "fgilde")!.Image);
     }
 }
+
+// An app id becomes an Aspire resource name, and Aspire only takes one that starts with an ASCII
+// letter — a digit gets through the store and then fails the build on deploy, far from the cause.
+public class PresetIdTests
+{
+    [Fact]
+    public void Every_apps_id_starts_with_a_letter()
+    {
+        foreach (var p in new CatalogService().GetPresets())
+            Assert.Matches("^[a-z][a-z0-9-]*$", p.Id);
+    }
+
+    [Fact]
+    public void A_manifest_whose_id_starts_with_a_digit_is_refused_with_a_reason()
+    {
+        var (apps, error) = ManifestImporter.Parse("""
+            { "id": "9router", "label": "9Router", "group": "AI Apps", "image": "decolua/9router:latest", "port": 20128 }
+            """);
+        Assert.Empty(apps);
+        Assert.Contains("must start with a letter", error);
+    }
+}

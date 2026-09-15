@@ -37,8 +37,10 @@ the volume, generates a 48-character `APP_SECRET` at install time and shows it i
 
 ## The fields that matter
 
-- **`id`** — lowercase kebab-case, stable. It names the resource and prefixes the volumes, so
-  changing it later orphans the user's data.
+- **`id`** — lowercase kebab-case, stable, **starting with a letter**. It names the Aspire resource
+  and prefixes the volumes, so changing it later orphans the user's data — and Aspire refuses a
+  resource name that starts with a digit, which is why an app called 9Router carries the id
+  `ninerouter` and says 9Router in its `label`.
 - **`port`** — the port **inside** the container. Hosting allocates a free host port (20000–29999)
   and maps it. Only set `"fixedPort": true` if the app truly cannot live behind another port.
 - **`env`** — literal values, as `[["KEY", "value"], …]`.
