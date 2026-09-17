@@ -2118,22 +2118,38 @@
     ]
   },
   {
-    "id": "jellyseerr",
-    "label": "Jellyseerr",
+    "id": "seerr",
+    "label": "Seerr",
     "group": "Media",
-    "image": "fallenbagel/jellyseerr:latest",
+    "image": "seerr/seerr:latest",
+    "sources": [
+      {
+        "id": "dockerhub",
+        "label": "Docker Hub",
+        "image": "seerr/seerr:latest",
+        "github": "https://github.com/seerr-team/seerr",
+        "default": true
+      },
+      {
+        "id": "ghcr",
+        "label": "GitHub Container Registry",
+        "image": "ghcr.io/seerr-team/seerr:latest",
+        "github": "https://github.com/seerr-team/seerr",
+        "note": "The same image from GitHub's registry — no anonymous pull limit."
+      }
+    ],
     "port": 5055,
-    "icon": "jellyseerr",
-    "description": "Jellyseerr — media request & discovery frontend for Jellyfin/Emby/Plex.",
+    "icon": "seerr",
+    "description": "Seerr — requests and discovery for your media library, in front of Jellyfin, Plex or Emby, and wired to Sonarr and Radarr so an approved request downloads itself. Users sign in with their media-server account. This is Jellyseerr under its own name: same project, now maintained by the Seerr team, and the first screen walks through the media server and the *arr services.",
     "volumes": [
       [
         "config",
         "/app/config"
       ]
     ],
-    "website": "https://github.com/Fallenbagel/jellyseerr",
-    "github": "https://github.com/Fallenbagel/jellyseerr",
-    "stars": 11307,
+    "website": "https://docs.seerr.dev",
+    "github": "https://github.com/seerr-team/seerr",
+    "stars": 12613,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -2148,13 +2164,58 @@
       "sonarr",
       "tv"
     ],
-    "logo": "/media/jellyseerr/logo.webp",
-    "card": "/media/jellyseerr/card.webp",
+    "logo": "/media/seerr/logo.webp",
+    "card": "/media/seerr/card.webp",
     "screenshots": [
-      "/media/jellyseerr/screenshot_1.webp",
-      "/media/jellyseerr/screenshot_2.webp",
-      "/media/jellyseerr/screenshot_3.webp"
+      "/media/seerr/screenshot_1.webp",
+      "/media/seerr/screenshot_2.webp",
+      "/media/seerr/screenshot_3.webp"
     ]
+  },
+  {
+    "id": "dispatcharr",
+    "label": "Dispatcharr",
+    "group": "Media",
+    "image": "ghcr.io/dispatcharr/dispatcharr:latest",
+    "port": 9191,
+    "icon": "dispatcharr",
+    "description": "Dispatcharr — IPTV and stream management: pull in several M3U providers, merge and filter the channels into one lineup, attach EPG data, and hand the result to Plex, Jellyfin, Emby or any player as a single M3U and XMLTV. This is the all-in-one image the project recommends: Postgres, Redis and the Celery workers run inside it, so there is one container and one volume. Open it and the first screen creates the administrator — that form only accepts a request from a private network, so set it up over the LAN (or through a reverse proxy on this machine) before putting it on a public domain.",
+    "env": [
+      [
+        "DISPATCHARR_ENV",
+        "aio"
+      ],
+      [
+        "REDIS_HOST",
+        "localhost"
+      ],
+      [
+        "CELERY_BROKER_URL",
+        "redis://localhost:6379/0"
+      ],
+      [
+        "DISPATCHARR_LOG_LEVEL",
+        "info"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "tags": [
+      "iptv",
+      "m3u",
+      "epg",
+      "streaming",
+      "self-hosted"
+    ],
+    "website": "https://dispatcharr.tv/",
+    "github": "https://github.com/Dispatcharr/Dispatcharr",
+    "stars": 4024,
+    "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
+    "language": "JavaScript"
   },
   {
     "id": "jackett",

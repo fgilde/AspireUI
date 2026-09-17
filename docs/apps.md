@@ -1,6 +1,6 @@
 # App Catalog
 
-AspireUI ships **166 preconfigured container apps** you can drop onto a canvas or install
+AspireUI ships **167 preconfigured container apps** you can drop onto a canvas or install
 straight from the [app store](hosting.md#installing-an-app). Each is a curated Aspire `AddContainer`
 resource — right image, endpoint, env, volumes and (where needed) companion services (database, cache,
 …) wired up. Beyond these, the whole reflection-based **catalog** of Aspire integrations (packages like
@@ -70,7 +70,7 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/lnbits.png" width="22" height="22" alt=""> | **[LNbits](https://lnbits.com)** | LNbits, free and open-source Lightning wallet and accounts system. ... # LNbits — The most powerful Bitcoin & Lightning toolkit ...… |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/rtl.png" width="22" height="22" alt=""> | **[Ride The Lightning](https://github.com/Ride-The-Lightning/RTL)** | RTL — web UI for LND / Core Lightning / Eclair nodes. Needs an existing LN node: mount its macaroon + point RTLConfig at the node. |
 
-## Media <sub>(27)</sub>
+## Media <sub>(28)</sub>
 
 | | App | What it is |
 |---|---|---|
@@ -84,7 +84,8 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/foldergram.png" width="22" height="22" alt=""> | **[Foldergram](https://github.com/foldergram/foldergram)** | Self-hosted folder-based Instagram-style photo and video gallery app. Point volumes at your media. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jackett.png" width="22" height="22" alt=""> | **[Jackett](https://github.com/Jackett/Jackett)** | Jackett — indexer proxy that translates tracker searches for the *arr apps. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyfin.png" width="22" height="22" alt=""> | **[Jellyfin](https://jellyfin.org)** | Jellyfin enables you to collect, manage, and stream your media. Run the Jellyfin server on your system and gain access to the leading… |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyseerr.png" width="22" height="22" alt=""> | **[Jellyseerr](https://github.com/Fallenbagel/jellyseerr)** | Jellyseerr — media request & discovery frontend for Jellyfin/Emby/Plex. |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dispatcharr.png" width="22" height="22" alt=""> | **[Dispatcharr](https://dispatcharr.tv/)** | Dispatcharr — IPTV and stream management: merge several M3U providers into one lineup, attach EPG data, hand the result to Plex, Jellyfin or any player. All-in-one image. |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/seerr.png" width="22" height="22" alt=""> | **[Seerr](https://docs.seerr.dev)** | Seerr — requests and discovery in front of Jellyfin, Plex or Emby, wired to Sonarr and Radarr. Formerly Jellyseerr. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/kavita.png" width="22" height="22" alt=""> | **[Kavita](https://www.kavitareader.com)** | Kavita — fast, cross-platform reading server (comics, manga, books). |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komga.png" width="22" height="22" alt=""> | **[Komga](https://komga.org)** | Komga — self-hosted comics/manga/e-book server. |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/librephotos.png" width="22" height="22" alt=""> | **[LibrePhotos](https://www.librephotos.com)** | GitHub - LibrePhotos/librephotos: A self-hosted open source photo management service. · GitHub ... A self-hosted, open-source photo… |
@@ -226,4 +227,4 @@ n8n, Adminer, Postgres, Redis, RabbitMQ …) is installable too.
 
 ---
 
-*166 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*
+*167 apps across 10 categories. Missing one? Add it: an app is a single JSON file — see the [app manifest](app-manifest.md) for the format, how to ship it in your own repository as `aspireui-app.json`, and how to submit it to this store. The AI assistant can also scaffold one from a URL.*

@@ -1,4 +1,4 @@
-import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch } from "@tabler/icons-react";
+import { IconBrandOpenai, IconTerminal2, IconPlugConnected, IconCloud, IconSettings, IconCube, IconDatabase, IconMessages, IconReportAnalytics, IconBrandAzure, IconRouter, IconLock, IconMail, IconTable, IconMessageChatbot, IconPhoto, IconMusic, IconSitemap, IconMicrophone, IconBrandVscode, IconActivityHeartbeat, IconLayoutDashboard, IconPaperclip, IconShare, IconFileTypePdf, IconTool, IconBell, IconBrandDocker, IconStack3, IconHeadphones, IconShieldCheck, IconServer2, IconChecklist, IconNote, IconSchema, IconSearch, IconDeviceTv } from "@tabler/icons-react";
 import type { Icon } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 import {
@@ -121,7 +121,8 @@ const MAP: Record<string, Visual> = {
   actual:              { si: siActualbudget, color: "#6B46C1" },
   freshrss:            { si: siFreshrss, color: "#0062BE" },
   bazarr:              { tabler: IconMessages, color: "#BE4B3B" },
-  jellyseerr:          { tabler: IconChecklist, color: "#6366F1" },
+  seerr:               { tabler: IconChecklist, color: "#6366F1" },
+  dispatcharr:         { tabler: IconDeviceTv, color: "#E0762C" },
   jackett:             { tabler: IconSearch, color: "#E56E2C" },
   deluge:              { tabler: IconCloud, color: "#4A90D9" },
   komga:               { tabler: IconNote, color: "#5B21B6" },
