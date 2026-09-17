@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, UnstyledButton, Avatar, Group, Text, Badge } from "@mantine/core";
-import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode } from "@tabler/icons-react";
+import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode, IconDatabase } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
-import { can, PERM_USERS } from "../model";
+import { can, PERM_USERS, PERM_DOCKER } from "../model";
 import { useAppTheme } from "../ThemeProvider";
 import { HelpModal } from "../HelpButton";
 import { ThemeDrawer } from "../ThemeDrawer";
@@ -41,6 +41,7 @@ export function UserMenu() {
           <Menu.Item leftSection={<IconUser size={14} />} onClick={() => nav("/profile")}>Profile</Menu.Item>
           {can(user, PERM_USERS) && <Menu.Item leftSection={<IconUsers size={14} />} onClick={() => nav("/users")}>Users</Menu.Item>}
           <Menu.Item leftSection={<IconServer size={14} />} onClick={() => nav("/hosting")}>Hosting</Menu.Item>
+          {can(user, PERM_DOCKER) && <Menu.Item leftSection={<IconDatabase size={14} />} onClick={() => nav("/storage")}>Storage</Menu.Item>}
           <Menu.Item leftSection={<IconSettings size={14} />} onClick={() => nav("/settings")}>Settings</Menu.Item>
 
           <Menu.Divider />

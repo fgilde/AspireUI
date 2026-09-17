@@ -89,6 +89,27 @@ public static class StackEndpoints
         dockerGrp.MapDelete("/volumes/{name}", (string name) => { var (ok, log) = docker.RemoveVolume(name); return ok ? Results.NoContent() : Results.BadRequest(new { message = log }); });
         dockerGrp.MapPost("/prune", (PruneRequest b) => { var (ok, log) = docker.Prune(b.Kind ?? ""); return ok ? Results.Ok(new { log }) : Results.BadRequest(new { message = log }); });
 
+        // Storage: what docker is holding, what of it is still wanted, and removing the rest. The
+        // report is read again inside the clean, so an id that became busy in between is refused
+        // rather than removed on the strength of a page somebody left open.
+        var storage = new StorageService(deploy, deployments, store);
+        var storageGrp = app2.MapGroup("/storage").RequirePerm(Perm.Docker);
+        storageGrp.MapGet("/", () => Results.Ok(storage.Report()));
+        storageGrp.MapPost("/clean", (StorageCleanRequest b) =>
+        {
+            var report = storage.Report();
+            if (report.Error is { Length: > 0 }) return Results.BadRequest(new { message = report.Error });
+            var removed = 0;
+            long bytes = 0;
+            var failed = new List<string>();
+            foreach (var (kind, ids) in b.Selected ?? new())
+            {
+                var (n, freed, errs) = storage.Remove(kind, ids ?? [], report);
+                removed += n; bytes += freed; failed.AddRange(errs);
+            }
+            return Results.Ok(new { removed, bytes, failed, report = storage.Report() });
+        });
+
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
         var gitJson = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
@@ -1616,6 +1637,7 @@ public static class StackEndpoints
     public record VolumeRenameRequest(string From, string To);
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
+    public record StorageCleanRequest(Dictionary<string, List<string>>? Selected);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Image = null, int? Port = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Mode = null, string? Image = null, int? Port = null);
     public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null, string? TargetId = null);

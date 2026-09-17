@@ -493,6 +493,14 @@ export const dockerVolumes = (): Promise<import("./model").DockerVolume[]> => fe
 export const dockerContainers = (): Promise<import("./model").DockerContainer[]> => fetch(`${base}/docker/containers`).then(ok);
 export const dockerRemove = (kind: "images" | "containers" | "volumes", id: string): Promise<void> =>
   fetch(`${base}/docker/${kind}/${encodeURIComponent(id)}`, { method: "DELETE" }).then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t || r.statusText); }); });
+// Storage: what docker holds, what of it is still wanted, and removing the rest.
+export interface StorageItem { kind: string; id: string; name: string; detail: string; bytes: number; reason: string; inUse: boolean; usedBy?: string | null; age?: string | null }
+export interface StorageGroup { kind: string; label: string; explain: string; bytes: number; items: StorageItem[] }
+export interface StorageReport { totalBytes: number; reclaimableBytes: number; inUseBytes: number; groups: StorageGroup[]; inUse: StorageItem[]; error?: string | null }
+export const storageReport = (): Promise<StorageReport> => fetch(`${base}/storage`).then(ok);
+export const storageClean = (selected: Record<string, string[]>): Promise<{ removed: number; bytes: number; failed: string[]; report: StorageReport }> =>
+  fetch(`${base}/storage/clean`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ selected }) }).then(ok);
+
 export const dockerPrune = (kind: "images" | "containers"): Promise<{ log: string }> =>
   fetch(`${base}/docker/prune`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }) }).then(ok);
 
