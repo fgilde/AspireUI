@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using AspireUI.Server.Models;
+using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -8,21 +9,34 @@ namespace AspireUI.Server.Services;
 // Import docker-compose.yml into stack: each service→AddContainer; ports→WithHttpEndpoint; depends_on→WaitFor.
 public class ComposeImporter
 {
+    // Compose files share settings through a YAML anchor in a top-level x- block and a merge key in
+    // each service. The typed model below knows nothing of those blocks, and a skipped node registers
+    // no anchor, so every alias under it would fail the file. Reading the document untyped registers
+    // each anchor and the merging parser expands each <<:, leaving a plain document to read.
+    private static object? ReadGraph(string yaml) =>
+        new DeserializerBuilder().Build()
+            .Deserialize<object>(new MergingParser(new Parser(new StringReader(yaml))));
+
+    // A shared node would be written back as an anchor and aliases, and the typed pass skips the block
+    // the anchor sits in all over again. DisableAliases writes it out in full instead.
+    private static readonly ISerializer Flat = new SerializerBuilder().DisableAliases().Build();
+
+    /// <summary>The same document with its anchors and merge keys resolved.</summary>
+    public static string Plain(string yaml) => ReadGraph(yaml) is { } graph ? Flat.Serialize(graph) : yaml;
+
     // Overlay-merge multiple compose files (later wins), like `docker compose -f a -f b`. Keeps original short/long syntax.
     public static string Merge(IReadOnlyList<string> yamls)
     {
         if (yamls.Count <= 1) return yamls.Count == 1 ? yamls[0] : "";
-        var des = new DeserializerBuilder().Build();
-        var ser = new SerializerBuilder().Build();
         object? acc = null;
         foreach (var y in yamls)
         {
             object? cur;
-            try { cur = des.Deserialize<object>(y); } catch { continue; }
+            try { cur = ReadGraph(y); } catch { continue; }
             if (cur is null) continue;
             acc = acc is null ? cur : DeepMerge(acc, cur);
         }
-        return acc is null ? yamls[0] : ser.Serialize(acc);
+        return acc is null ? yamls[0] : Flat.Serialize(acc);
     }
 
     private static object DeepMerge(object a, object b)
@@ -36,14 +50,33 @@ public class ComposeImporter
         return b;
     }
 
-    // Interpolate ${VAR} / ${VAR:-default} with supplied values (blank/missing → default → empty).
-    public static string ResolveEnv(string yaml, IReadOnlyDictionary<string, string>? env) =>
-        Regex.Replace(yaml, @"\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}", m =>
+    // Compose's four forms: ${VAR}, ${VAR:-default} (this if unset), ${VAR:?message} (a complaint,
+    // never a value) and ${VAR:+alternative} (this only if set). A supplied value wins where one is
+    // wanted. The text between the braces may itself hold another ${...}, as an image name usually
+    // does, so the pattern takes only brace-free bodies — the innermost — and the loop works outward.
+    private static readonly Regex Interpolation = new(@"\$\{([A-Za-z0-9_]+)(?:(:[-?+])([^{}]*))?\}", RegexOptions.Compiled);
+
+    public static string ResolveEnv(string yaml, IReadOnlyDictionary<string, string>? env)
+    {
+        for (var pass = 0; pass < 10; pass++)
         {
-            var name = m.Groups[1].Value;
-            if (env is not null && env.TryGetValue(name, out var v) && !string.IsNullOrEmpty(v)) return v;
-            return m.Groups[2].Success ? m.Groups[2].Value : "";
-        });
+            var next = Interpolation.Replace(yaml, m =>
+            {
+                string? v = null;
+                env?.TryGetValue(m.Groups[1].Value, out v);
+                var supplied = string.IsNullOrEmpty(v) ? null : v;
+                return m.Groups[2].Value switch
+                {
+                    ":+" => supplied is null ? "" : m.Groups[3].Value,
+                    ":-" => supplied ?? m.Groups[3].Value,
+                    _ => supplied ?? "",
+                };
+            });
+            if (next == yaml) return yaml;
+            yaml = next;
+        }
+        return yaml;
+    }
 
     private sealed class ComposeFile { public Dictionary<string, ComposeService>? Services { get; set; } }
     private sealed class ComposeService
@@ -89,13 +122,14 @@ public class ComposeImporter
         string? srcDir = null, IReadOnlyDictionary<string, int>? servicePorts = null)
     {
         ComposeFile? file;
+        yaml = ResolveEnv(yaml, null);
         try
         {
             file = new DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
                 .Build()
-                .Deserialize<ComposeFile>(yaml);
+                .Deserialize<ComposeFile>(Plain(yaml));
         }
         catch (Exception ex) { return (null, "Could not parse compose YAML: " + ex.Message); }
 
