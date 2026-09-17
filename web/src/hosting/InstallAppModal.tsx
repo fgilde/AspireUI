@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, MultiSelect, Stack as MStack } from "@mantine/core";
 import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub, IconCloud } from "@tabler/icons-react";
 import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice, DeployTarget } from "../model";
+import type { TemplateInfo } from "../api";
 import { buildPresetNodes, can, instantiateSnippet, PERM_STORE } from "../model";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 import { AppInfoModal, type AppInfo } from "../components/AppInfoModal";
@@ -23,7 +24,7 @@ const FEATURED = new Set([
 
 const PKG_SKIP = new Set(["AddContainer", "AddProject", "AddParameter", "AddConnectionString", "AddDockerfile", "AddExecutable"]);
 
-type Kind = "app" | "package" | "snippet";
+type Kind = "app" | "package" | "snippet" | "template";
 interface Item {
   id: string; kind: Kind; label: string; group: string; icon: string; description?: string | null;
   info: AppInfo; featured: boolean;
@@ -33,8 +34,8 @@ interface Item {
   install?: () => Promise<{ id: string }>;
 }
 
-const KIND_LABEL: Record<Kind, string> = { app: "App", package: "Package", snippet: "Snippet" };
-const KIND_COLOR: Record<Kind, string> = { app: "blue", package: "teal", snippet: "grape" };
+const KIND_LABEL: Record<Kind, string> = { app: "App", package: "Package", snippet: "Snippet", template: "Template" };
+const KIND_COLOR: Record<Kind, string> = { app: "blue", package: "teal", snippet: "grape", template: "indigo" };
 
 const presetItem = (p: ContainerPreset): Item => ({
   id: `preset:${p.id}`, kind: "app", label: p.label, group: p.group, icon: p.icon || "", description: p.description,
@@ -58,6 +59,14 @@ const snippetItem = (s: Snippet): Item => ({
   id: `snippet:${s.id}`, kind: "snippet", label: s.name, group: s.group || "Custom", icon: s.icon || (s.nodes[0]?.icon ?? s.nodes[0]?.addMethod ?? ""), featured: false,
   info: { label: s.name, group: s.group || "Custom", icon: s.icon, description: `A saved snippet with ${s.nodes.length} resource${s.nodes.length === 1 ? "" : "s"}.`, custom: true, kindLabel: "Snippet" },
   install: () => { const { nodes, edges } = instantiateSnippet(s, [], 0, 0); return api.createStack({ name: s.name, targetFramework: "net10.0", nodes, edges, rawStatements: [], extraFiles: s.files ?? [], extraPackages: [] }); },
+});
+// A template is a whole stack somebody already composed — the install path is the same one a preset
+// takes: create the stack, then deploy it to hosting.
+const templateItem = (t: TemplateInfo): Item => ({
+  id: `template:${t.id}`, kind: "template", label: t.name, group: "Templates", icon: "", description: t.description,
+  info: { label: t.name, group: "Templates", description: t.description, custom: t.id.startsWith("user:"), kindLabel: "Template" },
+  featured: false,
+  install: () => api.createFromTemplate(t.id),
 });
 const packageItem = (rt: ResourceType): Item => ({
   id: `pkg:${rt.addMethod}`, kind: "package", label: rt.label, group: rt.group || "Integrations", icon: rt.icon || rt.addMethod, description: rt.description, featured: false,
@@ -101,10 +110,11 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
       api.getSnippets().catch(() => []),
       (api.getCatalog() as Promise<ResourceType[]>).catch(() => []),
       api.getStoreExclusions().catch(() => []),
-    ]).then(([presets, snippets, catalog, ex]) => {
+      api.getTemplates().catch(() => []),
+    ]).then(([presets, snippets, catalog, ex, templates]) => {
       const pkgs = catalog.filter(rt => rt.package && rt.package !== "Aspire.Hosting" && !PKG_SKIP.has(rt.addMethod)
         && !rt.addMethod.startsWith("AddAzure") && !rt.addMethod.startsWith("AddAws"));
-      setItems([...snippets.map(snippetItem), ...presets.map(presetItem), ...pkgs.map(packageItem)]);
+      setItems([...snippets.map(snippetItem), ...templates.map(templateItem), ...presets.map(presetItem), ...pkgs.map(packageItem)]);
       setExcluded(new Set(ex));
     });
   }, []);
