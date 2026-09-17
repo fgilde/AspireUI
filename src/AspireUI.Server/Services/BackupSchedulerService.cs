@@ -23,12 +23,52 @@ public class BackupSchedulerService : BackgroundService
         {
             try { RunDueBackups(); } catch { }
             try { RunDueAppSchedules(); } catch { }
+            try { RunDueStorageClean(); } catch { }
             try { if (!await timer.WaitForNextTickAsync(stop)) break; } catch (OperationCanceledException) { break; }
         }
     }
 
     private static HostingService Hosting(DeploymentStore store) =>
         new(store, new PublishService(new CodeGenService()), new DeployService(), targets: TargetService.FromEnvironment());
+
+    /// <summary>
+    /// Auto-clean. It runs while nobody is watching, so it takes only what the rule in StorageService
+    /// picks — never a volume unless the setting names it — and writes down what it removed, because
+    /// the one thing worse than a full disk is space appearing without an explanation.
+    /// </summary>
+    private static void RunDueStorageClean()
+    {
+        var settings = new SettingsStore(Db());
+        if (!int.TryParse(settings.GetValue("StorageCleanIntervalHours"), out var hours) || hours <= 0) return;
+        var last = DateTime.TryParse(settings.GetValue("StorageCleanLastRun"), out var lr) ? lr : DateTime.MinValue;
+        if (DateTime.UtcNow - last < TimeSpan.FromHours(hours)) return;
+        settings.SetValue("StorageCleanLastRun", DateTime.UtcNow.ToString("O"));
+
+        var storage = new StorageService(new DeployService(), new DeploymentStore(Db()), new StackStore(Db()));
+        var report = storage.Report();
+        if (report.Error is { Length: > 0 }) { settings.SetValue("StorageCleanLastResult", "docker did not answer: " + report.Error); return; }
+
+        var kinds = (settings.GetValue("StorageCleanKinds") ?? string.Join(',', StorageService.SafeKinds)).Split(',');
+        var minAge = int.TryParse(settings.GetValue("StorageCleanMinAgeDays"), out var d) ? d : 7;
+        var picked = StorageService.AutoSelection(report, kinds, minAge, DateTimeOffset.UtcNow);
+        if (picked.Count == 0) { settings.SetValue("StorageCleanLastResult", "nothing to remove"); return; }
+
+        var removed = 0;
+        long bytes = 0;
+        foreach (var (kind, ids) in picked)
+        {
+            var (n, freed, _) = storage.Remove(kind, ids, report);
+            removed += n; bytes += freed;
+        }
+        var summary = $"removed {removed} item(s), {bytes / 1_000_000_000d:0.##} GB";
+        settings.SetValue("StorageCleanLastResult", summary);
+        try
+        {
+            new AuditStore(Db()).Add(null, "auto-clean", "POST", "/api/storage/clean", "storage.autoclean",
+                null, string.Join(", ", picked.Select(p => $"{p.Value.Count} {p.Key}")), 200, 0);
+        }
+        catch { }
+    }
 
     private static void RunDueBackups()
     {

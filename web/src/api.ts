@@ -501,6 +501,13 @@ export const storageReport = (): Promise<StorageReport> => fetch(`${base}/storag
 export const storageClean = (selected: Record<string, string[]>): Promise<{ removed: number; bytes: number; failed: string[]; report: StorageReport }> =>
   fetch(`${base}/storage/clean`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ selected }) }).then(ok);
 
+export interface StorageAuto { intervalHours: number; kinds: string[]; minAgeDays: number; lastRun?: string | null; lastResult?: string | null }
+export const storageAuto = (): Promise<StorageAuto> => fetch(`${base}/storage/auto`).then(ok);
+export const setStorageAuto = (b: { intervalHours: number; kinds: string[]; minAgeDays: number }): Promise<void> =>
+  fetch(`${base}/storage/auto`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(() => undefined);
+export const storageAutoPreview = (): Promise<{ selected: Record<string, string[]>; bytes: number }> =>
+  fetch(`${base}/storage/auto/preview`).then(ok);
+
 export const dockerPrune = (kind: "images" | "containers"): Promise<{ log: string }> =>
   fetch(`${base}/docker/prune`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }) }).then(ok);
 

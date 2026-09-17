@@ -109,6 +109,36 @@ public static class StackEndpoints
             }
             return Results.Ok(new { removed, bytes, failed, report = storage.Report() });
         });
+        storageGrp.MapGet("/auto", () => Results.Ok(new
+        {
+            intervalHours = int.TryParse(settings.GetValue("StorageCleanIntervalHours"), out var h) ? h : 0,
+            kinds = (settings.GetValue("StorageCleanKinds") ?? string.Join(',', StorageService.SafeKinds))
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            minAgeDays = int.TryParse(settings.GetValue("StorageCleanMinAgeDays"), out var d) ? d : 7,
+            lastRun = settings.GetValue("StorageCleanLastRun"),
+            lastResult = settings.GetValue("StorageCleanLastResult"),
+        }));
+        storageGrp.MapPut("/auto", (StorageAutoRequest b) =>
+        {
+            settings.SetValue("StorageCleanIntervalHours", Math.Max(0, b.IntervalHours).ToString());
+            // Switching it on starts the clock rather than firing at once: the first run is an interval
+            // away, which leaves time to look at what it would take and change the mind about it.
+            if (b.IntervalHours > 0 && string.IsNullOrEmpty(settings.GetValue("StorageCleanLastRun")))
+                settings.SetValue("StorageCleanLastRun", DateTime.UtcNow.ToString("O"));
+            settings.SetValue("StorageCleanKinds", StorageService.NormaliseKinds(b.Kinds));
+            settings.SetValue("StorageCleanMinAgeDays", Math.Clamp(b.MinAgeDays, 0, 365).ToString());
+            return Results.NoContent();
+        });
+        // What a scheduled run would take right now, so the page can show it before it is switched on.
+        storageGrp.MapGet("/auto/preview", () =>
+        {
+            var report = storage.Report();
+            if (report.Error is { Length: > 0 }) return Results.BadRequest(new { message = report.Error });
+            var kinds = (settings.GetValue("StorageCleanKinds") ?? string.Join(',', StorageService.SafeKinds)).Split(',');
+            var minAge = int.TryParse(settings.GetValue("StorageCleanMinAgeDays"), out var d) ? d : 7;
+            var picked = StorageService.AutoSelection(report, kinds, minAge, DateTimeOffset.UtcNow);
+            return Results.Ok(new { selected = picked, bytes = StorageService.BytesOf(report, picked) });
+        });
 
         string Dir(string id) => Path.Combine(wsRoot, id);
         static string Uid(HttpContext ctx) => ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
@@ -1638,6 +1668,7 @@ public static class StackEndpoints
     public record ExecRequest(string Container, string Cmd, string? Service = null, bool? Fresh = null);
     public record BackupSettingsRequest(int IntervalHours, int Retain);
     public record StorageCleanRequest(Dictionary<string, List<string>>? Selected);
+    public record StorageAutoRequest(int IntervalHours, List<string>? Kinds, int MinAgeDays);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Image = null, int? Port = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Mode = null, string? Image = null, int? Port = null);
     public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null, string? TargetId = null);

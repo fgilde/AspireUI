@@ -139,3 +139,112 @@ public class StorageServiceTests
         Assert.Empty(report.Groups);
     }
 }
+
+// A scheduled clean runs while nobody is watching, so what it takes has to be decided by a rule that
+// can be read here rather than by whatever the page happened to have ticked.
+public class StorageAutoCleanTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 9, 17, 12, 0, 0, TimeSpan.Zero);
+
+    private static StorageReport Report() => StorageService.Classify($$"""
+        {
+          "Images": [
+            {"ID":"old","Repository":"acme/old","Tag":"1","Size":"1GB","UniqueSize":"1GB","Containers":"0","CreatedAt":"2026-08-01 10:00:00 +0200 CEST"},
+            {"ID":"fresh","Repository":"acme/fresh","Tag":"1","Size":"2GB","UniqueSize":"2GB","Containers":"0","CreatedAt":"2026-09-17 09:00:00 +0200 CEST"}
+          ],
+          "Containers": [
+            {"ID":"oldc","Names":"old-run","Image":"acme/old:1","State":"exited","Size":"50MB","Labels":"","CreatedAt":"2026-07-01 10:00:00 +0200 CEST"}
+          ],
+          "Volumes": [
+            {"Name":"orphan","Links":"0","Size":"5GB","Driver":"local","Labels":""}
+          ],
+          "BuildCache": [ {"ID":"b1","Size":"3GB","InUse":"false"} ]
+        }
+        """, [], [], _ => false);
+
+    [Fact]
+    public void Something_pulled_this_morning_is_left_alone()
+    {
+        var picked = StorageService.AutoSelection(Report(), StorageService.SafeKinds, minAgeDays: 7, Now);
+        Assert.Equal(["old"], picked[StorageService.Images]);
+        Assert.DoesNotContain("fresh", picked[StorageService.Images]);
+    }
+
+    [Fact]
+    public void Data_is_not_touched_unless_it_was_asked_for_by_name()
+    {
+        var safe = StorageService.AutoSelection(Report(), StorageService.SafeKinds, 7, Now);
+        Assert.False(safe.ContainsKey(StorageService.Volumes));
+
+        var everything = StorageService.AutoSelection(Report(), StorageService.AllKinds, 7, Now);
+        Assert.Equal(["orphan"], everything[StorageService.Volumes]);
+    }
+
+    [Fact]
+    public void What_carries_no_age_goes_by_the_list_alone()
+    {
+        // The build cache is a cache and a volume has no creation time, so the age cannot speak for
+        // them — a hundred-day minimum must not quietly turn the cache into something permanent.
+        var picked = StorageService.AutoSelection(Report(), StorageService.SafeKinds, minAgeDays: 100, Now);
+        Assert.True(picked.ContainsKey(StorageService.BuildCache));
+        Assert.False(picked.ContainsKey(StorageService.Images));
+    }
+
+    [Fact]
+    public void The_figure_it_reports_is_the_sum_of_what_it_picked()
+    {
+        var report = Report();
+        var picked = StorageService.AutoSelection(report, StorageService.SafeKinds, 7, Now);
+        Assert.Equal(1_000_000_000 + 50_000_000 + 3_000_000_000, StorageService.BytesOf(report, picked));
+    }
+
+    [Theory]
+    [InlineData("2026-09-17 13:05:36 +0200 CEST", true)]
+    [InlineData("2026-09-17T13:05:36+02:00", true)]
+    [InlineData("2026-09-17 13:05:36", true)]
+    [InlineData("4 days ago", false)]
+    [InlineData("", false)]
+    public void Dockers_stamp_is_read_where_it_can_be_and_counts_as_no_age_where_it_cannot(string stamp, bool parsed)
+    {
+        Assert.Equal(parsed, StorageService.When(stamp) is not null);
+    }
+
+    [Fact]
+    public void An_unreadable_stamp_keeps_the_thing_rather_than_removing_it()
+    {
+        // Created is null then, and null means "no age to go by" — which for a kind that has ages
+        // would otherwise mean "old enough", so this is the safer of the two readings.
+        var report = StorageService.Classify("""
+            {"Images":[{"ID":"weird","Repository":"a/b","Tag":"1","Size":"1GB","UniqueSize":"1GB","Containers":"0","CreatedAt":"whenever"}],
+             "Containers":[],"Volumes":[],"BuildCache":[]}
+            """, [], [], _ => false);
+        Assert.Null(report.Groups.Single(g => g.Kind == StorageService.Images).Items.Single().Created);
+    }
+}
+
+public class StorageKindsTests
+{
+    [Fact]
+    public void The_kinds_are_stored_as_names_not_as_whatever_a_list_prints_as()
+    {
+        // string.Join over a ternary of List<string> and string[] unifies to object and writes
+        // "System.Collections.Generic.List`1[System.String]" into the setting, which reads back as a
+        // kind nothing matches — an auto-clean that silently does nothing at all.
+        Assert.Equal("images,containers", StorageService.NormaliseKinds(["images", "containers"]));
+        Assert.DoesNotContain("System.", StorageService.NormaliseKinds(["images"]));
+    }
+
+    [Fact]
+    public void Nothing_usable_falls_back_to_the_safe_set_rather_than_to_everything()
+    {
+        Assert.Equal("images,containers,buildcache", StorageService.NormaliseKinds([]));
+        Assert.Equal("images,containers,buildcache", StorageService.NormaliseKinds(null));
+        Assert.Equal("images,containers,buildcache", StorageService.NormaliseKinds(["nonsense", "  "]));
+    }
+
+    [Fact]
+    public void A_name_it_does_not_know_is_dropped_rather_than_stored()
+    {
+        Assert.Equal("volumes", StorageService.NormaliseKinds([" Volumes ", "everything", "volumes"]));
+    }
+}

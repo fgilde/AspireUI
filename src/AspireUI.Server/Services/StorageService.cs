@@ -6,7 +6,7 @@ namespace AspireUI.Server.Services;
 
 /// <summary>One thing taking up room, and why it may or may not go.</summary>
 public record StorageItem(string Kind, string Id, string Name, string Detail, long Bytes, string Reason,
-    bool InUse = false, string? UsedBy = null, string? Age = null);
+    bool InUse = false, string? UsedBy = null, string? Age = null, DateTimeOffset? Created = null);
 
 /// <summary>Everything of one kind that can go, with what it adds up to.</summary>
 public record StorageGroup(string Kind, string Label, string Explain, long Bytes, List<StorageItem> Items);
@@ -125,7 +125,7 @@ public class StorageService(DeployService deploy, DeploymentStore deployments, S
             var used = int.TryParse(S(e, "Containers"), out var c) && c > 0;
             var item = new StorageItem(Images, S(e, "ID"), name, S(e, "Size"), bytes,
                 used ? $"{c} container(s) use it" : repo is "<none>" ? "untagged leftover of a build" : "no container uses it",
-                used, Age: S(e, "CreatedSince"));
+                used, Age: S(e, "CreatedSince"), Created: When(S(e, "CreatedAt")));
             (used ? kept : free).Add(item);
         }
         return (new StorageGroup(Images, "Images", "Images no container refers to. Pulling one again costs only the download.",
@@ -155,7 +155,7 @@ public class StorageService(DeployService deploy, DeploymentStore deployments, S
                 continue;
             }
             free.Add(new StorageItem(Containers, id, name, S(e, "Image"), bytes,
-                $"stopped, and no hosted app claims it", Age: S(e, "CreatedAt")));
+                "stopped, and no hosted app claims it", Age: S(e, "CreatedAt"), Created: When(S(e, "CreatedAt"))));
         }
         return (new StorageGroup(Containers, "Stopped containers", "Containers that are not running and belong to no hosted app.",
             free.Sum(i => i.Bytes), [.. free.OrderByDescending(i => i.Bytes)]), kept);
@@ -239,7 +239,62 @@ public class StorageService(DeployService deploy, DeploymentStore deployments, S
         return (removed, bytes, failed);
     }
 
+    /// <summary>
+    /// What a scheduled clean would take: the kinds it is allowed to touch, and nothing younger than
+    /// the age given — an image pulled an hour ago is one somebody is still working with. Where docker
+    /// reports no age (volumes, the cache) the age cannot decide, so those kinds go by the list alone,
+    /// and volumes are not on it unless somebody put them there.
+    /// </summary>
+    public static Dictionary<string, List<string>> AutoSelection(StorageReport report,
+        IEnumerable<string> kinds, int minAgeDays, DateTimeOffset now)
+    {
+        var allowed = kinds.Select(k => k.Trim().ToLowerInvariant()).Where(k => k.Length > 0).ToHashSet();
+        var cutoff = now - TimeSpan.FromDays(Math.Max(0, minAgeDays));
+        var picked = new Dictionary<string, List<string>>();
+        foreach (var g in report.Groups.Where(g => allowed.Contains(g.Kind)))
+        {
+            var ids = g.Items.Where(i => i.Created is null || i.Created <= cutoff).Select(i => i.Id).ToList();
+            if (ids.Count > 0) picked[g.Kind] = ids;
+        }
+        return picked;
+    }
+
+    /// <summary>
+    /// The kinds a schedule may touch, as they are stored: known names only, so a typo cannot quietly
+    /// widen what an unattended run takes, and the safe set when nothing usable is left.
+    /// </summary>
+    public static string NormaliseKinds(IEnumerable<string>? kinds)
+    {
+        var known = (kinds ?? [])
+            .Select(k => k.Trim().ToLowerInvariant())
+            .Where(AllKinds.Contains)
+            .Distinct()
+            .ToList();
+        return string.Join(',', known.Count > 0 ? known : SafeKinds.ToList());
+    }
+
+    public static long BytesOf(StorageReport report, IReadOnlyDictionary<string, List<string>> selection) =>
+        report.Groups.Where(g => selection.ContainsKey(g.Kind))
+            .Sum(g => g.Items.Where(i => selection[g.Kind].Contains(i.Id)).Sum(i => i.Bytes));
+
     // ---- reading docker's numbers ------------------------------------------------------------
+
+    /// <summary>
+    /// Docker stamps things like "2026-09-17 13:05:36 +0200 CEST" — an offset and then the zone's
+    /// name, which no parser wants. Anything it does not understand counts as no age rather than as
+    /// old, so an unreadable stamp keeps a thing rather than removing it.
+    /// </summary>
+    public static DateTimeOffset? When(string stamp)
+    {
+        var s = stamp.Trim();
+        if (s.Length == 0) return null;
+        if (DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact)) return exact;
+        var parts = s.Split(' ');
+        for (var take = Math.Min(parts.Length, 3); take >= 2; take--)
+            if (DateTimeOffset.TryParse(string.Join(' ', parts[..take]), CultureInfo.InvariantCulture, DateTimeStyles.None, out var cut))
+                return cut;
+        return null;
+    }
 
     private static IEnumerable<JsonElement> Array(JsonElement df, string name) =>
         df.TryGetProperty(name, out var a) && a.ValueKind == JsonValueKind.Array ? a.EnumerateArray() : [];
