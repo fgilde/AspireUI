@@ -144,3 +144,33 @@ public class ComposeAlternativeFormTests
             ComposeImporter.ResolveEnv(tuning, new Dictionary<string, string> { ["HEAP_MB"] = "512" }));
     }
 }
+
+// A compose file may hand a service a whole configuration file in one environment value, as a YAML
+// block scalar. Written into a C# string literal unescaped, the newlines end the literal and the
+// generated AppHost stops compiling.
+public class ComposeMultilineValueTests
+{
+    [Fact]
+    public void A_configuration_passed_as_one_value_survives_the_trip_into_code()
+    {
+        var (stack, error) = new ComposeImporter().Import("s1", "demo", """
+            services:
+              livekit:
+                image: livekit/livekit-server:v1.12.0
+                environment:
+                  LIVEKIT_CONFIG: |
+                    port: 7880
+                    rtc:
+                      use_external_ip: false
+            """);
+        Assert.Null(error);
+        var value = Assert.Single(stack!.Nodes)
+            .WithCalls.Single(w => w.Method == "WithEnvironment").Args[1];
+
+        Assert.DoesNotContain('\n', value);
+        Assert.DoesNotContain('\r', value);
+        Assert.Contains(@"\n", value);       // the two characters, as a C# literal carries a newline
+        Assert.StartsWith("\"", value);
+        Assert.EndsWith("\"", value);
+    }
+}

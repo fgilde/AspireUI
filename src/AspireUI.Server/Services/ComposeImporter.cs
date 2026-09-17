@@ -255,7 +255,13 @@ public class ComposeImporter
         _ => [],
     };
 
-    internal static string Quote(string s) => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
+    // A value may be a whole configuration file, handed over as a YAML block scalar. Its newlines
+    // end a C# string literal, so everything that cannot stand inside one goes in escaped.
+    internal static string Quote(string s) => "\"" + s
+        .Replace("\\", "\\\\").Replace("\"", "\\\"")
+        .Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t")
+        + "\"";
+
     private static string Sanitize(string s)
     {
         var cleaned = new string(s.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());

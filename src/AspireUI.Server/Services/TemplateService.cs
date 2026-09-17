@@ -17,6 +17,7 @@ public class TemplateService
         new("grafana-stack", "Grafana + Prometheus + OTEL", "Grafana dashboards + Prometheus metrics + an OpenTelemetry collector (containers)."),
         new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
         new("me-myself-and-i", "Me, Myself and I", "AspireUI running inside your own Aspire stack — the builder builds itself. Comes with a seeded admin."),
+        new(FluxerTemplate.Id, "Fluxer (chat)", "The whole Fluxer chat server — 25 services from the project's own compose file, with its secrets generated for this stack."),
     ];
 
     public StackModel? Create(string templateId) => templateId switch
@@ -30,6 +31,7 @@ public class TemplateService
         "grafana-stack" => GrafanaStack(),
         "supabase-observability" => SupabaseObservability(),
         "me-myself-and-i" => MeMyselfAndI(),
+        FluxerTemplate.Id => FluxerTemplate.Create(Guid.NewGuid().ToString("n")),
         _ => null,
     };
 
