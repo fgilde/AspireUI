@@ -2,7 +2,7 @@ using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
 
-public record TemplateInfo(string Id, string Name, string Description);
+public record TemplateInfo(string Id, string Name, string Description, List<string>? Requires = null);
 
 public class TemplateService
 {
@@ -18,7 +18,7 @@ public class TemplateService
         new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
         new("me-myself-and-i", "Me, Myself and I", "AspireUI running inside your own Aspire stack — the builder builds itself. Comes with a seeded admin."),
         new(FluxerTemplate.Id, "Fluxer (chat)", "The whole Fluxer chat server — 25 services from the project's own compose file, with its secrets generated for this stack."),
-        new(ApkTemplate.Id, "Android app (APK)", "An Android emulator with a noVNC web view and your APK installed into it, so an Android-only app is usable in a browser. Needs a Linux host with /dev/kvm, and noVNC carries no sound."),
+        new(ApkTemplate.Id, "Android app (APK)", "An Android emulator with a noVNC web view and your APK installed into it, so an Android-only app is usable in a browser. Needs a Linux host with /dev/kvm, and noVNC carries no sound.", [HostCapabilities.Kvm]),
     ];
 
     public StackModel? Create(string templateId) => templateId switch

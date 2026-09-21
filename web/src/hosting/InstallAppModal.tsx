@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Title, TextInput, SimpleGrid, Card, Group, Text, Highlight, Button, Loader, Badge, ActionIcon, Tooltip, ScrollArea, Box, UnstyledButton, MultiSelect, Stack as MStack } from "@mantine/core";
-import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub, IconCloud } from "@tabler/icons-react";
+import { IconSearch, IconDownload, IconEye, IconEyeOff, IconInfoCircle, IconFlame, IconApps, IconCheck, IconMinus, IconX, IconBrandGithub, IconCloud, IconAlertTriangle } from "@tabler/icons-react";
 import type { ContainerPreset, Snippet, ResourceType, Node, Edge, Deployment, CompanionChoice, DeployTarget } from "../model";
 import type { TemplateInfo } from "../api";
 import { buildPresetNodes, can, instantiateSnippet, PERM_STORE } from "../model";
@@ -30,6 +30,7 @@ interface Item {
   info: AppInfo; featured: boolean;
   submitter?: string | null;      // set = came from a submitted app / app source, shown as provenance
   rt?: ResourceType;
+  requires?: string[] | null;   // what it needs from the Docker host, not from its image
   preset?: ContainerPreset;
   install?: () => Promise<{ id: string }>;
 }
@@ -43,6 +44,7 @@ const presetItem = (p: ContainerPreset): Item => ({
   info: { label: p.label, group: p.group, icon: p.icon, description: p.description, website: p.website, image: p.image, port: p.port, screenshots: p.screenshots, tags: p.tags, kindLabel: "App",
     logo: p.logo, card: p.card, github: p.github, stars: p.stars, license: p.license, language: p.language, topics: p.topics, submitter: p.submitter, source: p.source, sources: p.sources },
   submitter: p.submitter,
+  requires: p.requires,
   preset: p,
   install: () => createPresetStack(p),
 });
@@ -66,6 +68,7 @@ const templateItem = (t: TemplateInfo): Item => ({
   id: `template:${t.id}`, kind: "template", label: t.name, group: "Templates", icon: "", description: t.description,
   info: { label: t.name, group: "Templates", description: t.description, custom: t.id.startsWith("user:"), kindLabel: "Template" },
   featured: false,
+  requires: t.requires,
   install: () => api.createFromTemplate(t.id),
 });
 const packageItem = (rt: ResourceType): Item => ({
@@ -86,6 +89,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
     if (!s[t]) next[t] = "in"; else if (s[t] === "in") next[t] = "ex"; else delete next[t];
     return next;
   });
+  const [hostCaps, setHostCaps] = useState<Record<string, api.HostCapability>>({});
   const [installing, setInstalling] = useState<string | null>(null);
   const [infoItem, setInfoItem] = useState<Item | null>(null);
   const [pkgItem, setPkgItem] = useState<Item | null>(null);
@@ -111,13 +115,20 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
       (api.getCatalog() as Promise<ResourceType[]>).catch(() => []),
       api.getStoreExclusions().catch(() => []),
       api.getTemplates().catch(() => []),
-    ]).then(([presets, snippets, catalog, ex, templates]) => {
+      api.getHostCapabilities().catch(() => ({} as Record<string, api.HostCapability>)),
+    ]).then(([presets, snippets, catalog, ex, templates, caps]) => {
+      setHostCaps(caps);
       const pkgs = catalog.filter(rt => rt.package && rt.package !== "Aspire.Hosting" && !PKG_SKIP.has(rt.addMethod)
         && !rt.addMethod.startsWith("AddAzure") && !rt.addMethod.startsWith("AddAws"));
       setItems([...snippets.map(snippetItem), ...templates.map(templateItem), ...presets.map(presetItem), ...pkgs.map(packageItem)]);
       setExcluded(new Set(ex));
     });
   }, []);
+
+  // Only a definite no earns a badge. An unanswered probe — docker unreachable, image not pullable —
+  // is not a no, and a badge nobody can act on is a badge everybody learns to ignore.
+  const unmet = (it: Item) =>
+    (it.requires ?? []).map(r => hostCaps[r]).filter(c => c?.available === false);
 
   const toggleExclude = async (id: string) => {
     const next = new Set(excluded);
@@ -241,6 +252,13 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
                   <Badge size="xs" variant="light" color="cyan">{it.preset!.sources!.length} sources</Badge>
                 </Tooltip>
               )}
+              {unmet(it).map(c => (
+                <Tooltip key={c.id} label={c.detail} withArrow multiline w={280}>
+                  <Badge size="xs" variant="light" color="red" leftSection={<IconAlertTriangle size={10} />}>
+                    This host can&apos;t
+                  </Badge>
+                </Tooltip>
+              ))}
               <Text size="10px" c="dimmed" truncate>{it.group}</Text>
               {hidden && <Badge size="xs" variant="light" color="gray">Hidden</Badge>}
             </Group>
@@ -317,7 +335,7 @@ export function InstallAppModal({ onClose, onInstalled }: { onClose: () => void;
       </Group>
 
       {infoItem && (
-        <AppInfoModal info={infoItem.info} onClose={() => setInfoItem(null)}
+        <AppInfoModal info={{ ...infoItem.info, blockers: unmet(infoItem).map(c => c.detail) }} onClose={() => setInfoItem(null)}
           onAction={() => { const it = infoItem; setInfoItem(null); install(it); }}
           actionLabel="Install" actionIcon={<IconDownload size={14} />} actionLoading={installing === infoItem.id} />
       )}

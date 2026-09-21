@@ -1,7 +1,11 @@
 import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth, PublishResult, DeployResult } from "./model";
 const base = "/api";
 
-export interface TemplateInfo { id: string; name: string; description: string }
+export interface TemplateInfo { id: string; name: string; description: string; requires?: string[] | null }
+
+// What the Docker host can do, for apps that need something from the host rather than from their
+// image. `available` is null when the question could not be answered, which is not the same as no.
+export interface HostCapability { id: string; available: boolean | null; detail: string; checked: string }
 export interface PackageInfo { id: string; version: string; resources: string[] }
 
 let onUnauthorized: () => void = () => {};
@@ -275,6 +279,8 @@ export const explainStack = (id: string): Promise<{ reply: string }> =>
 export const importCompose = (name: string, yaml: string): Promise<Stack> =>
   fetch(`${base}/stacks/import-compose`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, yaml }) }).then(ok);
 export const getTemplates = (): Promise<TemplateInfo[]> => fetch(`${base}/templates`).then(ok);
+export const getHostCapabilities = (refresh = false): Promise<Record<string, HostCapability>> =>
+  fetch(`${base}/host/capabilities${refresh ? "?refresh=true" : ""}`).then(ok);
 export const saveTemplate = (stackId: string, name: string, description: string): Promise<TemplateInfo> =>
   fetch(`${base}/templates`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stackId, name, description }) }).then(ok);
 export const deleteUserTemplate = (id: string): Promise<void> =>

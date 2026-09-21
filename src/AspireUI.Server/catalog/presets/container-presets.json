@@ -8426,6 +8426,9 @@
     "website": "https://github.com/budtmo/docker-android",
     "github": "https://github.com/budtmo/docker-android",
     "license": "Apache License 2.0",
-    "language": "Shell"
+    "language": "Shell",
+    "requires": [
+      "kvm"
+    ]
   }
 ]

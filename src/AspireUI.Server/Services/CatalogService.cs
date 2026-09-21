@@ -29,7 +29,10 @@ public record ContainerPreset(string Id, string Label, string Group, string Imag
     string? Logo = null, string? Card = null, string? Github = null,
     int? Stars = null, string? License = null, string? Language = null, List<string>? Topics = null,
     string? Submitter = null, string? Source = null,
-    List<PresetSource>? Sources = null);
+    List<PresetSource>? Sources = null,
+    // What the app needs from the Docker host rather than from its image, so the store can say so
+    // before the install rather than after. See HostCapabilities.
+    List<string>? Requires = null);
 public record PresetFile(string Name, string Content);
 // One place the same app can be pulled from. `image` on the app is the default and appears here as
 // the entry marked default; the others — a maintained fork, a mirror — are offered at install time.

@@ -265,6 +265,12 @@ public static class StackEndpoints
         app2.MapGet("/catalog", () => catalog.GetCatalog());
         app2.MapGet("/catalog/presets", () => catalog.GetPresets());
 
+        // What the Docker host can do, for apps that need something from the host and not from their
+        // image. Asked once and remembered: the answer only changes when the host does, and then
+        // ?refresh=true asks again.
+        var hostCaps = new HostCapabilities(deploy);
+        app2.MapGet("/host/capabilities", (bool? refresh) => Results.Ok(hostCaps.All(refresh == true)));
+
         app2.MapGet("/store/exclusions", () => Results.Ok(
             (settings.GetValue("StoreExclusions") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)));
         app2.MapPut("/store/exclusions", (StoreExclusionsRequest body) =>

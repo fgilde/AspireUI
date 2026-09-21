@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, Anchor, Box, UnstyledButton } from "@mantine/core";
-import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode, IconUserCheck } from "@tabler/icons-react";
+import { Modal, Group, Text, Badge, Button, Stack as MStack, Image, Anchor, Box, UnstyledButton, Alert } from "@mantine/core";
+import { IconExternalLink, IconWorld, IconStar, IconBrandGithub, IconLicense, IconCode, IconUserCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { ResourceGlyph, resourceVisual } from "../resourceIcons";
 
 // Normalized view of store/palette resources; only `label` required, rest is optional.
@@ -11,6 +11,9 @@ export interface AppInfo {
   logo?: string | null; card?: string | null; github?: string | null;
   stars?: number | null; license?: string | null; language?: string | null; topics?: string[] | null;
   submitter?: string | null; source?: string | null;
+  // Set when the Docker host cannot give this app something it needs. Installing still works, it
+  // just will not run — which is worth saying here rather than leaving it to be discovered.
+  blockers?: string[] | null;
   sources?: { id: string; label: string; image: string; github?: string | null; note?: string | null; default?: boolean }[] | null;
 }
 
@@ -54,6 +57,13 @@ export function AppInfoModal({ info, onClose, onAction, actionLabel = "Add", act
       </Box>
 
       <MStack gap="md" p="lg">
+        {(info.blockers ?? []).length > 0 && (
+          <Alert color="red" variant="light" icon={<IconAlertTriangle size={18} />} title="This host cannot run it">
+            <MStack gap={4}>
+              {info.blockers!.map(b => <Text key={b} size="sm">{b}</Text>)}
+            </MStack>
+          </Alert>
+        )}
         {selected && (
           <MStack gap="xs">
             <Anchor href={selected} target="_blank" style={{ display: "block", overflow: "hidden", borderRadius: 8, border: "1px solid var(--mantine-color-default-border)" }}>
