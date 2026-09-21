@@ -8393,5 +8393,39 @@
     "screenshots": [
       "/media/passbolt/screenshot_1.webp"
     ]
+  },
+  {
+    "id": "android",
+    "label": "Android",
+    "group": "Tools",
+    "image": "budtmo/docker-android:emulator_11.0",
+    "port": 6080,
+    "icon": "android",
+    "description": "An Android device running as a container, with its screen served over noVNC - open the endpoint and you are looking at a phone in a browser tab, no handset and no TV stick. Apps are installed from inside the device the way you would on a phone, or over adb on port 5555. To have an APK installed for you when the stack starts, use the \"Android app (APK)\" template instead: it adds the same device plus a sidecar that waits for the boot to finish and installs the APK you name. Both want a Linux host: the emulator needs /dev/kvm passed into the container, and without it it does not start at all - it exits with \"RuntimeError: /dev/kvm cannot be found!\" while the container keeps serving its landing page, so the symptom is a web view that never turns into a device. Docker Desktop on Windows and macOS only has /dev/kvm when nested virtualisation is enabled for its VM. An APK built for phones only (arm64-v8a, armeabi-v7a) installs here and then crashes - the emulator is x86_64. One thing the screen does not carry: sound. noVNC has no audio channel, so video plays without it - worth knowing before pointing a streaming app at this.",
+    "env": [
+      [
+        "WEB_VNC",
+        "true"
+      ],
+      [
+        "EMULATOR_DEVICE",
+        "Samsung Galaxy S10"
+      ]
+    ],
+    "runtimeArgs": [
+      "--device",
+      "/dev/kvm"
+    ],
+    "tags": [
+      "android",
+      "emulator",
+      "apk",
+      "novnc",
+      "adb"
+    ],
+    "website": "https://github.com/budtmo/docker-android",
+    "github": "https://github.com/budtmo/docker-android",
+    "license": "Apache License 2.0",
+    "language": "Shell"
   }
 ]
