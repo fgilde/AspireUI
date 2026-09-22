@@ -1,7 +1,11 @@
 import type { Stack, Node, Edge, AppSettings, AuthStatus, UserDto, EnvHealth, PublishResult, DeployResult } from "./model";
 const base = "/api";
 
-export interface TemplateInfo { id: string; name: string; description: string; requires?: string[] | null }
+export interface TemplateInfo {
+  id: string; name: string; description: string; requires?: string[] | null;
+  icon?: string | null; logo?: string | null; card?: string | null; screenshots?: string[] | null;
+  website?: string | null; github?: string | null; license?: string | null; tags?: string[] | null;
+}
 
 // What the Docker host can do, for apps that need something from the host rather than from their
 // image. `available` is null when the question could not be answered, which is not the same as no.

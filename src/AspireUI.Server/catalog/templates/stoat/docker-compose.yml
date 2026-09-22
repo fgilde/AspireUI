@@ -1,0 +1,148 @@
+# Stoat's own compose file from https://github.com/stoatchat/self-hosted, vendored and adapted:
+# named volumes instead of ./data bind mounts, secrets.env replaced by REVOLT__* environment values
+# so each stack gets its own, path-style buckets instead of the minio network aliases, and the edge
+# on 8080 with the address it is published under filled in at deploy time, rather than on 80/443 with
+# a certificate. The bucket the file server uploads to is a directory minio makes on the way up,
+# instead of the one-shot mc service upstream runs — a container that exits is one this host keeps
+# restarting forever, and nothing can wait on it.
+# LiveKit and voice-ingress are left out — they need a public UDP port range Aspire cannot publish.
+# StoatTemplateTests guards the shape.
+name: stoat
+
+x-revolt-env: &revolt-env
+  REVOLT__HOSTS__APP: ${STOAT_PUBLIC_URL}
+  REVOLT__HOSTS__API: ${STOAT_PUBLIC_URL}/api
+  REVOLT__HOSTS__EVENTS: ${STOAT_WS_URL}/ws
+  REVOLT__HOSTS__AUTUMN: ${STOAT_PUBLIC_URL}/autumn
+  REVOLT__HOSTS__JANUARY: ${STOAT_PUBLIC_URL}/january
+  REVOLT__FILES__S3__PATH_STYLE_BUCKETS: "true"
+  REVOLT__FILES__ENCRYPTION_KEY: ${STOAT_FILES_ENCRYPTION_KEY}
+  REVOLT__PUSHD__VAPID__PRIVATE_KEY: ${STOAT_VAPID_PRIVATE_KEY}
+  REVOLT__PUSHD__VAPID__PUBLIC_KEY: ${STOAT_VAPID_PUBLIC_KEY}
+
+services:
+  database:
+    image: docker.io/mongo:8
+    restart: always
+    volumes:
+      - db:/data/db
+
+  redis:
+    image: valkey/valkey:9-alpine
+    restart: always
+
+  rabbit:
+    image: docker.io/rabbitmq:4
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    volumes:
+      - rabbit:/var/lib/rabbitmq
+
+  minio:
+    image: docker.io/pgsty/silo
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "mkdir -p /data/revolt-uploads && exec /usr/bin/docker-entrypoint.sh server /data"
+    restart: always
+    environment:
+      MINIO_ROOT_USER: minioautumn
+      MINIO_ROOT_PASSWORD: minioautumn
+    volumes:
+      - minio:/data
+
+  api:
+    image: ghcr.io/stoatchat/api:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+    depends_on:
+      - database
+      - redis
+      - rabbit
+
+  events:
+    image: ghcr.io/stoatchat/events:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+    depends_on:
+      - database
+      - redis
+
+  autumn:
+    image: ghcr.io/stoatchat/file-server:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+    depends_on:
+      - database
+      - minio
+
+  january:
+    image: ghcr.io/stoatchat/proxy:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+
+  gifbox:
+    image: ghcr.io/stoatchat/gifbox:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+
+  crond:
+    image: ghcr.io/stoatchat/crond:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+    depends_on:
+      - database
+      - minio
+
+  pushd:
+    image: ghcr.io/stoatchat/pushd:v0.15.5
+    restart: always
+    environment:
+      <<: *revolt-env
+    depends_on:
+      - database
+      - redis
+      - rabbit
+
+  web:
+    image: ghcr.io/stoatchat/for-web:4017c18
+    restart: always
+    environment:
+      VITE_HOST: ${STOAT_HOST}
+      VITE_API_URL: ${STOAT_PUBLIC_URL}/api
+      VITE_DEV_GIFBOX_URL: ${STOAT_PUBLIC_URL}/gifbox
+
+  caddy:
+    image: docker.io/caddy:2
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      HOSTNAME: ":8080"
+      STOAT_API_URL: ${STOAT_PUBLIC_URL}/api
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - events
+      - autumn
+      - january
+      - gifbox
+      - web
+
+volumes:
+  db:
+  rabbit:
+  minio:
+  caddy-data:
+  caddy-config:

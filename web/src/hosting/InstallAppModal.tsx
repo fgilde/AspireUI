@@ -65,8 +65,10 @@ const snippetItem = (s: Snippet): Item => ({
 // A template is a whole stack somebody already composed — the install path is the same one a preset
 // takes: create the stack, then deploy it to hosting.
 const templateItem = (t: TemplateInfo): Item => ({
-  id: `template:${t.id}`, kind: "template", label: t.name, group: "Templates", icon: "", description: t.description,
-  info: { label: t.name, group: "Templates", description: t.description, custom: t.id.startsWith("user:"), kindLabel: "Template" },
+  id: `template:${t.id}`, kind: "template", label: t.name, group: "Templates", icon: t.icon || "", description: t.description,
+  info: { label: t.name, group: "Templates", description: t.description, custom: t.id.startsWith("user:"), kindLabel: "Template",
+    icon: t.icon, logo: t.logo, card: t.card, screenshots: t.screenshots, website: t.website, github: t.github,
+    license: t.license, tags: t.tags },
   featured: false,
   requires: t.requires,
   install: () => api.createFromTemplate(t.id),

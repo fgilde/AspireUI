@@ -380,4 +380,50 @@ public class HostingServiceTests
         Assert.Contains("cache", vols);
         Assert.Equal(2, vols.Count);
     }
+
+    // `aspire publish` leaves every bind mount as an empty variable. Filled with the placeholder an
+    // unknown parameter gets, docker made a directory where the file belonged and the container that
+    // mounts it never started.
+    [Fact]
+    public void FillBindMountEnv_points_a_bind_mount_at_the_file_that_was_generated_for_it()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-bindmount-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "Caddyfile"), ":8080 { respond \"ok\" }");
+            var env = Path.Combine(dir, ".env");
+            File.WriteAllText(env, "CADDY_BINDMOUNT_0=\nOTHER=\n");
+            var yaml = """
+            services:
+              caddy:
+                image: "docker.io/caddy:2"
+                volumes:
+                  - type: "bind"
+                    target: "/etc/caddy/Caddyfile"
+                    source: "${CADDY_BINDMOUNT_0}"
+            """;
+            var stack = Stack(Node("caddy",
+                new WithCall("WithBindMount", new() { "\"./Caddyfile\"", "\"/etc/caddy/Caddyfile\"" })));
+
+            HostingService.FillBindMountEnv(yaml, stack, dir, env);
+
+            var expected = Path.GetFullPath(Path.Combine(dir, "Caddyfile")).Replace('\\', '/');
+            Assert.Contains(File.ReadAllLines(env), l => l == $"CADDY_BINDMOUNT_0={expected}");
+            Assert.Contains(File.ReadAllLines(env), l => l == "OTHER=");
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    // An app that hands out its own address cannot know the port until the deployment picks one.
+    [Fact]
+    public void FillPublicUrls_writes_the_address_the_app_was_published_under()
+    {
+        var yaml = HostingService.FillPublicUrls(
+            "API: __ASPIREUI_URL_8080__/api\nWS: ws://__ASPIREUI_HOST_8080__/ws\nOTHER: __ASPIREUI_URL_9000__",
+            "box.local", new Dictionary<int, int> { [8080] = 21000 });
+        Assert.Contains("API: http://box.local:21000/api", yaml);
+        Assert.Contains("WS: ws://box.local:21000/ws", yaml);
+        Assert.Contains("OTHER: http://box.local:9000", yaml);
+    }
 }

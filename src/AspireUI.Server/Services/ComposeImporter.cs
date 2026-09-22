@@ -88,6 +88,7 @@ public class ComposeImporter
         public object? Environment { get; set; }
         public object? DependsOn { get; set; }
         public object? Command { get; set; }
+        public object? Entrypoint { get; set; }
         public List<string>? Volumes { get; set; }
     }
 
@@ -168,7 +169,15 @@ public class ComposeImporter
                     ? new WithCall("WithBindMount", [Quote(src), Quote(dst)])
                     : new WithCall("WithVolume", [Quote(src), Quote(dst)]));
             }
+            // An entrypoint replaces the image's own, and the command is what follows it — the pair
+            // is how a one-shot service (create a bucket, run a migration) says what it does.
+            var entrypoint = ReadCommand(def.Entrypoint);
             var cmdArgs = ReadCommand(def.Command);
+            if (entrypoint.Count > 0)
+            {
+                withs.Add(new WithCall("WithEntrypoint", [Quote(entrypoint[0])]));
+                cmdArgs = [.. entrypoint.Skip(1), .. cmdArgs];
+            }
             if (cmdArgs.Count > 0) withs.Add(new WithCall("WithArgs", cmdArgs.Select(Quote).ToList()));
 
             string addMethod;
@@ -207,6 +216,46 @@ public class ComposeImporter
                     edges.Add(new EdgeModel("e" + Guid.NewGuid().ToString("n")[..8], from, to, "waitFor"));
 
         return (new StackModel(id, name, "net10.0", nodes, edges, [], [], []), null);
+    }
+
+    /// <summary>
+    /// The generated values went into the compose as literals, which is the only way it parses. Here
+    /// they become parameters instead: every environment value that is one of them points at the
+    /// parameter node, so the same secret stays one secret across the services that share it.
+    /// </summary>
+    public static (List<NodeModel> Services, List<NodeModel> Parameters) AsParameters(
+        List<NodeModel> services, IReadOnlyDictionary<string, string> secrets, int x = 1240)
+    {
+        var used = new HashSet<string>();
+        var parameters = new List<NodeModel>();
+        var byValue = new Dictionary<string, string>();          // generated value → parameter variable
+
+        var i = 0;
+        foreach (var (key, value) in secrets)
+        {
+            var resourceName = key.ToLowerInvariant().Replace('_', '-');
+            var varName = ParameterVar(resourceName);
+            if (!used.Add(varName)) continue;
+            byValue[value] = varName;
+            parameters.Add(new NodeModel("n" + Guid.NewGuid().ToString("n")[..8], varName, "AddParameter", resourceName,
+                [], x, 60 + i++ * 90, [Quote(value), "true", "false"]));
+        }
+
+        var rewritten = services.Select(n => n with
+        {
+            WithCalls = n.WithCalls.Select(w => w.Method == "WithEnvironment" && w.Args.Count == 2
+                && byValue.TryGetValue(w.Args[1].Trim('"'), out var variable)
+                    ? w with { Args = [w.Args[0], variable] }
+                    : w).ToList(),
+        }).ToList();
+
+        return (rewritten, parameters);
+    }
+
+    private static string ParameterVar(string name)
+    {
+        var c = new string((name ?? "").Where(char.IsAsciiLetterOrDigit).ToArray());
+        return c.Length == 0 ? "parameter" : char.IsAsciiDigit(c[0]) ? "_" + c : c;
     }
 
     private static (string? host, string? target) SplitPort(string p)

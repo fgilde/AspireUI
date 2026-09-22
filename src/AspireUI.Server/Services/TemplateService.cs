@@ -2,7 +2,11 @@ using AspireUI.Server.Models;
 
 namespace AspireUI.Server.Services;
 
-public record TemplateInfo(string Id, string Name, string Description, List<string>? Requires = null);
+// A template is a whole stack, but in the store it sits next to the apps — so it carries the same
+// listing material an app does, and the ones that are a named product look like that product.
+public record TemplateInfo(string Id, string Name, string Description, List<string>? Requires = null,
+    string? Icon = null, string? Logo = null, string? Card = null, List<string>? Screenshots = null,
+    string? Website = null, string? Github = null, string? License = null, List<string>? Tags = null);
 
 public class TemplateService
 {
@@ -18,6 +22,20 @@ public class TemplateService
         new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
         new("me-myself-and-i", "Me, Myself and I", "AspireUI running inside your own Aspire stack — the builder builds itself. Comes with a seeded admin."),
         new(FluxerTemplate.Id, "Fluxer (chat)", "The whole Fluxer chat server — 25 services from the project's own compose file, with its secrets generated for this stack."),
+        new(StoatTemplate.Id, "Stoat (chat)",
+            "Stoat — formerly Revolt — the whole self-hosted chat server: API, events, file server, proxy, "
+            + "gif and push daemons and the web client behind Caddy, with MongoDB, Valkey, RabbitMQ and MinIO. "
+            + "Its file key and push keys are generated for this stack, and the address it hands out to clients is "
+            + "filled in with the one it is published under. Text, images and files; voice needs LiveKit and a "
+            + "public UDP port range, so it is left out.",
+            Icon: "stoat", Logo: "/media/stoat/logo.webp", Card: "/media/stoat/card.webp",
+            Screenshots:
+            [
+                "/media/stoat/screenshot_1.webp", "/media/stoat/screenshot_2.webp", "/media/stoat/screenshot_3.webp",
+                "/media/stoat/screenshot_4.webp", "/media/stoat/screenshot_5.webp",
+            ],
+            Website: "https://stoat.chat", Github: "https://github.com/stoatchat/stoatchat",
+            License: "GNU Affero General Public License v3.0", Tags: ["chat", "self-hosted", "discord-alternative"]),
         new(ApkTemplate.Id, "Android app (APK)", "An Android emulator with a noVNC web view and your APK installed into it, so an Android-only app is usable in a browser. Needs a Linux host with /dev/kvm, and noVNC carries no sound.", [HostCapabilities.Kvm]),
     ];
 
@@ -33,6 +51,7 @@ public class TemplateService
         "supabase-observability" => SupabaseObservability(),
         "me-myself-and-i" => MeMyselfAndI(),
         FluxerTemplate.Id => FluxerTemplate.Create(Guid.NewGuid().ToString("n")),
+        StoatTemplate.Id => StoatTemplate.Create(Guid.NewGuid().ToString("n")),
         ApkTemplate.Id => ApkTemplate.Create(Guid.NewGuid().ToString("n")),
         _ => null,
     };

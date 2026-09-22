@@ -85,53 +85,11 @@ public static class FluxerTemplate
             ComposeImporter.ResolveEnv(File.ReadAllText(compose), values));
         if (stack is null) return null;
 
-        var (nodes, parameters) = AsParameters(stack.Nodes, secrets);
+        var (nodes, parameters) = ComposeImporter.AsParameters(stack.Nodes, secrets);
         var files = new List<ExtraFile>();
         var caddyfile = Path.Combine(Dir, "Caddyfile");
         if (File.Exists(caddyfile)) files.Add(new ExtraFile("Caddyfile", File.ReadAllText(caddyfile)));
 
         return stack with { Nodes = [.. nodes, .. parameters], ExtraFiles = files, HasSource = true };
-    }
-
-    /// <summary>
-    /// The generated values went into the compose as literals, which is the only way it parses. Here
-    /// they become parameters instead: every environment value that is one of them points at the
-    /// parameter node, so the same secret stays one secret across the services that share it.
-    /// </summary>
-    private static (List<NodeModel> Services, List<NodeModel> Parameters) AsParameters(
-        List<NodeModel> services, Dictionary<string, string> secrets)
-    {
-        var used = new HashSet<string>();
-        var parameters = new List<NodeModel>();
-        var byValue = new Dictionary<string, string>();          // generated value → parameter variable
-
-        var i = 0;
-        foreach (var (key, value) in secrets)
-        {
-            var resourceName = key.ToLowerInvariant().Replace('_', '-');
-            var varName = Sanitize(resourceName);
-            if (!used.Add(varName)) continue;
-            byValue[value] = varName;
-            parameters.Add(new NodeModel("n" + Guid.NewGuid().ToString("n")[..8], varName, "AddParameter", resourceName,
-                [], 1240, 60 + i++ * 90, [Quote(value), "true", "false"]));
-        }
-
-        var rewritten = services.Select(n => n with
-        {
-            WithCalls = n.WithCalls.Select(w => w.Method == "WithEnvironment" && w.Args.Count == 2
-                && byValue.TryGetValue(w.Args[1].Trim('"'), out var variable)
-                    ? w with { Args = [w.Args[0], variable] }
-                    : w).ToList(),
-        }).ToList();
-
-        return (rewritten, parameters);
-    }
-
-    private static string Quote(string s) => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
-
-    private static string Sanitize(string name)
-    {
-        var c = new string((name ?? "").Where(char.IsAsciiLetterOrDigit).ToArray());
-        return c.Length == 0 ? "parameter" : char.IsAsciiDigit(c[0]) ? "_" + c : c;
     }
 }

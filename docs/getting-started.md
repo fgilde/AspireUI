@@ -58,6 +58,17 @@ The overview's demo dropdown creates a ready-to-run stack without building one b
 - **Supabase + Observability** — a full Supabase backend wired to Nextended's `AddObservabilityStack`
   macro (Grafana / Prometheus / Loki / Tempo / OTEL). Great for seeing the live child-resource view
   in action.
+- **Stoat (chat)** — Stoat (formerly Revolt), the whole self-hosted chat server: API, events, file
+  server, proxy, gif and push daemons and the web client behind Caddy, with MongoDB, Valkey, RabbitMQ
+  and MinIO. Its file key and push keys are generated per stack, and the address it hands out to
+  clients is the one hosting published it under. Text, images and files; voice is left out because
+  LiveKit needs a public UDP port range.
+- **Fluxer (chat)** — the Fluxer chat server, 25 services from the project's own compose file, with
+  its sixteen secrets generated per stack.
+- **Android app (APK)** — an Android emulator with a noVNC web view and your APK installed into it.
+  Needs a Linux host with `/dev/kvm`.
+
+The same templates are in the hosting store, next to the apps.
 
 ## Layout, themes & shortcuts
 

@@ -258,6 +258,52 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         throw new InvalidOperationException($"no free host port in {from}-{to}");
     }
 
+    // An app that hands out its own address — a chat server telling its client where the API is —
+    // cannot know the port until the deployment picks one. It writes __ASPIREUI_URL_<containerPort>__
+    // or __ASPIREUI_HOST_<containerPort>__ and gets the published address here.
+    public static string FillPublicUrls(string yaml, string host, IReadOnlyDictionary<int, int> hostByContainer) =>
+        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST)_(\d+)__", m =>
+        {
+            var container = int.Parse(m.Groups[2].Value);
+            var published = hostByContainer.TryGetValue(container, out var h) ? h : container;
+            return m.Groups[1].Value == "URL" ? $"http://{host}:{published}" : $"{host}:{published}";
+        });
+
+    // `aspire publish` turns every bind mount into an empty variable and leaves the path to whoever
+    // runs the compose file. Nobody filled it, so FillParameterEnv gave it the same placeholder it
+    // gives an unknown parameter and docker created a directory where the file belonged.
+    public static void FillBindMountEnv(string yaml, StackModel stack, string projectDir, string envPath)
+    {
+        if (!File.Exists(envPath)) return;
+        var sources = new Dictionary<string, string>();
+        string service = "", target = "";
+        foreach (var line in yaml.Replace("\r\n", "\n").Split('\n'))
+        {
+            var svc = Regex.Match(line, @"^  (\S[^:]*):\s*$");
+            if (svc.Success) { service = svc.Groups[1].Value; continue; }
+            var tgt = Regex.Match(line, @"^\s*target:\s*""(.+)""\s*$");
+            if (tgt.Success) { target = tgt.Groups[1].Value; continue; }
+            var src = Regex.Match(line, @"^\s*source:\s*""\$\{([A-Za-z0-9_]+)\}""\s*$");
+            if (!src.Success) continue;
+            if (BindMountSource(stack, service, target) is { } path)
+                sources[src.Groups[1].Value] = Path.GetFullPath(Path.Combine(projectDir, path)).Replace('\\', '/');
+        }
+        if (sources.Count == 0) return;
+
+        var lines = File.ReadAllLines(envPath);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var m = Regex.Match(lines[i], @"^([A-Za-z0-9_]+)=\s*$");
+            if (m.Success && sources.TryGetValue(m.Groups[1].Value, out var path)) lines[i] = $"{m.Groups[1].Value}={path}";
+        }
+        File.WriteAllText(envPath, string.Join("\n", lines));
+    }
+
+    private static string? BindMountSource(StackModel stack, string service, string target) =>
+        stack.Nodes.FirstOrDefault(n => n.ResourceName == service)?.WithCalls
+            .FirstOrDefault(w => w.Method == "WithBindMount" && w.Args.Count >= 2 && Unquote(w.Args[1]) == target)
+            is { } call ? Unquote(call.Args[0]) : null;
+
     public static void FillParameterEnv(StackModel stack, string envPath)
     {
         if (!File.Exists(envPath)) return;
@@ -457,8 +503,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
                     ? pinned : AllocateHostPort(used, target.PortFrom, target.PortTo, Free);
                 used.Add(hostPort); portMap[cp] = hostPort; chosen.Add(new(cp, hostPort, true));
             }
-            var processed = PublishExposedPorts(raw, portMap, keepInternal);
+            var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap);
             File.WriteAllText(path, processed);
+            FillBindMountEnv(processed, stack, Path.Combine(publishRoot, "src"), Path.Combine(pub.OutputDir, ".env"));
             FillParameterEnv(stack, Path.Combine(pub.OutputDir, ".env"));
             var up = runner.UpProject(pub.OutputDir, project, needsBuild);
             var urls = up.Ok ? UrlsFromServices(ParseServices(runner.Ps(pub.OutputDir, project).Log), host) : new();
