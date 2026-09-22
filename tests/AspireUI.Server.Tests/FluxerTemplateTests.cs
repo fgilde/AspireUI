@@ -24,12 +24,14 @@ public class FluxerTemplateTests
             Assert.Contains(containers, n => n.ResourceName == expected);
     }
 
+    // Every value the compose file wanted from an .env file has been answered. A $${…} is not one of
+    // those: the file escaped that dollar because the text belongs to a shell script it carries.
     [Fact]
     public void Nothing_is_left_for_the_shell_to_expand()
     {
         foreach (var n in Build().Nodes)
             foreach (var arg in n.AddArgs.Concat(n.WithCalls.SelectMany(w => w.Args)))
-                Assert.DoesNotContain("${", arg);
+                Assert.DoesNotMatch(@"(?<!\$)\$\{", arg);
     }
 
     [Fact]
@@ -102,5 +104,51 @@ public class FluxerTemplateTests
         var endpoints = edge.WithCalls.Where(w => w.Method == "WithHttpEndpoint").SelectMany(w => w.Args).ToList();
         Assert.Contains("targetPort: 8080", endpoints);
         Assert.DoesNotContain(endpoints, a => a.Contains("443"));
+    }
+
+    // A compose file writes a dollar it does not own as $$, and an embedded shell script is full of
+    // them. Reading $${missing:+…} as an interpolation and answering it with nothing rewrote the
+    // line that collects the buckets still to create — so seaweedfs never got its S3 identity and
+    // every upload came back AccessDenied.
+    [Fact]
+    public void The_shell_script_that_prepares_the_object_store_survives_the_import()
+    {
+        var init = Build().Nodes.Single(n => n.ResourceName == "seaweedfs-init");
+        var script = string.Join(" ", init.WithCalls.Single(w => w.Method == "WithArgs").Args);
+        Assert.Contains("$${missing:+$$missing }$$b", script);
+        Assert.DoesNotContain("$$$b", script);
+    }
+
+    // Nothing carries upstream's `restart: "no"`, and this host restarts whatever it deploys.
+    [Fact]
+    public void The_one_shot_that_prepares_the_object_store_stays_up_once_it_is_done()
+    {
+        var init = Build().Nodes.Single(n => n.ResourceName == "seaweedfs-init");
+        var script = string.Join(" ", init.WithCalls.Single(w => w.Method == "WithArgs").Args);
+        Assert.Contains("exec sleep infinity", script);
+    }
+
+    // Every endpoint Fluxer hands a client is absolute, and the port the edge is published under is
+    // picked at deploy time — so what the stack carries is the placeholder.
+    [Fact]
+    public void The_origin_it_hands_to_clients_is_filled_in_when_it_is_published()
+    {
+        var env = Build().Nodes
+            .SelectMany(n => n.WithCalls.Where(w => w.Method == "WithEnvironment" && w.Args.Count == 2))
+            .ToList();
+        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_PUBLIC_ORIGIN\"" && w.Args[1] == "\"__ASPIREUI_URL_8080__\"");
+        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_PUBLIC_PORT\"" && w.Args[1] == "\"__ASPIREUI_PORT_8080__\"");
+        // The base domain is the passkey relying party and the cookie domain: a port has no place there.
+        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_BASE_DOMAIN\"" && w.Args[1] == "\"localhost\"");
+    }
+
+    [Fact]
+    public void It_is_offered_with_something_to_show_in_the_store()
+    {
+        var t = Assert.Single(new TemplateService().List(), t => t.Id == FluxerTemplate.Id);
+        Assert.Equal("fluxer", t.Icon);
+        Assert.NotNull(t.Logo);
+        Assert.NotEmpty(t.Screenshots!);
+        Assert.NotNull(t.Github);
     }
 }

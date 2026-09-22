@@ -259,14 +259,20 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     }
 
     // An app that hands out its own address — a chat server telling its client where the API is —
-    // cannot know the port until the deployment picks one. It writes __ASPIREUI_URL_<containerPort>__
-    // or __ASPIREUI_HOST_<containerPort>__ and gets the published address here.
+    // cannot know the port until the deployment picks one. It writes __ASPIREUI_URL_<containerPort>__,
+    // __ASPIREUI_HOST_<containerPort>__ or __ASPIREUI_PORT_<containerPort>__ and gets the published
+    // address here.
     public static string FillPublicUrls(string yaml, string host, IReadOnlyDictionary<int, int> hostByContainer) =>
-        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST)_(\d+)__", m =>
+        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST|PORT)_(\d+)__", m =>
         {
             var container = int.Parse(m.Groups[2].Value);
             var published = hostByContainer.TryGetValue(container, out var h) ? h : container;
-            return m.Groups[1].Value == "URL" ? $"http://{host}:{published}" : $"{host}:{published}";
+            return m.Groups[1].Value switch
+            {
+                "URL" => $"http://{host}:{published}",
+                "HOST" => $"{host}:{published}",
+                _ => published.ToString(),
+            };
         });
 
     // `aspire publish` turns every bind mount into an empty variable and leaves the path to whoever

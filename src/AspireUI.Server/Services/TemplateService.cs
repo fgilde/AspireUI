@@ -21,7 +21,20 @@ public class TemplateService
         new("grafana-stack", "Grafana + Prometheus + OTEL", "Grafana dashboards + Prometheus metrics + an OpenTelemetry collector (containers)."),
         new("supabase-observability", "Supabase + Observability", "Supabase backend wired to Nextended's full observability stack (Grafana/Prometheus/Loki/Tempo/OTEL)."),
         new("me-myself-and-i", "Me, Myself and I", "AspireUI running inside your own Aspire stack — the builder builds itself. Comes with a seeded admin."),
-        new(FluxerTemplate.Id, "Fluxer (chat)", "The whole Fluxer chat server — 25 services from the project's own compose file, with its secrets generated for this stack."),
+        new(FluxerTemplate.Id, "Fluxer (chat)",
+            "The whole Fluxer chat server — 25 services from the project's own compose file: API, gateway, admin, "
+            + "the media and static proxies and five shard workers behind Caddy, with Postgres, Valkey, NATS, "
+            + "Meilisearch, SeaweedFS and LiveKit. Its sixteen secrets are generated for this stack, and the origin "
+            + "it hands to clients is filled in with the address it is published under. Set up the first admin at "
+            + "/admin once it is up.",
+            Icon: "fluxer", Logo: "/media/fluxer/logo.webp", Card: "/media/fluxer/card.webp",
+            Screenshots:
+            [
+                "/media/fluxer/screenshot_1.webp", "/media/fluxer/screenshot_2.webp",
+                "/media/fluxer/screenshot_3.webp",
+            ],
+            Website: "https://fluxer.app", Github: "https://github.com/fluxerapp/fluxer",
+            License: "GNU Affero General Public License v3.0", Tags: ["chat", "voice", "self-hosted", "discord-alternative"]),
         new(StoatTemplate.Id, "Stoat (chat)",
             "Stoat — formerly Revolt — the whole self-hosted chat server: API, events, file server, proxy, "
             + "gif and push daemons and the web client behind Caddy, with MongoDB, Valkey, RabbitMQ and MinIO. "
@@ -33,6 +46,7 @@ public class TemplateService
             [
                 "/media/stoat/screenshot_1.webp", "/media/stoat/screenshot_2.webp", "/media/stoat/screenshot_3.webp",
                 "/media/stoat/screenshot_4.webp", "/media/stoat/screenshot_5.webp",
+                "/media/stoat/screenshot_6.webp",
             ],
             Website: "https://stoat.chat", Github: "https://github.com/stoatchat/stoatchat",
             License: "GNU Affero General Public License v3.0", Tags: ["chat", "self-hosted", "discord-alternative"]),

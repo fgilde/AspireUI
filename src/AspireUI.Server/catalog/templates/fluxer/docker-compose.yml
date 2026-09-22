@@ -2,6 +2,10 @@
 # edge serves plain HTTP on 8080 rather than binding 80 and 443 for its own certificate, because a
 # stack here sits behind AspireUI's port allocation and whatever proxy is in front of it.
 #
+# One other change: seaweedfs-init sleeps once its buckets are ready instead of exiting. Upstream
+# marks it `restart: "no"`, which nothing here carries, so a host that restarts everything would run
+# it again every couple of seconds and report the app as failing for as long as it lived.
+#
 # Refreshed from https://github.com/fluxerapp/fluxer — TemplateFluxerTests guards the shape.
 name: fluxer
 
@@ -319,7 +323,7 @@ services:
               exit 1;
             fi;
             echo "buckets ready";
-            exit 0;
+            exec sleep infinity;
           fi;
           for b in $$missing; do
             echo "s3.bucket.create -name $$b" | timeout 10 weed shell -master=seaweedfs:9333 >/dev/null 2>&1;

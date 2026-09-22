@@ -54,7 +54,13 @@ public class ComposeImporter
     // never a value) and ${VAR:+alternative} (this only if set). A supplied value wins where one is
     // wanted. The text between the braces may itself hold another ${...}, as an image name usually
     // does, so the pattern takes only brace-free bodies — the innermost — and the loop works outward.
-    private static readonly Regex Interpolation = new(@"\$\{([A-Za-z0-9_]+)(?:(:[-?+])([^{}]*))?\}", RegexOptions.Compiled);
+    //
+    // $$ comes first, because it is how a compose file writes a dollar that is not its own: an
+    // embedded shell script is full of them. Reading $${VAR:+x} as an interpolation and answering it
+    // with nothing rewrites the script — which is how a one-shot service ended up running a line its
+    // author never wrote.
+    private static readonly Regex Interpolation =
+        new(@"\$\$|\$\{([A-Za-z0-9_]+)(?:(:[-?+])([^{}]*))?\}", RegexOptions.Compiled);
 
     public static string ResolveEnv(string yaml, IReadOnlyDictionary<string, string>? env)
     {
@@ -62,6 +68,7 @@ public class ComposeImporter
         {
             var next = Interpolation.Replace(yaml, m =>
             {
+                if (m.Value == "$$") return m.Value;
                 string? v = null;
                 env?.TryGetValue(m.Groups[1].Value, out v);
                 var supplied = string.IsNullOrEmpty(v) ? null : v;

@@ -1336,6 +1336,89 @@
     ]
   },
   {
+    "id": "kodi",
+    "label": "Kodi",
+    "group": "Media",
+    "image": "matthuisman/kodi-headless:Omega",
+    "port": 8080,
+    "icon": "kodi",
+    "description": "Kodi — the media centre, running headless with its Chorus2 web interface. This is the brain rather than the player: it keeps the library, scans and scrapes it, and serves it over JSON-RPC, while the Kodi apps on your TV boxes and phones share that one library through the MariaDB alongside it — what one of them watches, all of them know. The web interface browses and searches the library, drives whatever is playing on those clients and reaches Kodi's own settings and add-ons. Add your media as sources from a client or through advancedsettings.xml in the config volume, and install add-ons with `docker exec <container> install_addon <id>`. Chorus2's live updates ride on port 9090, which is not published here, so the page needs a reload to catch up. Video does not play in this browser tab — Jellyfin, Plex or Emby are the ones for that.",
+    "env": [
+      [
+        "MYSQL_HOST",
+        "${db}"
+      ],
+      [
+        "MYSQL_USER",
+        "root"
+      ],
+      [
+        "MYSQL_PASSWORD",
+        "kodi"
+      ],
+      [
+        "KODI_DELAY",
+        "10"
+      ],
+      [
+        "TZ",
+        "Etc/UTC"
+      ]
+    ],
+    "companions": [
+      {
+        "key": "db",
+        "addMethod": "AddContainer",
+        "resourceName": "kodi-db",
+        "image": "mariadb:11",
+        "role": "mariadb",
+        "env": [
+          [
+            "MARIADB_ROOT_PASSWORD",
+            "kodi"
+          ]
+        ],
+        "volumes": [
+          [
+            "data",
+            "/var/lib/mysql"
+          ]
+        ]
+      }
+    ],
+    "volumes": [
+      [
+        "config",
+        "/config/.kodi"
+      ]
+    ],
+    "tags": [
+      "media",
+      "media-center",
+      "library",
+      "kodi",
+      "self-hosted"
+    ],
+    "topics": [
+      "kodi",
+      "media-center",
+      "xbmc",
+      "mysql",
+      "selfhosted"
+    ],
+    "website": "https://kodi.tv",
+    "github": "https://github.com/matthuisman/docker-kodi-headless",
+    "license": "GNU General Public License v2.0",
+    "language": "C++",
+    "logo": "/media/kodi/logo.webp",
+    "card": "/media/kodi/card.webp",
+    "screenshots": [
+      "/media/kodi/screenshot_1.webp",
+      "/media/kodi/screenshot_2.webp",
+      "/media/kodi/screenshot_3.webp"
+    ]
+  },
+  {
     "id": "navidrome",
     "label": "Navidrome",
     "group": "Media",
@@ -8082,6 +8165,61 @@
       "/media/webdatastudio/screenshots/chart.png",
       "/media/webdatastudio/screenshots/compare.png",
       "/media/webdatastudio/screenshots/admin.png"
+    ]
+  },
+  {
+    "id": "gildeconnect",
+    "label": "GildeConnect",
+    "group": "Tools",
+    "image": "ghcr.io/fgilde/gildeconnect:latest",
+    "port": 8080,
+    "icon": "gildeconnect",
+    "description": "GildeConnect — one place for everything that connects your projects to people: contact, support and documents. Build contact, support and document widgets in the Widget Studio, preview them live and embed the generated snippet on any site; requests land in the inbox of the project they belong to. Global content and settings apply everywhere and each project may override them, with its own branding, accent colour and recipient. Insights show what comes in, System & Export takes everything back out. The first visit asks for the setup token below — copy it from this dialog, it is what claims the instance and is never shown publicly.",
+    "env": [
+      [
+        "CONNECT_DATA_DIR",
+        "/data"
+      ]
+    ],
+    "params": [
+      {
+        "key": "setup-token",
+        "env": "CONNECT_SETUP_TOKEN",
+        "default": "",
+        "secret": true,
+        "hint": "Claims the instance on first visit. At least 16 characters — leave empty and one is generated."
+      }
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "tags": [
+      "contact",
+      "support",
+      "widgets",
+      "documents",
+      "self-hosted"
+    ],
+    "topics": [
+      "contact-form",
+      "support",
+      "widgets",
+      "selfhosted",
+      "blazor"
+    ],
+    "website": "https://github.com/fgilde/gildeConnect",
+    "github": "https://github.com/fgilde/gildeConnect",
+    "language": "C#",
+    "logo": "/media/gildeconnect/logo.webp",
+    "card": "/media/gildeconnect/card.webp",
+    "screenshots": [
+      "/media/gildeconnect/screenshot_1.webp",
+      "/media/gildeconnect/screenshot_2.webp",
+      "/media/gildeconnect/screenshot_3.webp",
+      "/media/gildeconnect/screenshot_4.webp"
     ]
   },
   {

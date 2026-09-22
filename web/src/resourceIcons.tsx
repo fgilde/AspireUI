@@ -74,6 +74,7 @@ const MAP: Record<string, Visual> = {
   videola:             { img: "https://fgilde.github.io/videola/videola-icon.png", color: "#F43F5E" },
   gtrade:              { img: "https://fgilde.github.io/G-Trade/gtrade-192.png", color: "#F59E0B" },
   coworkee:            { img: "/media/coworkee/logo.png", color: "#7C3AED" },
+  gildeconnect:        { img: "/media/gildeconnect/logo.webp", color: "#55E6BA" },
   havewa:              { img: "/media/havewa/logo.png", color: "#0EA5A4" },
   yuvomi:              { img: "https://raw.githubusercontent.com/ulsklyc/yuvomi/main/deploy/umbrel/icon.svg", color: "#0EA5E9" },
   "lx-family-planner": { img: "https://raw.githubusercontent.com/laxxx-lab/lx-family-planner/main/public/icon.svg", color: "#7C3AED" },

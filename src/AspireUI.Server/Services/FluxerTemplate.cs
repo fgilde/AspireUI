@@ -14,8 +14,14 @@ public static class FluxerTemplate
 
     // Where the stack answers before anything is put in front of it. The vendored compose carries the
     // project's proxy overlay, so the edge serves plain http here rather than fetching a certificate.
+    // Every endpoint Fluxer hands to a client is absolute and built from the origin, and the port the
+    // edge ends up published under is the deployment's to choose — so the origin and the port it
+    // reports are placeholders HostingService fills once it has picked one. The base domain stays a
+    // bare host: it is the passkey relying party and the cookie domain, where a port has no place.
     private const string Host = "localhost";
     private const string Port = "8080";
+    private const string PublicOrigin = "__ASPIREUI_URL_8080__";
+    private const string PublicPort = "__ASPIREUI_PORT_8080__";
 
     private static string Dir => Path.Combine(AppContext.BaseDirectory, "catalog", "templates", Id);
 
@@ -77,7 +83,8 @@ public static class FluxerTemplate
         {
             ["FLUXER_DOMAIN"] = Host,
             ["FLUXER_PUBLIC_SCHEME"] = "http",
-            ["FLUXER_PUBLIC_PORT"] = Port,
+            ["FLUXER_PUBLIC_PORT"] = PublicPort,
+            ["FLUXER_PUBLIC_ORIGIN"] = PublicOrigin,
             ["FLUXER_EDGE_BIND"] = Port,
         };
 

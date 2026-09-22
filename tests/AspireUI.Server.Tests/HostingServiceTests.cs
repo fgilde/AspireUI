@@ -420,10 +420,11 @@ public class HostingServiceTests
     public void FillPublicUrls_writes_the_address_the_app_was_published_under()
     {
         var yaml = HostingService.FillPublicUrls(
-            "API: __ASPIREUI_URL_8080__/api\nWS: ws://__ASPIREUI_HOST_8080__/ws\nOTHER: __ASPIREUI_URL_9000__",
+            "API: __ASPIREUI_URL_8080__/api\nWS: ws://__ASPIREUI_HOST_8080__/ws\nPORT: __ASPIREUI_PORT_8080__\nOTHER: __ASPIREUI_URL_9000__",
             "box.local", new Dictionary<int, int> { [8080] = 21000 });
         Assert.Contains("API: http://box.local:21000/api", yaml);
         Assert.Contains("WS: ws://box.local:21000/ws", yaml);
+        Assert.Contains("PORT: 21000", yaml);
         Assert.Contains("OTHER: http://box.local:9000", yaml);
     }
 }
