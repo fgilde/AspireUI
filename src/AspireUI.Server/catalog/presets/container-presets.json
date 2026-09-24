@@ -6328,29 +6328,34 @@
     "id": "openclaw",
     "label": "OpenClaw",
     "group": "AI Apps",
-    "image": "ghcr.io/getumbrel/openclaw-umbrel:2026.7.1-1",
+    "image": "ghcr.io/openclaw/openclaw:2026.9.6-browser",
     "port": 18789,
     "icon": "openclaw",
-    "description": "OpenClaw — AI 'does-things' agent with a bundled headless browser + control UI. APP_SEED (identity/encryption) seeded as a parameter — keep it stable or state is lost. Model provider key set in-app.",
+    "description": "OpenClaw 2.0 — AI 'does-things' agent (official image, Chromium bundled for the browser tool). Open the Control UI, paste the gateway token (a parameter) and connect; the first connect of each browser waits for pairing — approve it with `docker exec <container> node dist/index.js devices approve --latest`. The published URL is allowed as browser origin on every start; use localhost or HTTPS, plain-HTTP LAN addresses lack the browser's secure context. Model provider key set in-app.",
     "params": [
       {
-        "key": "app-seed",
-        "env": "APP_SEED",
-        "default": "aspireui-openclaw-seed-change-me-0123456789",
-        "secret": true
+        "key": "gateway-token",
+        "env": "OPENCLAW_GATEWAY_TOKEN",
+        "secret": true,
+        "hint": "Paste this into the Control UI's Settings to sign in. Generated for you; changing it signs every client out."
       }
+    ],
+    "args": [
+      "sh",
+      "-c",
+      "node dist/index.js config set gateway.controlUi.allowedOrigins[0] __ASPIREUI_URL_18789__ && node dist/index.js config set gateway.controlUi.allowedOrigins[1] http://localhost:__ASPIREUI_PORT_18789__ && node dist/index.js config set gateway.controlUi.allowedOrigins[2] http://127.0.0.1:__ASPIREUI_PORT_18789__ && exec node dist/index.js gateway --bind lan --port 18789 --allow-unconfigured"
     ],
     "volumes": [
       [
-        "data",
-        "/data"
+        "state",
+        "/home/node/.openclaw"
       ],
       [
-        "linuxbrew",
-        "/home/linuxbrew"
+        "auth-secrets",
+        "/home/node/.config/openclaw"
       ]
     ],
-    "website": "https://github.com/getumbrel/openclaw-umbrel",
+    "website": "https://openclaw.ai",
     "github": "https://github.com/openclaw/openclaw",
     "stars": 383937,
     "license": "Other (NOASSERTION)",
