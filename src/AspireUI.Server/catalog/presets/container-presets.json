@@ -1746,6 +1746,85 @@
     ]
   },
   {
+    "id": "mynes",
+    "label": "MyNeS · My Network Scanner",
+    "group": "Network",
+    "image": "fxerkan/my_network_scanner:latest",
+    "port": 5883,
+    "icon": "mynes",
+    "hostNetwork": true,
+    "description": "MyNeS — finds everything on your network and says what it is. Beyond the usual IP sweep it listens for mDNS, SSDP, Bluetooth LE and, through an MQTT broker, Zigbee, Z-Wave and Matter, so the devices a plain ping scan never sees show up too. Each one gets a vendor from its MAC, a device type, a history and a security view of its open ports; results go out as JSON or CSV or into Home Assistant. It runs on the host's network because from a bridge it would only ever see the bridge — that is what the NET_ADMIN and NET_RAW capabilities below are for, and it means the app answers on port 5883 of the host itself rather than on a port this store picked. A master password encrypts the credentials it stores; leave it empty and it makes one.",
+    "env": [
+      [
+        "MYNES_PORT",
+        "5883"
+      ],
+      [
+        "TZ",
+        "Etc/UTC"
+      ]
+    ],
+    "params": [
+      {
+        "key": "master-password",
+        "env": "MYNES_PASSWORD",
+        "default": "",
+        "secret": true,
+        "hint": "Encrypts the device credentials MyNeS keeps. Leave empty and one is generated."
+      },
+      {
+        "key": "mqtt-host",
+        "env": "MYNES_MQTT_HOST",
+        "default": "",
+        "hint": "Optional MQTT broker, for discovering Zigbee, Z-Wave and Matter devices."
+      }
+    ],
+    "runtimeArgs": [
+      "--cap-add=NET_ADMIN",
+      "--cap-add=NET_RAW"
+    ],
+    "volumes": [
+      [
+        "data",
+        "/app/data"
+      ],
+      [
+        "config",
+        "/app/config"
+      ]
+    ],
+    "tags": [
+      "network",
+      "scanner",
+      "monitoring",
+      "home-assistant",
+      "self-hosted"
+    ],
+    "topics": [
+      "network-scanner",
+      "network-monitoring",
+      "mdns",
+      "ssdp",
+      "zigbee",
+      "zwave",
+      "matter",
+      "home-assistant",
+      "selfhosted"
+    ],
+    "website": "https://github.com/fxerkan/my_network_scanner",
+    "github": "https://github.com/fxerkan/my_network_scanner",
+    "license": "MIT",
+    "language": "Python",
+    "logo": "/media/mynes/logo.webp",
+    "card": "/media/mynes/card.webp",
+    "screenshots": [
+      "/media/mynes/screenshot_1.webp",
+      "/media/mynes/screenshot_2.webp",
+      "/media/mynes/screenshot_3.webp",
+      "/media/mynes/screenshot_4.webp"
+    ]
+  },
+  {
     "id": "npm",
     "label": "Nginx Proxy Manager",
     "group": "Network",
@@ -4165,6 +4244,55 @@
       "/media/emby/screenshot_1.webp",
       "/media/emby/screenshot_2.webp",
       "/media/emby/screenshot_3.webp"
+    ]
+  },
+  {
+    "id": "cinedock",
+    "label": "CineDock",
+    "group": "Media",
+    "image": "ghcr.io/cinedock/cinedock:4.9.3",
+    "port": 8945,
+    "icon": "cinedock",
+    "description": "CineDock — a nicer face for the media server you already run. It does not hold or transcode anything itself: on first visit it asks whether you have Emby, Jellyfin or Plex, you point it at that server, and from then on it browses that library — in a browser, on an NVIDIA Shield or on a Fire TV Stick, where it hands out its own APK. A TMDB key is optional and only buys richer biographies and filmographies. Closed source: there is no public repository, the image is all there is, and the Cosmos store has this app's own submission on hold until its source is published or it passes a third-party audit. Install it only if that is a trade you want to make.",
+    "params": [
+      {
+        "key": "tmdb-api-key",
+        "env": "TMDB_API_KEY",
+        "default": "",
+        "secret": true,
+        "generate": false,
+        "hint": "Optional. A TMDB key adds biographies, filmographies and spotlight picks — leave it empty to go without."
+      }
+    ],
+    "volumes": [
+      [
+        "config",
+        "/config"
+      ]
+    ],
+    "tags": [
+      "media",
+      "library",
+      "plex",
+      "emby",
+      "jellyfin",
+      "closed-source"
+    ],
+    "topics": [
+      "media",
+      "plex",
+      "emby",
+      "jellyfin",
+      "fire-tv",
+      "nvidia-shield"
+    ],
+    "website": "https://cinedock.com",
+    "license": "Closed source — no public repository",
+    "logo": "/media/cinedock/logo.webp",
+    "card": "/media/cinedock/card.webp",
+    "screenshots": [
+      "/media/cinedock/screenshot_1.webp",
+      "/media/cinedock/screenshot_2.webp"
     ]
   },
   {

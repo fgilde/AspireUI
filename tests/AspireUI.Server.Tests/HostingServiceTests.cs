@@ -427,4 +427,57 @@ public class HostingServiceTests
         Assert.Contains("PORT: 21000", yaml);
         Assert.Contains("OTHER: http://box.local:9000", yaml);
     }
+
+    // `aspire publish` drops WithContainerRuntimeArgs — they are docker run flags, and a compose file
+    // has nowhere to put them. An app that asked for the host's network was getting the bridge.
+    [Fact]
+    public void ApplyContainerRuntimeArgs_writes_the_flags_a_compose_file_has_a_place_for()
+    {
+        var stack = Stack(Node("scanner",
+            new WithCall("WithContainerRuntimeArgs", new() { "\"--network=host\"", "\"--cap-add=NET_ADMIN\"", "\"--cap-add=NET_RAW\"" })));
+        var yaml = """
+        services:
+          scanner:
+            image: "app:1"
+            expose:
+              - "5883"
+            networks:
+              - "aspire"
+          other:
+            image: "other:1"
+            expose:
+              - "80"
+        """;
+
+        var (outp, hostPorts) = HostingService.ApplyContainerRuntimeArgs(yaml, stack);
+
+        Assert.Contains("    network_mode: \"host\"", outp);
+        Assert.Contains("    cap_add:", outp);
+        Assert.Contains("      - \"NET_ADMIN\"", outp);
+        Assert.Contains("      - \"NET_RAW\"", outp);
+        // Compose refuses a ports or expose block next to host networking, and the app binds the
+        // host's port itself — so that port is what it answers on.
+        Assert.DoesNotContain("      - \"5883\"", outp);
+        Assert.DoesNotContain("      - \"aspire\"", outp);
+        Assert.Equal(5883, hostPorts["scanner"]);
+        // The service that asked for nothing keeps everything it had.
+        Assert.Contains("      - \"80\"", outp);
+        Assert.Equal(1, outp.Split("network_mode").Length - 1);
+    }
+
+    [Fact]
+    public void ApplyContainerRuntimeArgs_maps_the_separated_forms_and_leaves_a_plain_stack_alone()
+    {
+        var stack = Stack(Node("box",
+            new WithCall("WithContainerRuntimeArgs", new() { "\"--device\"", "\"/dev/kvm\"", "\"--user\"", "\"0:0\"", "\"--pid=host\"" })));
+        var (outp, hostPorts) = HostingService.ApplyContainerRuntimeArgs("services:\n  box:\n    image: \"box:1\"\n", stack);
+        Assert.Contains("    devices:", outp);
+        Assert.Contains("      - \"/dev/kvm\"", outp);
+        Assert.Contains("    user: \"0:0\"", outp);
+        Assert.Contains("    pid: \"host\"", outp);
+        Assert.Empty(hostPorts);
+
+        var plain = "services:\n  box:\n    image: \"box:1\"\n";
+        Assert.Equal(plain, HostingService.ApplyContainerRuntimeArgs(plain, Stack(Node("box"))).Yaml);
+    }
 }

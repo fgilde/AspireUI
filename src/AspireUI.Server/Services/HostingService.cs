@@ -258,6 +258,87 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         throw new InvalidOperationException($"no free host port in {from}-{to}");
     }
 
+    // `aspire publish` drops WithContainerRuntimeArgs: they are docker run flags, and a compose file
+    // has no place to put them. So the ones that do have a compose equivalent are written here —
+    // without this an app that asked for the host's network got the bridge and saw nothing of the LAN.
+    // A service on the host's network publishes nothing: compose refuses `ports` alongside it, and the
+    // app binds the host's port itself, so its own port is the one it answers on.
+    public static (string Yaml, Dictionary<string, int> HostNetworkPorts) ApplyContainerRuntimeArgs(
+        string yaml, StackModel stack)
+    {
+        var byService = stack.Nodes
+            .Where(n => n.WithCalls.Any(w => w.Method == "WithContainerRuntimeArgs"))
+            .ToDictionary(n => n.ResourceName, n => n.WithCalls
+                .Where(w => w.Method == "WithContainerRuntimeArgs")
+                .SelectMany(w => w.Args.Select(Unquote))
+                .ToList());
+        if (byService.Count == 0) return (yaml, []);
+
+        var hostNetwork = new Dictionary<string, int>();
+        var lines = yaml.Replace("\r\n", "\n").Split('\n').ToList();
+        var outp = new List<string>();
+        var keys = new List<string>();
+        var onHostNetwork = false;
+        var skippingList = false;
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var svc = Regex.Match(lines[i], @"^  (\S[^:]*):\s*$");
+            if (svc.Success && InServicesSection(lines, i))
+            {
+                outp.Add(lines[i]);
+                keys = byService.TryGetValue(svc.Groups[1].Value, out var args) ? ComposeKeysFor(args) : [];
+                onHostNetwork = keys.Contains(HostNetworkKey);
+                skippingList = false;
+                outp.AddRange(keys);
+                if (onHostNetwork && PortsIn(lines, i).FirstOrDefault() is > 0 and var p)
+                    hostNetwork[svc.Groups[1].Value] = p;
+                continue;
+            }
+            // Compose refuses ports, expose or a network of its own on a service that is on the
+            // host's network — there is nothing left to publish it on or attach it to.
+            if (onHostNetwork)
+            {
+                if (Regex.IsMatch(lines[i], @"^    (ports|expose|networks):\s*$")) { skippingList = true; continue; }
+                if (skippingList && Regex.IsMatch(lines[i], @"^      - ")) continue;
+                skippingList = false;
+            }
+            outp.Add(lines[i]);
+        }
+        return (string.Join("\n", outp), hostNetwork);
+    }
+
+    private const string HostNetworkKey = "    network_mode: \"host\"";
+
+    private static List<string> ComposeKeysFor(IEnumerable<string> args)
+    {
+        var keys = new List<string>();
+        var caps = new List<string>();
+        var devices = new List<string>();
+        string? Value(string a, string flag) =>
+            a.StartsWith(flag + "=", StringComparison.Ordinal) ? a[(flag.Length + 1)..] : null;
+
+        var list = args.ToList();
+        for (var i = 0; i < list.Count; i++)
+        {
+            var a = list[i];
+            string? Next() => i + 1 < list.Count ? list[++i] : null;
+            if (a is "--network" or "--net") { if (Next() == "host") keys.Add(HostNetworkKey); }
+            else if (Value(a, "--network") == "host" || Value(a, "--net") == "host") keys.Add(HostNetworkKey);
+            else if (a == "--cap-add") { if (Next() is { } c) caps.Add(c); }
+            else if (Value(a, "--cap-add") is { } cap) caps.Add(cap);
+            else if (a == "--device") { if (Next() is { } d) devices.Add(d); }
+            else if (Value(a, "--device") is { } dev) devices.Add(dev);
+            else if (a == "--privileged") keys.Add("    privileged: true");
+            else if (a is "--pid" ? Next() == "host" : Value(a, "--pid") == "host") keys.Add("    pid: \"host\"");
+            else if (a == "--user") { if (Next() is { } u) keys.Add($"    user: \"{u}\""); }
+            else if (Value(a, "--user") is { } user) keys.Add($"    user: \"{user}\"");
+        }
+        if (caps.Count > 0) keys.AddRange(["    cap_add:", .. caps.Select(c => $"      - \"{c}\"")]);
+        if (devices.Count > 0) keys.AddRange(["    devices:", .. devices.Select(d => $"      - \"{d}\"")]);
+        return keys;
+    }
+
     // An app that hands out its own address — a chat server telling its client where the API is —
     // cannot know the port until the deployment picks one. It writes __ASPIREUI_URL_<containerPort>__,
     // __ASPIREUI_HOST_<containerPort>__ or __ASPIREUI_PORT_<containerPort>__ and gets the published
@@ -486,9 +567,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var pub = publish.Publish(stack, publishRoot, "compose", cloneSrc);
             if (!pub.Ok) { store.SetState(id, "failed", pub.Log); return store.Get(id)!; }
             var path = Path.Combine(pub.OutputDir, "docker-compose.yaml");
-            var raw = ApplyRuntime(
+            var (raw, hostNetworkPorts) = ApplyContainerRuntimeArgs(ApplyRuntime(
                 InjectDockerfileBuilds(EnsureCompanionDatabases(ConfigureDashboard(AddRestartPolicy(File.ReadAllText(path)), hostDashboard, dashboardToken)), stack, Path.Combine(publishRoot, "src")),
-                stack.Limits, stack.Healthchecks);
+                stack.Limits, stack.Healthchecks), stack);
             var needsBuild = stack.Nodes.Any(n => n.AddMethod == "AddDockerfile");
             // Ports are per machine: what other apps on *this* target use, plus whatever else that
             // daemon already publishes (containers we did not create).
@@ -516,6 +597,13 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var up = runner.UpProject(pub.OutputDir, project, needsBuild);
             var urls = up.Ok ? UrlsFromServices(ParseServices(runner.Ps(pub.OutputDir, project).Log), host) : new();
             if (urls.Count == 0) urls = ParseUrls(processed, host);
+            // A service on the host's network publishes no port for `docker compose ps` to report, and
+            // answers on its own instead.
+            foreach (var p in hostNetworkPorts.Values.Distinct())
+            {
+                chosen.Add(new PortMapping(p, p, true));
+                if (!urls.Contains($"http://{host}:{p}")) urls.Insert(0, $"http://{host}:{p}");
+            }
             if (!string.IsNullOrWhiteSpace(stack.HostingUrlPath))
                 urls = urls.Select(u => Regex.IsMatch(u, @"://[^/]+:\d+$") ? u + stack.HostingUrlPath : u).ToList();
             if (proxy is { Enabled: true } && FirstPort(urls) is > 0) urls.Insert(0, proxy.UrlFor(stack.Name));

@@ -301,13 +301,14 @@ export function buildPresetNodes(
   const bindCalls = (preset.bindMounts ?? []).map(([source, target, ro]) =>
     ({ method: "WithBindMount", args: [JSON.stringify(source), JSON.stringify(target), ...(ro === "ro" ? ["isReadOnly: true"] : [])] }));
   const gpuCalls = preset.gpu ? [{ method: "WithContainerRuntimeArgs", args: ['"--gpus"', '"all"'] }] : [];
+  const hostNetCalls = preset.hostNetwork ? [{ method: "WithContainerRuntimeArgs", args: ['"--network=host"'] }] : [];
   const runtimeArgsCalls = preset.runtimeArgs?.length ? [{ method: "WithContainerRuntimeArgs", args: preset.runtimeArgs.map(a => JSON.stringify(a)) }] : [];
   const argsCalls = preset.args?.length ? [{ method: "WithArgs", args: preset.args.map(a => JSON.stringify(a)) }] : [];
   const urlCalls = preset.urlPath ? [{ method: "WithUrlForEndpoint", args: ['"http"', `url => url.Url = ${JSON.stringify(preset.urlPath)}`] }] : [];
   const main: Node = {
     id: mainId, varName: sanitizeIdentifier(mainName), resourceName: mainName, addMethod: "AddContainer",
     addArgs: [JSON.stringify(preset.image)],
-    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...urlCalls, ...gpuCalls, ...runtimeArgsCalls, ...argsCalls, ...volumeCalls, ...bindCalls, ...expandEnv(preset.env), ...paramEnvCalls],
+    withCalls: [{ method: "WithHttpEndpoint", args: preset.fixedPort ? [`port: ${preset.port}`, `targetPort: ${preset.port}`] : [`targetPort: ${preset.port}`] }, ...urlCalls, ...gpuCalls, ...hostNetCalls, ...runtimeArgsCalls, ...argsCalls, ...volumeCalls, ...bindCalls, ...expandEnv(preset.env), ...paramEnvCalls],
     x: 60, y: 60, icon: preset.icon ?? undefined,
   };
   const nodes: Node[] = [main];

@@ -90,7 +90,10 @@ public class StoreListingTests
 
         // The installer form is filled in before install; both fields have to reach the container.
         var form = doc.RootElement.GetProperty("cosmos-installer").GetProperty("form");
-        var names = form.EnumerateArray().Select(f => f.GetProperty("name").GetString()).ToList();
+        // A form entry does not have to be a field: a `warning` is a notice with a label and no name.
+        var names = form.EnumerateArray()
+            .Where(f => f.TryGetProperty("name", out _))
+            .Select(f => f.GetProperty("name").GetString()).ToList();
         Assert.Contains("adminUser", names);
         Assert.Contains("adminPassword", names);
     }

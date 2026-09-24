@@ -94,6 +94,7 @@ public static class PresetBuilder
         };
         if (!string.IsNullOrEmpty(p.UrlPath)) main.Add(new WithCall("WithUrlForEndpoint", new() { "\"http\"", $"url => url.Url = {J(p.UrlPath!)}" }));
         if (p.Gpu) main.Add(new WithCall("WithContainerRuntimeArgs", new() { "\"--gpus\"", "\"all\"" }));
+        if (p.HostNetwork) main.Add(new WithCall("WithContainerRuntimeArgs", new() { "\"--network=host\"" }));
         if (p.RuntimeArgs is { Count: > 0 }) main.Add(new WithCall("WithContainerRuntimeArgs", p.RuntimeArgs.Select(J).ToList()));
         if (p.Args is { Count: > 0 }) main.Add(new WithCall("WithArgs", p.Args.Select(J).ToList()));
         foreach (var v in p.Volumes ?? new()) if (v.Count >= 2) main.Add(new WithCall("WithVolume", new() { J($"{mainName}-{v[0]}"), J(v[1]) }));
