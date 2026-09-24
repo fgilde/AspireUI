@@ -6,8 +6,8 @@ Bug reports and feature requests are usually better off as a
 
 <gilde-contact project="fgilde/AspireUI" widget="contact" inline theme="dark" accent="#8b5cf6"
   language="auto" title="Contact AspireUI" width="560" radius="14" padding="26"
-  show-logo="true" show-description="false" show-homepage="true" show-preview-notice="false"
-  show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"></gilde-contact>
+  show-logo="true" show-description="false" show-homepage="false" show-preview-notice="false"
+  show-footer="false"></gilde-contact>
 
 ## Supporting the project
 
@@ -15,9 +15,9 @@ AspireUI is MIT, self-hosted and has no paid tier — nothing here is behind a w
 planned to be. If it saves you an afternoon now and then, this is the way to say so.
 
 <gilde-support project="fgilde/AspireUI" widget="support" inline theme="dark" accent="#8b5cf6"
-  language="auto" width="560" radius="14" padding="26"
-  show-logo="true" show-description="true" show-homepage="true" show-preview-notice="false"
-  show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"
+  language="auto" title="Support AspireUI" width="560" radius="14" padding="26"
+  show-logo="true" show-description="false" show-homepage="false" show-preview-notice="false"
+  show-footer="false"
   show-support-hint="false" support-layout="rows" show-support-icons="true"
   show-support-qr="true"></gilde-support>
 

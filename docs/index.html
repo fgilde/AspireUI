@@ -192,7 +192,7 @@ section { padding: 84px 0 0; }
 
 /* -------------------------------------------------------------- connect */
 .connect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  gap: 26px; align-items: start; justify-items: center; }
+  gap: 26px; align-items: start; justify-items: center; margin-top: 40px; }
 .connect-grid > * { max-width: 100%; }
 
 /* lightbox */
@@ -347,7 +347,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--
         <code>aspire</code>-CLI mit, weil die Funktionen zum Starten und Hosten alle drei brauchen.</p>
 
       <div class="cta">
-        <quickrun-btn repo="fgilde/AspireUI" icon="left">Run local now</quickrun-btn>
+        <quickrun-btn repo="fgilde/AspireUI" icon="left" label="Run it locally">Run it locally</quickrun-btn>
         <a class="btn btn-primary" href="docs.html"><span lang="en">Read the docs</span><span lang="de">Zur Dokumentation</span></a>
         <a class="btn" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noopener">GitHub</a>
       </div>
@@ -873,13 +873,13 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
     Und wenn dir AspireUI ab und zu einen Nachmittag spart, gibt es einen Weg, das zu sagen.</p>
   <div class="connect-grid">
     <gilde-contact project="fgilde/AspireUI" widget="contact" inline theme="dark" accent="#8b5cf6"
-      language="en" width="560" radius="14" padding="26"
-      show-logo="true" show-description="false" show-homepage="true" show-preview-notice="false"
-      show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"></gilde-contact>
+      language="en" title="Contact AspireUI" width="560" radius="14" padding="26"
+      show-logo="true" show-description="false" show-homepage="false" show-preview-notice="false"
+      show-footer="false"></gilde-contact>
     <gilde-support project="fgilde/AspireUI" widget="support" inline theme="dark" accent="#8b5cf6"
-      language="en" width="560" radius="14" padding="26"
-      show-logo="true" show-description="true" show-homepage="true" show-preview-notice="false"
-      show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"
+      language="en" title="Support AspireUI" width="560" radius="14" padding="26"
+      show-logo="true" show-description="false" show-homepage="false" show-preview-notice="false"
+      show-footer="false"
       show-support-hint="false" support-layout="rows" show-support-icons="true" show-support-qr="true"></gilde-support>
   </div>
 </div></section>
@@ -932,6 +932,11 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
 <script>
 (function () {
   /* ------------------------------------------------------------- language */
+  var QUICKRUN = { en: 'Run it locally', de: 'Lokal starten' };
+  var WIDGET_TITLE = {
+    'gilde-contact': { en: 'Contact AspireUI', de: 'Kontakt zu AspireUI' },
+    'gilde-support': { en: 'Support AspireUI', de: 'AspireUI unterstützen' },
+  };
   var pick = new URLSearchParams(location.search).get('lang')
     || localStorage.getItem('aspireui-lang')
     || ((navigator.language || 'en').toLowerCase().indexOf('de') === 0 ? 'de' : 'en');
@@ -946,7 +951,10 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
     });
     document.querySelectorAll('gilde-contact, gilde-support').forEach(function (w) {
       w.setAttribute('language', l);
+      w.setAttribute('title', WIDGET_TITLE[w.localName][l]);
     });
+    document.querySelectorAll('quickrun-btn').forEach(function (b) { b.setAttribute('label', QUICKRUN[l]); });
+    document.querySelectorAll('[data-quickrun]').forEach(function (a) { a.textContent = QUICKRUN[l]; });
   }
   document.querySelectorAll('[data-set-lang]').forEach(function (b) {
     b.addEventListener('click', function () { setLang(b.dataset.setLang); });
@@ -972,7 +980,8 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
       var a = document.createElement('a');
       a.className = 'btn'; a.target = '_blank'; a.rel = 'noopener';
       a.href = 'https://quickrun.org/run?repo=fgilde/AspireUI';
-      a.textContent = el.textContent.trim() || 'Run local now';
+      a.dataset.quickrun = '1';
+      a.textContent = QUICKRUN[document.documentElement.dataset.lang] || QUICKRUN.en;
       el.replaceWith(a);
     });
   }, 3000);

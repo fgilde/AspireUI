@@ -43,11 +43,9 @@ function attributes(accent: string, scheme: string, extra: Record<string, string
     radius: "14",
     padding: "24",
     "show-logo": "true",
-    "show-homepage": "true",
+    "show-homepage": "false",
     "show-preview-notice": "false",
-    "show-footer": "true",
-    "footer-brand": "AspireUI",
-    "footer-tagline": "gilde.org",
+    "show-footer": "false",
     ...extra,
   };
 }
@@ -98,7 +96,8 @@ export const ContactWidget = () =>
 export const SupportWidget = () =>
   <Widget tag="gilde-support" extra={{
     widget: "support",
-    "show-description": "true",
+    title: "Support AspireUI",
+    "show-description": "false",
     "support-layout": "rows",
     "show-support-icons": "true",
     "show-support-qr": "true",
