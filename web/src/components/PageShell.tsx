@@ -4,6 +4,7 @@ import { AppShell, Container, Group, Title, Anchor, Text, Tooltip, ActionIcon, D
 import { IconBrandGithub, IconHelp, IconArrowLeft, IconLayoutGrid, IconLayoutDashboard } from "@tabler/icons-react";
 import { APP_VERSION, BUILD_INFO } from "../model";
 import { UserMenu } from "../auth/UserMenu";
+import { DOCS_URL } from "../HelpButton";
 import { useViewMode, type ViewMode } from "../viewMode";
 import logo from "../assets/logo.svg";
 import wordmark from "../assets/wordmark.svg";
@@ -66,7 +67,7 @@ export function PageShell({ title, back = true, actions, children, container = "
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Documentation" withArrow>
-              <ActionIcon component="a" href="https://github.com/fgilde/AspireUI/tree/master/docs" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="Documentation">
+              <ActionIcon component="a" href={DOCS_URL} target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="Documentation">
                 <IconHelp size={15} />
               </ActionIcon>
             </Tooltip>
