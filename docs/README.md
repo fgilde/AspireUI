@@ -60,6 +60,7 @@ The stacks overview:
 - **[Running & Deploying](running-and-deploying.md)** — run locally, publish to Compose/K8s/Bicep, open the dashboard, self-host AspireUI.
 - **[Live Resources & Logs](live-resources.md)** — per-resource status, spawned child resources, endpoint links, and live log streaming on the canvas.
 - **[UI, Themes & Shortcuts](ui-and-shortcuts.md)** — themes, command palette, layouts, keyboard shortcuts.
+- **[Contact & support](contact.md)** — write in, or help keep this going.
 
 ## Notes / limitations
 

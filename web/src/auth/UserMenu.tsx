@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu, UnstyledButton, Avatar, Group, Text, Badge } from "@mantine/core";
-import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode, IconDatabase } from "@tabler/icons-react";
+import { IconLogout, IconUsers, IconSettings, IconBrandGithub, IconHelp, IconUser, IconPalette, IconServer, IconCode, IconDatabase, IconMail, IconHeart } from "@tabler/icons-react";
 import * as api from "../api";
 import { useAuth } from "./AuthContext";
 import { can, PERM_USERS, PERM_DOCKER } from "../model";
 import { useAppTheme } from "../ThemeProvider";
 import { HelpModal } from "../HelpButton";
 import { ThemeDrawer } from "../ThemeDrawer";
+import { ConnectModal } from "../components/ConnectWidgets";
 import { REPO_URL } from "../GitHubLink";
 
 // Header account menu combining theme, GitHub, help, settings, and logout options.
@@ -17,6 +18,7 @@ export function UserMenu() {
   const { current } = useAppTheme();
   const [help, setHelp] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [connect, setConnect] = useState<"contact" | "support" | null>(null);
   const user = status?.user;
   if (!user) return null;
 
@@ -52,12 +54,15 @@ export function UserMenu() {
           <Menu.Item leftSection={<IconHelp size={14} />} onClick={() => setHelp(true)}>Help &amp; docs</Menu.Item>
           <Menu.Item leftSection={<IconCode size={14} />} component="a" href="/scalar" target="_blank" rel="noreferrer">API reference</Menu.Item>
           <Menu.Item leftSection={<IconBrandGithub size={14} />} component="a" href={REPO_URL} target="_blank" rel="noreferrer">AspireUI on GitHub</Menu.Item>
+          <Menu.Item leftSection={<IconMail size={14} />} onClick={() => setConnect("contact")}>Contact</Menu.Item>
+          <Menu.Item leftSection={<IconHeart size={14} />} onClick={() => setConnect("support")}>Support AspireUI</Menu.Item>
           <Menu.Divider />
           <Menu.Item leftSection={<IconLogout size={14} />} color="red" onClick={doLogout}>Logout</Menu.Item>
         </Menu.Dropdown>
       </Menu>
       <HelpModal opened={help} onClose={() => setHelp(false)} />
       <ThemeDrawer opened={themeOpen} onClose={() => setThemeOpen(false)} />
+      <ConnectModal opened={connect !== null} tab={connect ?? "contact"} onClose={() => setConnect(null)} />
     </>
   );
 }

@@ -15,3 +15,4 @@
 - [Seeding an install](seeding.md)
 - [Export, import & support](instance-transfer.md)
 - [UI, Themes & Shortcuts](ui-and-shortcuts.md)
+- [Contact & support](contact.md)

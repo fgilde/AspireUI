@@ -190,6 +190,11 @@ section { padding: 84px 0 0; }
   box-shadow: 0 26px 60px -30px rgba(0,0,0,.95); cursor: zoom-in; transition: border-color .12s; }
 .shot:hover { border-color: var(--brand); }
 
+/* -------------------------------------------------------------- connect */
+.connect-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 26px; align-items: start; justify-items: center; }
+.connect-grid > * { max-width: 100%; }
+
 /* lightbox */
 .lb { position: fixed; inset: 0; z-index: 100; background: rgba(4,4,8,.95); backdrop-filter: blur(8px);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -304,6 +309,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); background: var(--
       <a href="#hosting" lang="en">Hosting</a><a href="#hosting" lang="de">Hosting</a>
       <a href="#proxmox" lang="en">Self-host</a><a href="#proxmox" lang="de">Eigener Server</a>
       <a href="#nextended">Nextended</a>
+      <a href="#connect" lang="en">Contact</a><a href="#connect" lang="de">Kontakt</a>
       <a href="docs.html" lang="en">Docs</a><a href="docs.html" lang="de">Doku</a>
     </nav>
     <div class="nav-right">
@@ -854,6 +860,30 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
   </div>
 </div></section>
 
+<section id="connect"><div class="wrap">
+  <div class="sec-head">
+    <span class="sec-no">08</span>
+    <h2 lang="en">Get in touch</h2>
+    <h2 lang="de">Kontakt &amp; Unterstützung</h2>
+    <span class="rule"></span>
+  </div>
+  <p class="shots-intro" style="margin-top:0" lang="en">A question, a bug, an app you want in the store — write, it arrives.
+    And if AspireUI saves you an afternoon now and then, there is a way to say so.</p>
+  <p class="shots-intro" style="margin-top:0" lang="de">Eine Frage, ein Fehler, eine App, die in den Store soll — schreib, es kommt an.
+    Und wenn dir AspireUI ab und zu einen Nachmittag spart, gibt es einen Weg, das zu sagen.</p>
+  <div class="connect-grid">
+    <gilde-contact project="fgilde/AspireUI" widget="contact" inline theme="dark" accent="#8b5cf6"
+      language="en" width="560" radius="14" padding="26"
+      show-logo="true" show-description="false" show-homepage="true" show-preview-notice="false"
+      show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"></gilde-contact>
+    <gilde-support project="fgilde/AspireUI" widget="support" inline theme="dark" accent="#8b5cf6"
+      language="en" width="560" radius="14" padding="26"
+      show-logo="true" show-description="true" show-homepage="true" show-preview-notice="false"
+      show-footer="true" footer-brand="AspireUI" footer-tagline="gilde.org"
+      show-support-hint="false" support-layout="rows" show-support-icons="true" show-support-qr="true"></gilde-support>
+  </div>
+</div></section>
+
 <footer>
   <div class="wrap foot">
     <div>
@@ -865,6 +895,7 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
         <a href="https://github.com/fgilde/AspireUI/pkgs/container/aspireui" target="_blank" rel="noopener">Container image</a>
         <a href="https://www.nuget.org/packages/Nextended.Aspire.Hosting.AspireUI" target="_blank" rel="noopener">NuGet</a>
         <a href="docs.html#/app-manifest.md" lang="en">Submit an app</a><a href="docs.html#/app-manifest.md" lang="de">App einreichen</a>
+        <a href="#connect" lang="en">Contact &amp; support</a><a href="#connect" lang="de">Kontakt &amp; Unterstützung</a>
       </div>
       <small>MIT · .NET 10 · React · Mantine</small>
     </div>
@@ -897,6 +928,7 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
 </footer>
 
 <script type="module" src="https://quickrun.org/components.js"></script>
+<script type="module" src="https://connect.gilde.org/widgets/v1.js"></script>
 <script>
 (function () {
   /* ------------------------------------------------------------- language */
@@ -911,6 +943,9 @@ builder.<span class="m">Build</span>().<span class="m">Run</span>();</pre>
     try { localStorage.setItem('aspireui-lang', l); } catch (e) {}
     document.querySelectorAll('[data-set-lang]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.setLang === l));
+    });
+    document.querySelectorAll('gilde-contact, gilde-support').forEach(function (w) {
+      w.setAttribute('language', l);
     });
   }
   document.querySelectorAll('[data-set-lang]').forEach(function (b) {
