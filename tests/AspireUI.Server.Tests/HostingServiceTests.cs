@@ -100,6 +100,16 @@ public class HostingServiceTests
     }
 
     [Fact]
+    public void PortFree_reports_a_port_bound_on_all_interfaces_as_taken()
+    {
+        var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Any, 0);
+        l.Start();
+        var port = ((System.Net.IPEndPoint)l.LocalEndpoint).Port;
+        try { Assert.False(HostingService.PortFree(port)); }
+        finally { l.Stop(); }
+    }
+
+    [Fact]
     public void UrlsFromServices_uses_published_ports_skips_dashboard()
     {
         var svcs = new List<ServiceStatus>

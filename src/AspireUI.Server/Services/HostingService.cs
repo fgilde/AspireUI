@@ -234,9 +234,11 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         return string.Join("\n", outp);
     }
 
-    public static bool PortFree(int p)
+    public static bool PortFree(int p) => CanBind(System.Net.IPAddress.Any, p) && CanBind(System.Net.IPAddress.Loopback, p);
+
+    static bool CanBind(System.Net.IPAddress address, int p)
     {
-        try { var l = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, p); l.Start(); l.Stop(); return true; }
+        try { var l = new System.Net.Sockets.TcpListener(address, p); l.Start(); l.Stop(); return true; }
         catch { return false; }
     }
 
@@ -575,10 +577,11 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             // daemon already publishes (containers we did not create).
             var used = new HashSet<int>(store.List().Where(x => x.Id != id && x.Target == target.Id)
                 .SelectMany(x => (x.Ports ?? new()).Where(p => p.Public).Select(p => p.Host)));
-            if (!target.IsLocal && targets is not null)
-                foreach (var p in targets.UsedPortsOn(target)) used.Add(p);
-            bool Free(int p) => target.IsLocal ? PortFree(p) : !used.Contains(p);
             var prev = (existing?.Ports ?? new()).ToDictionary(p => p.Container);
+            var own = prev.Values.Where(p => p.Public).Select(p => p.Host).ToHashSet();
+            if (targets is not null)
+                foreach (var p in targets.UsedPortsOn(target)) if (!own.Contains(p)) used.Add(p);
+            bool Free(int p) => own.Contains(p) || (target.IsLocal ? PortFree(p) : !used.Contains(p));
             var chosen = new List<PortMapping>();
             var portMap = new Dictionary<int, int>();
             var keepInternal = new HashSet<int>();
