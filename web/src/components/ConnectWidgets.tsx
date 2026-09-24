@@ -38,7 +38,8 @@ function attributes(accent: string, scheme: string, extra: Record<string, string
     inline: "",
     theme: scheme,
     accent,
-    language: "auto",
+    // The interface this sits in has one language, and the document says which — not the browser.
+    language: document.documentElement.lang || "en",
     width: String(WIDTH),
     radius: "14",
     padding: "24",
