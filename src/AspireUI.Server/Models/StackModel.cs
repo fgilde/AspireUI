@@ -23,7 +23,8 @@ public record StackModel(
     AppLimits? Limits = null,
     List<AppHealthcheck>? Healthchecks = null,
     List<AppSchedule>? Schedules = null,
-    List<string>? Tags = null);
+    List<string>? Tags = null,
+    string? HookToken = null);
 
 /// <summary>
 /// Something the app should do by itself, on a clock: restart, stop, start, update (pull and

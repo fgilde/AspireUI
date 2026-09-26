@@ -53,6 +53,8 @@ public static class StackEndpoints
         var domains = new DomainService(targetStore, secrets, settings);
         domains.ApplySeededNpm(force: string.Equals(Environment.GetEnvironmentVariable("ASPIREUI_SET_FORCE"), "true", StringComparison.OrdinalIgnoreCase));
         var hosting = new HostingService(deployments, publish, deploy, proxy, targets, orchestrator);
+        var hooks = new HookStore(settings);
+        hooks.MigrateCloneHooks(id => store.Get(id)?.Name);
         _ = Task.Run(hosting.ReconcileOnStartup);
         // A seed can ask for its stacks to be deployed. The seeder runs before there is any hosting to
         // deploy with, so it leaves the ids here and this picks them up once.
@@ -550,26 +552,28 @@ public static class StackEndpoints
             return branches is null ? Results.UnprocessableEntity(new { message = error })
                 : Results.Ok(new { branches });
         });
-        app2.MapPost("/git/import", (GitImportRequest b, HttpContext ctx) =>
+        (StackModel? Stack, string? Error) ImportGit(string sid, GitImportRequest b)
         {
-            // No mode = let the clone decide (aspireui-app.json, then compose, then AppHost).
             var mode = string.IsNullOrWhiteSpace(b.Mode) ? "" : b.Mode!.ToLowerInvariant();
-            var sid = Guid.NewGuid().ToString("n");
             var dir = Dir(sid);
             void RmDir() { try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { } }
-
             var (name, cerr) = GitService.CloneInto(b.Url, b.Branch, b.Subdir, dir, b.AuthToken);
-            if (cerr is not null) { RmDir(); return Results.UnprocessableEntity(new { message = cerr }); }
+            if (cerr is not null) { RmDir(); return (null, cerr); }
             var manifestMode = mode == "manifest" || (mode.Length == 0 && GitService.FindManifest(dir) is not null);
             var stackName = string.IsNullOrWhiteSpace(b.Name) ? (manifestMode ? "" : name ?? "git app") : b.Name!;
-
             var (stack, err) = dirs.Build(sid, dir, mode, stackName, b.Files, b.Services, b.Env, b.ServicePorts, b.Image, b.Port);
-            if (stack is null) { RmDir(); return Results.UnprocessableEntity(new { message = err }); }
-            stack = stack with { FromGit = true };
-
+            if (stack is null) { RmDir(); return (null, err); }
+            return (stack with { FromGit = true }, null);
+        }
+        app2.MapPost("/git/import", (GitImportRequest b, HttpContext ctx) =>
+        {
+            var sid = Guid.NewGuid().ToString("n");
+            var (stack, err) = ImportGit(sid, b);
+            if (stack is null) return Results.UnprocessableEntity(new { message = err });
+            var mode = string.IsNullOrWhiteSpace(b.Mode) ? "" : b.Mode!.ToLowerInvariant();
             var withMeta = stack with { CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = ctx.User.Identity?.Name ?? "admin" };
             var token = Guid.NewGuid().ToString("n");
-            var effectiveMode = mode.Length == 0 ? DirImporter.ModeFor(dir) : mode;
+            var effectiveMode = mode.Length == 0 ? DirImporter.ModeFor(Dir(sid)) : mode;
             settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services, b.ServicePorts,
                 Mode: effectiveMode, Image: b.Image, Port: b.Port), gitJson));
             settings.SetValue($"githook:{token}", sid);
@@ -681,36 +685,81 @@ public static class StackEndpoints
             return Results.Ok(new { image = wanted, updated });
         }).AllowAnonymous();
 
-        app2.MapPost("/clone-hook/{token}", async (string token, HttpContext ctx) =>
+        (StackModel? Stack, HookFailure? Failure) BuildClone(Hook h, string newId)
         {
-            if (settings.GetValue($"clonehook:{token}") is not { } raw) return Results.NotFound(new { success = false, error = "unknown clone-hook token" });
-            var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(raw, gitJson)!;
-            if (store.Get(cfg.SourceStackId) is not { } src) return Results.NotFound(new { success = false, error = "source stack no longer exists" });
+            if (store.Get(h.SourceStackId ?? "") is not { } src) return (null, new(404, "source stack no longer exists"));
+            try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
+            return (src with { ClonedFrom = src.Id }, null);
+        }
+        (StackModel? Stack, HookFailure? Failure) BuildStore(Hook h, string newId, Dictionary<string, string> vals)
+        {
+            var p = catalog.GetPresets().FirstOrDefault(x => x.Id.Equals(h.AppId, StringComparison.OrdinalIgnoreCase));
+            if (p is null) return (null, new(404, "app no longer in store"));
+            if (PresetBuilder.ForSource(p, h.SourceId) is not { } chosen) return (null, new(404, $"app has no source '{h.SourceId}' any more"));
+            chosen = chosen with { Params = (chosen.Params ?? new()).Select(x => vals.TryGetValue(x.Key, out var v) ? x with { Default = v } : x).ToList() };
+            var (nodes, edges) = PresetBuilder.Build(chosen);
+            var files = (chosen.Files ?? new()).Select(f => new ExtraFile(f.Name, f.Content)).ToList();
+            return (new StackModel(newId, chosen.Label, "net10.0", nodes, edges, new(), files, new(), HostingUrlPath: chosen.UrlPath), null);
+        }
+        (StackModel? Stack, HookFailure? Failure) BuildGit(Hook h, string newId, Dictionary<string, string> vals)
+        {
+            var repo = vals.TryGetValue("repo", out var r) && r.Length > 0 ? r : h.Repo;
+            if (string.IsNullOrWhiteSpace(repo)) return (null, new(400, "missing parameter: repo"));
+            vals.TryGetValue("branch", out var branch);
+            var env = vals.Where(kv => kv.Key is not ("repo" or "branch")).ToDictionary(kv => kv.Key, kv => kv.Value);
+            var (stack, err) = ImportGit(newId, new GitImportRequest(repo, string.IsNullOrEmpty(branch) ? null : branch, h.Subdir, h.Name,
+                h.Mode, h.AuthToken, Env: env, Image: h.Image, Port: h.Port));
+            return stack is null ? (null, new(500, err ?? "git import failed")) : (stack, null);
+        }
+
+        async Task<IResult> RunHook(string token, HttpContext ctx)
+        {
+            IResult Fail(HookFailure f) => Results.Json(new { success = false, error = f.Error }, statusCode: f.Status);
+            if (hooks.Get(token) is not { } h) return Fail(new(404, "unknown hook"));
+            var hs = hooks.Settings();
+            if (HookCall.CheckEnabled(hs, h) is { } off) return Fail(off);
+            var args = await HookCall.ReadArgsAsync(ctx.Request);
+            var (vals, missing) = HookCall.ResolveParams(h, args);
+            if (missing is not null) return Fail(missing);
+            var target = targetStore.Resolve(h.TargetId);
+            if (HookCall.CheckResources(hs, target.Name, targets.Resources(target)) is { } low) return Fail(low);
+
+            var newId = Guid.NewGuid().ToString("n");
+            var shortId = newId[..8];
             try
             {
-                var newId = Guid.NewGuid().ToString("n");
-                var shortId = newId[..8];
-                var expireAt = cfg.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(cfg.ExpireDays).ToString("O") : (string?)null;
-                var clone = src with { Id = newId, Name = $"{src.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = "clone-hook", ExpireAt = expireAt, ClonedFrom = src.Id };
-                try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
-                store.Save(clone);
-                gen.Materialize(clone, Dir(newId));
+                var (built, bf) = h.Kind switch
+                {
+                    "clone" => BuildClone(h, newId),
+                    "store" => BuildStore(h, newId, vals),
+                    "git" => BuildGit(h, newId, vals),
+                    _ => ((StackModel?)null, new HookFailure(400, $"unknown hook kind '{h.Kind}'")),
+                };
+                if (bf is not null) return Fail(bf);
+                var expireAt = h.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(h.ExpireDays).ToString("O") : null;
+                var stack = built! with
+                {
+                    Id = newId, Name = $"{h.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"),
+                    CreatedBy = $"hook:{h.Kind}", ExpireAt = expireAt, HookToken = h.Token,
+                };
+                store.Save(stack);
+                gen.Materialize(stack, Dir(newId));
 
                 var dc = DashCfg();
                 var host = PublicHost(ctx);
-                var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token,
-                    (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null, cfg.TargetId);
+                var dep = hosting.Deploy(stack, PublishRoot(newId), host, dc.Host, dc.Token,
+                    (stack.FromGit || stack.HasSource) ? Path.GetFullPath(Dir(newId)) : null, h.TargetId);
                 var url = dep.Urls.FirstOrDefault();
                 string? domainError = null;
 
-                if (cfg.BindDomain && !string.IsNullOrWhiteSpace(cfg.DomainFormat))
+                if (h.BindDomain && !string.IsNullOrWhiteSpace(h.DomainFormat))
                 {
                     var t = targetStore.Resolve(dep.TargetId);
                     var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
                     if (domains.Configured(t) && port > 0)
                     {
-                        var domain = cfg.DomainFormat!.Replace("{id}", shortId)
-                            .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(src.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
+                        var domain = h.DomainFormat!.Replace("{id}", shortId)
+                            .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(h.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
                         try
                         {
                             var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
@@ -726,9 +775,11 @@ public static class StackEndpoints
             }
             catch (Exception ex)
             {
-                return Results.Json(new { success = false, error = ex.Message }, statusCode: 500);
+                return Fail(new(500, ex.Message));
             }
-        }).AllowAnonymous();
+        }
+        app2.MapPost("/hook/{token}", RunHook).AllowAnonymous();
+        app2.MapPost("/clone-hook/{token}", RunHook).AllowAnonymous();
 
         _ = Task.Run(async () =>
         {
