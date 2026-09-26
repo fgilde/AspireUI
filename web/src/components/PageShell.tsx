@@ -59,7 +59,9 @@ export function PageShell({ title, back = true, actions, children, container = "
         <Container size="xl" h="100%">
           <Group h="100%" justify="center" gap={8}>
             <img src={logo} alt="" height={18} style={{ display: "block" }} />
-            <Tooltip label={`build ${BUILD_INFO}`} withArrow><Text size="xs" c="dimmed">AspireUI v{APP_VERSION}</Text></Tooltip>
+            <Tooltip label={`build ${BUILD_INFO}`} withArrow>
+              <Anchor size="xs" c="dimmed" href="https://fgilde.github.io/AspireUI" target="_blank" rel="noreferrer">AspireUI v{APP_VERSION}</Anchor>
+            </Tooltip>
             <Text size="xs" c="dimmed">·</Text>
             <Tooltip label="GitHub" withArrow>
               <ActionIcon component="a" href="https://github.com/fgilde/AspireUI" target="_blank" rel="noreferrer" variant="subtle" color="gray" size="sm" aria-label="GitHub">

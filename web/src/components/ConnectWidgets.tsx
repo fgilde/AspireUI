@@ -12,6 +12,32 @@ const WIDTH = 560;
 
 type Load = "idle" | "loading" | "ready" | "failed";
 
+const FIT = `
+:host { font-family: inherit !important; font-size: var(--mantine-font-size-sm) !important; }
+.surface, .surface[data-theme] {
+  --bg: var(--mantine-color-body) !important;
+  --raised: var(--mantine-color-default) !important;
+  --input: var(--mantine-color-default) !important;
+  --line: var(--mantine-color-default-border) !important;
+  --text: var(--mantine-color-text) !important;
+  --muted: var(--mantine-color-dimmed) !important;
+  --accent-ink: var(--mantine-primary-color-contrast, #fff) !important;
+}
+.card { background: transparent; border: 0; border-radius: 0; box-shadow: none; max-width: none; }
+.bar { display: none; }
+.content { padding: 0; }
+input, textarea, select, .notice, .status, .error, .contact-again, .challenge-success { border-radius: var(--mantine-radius-default); }
+.support-link, .star-support { border-radius: var(--mantine-radius-md); }
+button.primary { border-radius: var(--mantine-radius-default); min-height: 36px; padding: 8px 18px; font-weight: 600; }
+`;
+let fitSheet: CSSStyleSheet | null = null;
+function fit(el: Element) {
+  const root = el.shadowRoot;
+  if (!root) return;
+  fitSheet ??= (() => { const sheet = new CSSStyleSheet(); sheet.replaceSync(FIT); return sheet; })();
+  if (!root.adoptedStyleSheets.includes(fitSheet)) root.adoptedStyleSheets = [...root.adoptedStyleSheets, fitSheet];
+}
+
 // AspireUI runs on someone else's machine, so nothing is fetched from gilde.org until a person
 // actually opens the panel — and it says so plainly if that fetch does not arrive.
 function useConnectScript(): Load {
@@ -44,7 +70,7 @@ function attributes(accent: string, scheme: string, extra: Record<string, string
     radius: "14",
     padding: "24",
     "show-logo": "true",
-    "show-homepage": "false",
+    "show-homepage": "true",
     "show-preview-notice": "false",
     "show-footer": "false",
     ...extra,
@@ -65,6 +91,7 @@ function Widget({ tag, extra }: { tag: string; extra: Record<string, string> }) 
     for (const [k, v] of Object.entries(attributes(current.swatch, current.scheme, extra)))
       el.setAttribute(k, v);
     host.current.replaceChildren(el);
+    fit(el);
     // The element watches theme and accent, so a theme switch restyles it where it stands.
     return () => el.remove();
   }, [state, tag]);   // eslint-disable-line react-hooks/exhaustive-deps
