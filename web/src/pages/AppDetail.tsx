@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton, NumberInput, Switch, TextInput, Divider, Select } from "@mantine/core";
-import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconX, IconWorld } from "@tabler/icons-react";
+import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, Button, Tooltip, Stack as MStack, Card, Center, CopyButton } from "@mantine/core";
+import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconWorld, IconClockHour4 } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
-import type { Deployment, ServiceStatus } from "../model";
-import { hostingBroken, hostingHealthLabel } from "../model";
+import type { Deployment, ServiceStatus, Stack } from "../model";
+import { hostingBroken, hostingHealthLabel, can, PERM_HOOKS } from "../model";
+import { useAuth } from "../auth/AuthContext";
+import { HookEditModal } from "../hooks/HookEditModal";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
@@ -34,6 +36,9 @@ export function AppDetail() {
   const [pulling, setPulling] = useState(false);
   useTitle(d?.name ? `${d.name} · Hosting` : "App");
   useEffect(() => { if (id) api.gitInfo(id).then(setGit).catch(() => setGit(null)); }, [id]);
+  const { status } = useAuth();
+  const [meta, setMeta] = useState<Stack | null>(null);
+  useEffect(() => { (api.listStacks() as Promise<Stack[]>).then(l => setMeta(l.find(x => x.id === id) ?? null)).catch(() => {}); }, [id]);
 
   const load = () => api.listHosting().then(list => setD(list.find(x => x.stackId === id) ?? null)).catch(() => setD(null));
   useEffect(() => { load(); const t = setInterval(load, 4000); return () => clearInterval(t); /* eslint-disable-next-line */ }, [id]);
@@ -134,6 +139,12 @@ export function AppDetail() {
           )}
         </Card>
 
+        {meta?.hookToken && (
+          <Alert color="orange" icon={<IconClockHour4 size={16} />}>
+            Created by a <Anchor size="sm" onClick={() => nav(`/hooks#${meta.hookToken}`)}>webhook</Anchor>
+            {meta.expireAt ? ` — deleted automatically on ${new Date(meta.expireAt).toLocaleString()}.` : "."}
+          </Alert>
+        )}
         {git && (
           <Card withBorder padding="lg">
             <Group justify="space-between" wrap="wrap">
@@ -159,7 +170,7 @@ export function AppDetail() {
           </Card>
         )}
 
-        <CloneHooksCard stackId={d.stackId} />
+        {can(status?.user, PERM_HOOKS) && <CloneHooksCard stackId={d.stackId} />}
 
         <div>
           <Text fw={600} mb="xs">Containers</Text>
@@ -212,54 +223,30 @@ export function AppDetail() {
 }
 
 function CloneHooksCard({ stackId }: { stackId: string }) {
-  const [data, setData] = useState<{ npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[]; hooks: api.CloneHook[] } | null>(null);
-  const [expireDays, setExpireDays] = useState(7);
-  const [bindDomain, setBindDomain] = useState(false);
-  const [domainFormat, setDomainFormat] = useState("");
-  const [hookTarget, setHookTarget] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const load = () => api.listCloneHooks(stackId).then(setData).catch(() => {});
+  const nav = useNavigate();
+  const [data, setData] = useState<api.HooksOverview | null>(null);
+  const [adding, setAdding] = useState(false);
+  const load = () => api.listHooks().then(setData).catch(() => {});
   useEffect(() => { load(); }, [stackId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const create = async () => {
-    setBusy(true);
-    try { await api.createCloneHook(stackId, { expireDays, bindDomain, domainFormat: bindDomain ? domainFormat.trim() : undefined, targetId: hookTarget }); load(); toastOk("Clone hook created"); }
-    catch (e) { toastErr(e); } finally { setBusy(false); }
-  };
-  const full = (p: string) => `${window.location.origin}${p}`;
+  if (!data) return null;
+  const mine = data.hooks.filter(r => r.hook.kind === "clone" && r.hook.sourceStackId === stackId);
   return (
     <Card withBorder padding="lg">
-      <Group gap={8} mb={4}><IconCopyPlus size={18} /><Text fw={600}>Clone hooks</Text></Group>
-      <Text size="xs" c="dimmed" mb="sm">POST the URL to spin up an auto-expiring copy of this app{data?.npmConfigured ? " (optionally on its own domain)" : ""}. The response contains the new app URL and expiry date.</Text>
-      {(data?.hooks ?? []).map(h => (
-        <Group key={h.token} gap={6} mb={4} wrap="nowrap">
-          <Text size="xs" ff="monospace" truncate style={{ flex: 1 }}>{full(h.webhookPath)}</Text>
-          <Badge size="xs" variant="light" color={h.expireDays < 0 ? "gray" : "blue"}>{h.expireDays < 0 ? "never expires" : `${h.expireDays}d`}</Badge>
-          {h.bindDomain && <Badge size="xs" variant="light" color="grape">{h.domainFormat}</Badge>}
-          {h.targetId && <Badge size="xs" variant="default">{data?.targets.find(t => t.id === h.targetId)?.name ?? h.targetId}</Badge>}
-          <CopyButton value={full(h.webhookPath)}>{({ copied, copy }) => <Button size="compact-xs" variant="subtle" onClick={copy}>{copied ? "Copied" : "Copy"}</Button>}</CopyButton>
-          <ActionIcon size="sm" variant="subtle" color="red" onClick={() => api.deleteCloneHook(stackId, h.token).then(load).catch(toastErr)} aria-label="Delete"><IconX size={14} /></ActionIcon>
+      <Group justify="space-between" mb={4}>
+        <Group gap={8}><IconCopyPlus size={18} /><Text fw={600}>Clone hooks</Text></Group>
+        <Anchor size="sm" onClick={() => nav("/hooks")}>All webhooks →</Anchor>
+      </Group>
+      <Text size="xs" c="dimmed" mb="sm">A URL that spins up an auto-expiring copy of this app on each POST.</Text>
+      {mine.map(r => (
+        <Group key={r.hook.token} gap={6} mb={4} wrap="nowrap">
+          <Anchor size="sm" onClick={() => nav(`/hooks#${r.hook.token}`)} style={{ flex: 1 }}>{r.hook.name}</Anchor>
+          {!r.hook.enabled && <Badge size="xs" variant="light" color="gray">disabled</Badge>}
+          <Badge size="xs" variant="light" color="blue">{r.instances.length} running</Badge>
         </Group>
       ))}
-      <Divider my="sm" label="New clone hook" labelPosition="left" />
-      <MStack gap="xs" maw={420}>
-        <NumberInput label="Auto-delete after (days)" description="-1 = keep forever" value={expireDays}
-          onChange={v => setExpireDays(Number(v) ?? 7)} min={-1} max={365} w={220} />
-        {(data?.targets.length ?? 0) > 1 && (
-          <Select label="Clone onto" description="Where each clone is deployed — leave empty for the default target."
-            data={(data?.targets ?? []).map(t => ({ value: t.id, label: t.name }))} value={hookTarget} onChange={setHookTarget}
-            clearable w={260} />
-        )}
-        {data?.npmConfigured && (
-          <>
-            <Switch label="Bind a domain via Nginx Proxy Manager" checked={bindDomain} onChange={e => setBindDomain(e.currentTarget.checked)} />
-            {bindDomain && (
-              <TextInput label="Domain pattern" placeholder="my-app-{id}.example.com" value={domainFormat}
-                description="{id} and {name} are substituted per clone." onChange={e => setDomainFormat(e.currentTarget.value)} />
-            )}
-          </>
-        )}
-        <Group><Button size="xs" loading={busy} disabled={bindDomain && !domainFormat.trim()} onClick={create}>Create hook</Button></Group>
-      </MStack>
+      <Button size="xs" variant="light" mt="xs" onClick={() => setAdding(true)}>+ Clone hook</Button>
+      {adding && <HookEditModal initial={{ kind: "clone", sourceStackId: stackId }} overview={data}
+        onClose={() => setAdding(false)} onSaved={() => { setAdding(false); load(); }} />}
     </Card>
   );
 }

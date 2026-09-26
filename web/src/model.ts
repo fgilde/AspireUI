@@ -32,7 +32,7 @@ export interface Stack {
   runAsIs?: boolean;
   appHostProject?: string | null;
   fromGit?: boolean;
-  expireAt?: string | null; clonedFrom?: string | null;
+  expireAt?: string | null; clonedFrom?: string | null; hookToken?: string | null;
 }
 
 // Stack deployed persistently; long-lived docker-compose project.
@@ -462,6 +462,7 @@ export const PERM_SETTINGS = "settings";
 export const PERM_DOCKER = "docker";
 export const PERM_USERS = "users";
 export const PERM_AUDIT = "audit";
+export const PERM_HOOKS = "hooks";
 
 // Admins may everything; a user with no list at all is an install that predates permissions and keeps
 // what it had. The server checks the same thing again — this only decides what is worth showing.
@@ -482,6 +483,7 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
   { id: PERM_DOCKER, label: "Docker host", description: "See and prune the host's images, containers and volumes." },
   { id: PERM_USERS, label: "Users", description: "Create users and grant them permissions. Only an admin can make an admin." },
   { id: PERM_AUDIT, label: "Activity log", description: "Read who did what, to which app, and when." },
+  { id: PERM_HOOKS, label: "Webhooks", description: "Create, change, trigger and disable webhooks that spin up new instances without a login." },
 ];
 
 export interface AppLimits { cpus?: number | null; memoryMb?: number | null; pidsLimit?: number | null; restart?: string | null }

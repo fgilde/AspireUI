@@ -12,7 +12,7 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld, IconCopyPlus, IconClockHour4,
 } from "@tabler/icons-react";
-import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, type Stack, type RunStatus, type Deployment } from "../model";
+import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, PERM_HOOKS, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -90,6 +90,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const { status } = useAuth();
   const canEdit = canOpenEditor(status?.user);
   const mayDeploy = can(status?.user, PERM_DEPLOY);
+  const [hookNames, setHookNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (can(status?.user, PERM_HOOKS)) api.listHooks().then(d => setHookNames(Object.fromEntries(d.hooks.map(r => [r.hook.token, r.hook.name])))).catch(() => {});
+  }, [status?.user]);
   useTitle(simple ? "Apps" : "Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [deps, setDeps] = useState<Record<string, Deployment>>({});
@@ -393,9 +397,9 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     return true;
   };
   const visible = stacks.filter(passesFilters);
-  const cloneStacks = visible.filter(s => deps[s.id] && s.clonedFrom)
+  const cloneStacks = visible.filter(s => deps[s.id] && (s.hookToken || s.clonedFrom))
     .sort((a, b) => (a.expireAt ?? "￿").localeCompare(b.expireAt ?? "￿"));
-  const hostingStacks = visible.filter(s => deps[s.id] && !s.clonedFrom);
+  const hostingStacks = visible.filter(s => deps[s.id] && !s.hookToken && !s.clonedFrom);
   const buildStacks = simple ? [] : visible.filter(s => !deps[s.id]); // dev/build stacks (hidden in appliance view)
   const runningHosted = hostingStacks.filter(s => deps[s.id]?.state === "running" && !hostingBroken(deps[s.id])).length;
   const brokenHosted = hostingStacks.filter(s => hostingBroken(deps[s.id])).length;
@@ -448,6 +452,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                         <Tooltip label={`Removed automatically on ${new Date(s.expireAt).toLocaleString()}`} withArrow>
                           <Badge size="xs" variant="light" color="orange" leftSection={<IconClockHour4 size={10} />}>{expiresIn(s.expireAt)}</Badge>
                         </Tooltip>
+                      )}
+                      {s.hookToken && hookNames[s.hookToken] && (
+                        <Badge size="xs" variant="default" style={{ cursor: "pointer" }}
+                          onClick={e => { e.stopPropagation(); nav(`/hooks#${s.hookToken}`); }}>{hookNames[s.hookToken]}</Badge>
                       )}
                       {dep && dep.targetId && dep.targetId !== "local" && (
                         <Tooltip label={`Runs on ${dep.targetName}`} withArrow>
@@ -695,7 +703,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                   {buildStacks.length + hostingStacks.length > 0 && <Divider />}
                   <Group gap="xs">
                     <IconCopyPlus size={16} />
-                    <Title order={5} fw={600}>Clones</Title>
+                    <Title order={5} fw={600}>From hooks</Title>
                     <Badge variant="light" color="orange" size="sm">{cloneStacks.length}</Badge>
                   </Group>
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">

@@ -307,13 +307,43 @@ export const detectAiModels = (s: AppSettings): Promise<{ models: string[]; erro
 
 export const getDashboardSettings = (): Promise<{ hostDashboard: boolean; dashboardToken: string; publicHost?: string; publicHostSetting?: string; requestHost?: string }> =>
   fetch(`${base}/hosting/dashboard-settings`).then(ok);
-export interface CloneHook { token: string; expireDays: number; bindDomain: boolean; domainFormat?: string | null; targetId?: string | null; webhookPath: string }
-export const listCloneHooks = (id: string): Promise<{ npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[]; hooks: CloneHook[] }> =>
-  fetch(`${base}/stacks/${id}/clone-hooks`).then(ok);
-export const createCloneHook = (id: string, b: { expireDays: number; bindDomain: boolean; domainFormat?: string; targetId?: string | null }): Promise<{ token: string; webhookPath: string }> =>
-  fetch(`${base}/stacks/${id}/clone-hooks`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b) }).then(ok);
-export const deleteCloneHook = (id: string, token: string): Promise<void> =>
-  fetch(`${base}/stacks/${id}/clone-hooks/${token}`, { method: "DELETE" }).then(() => undefined);
+export type HookKind = "clone" | "store" | "git";
+export type HookParamMode = "fixed" | "required" | "optional" | "generated";
+export interface HookParam { key: string; mode: HookParamMode; value?: string | null; secret?: boolean }
+export interface Hook {
+  token: string; kind: HookKind; name: string; enabled: boolean; createdAt?: string | null;
+  expireDays: number; bindDomain: boolean; domainFormat?: string | null; targetId?: string | null;
+  sourceStackId?: string | null; appId?: string | null; sourceId?: string | null;
+  repo?: string | null; subdir?: string | null; mode?: string | null; authToken?: string | null;
+  image?: string | null; port?: number | null; params?: HookParam[] | null;
+}
+export interface HookSettings { enabled: boolean; minDiskGb: number; minRamGb: number }
+export interface HookInstance { stackId: string; name: string; state?: string | null; expireAt?: string | null }
+export interface HookRow { hook: Hook; webhookPath: string; source: string; instances: HookInstance[] }
+export interface ReadonlyHook { kind: "git-push" | "image"; name: string; webhookPath: string; link: string }
+export interface HooksOverview {
+  settings: HookSettings; npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[];
+  hooks: HookRow[]; readonly: ReadonlyHook[];
+}
+export interface HookResult { status: number; success: boolean; error: string; stackId?: string; url?: string | null; expireDate?: string | null }
+export const MASKED = "••••";
+const json = (method: string, b?: unknown): RequestInit =>
+  ({ method, headers: { "content-type": "application/json" }, body: b === undefined ? undefined : JSON.stringify(b) });
+export const listHooks = (): Promise<HooksOverview> => fetch(`${base}/hooks`).then(ok);
+export const createHook = (h: Omit<Hook, "token">): Promise<{ token: string; webhookPath: string }> =>
+  fetch(`${base}/hooks`, json("POST", h)).then(ok);
+export const updateHook = (token: string, h: Hook): Promise<Hook> => fetch(`${base}/hooks/${token}`, json("PUT", h)).then(ok);
+export const deleteHook = (token: string): Promise<void> => fetch(`${base}/hooks/${token}`, { method: "DELETE" }).then(okVoid);
+export const setHookEnabled = (token: string, enabled: boolean): Promise<void> =>
+  fetch(`${base}/hooks/${token}/enabled`, json("POST", { enabled })).then(okVoid);
+export const regenerateHook = (token: string): Promise<{ token: string; webhookPath: string }> =>
+  fetch(`${base}/hooks/${token}/regenerate`, { method: "POST" }).then(ok);
+export const saveHookSettings = (s: HookSettings): Promise<HookSettings> => fetch(`${base}/hooks/settings`, json("PUT", s)).then(ok);
+export const callHook = async (webhookPath: string, args: Record<string, string>): Promise<HookResult> => {
+  const r = await fetch(webhookPath, json("POST", args));
+  const b = await r.json().catch(() => ({ success: false, error: `HTTP ${r.status}` }));
+  return { status: r.status, ...b };
+};
 export const getImportSettings = (): Promise<{ maxFileMb: number; respectGitignore: boolean }> =>
   fetch(`${base}/import/settings`).then(ok);
 export const setImportSettings = (b: { maxFileMb?: number; respectGitignore?: boolean }): Promise<void> =>

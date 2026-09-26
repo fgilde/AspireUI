@@ -7,6 +7,7 @@ import { Users } from "./pages/Users";
 import { Profile } from "./pages/Profile";
 import { Hosting } from "./pages/Hosting";
 import { Storage } from "./pages/Storage";
+import Hooks from "./pages/Hooks";
 import { AppDetail } from "./pages/AppDetail";
 import { AuthGate } from "./auth/AuthGate";
 import { LoginPage } from "./auth/LoginPage";
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/hosting" element={<Hosting />} />
         <Route path="/storage" element={<Storage />} />
+        <Route path="/hooks" element={<Hooks />} />
         <Route path="/app/:id" element={<AppDetail />} />
         <Route path="/users" element={<UsersGate><Users /></UsersGate>} />
       </Routes>

@@ -11,7 +11,7 @@ type EnvVar = { name: string; def: string; secret: boolean };
 type Service = { name: string; image: string; proxy: boolean; port?: number };
 type Step = "form" | "choice" | "files" | "services" | "env" | "dockerfile";
 
-const isSecretName = (name: string) => /(PASSWORD|SECRET|KEY|TOKEN|PAT)/i.test(name);
+export const isSecretName = (name: string) => /(PASSWORD|SECRET|KEY|TOKEN|PAT)/i.test(name);
 const waysIn = (d: Detected) => [!!d.manifest, d.hasAppHost, d.hasCompose, !!d.hasDockerfile].filter(Boolean).length;
 
 // The last stage of a Dockerfile is the image it produces: its port, volumes and settings. Mirrors
@@ -52,7 +52,7 @@ const parseDockerfile = (text: string): api.DockerfileInfo => {
   return { port, volumes, env };
 };
 
-const scanEnv = (contents: string[]): EnvVar[] => {
+export const scanEnv = (contents: string[]): EnvVar[] => {
   const seen = new Map<string, string>();
   const re = /\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}/g;
   for (const c of contents) { let m: RegExpExecArray | null; while ((m = re.exec(c))) if (!seen.has(m[1])) seen.set(m[1], m[2] ?? ""); }
