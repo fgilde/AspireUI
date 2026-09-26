@@ -8156,13 +8156,16 @@
       {
         "key": "admin-email",
         "env": "ADMIN_EMAIL",
-        "default": "admin@example.com"
+        "default": "",
+        "hint": "Leave e-mail and password empty to set HaVeWa up in its own wizard on first login."
       },
       {
         "key": "admin-password",
         "env": "ADMIN_PASSWORD",
         "default": "",
-        "secret": true
+        "secret": true,
+        "generate": false,
+        "hint": "Only used together with the e-mail. Empty = the setup wizard creates the admin."
       },
       {
         "key": "tenant-name",

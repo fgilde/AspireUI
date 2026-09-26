@@ -84,7 +84,7 @@ public static class HookCall
     public static HookFailure? CheckResources(HookSettings s, string target, (long? DiskFreeMb, long? RamFreeMb)? measured)
     {
         if (measured is not { } m) return null;
-        if (m.DiskFreeMb is not { } disk || m.RamFreeMb is not { } ram) return new(503, $"cannot check resources on {target}");
+        if (m.DiskFreeMb is not { } disk || m.RamFreeMb is not { } ram) return new(503, $"cannot check resources on {target} — is Docker running there?");
         var diskGb = disk / 1024d;
         var ramGb = ram / 1024d;
         if (diskGb < s.MinDiskGb) return new(507, $"not enough disk on {target}: {Gb(diskGb)} GB free, {Gb(s.MinDiskGb)} GB required");

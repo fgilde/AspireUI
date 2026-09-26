@@ -63,7 +63,7 @@ public class HookCallTests
             HookCall.CheckResources(s, "local", (3277, 2048)));
         Assert.Equal(new HookFailure(507, "not enough memory on local: 0.5 GB free, 1 GB required"),
             HookCall.CheckResources(s, "local", (6000, 512)));
-        Assert.Equal(new HookFailure(503, "cannot check resources on local"),
+        Assert.Equal(new HookFailure(503, "cannot check resources on local — is Docker running there?"),
             HookCall.CheckResources(s, "local", (null, 2048)));
     }
 

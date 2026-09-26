@@ -49,8 +49,8 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
       appId: p.id, name: !h.name || h.name === preset?.label ? p.label : h.name, sourceId: p.sources?.find(s => s.default)?.id ?? p.sources?.[0]?.id ?? null,
       params: (p.params ?? []).map(x => ({
         key: x.key, secret: !!x.secret,
-        mode: x.secret && x.generate !== false ? "generated" : x.secret ? "required" : "fixed",
-        value: x.secret ? "" : x.default ?? "",
+        mode: x.secret && x.generate !== false ? "generated" : "fixed",
+        value: x.secret && x.generate !== false ? "" : x.default ?? "",
       })),
     });
   };
@@ -167,6 +167,9 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
               data={overview.targets.map(t => ({ value: t.id, label: t.name }))} />
           )}
         </Group>
+        {!canDomain && (
+          <Text size="xs" c="dimmed">Binding a domain (e.g. <code>demo-{"{id}"}-{"{name}"}.example.org</code>) needs Nginx Proxy Manager on the target — set it up under Settings → Deploy targets → Domains.</Text>
+        )}
         {canDomain && (
           <Group grow align="flex-end">
             <Switch label="Bind a domain via Nginx Proxy Manager" checked={!!h.bindDomain} onChange={e => set({ bindDomain: e.currentTarget.checked })} />
