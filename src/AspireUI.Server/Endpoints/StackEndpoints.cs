@@ -339,13 +339,13 @@ public static class StackEndpoints
         void DeleteStackFully(string id)
         {
             run.Stop(id);
+            var cloneTarget = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
             if (deployments.GetByStack(id) is { } dep) hosting.Undeploy(dep.Id, wipe: true);
             RemoveCloneHooks(id);
             RemoveAllDomainHosts(id);
             if (settings.GetValue($"clonedomain:{id}") is { } pidRaw && int.TryParse(pidRaw, out var proxyId))
             {
-                var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
-                try { domains.DeleteAsync(t, proxyId).GetAwaiter().GetResult(); } catch { }
+                try { domains.DeleteAsync(cloneTarget, proxyId).GetAwaiter().GetResult(); } catch { }
                 settings.SetValue($"clonedomain:{id}", null);
             }
             store.Delete(id);
@@ -739,7 +739,7 @@ public static class StackEndpoints
                 {
                     foreach (var s in store.List())
                         if (s.ExpireAt is { } e && DateTime.TryParse(e, null, System.Globalization.DateTimeStyles.RoundtripKind, out var due) && due <= DateTime.UtcNow)
-                            DeleteStackFully(s.Id);
+                            try { DeleteStackFully(s.Id); } catch { }
                 }
                 catch { }
                 await Task.Delay(TimeSpan.FromMinutes(30));

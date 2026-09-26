@@ -32,6 +32,7 @@ export interface Stack {
   runAsIs?: boolean;
   appHostProject?: string | null;
   fromGit?: boolean;
+  expireAt?: string | null; clonedFrom?: string | null;
 }
 
 // Stack deployed persistently; long-lived docker-compose project.

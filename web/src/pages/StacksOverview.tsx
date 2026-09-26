@@ -10,7 +10,7 @@ import {
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld, IconCopyPlus, IconClockHour4,
 } from "@tabler/icons-react";
 import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
@@ -28,6 +28,12 @@ import { confirmDelete, toastOk, toastErr, promptText } from "../ui";
 import "./StacksOverview.css";
 
 type Src = { path: string; content: string };
+const expiresIn = (iso: string) => {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "expiring";
+  const h = Math.round(ms / 3_600_000);
+  return h < 48 ? `${Math.max(h, 1)}h left` : `${Math.round(h / 24)}d left`;
+};
 const SKIP_DIRS = new Set([".git", "node_modules", "bin", "obj", "dist", ".vs", ".idea", "TestResults", "packages"]);
 const skipPath = (p: string) => p.split("/").some(s => SKIP_DIRS.has(s));
 const bufToB64 = (buf: ArrayBuffer) => {
@@ -387,7 +393,9 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     return true;
   };
   const visible = stacks.filter(passesFilters);
-  const hostingStacks = visible.filter(s => deps[s.id]);              // has a hosting deployment
+  const cloneStacks = visible.filter(s => deps[s.id] && s.clonedFrom)
+    .sort((a, b) => (a.expireAt ?? "￿").localeCompare(b.expireAt ?? "￿"));
+  const hostingStacks = visible.filter(s => deps[s.id] && !s.clonedFrom);
   const buildStacks = simple ? [] : visible.filter(s => !deps[s.id]); // dev/build stacks (hidden in appliance view)
   const runningHosted = hostingStacks.filter(s => deps[s.id]?.state === "running" && !hostingBroken(deps[s.id])).length;
   const brokenHosted = hostingStacks.filter(s => hostingBroken(deps[s.id])).length;
@@ -434,6 +442,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           <Badge size="xs" variant="light" color={deploymentColor(dep)}>
                             {dep.state === "running" ? (hostingHealthLabel(dep) ?? "Hosting") : dep.state}
                           </Badge>
+                        </Tooltip>
+                      )}
+                      {s.expireAt && (
+                        <Tooltip label={`Removed automatically on ${new Date(s.expireAt).toLocaleString()}`} withArrow>
+                          <Badge size="xs" variant="light" color="orange" leftSection={<IconClockHour4 size={10} />}>{expiresIn(s.expireAt)}</Badge>
                         </Tooltip>
                       )}
                       {dep && dep.targetId && dep.targetId !== "local" && (
@@ -643,7 +656,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
           ) : (
             <>
               {buildStacks.length > 0 && (
-                <MStack gap="sm" mb={hostingStacks.length > 0 ? "xl" : 0}>
+                <MStack gap="sm" mb={hostingStacks.length + cloneStacks.length > 0 ? "xl" : 0}>
                   {!simple && (
                     <Group gap="xs">
                       <IconLayoutGrid size={16} />
@@ -657,7 +670,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                 </MStack>
               )}
               {hostingStacks.length > 0 && (
-                <MStack gap="sm">
+                <MStack gap="sm" mb={cloneStacks.length > 0 ? "xl" : 0}>
                   {!simple && buildStacks.length > 0 && <Divider />}
                   <Group justify="space-between" wrap="nowrap">
                     <Group gap="xs">
@@ -674,6 +687,19 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                   </Group>
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
                     {hostingStacks.map(renderCard)}
+                  </SimpleGrid>
+                </MStack>
+              )}
+              {cloneStacks.length > 0 && (
+                <MStack gap="sm">
+                  {buildStacks.length + hostingStacks.length > 0 && <Divider />}
+                  <Group gap="xs">
+                    <IconCopyPlus size={16} />
+                    <Title order={5} fw={600}>Clones</Title>
+                    <Badge variant="light" color="orange" size="sm">{cloneStacks.length}</Badge>
+                  </Group>
+                  <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                    {cloneStacks.map(renderCard)}
                   </SimpleGrid>
                 </MStack>
               )}
