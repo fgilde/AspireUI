@@ -225,12 +225,30 @@ public class TargetService(TargetStore targets, SecretStore secrets, string work
 
     private static long? DiskFreeMb(DeployService runner)
     {
-        // Asking in a container is the only way that also works for a daemon on another machine.
         var r = runner.Docker("", "run --rm alpine df -Pk /");
-        if (!r.Ok) return null;
-        var line = r.Log.Split('\n').LastOrDefault(l => l.Trim().Length > 0);
+        return r.Ok ? ParseDfFreeMb(r.Log) : null;
+    }
+
+    public static long? ParseDfFreeMb(string log)
+    {
+        var line = log.Split('\n').LastOrDefault(l => l.Trim().Length > 0);
         var cols = (line ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return cols.Length >= 4 && long.TryParse(cols[3], out var kb) ? kb / 1024 : null;
+    }
+
+    public static long? ParseMemAvailableMb(string log)
+    {
+        var line = log.Split('\n').FirstOrDefault(l => l.StartsWith("MemAvailable:", StringComparison.Ordinal));
+        var cols = (line ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return cols.Length >= 2 && long.TryParse(cols[1], out var kb) ? kb / 1024 : null;
+    }
+
+    public (long? DiskFreeMb, long? RamFreeMb)? Resources(DeployTarget t)
+    {
+        if (!TargetKind.IsCompose(t.Kind)) return null;
+        var runner = Runner(t);
+        var mem = runner.Docker("", "run --rm alpine cat /proc/meminfo");
+        return (DiskFreeMb(runner), mem.Ok ? ParseMemAvailableMb(mem.Log) : null);
     }
 
     public static string[] KubeArgs(DeployTarget t, string[] args)

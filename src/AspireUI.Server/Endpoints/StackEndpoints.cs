@@ -730,16 +730,14 @@ public static class StackEndpoints
             }
         }).AllowAnonymous();
 
-        // Sweep expired clones (auto-delete): on startup + every 30 min.
         _ = Task.Run(async () =>
         {
             while (true)
             {
                 try
                 {
-                    foreach (var s in store.List())
-                        if (s.ExpireAt is { } e && DateTime.TryParse(e, null, System.Globalization.DateTimeStyles.RoundtripKind, out var due) && due <= DateTime.UtcNow)
-                            try { DeleteStackFully(s.Id); } catch { }
+                    foreach (var id in ExpirySweep.Due(store.List(), DateTime.UtcNow))
+                        try { DeleteStackFully(id); } catch { }
                 }
                 catch { }
                 await Task.Delay(TimeSpan.FromMinutes(30));
