@@ -1,5 +1,6 @@
 using AspireUI.Server.Services;
 
+[Collection("ServerIntegration")]
 public class PresetMergeTests
 {
     [Fact]
