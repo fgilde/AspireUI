@@ -54,9 +54,12 @@ public static class Perm
     /// <summary>Read the activity log: who did what, to which app, and when.</summary>
     public const string Audit = "audit";
 
+    /// <summary>Create, change, trigger and disable webhooks that spin up instances.</summary>
+    public const string Hooks = "hooks";
+
     public static readonly string[] All =
     [
-        OpenEditor, Deploy, Configure, Files, FilesWrite, Terminal, Targets, Store, Settings, Docker, Users, Audit,
+        OpenEditor, Deploy, Configure, Files, FilesWrite, Terminal, Targets, Store, Settings, Docker, Users, Audit, Hooks,
     ];
 
     /// <summary>Everything an app operator needs, and nothing that reaches past the apps themselves.</summary>

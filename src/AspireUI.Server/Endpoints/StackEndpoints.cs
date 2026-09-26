@@ -596,15 +596,9 @@ public static class StackEndpoints
         }).AllowAnonymous();
 
         // --- Clone hooks: a webhook that spins up an auto-expiring, optionally domain-bound copy of any hosted app ---
-        List<string> CloneHookTokens(string stackId) =>
-            settings.GetValue($"clonehooks:{stackId}") is { } raw
-                ? (System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw, gitJson) ?? new()) : new();
-        void SaveCloneHookTokens(string stackId, List<string> toks) =>
-            settings.SetValue($"clonehooks:{stackId}", System.Text.Json.JsonSerializer.Serialize(toks, gitJson));
         void RemoveCloneHooks(string stackId)
         {
-            foreach (var tok in CloneHookTokens(stackId)) settings.SetValue($"clonehook:{tok}", null);
-            settings.SetValue($"clonehooks:{stackId}", null);
+            foreach (var h in hooks.List().Where(h => h.Kind == "clone" && h.SourceStackId == stackId)) hooks.Delete(h.Token);
         }
         // Track NPM proxy hosts bound to a stack so we can remove them when the app leaves hosting.
         List<int> DomainHosts(string id) => settings.GetValue($"domainhosts:{id}") is { } raw
@@ -619,30 +613,6 @@ public static class StackEndpoints
             settings.SetValue($"domainhosts:{id}", null);
         }
 
-        app2.MapGet("/stacks/{id}/clone-hooks", (string id) => Results.Ok(new
-        {
-            npmConfigured = targetStore.List().Any(t => domains.Configured(t)),
-            targets = targetStore.List().Select(t => new { t.Id, t.Name, domains = domains.Configured(t) }),
-            hooks = CloneHookTokens(id).Select(tok =>
-            {
-                var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(settings.GetValue($"clonehook:{tok}") ?? "{}", gitJson)!;
-                return new { token = tok, cfg.ExpireDays, cfg.BindDomain, cfg.DomainFormat, cfg.TargetId, webhookPath = $"/api/clone-hook/{tok}" };
-            }).ToList(),
-        }));
-        app2.MapPost("/stacks/{id}/clone-hooks", (string id, CloneHookCfg b) =>
-        {
-            if (store.Get(id) is null) return Results.NotFound();
-            var tok = Guid.NewGuid().ToString("n");
-            settings.SetValue($"clonehook:{tok}", System.Text.Json.JsonSerializer.Serialize(b with { SourceStackId = id }, gitJson));
-            var toks = CloneHookTokens(id); toks.Add(tok); SaveCloneHookTokens(id, toks);
-            return Results.Ok(new { token = tok, webhookPath = $"/api/clone-hook/{tok}" });
-        }).RequirePerm(Perm.Deploy);
-        app2.MapDelete("/stacks/{id}/clone-hooks/{token}", (string id, string token) =>
-        {
-            settings.SetValue($"clonehook:{token}", null);
-            var toks = CloneHookTokens(id); toks.Remove(token); SaveCloneHookTokens(id, toks);
-            return Results.NoContent();
-        }).RequirePerm(Perm.Deploy);
 
         // Anonymous by design — a registry cannot log in. The token in the path is the credential, and
         // all it can do is update apps that already run the image it names.
@@ -780,6 +750,97 @@ public static class StackEndpoints
         }
         app2.MapPost("/hook/{token}", RunHook).AllowAnonymous();
         app2.MapPost("/clone-hook/{token}", RunHook).AllowAnonymous();
+
+        string HookSource(Hook h) => h.Kind switch
+        {
+            "clone" => store.Get(h.SourceStackId ?? "")?.Name ?? "(deleted stack)",
+            "store" => catalog.GetPresets().FirstOrDefault(p => p.Id.Equals(h.AppId, StringComparison.OrdinalIgnoreCase))?.Label ?? h.AppId ?? "",
+            _ => h.Repo ?? "(repo from call)",
+        };
+        HookFailure? ValidateHook(Hook h) => h.Kind switch
+        {
+            "clone" when store.Get(h.SourceStackId ?? "") is null => new(400, "source stack not found"),
+            "store" when !catalog.GetPresets().Any(p => p.Id.Equals(h.AppId, StringComparison.OrdinalIgnoreCase)) => new(400, "app not found in store"),
+            "git" when string.IsNullOrWhiteSpace(h.Repo) && !(h.Params ?? []).Any(p => p.Key == "repo" && p.Mode != "fixed") => new(400, "repo is required"),
+            "clone" or "store" or "git" => string.IsNullOrWhiteSpace(h.Name) ? new(400, "name is required") : null,
+            _ => new(400, $"unknown hook kind '{h.Kind}'"),
+        };
+        IResult Invalid(HookFailure f) => Results.BadRequest(new { message = f.Error });
+
+        app2.MapGet("/hooks", () =>
+        {
+            var all = store.List();
+            var readonlyHooks = settings.All()
+                .Where(kv => kv.Key.StartsWith("git:", StringComparison.Ordinal))
+                .Select(kv =>
+                {
+                    var sid = kv.Key["git:".Length..];
+                    var g = System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(kv.Value, gitJson)!;
+                    return new { kind = "git-push", name = store.Get(sid)?.Name ?? sid, webhookPath = $"/api/git/hook/{g.Token}", link = $"/app/{sid}" };
+                })
+                .ToList();
+            if (settings.GetValue("ImageHookToken") is { Length: > 0 } itok)
+                readonlyHooks.Add(new { kind = "image", name = "Image webhook", webhookPath = $"/api/image-hook/{itok}?image=<image>", link = "/settings" });
+            return Results.Ok(new
+            {
+                settings = hooks.Settings(),
+                npmConfigured = targetStore.List().Any(t => domains.Configured(t)),
+                targets = targetStore.List().Select(t => new { t.Id, t.Name, domains = domains.Configured(t) }),
+                hooks = hooks.List().Select(h => new
+                {
+                    hook = HookStore.Mask(h),
+                    webhookPath = $"/api/hook/{h.Token}",
+                    source = HookSource(h),
+                    instances = all.Where(s => s.HookToken == h.Token)
+                        .Select(s => new { stackId = s.Id, name = s.Name, state = deployments.GetByStack(s.Id)?.State, expireAt = s.ExpireAt }),
+                }),
+                @readonly = readonlyHooks,
+            });
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapPost("/hooks", (Hook b) =>
+        {
+            var h = b with { Token = Guid.NewGuid().ToString("n"), CreatedAt = DateTime.UtcNow.ToString("O"), Name = (b.Name ?? "").Trim() };
+            if (ValidateHook(h) is { } f) return Invalid(f);
+            hooks.Save(h);
+            return Results.Ok(new { token = h.Token, webhookPath = $"/api/hook/{h.Token}" });
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapPut("/hooks/settings", (HookSettings b) =>
+        {
+            hooks.SaveSettings(b);
+            return Results.Ok(hooks.Settings());
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapPut("/hooks/{token}", (string token, Hook b) =>
+        {
+            if (hooks.Get(token) is not { } existing) return Results.NotFound();
+            var h = HookStore.KeepSecrets(b, existing) with { Token = token, Kind = existing.Kind, CreatedAt = existing.CreatedAt, Name = (b.Name ?? "").Trim() };
+            if (ValidateHook(h) is { } f) return Invalid(f);
+            hooks.Save(h);
+            return Results.Ok(HookStore.Mask(h));
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapDelete("/hooks/{token}", (string token) =>
+        {
+            hooks.Delete(token);
+            return Results.NoContent();
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapPost("/hooks/{token}/enabled", (string token, HookEnabledRequest b) =>
+        {
+            if (hooks.Get(token) is not { } h) return Results.NotFound();
+            hooks.Save(h with { Enabled = b.Enabled });
+            return Results.NoContent();
+        }).RequirePerm(Perm.Hooks);
+
+        app2.MapPost("/hooks/{token}/regenerate", (string token) =>
+        {
+            if (hooks.Get(token) is null) return Results.NotFound();
+            var fresh = hooks.Regenerate(token);
+            foreach (var s in store.List().Where(s => s.HookToken == token)) store.Save(s with { HookToken = fresh.Token });
+            return Results.Ok(new { token = fresh.Token, webhookPath = $"/api/hook/{fresh.Token}" });
+        }).RequirePerm(Perm.Hooks);
 
         _ = Task.Run(async () =>
         {
@@ -1734,7 +1795,7 @@ public static class StackEndpoints
     public record StorageAutoRequest(int IntervalHours, List<string>? Kinds, int MinAgeDays);
     public record GitImportRequest(string Url, string? Branch, string? Subdir, string? Name, string? Mode = null, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Image = null, int? Port = null);
     public record GitStackRef(string Url, string? Branch, string? Subdir, string Token, string? AuthToken = null, string[]? Files = null, Dictionary<string, string>? Env = null, string[]? Services = null, Dictionary<string, int>? ServicePorts = null, string? Mode = null, string? Image = null, int? Port = null);
-    public record CloneHookCfg(string SourceStackId = "", int ExpireDays = 7, bool BindDomain = false, string? DomainFormat = null, string? TargetId = null);
+    public record HookEnabledRequest(bool Enabled);
     public record EnabledRequest(bool Enabled);
     public record HostingDeployRequest(string? TargetId = null);
     public record MoveRequest(string TargetId, bool WithData = true, bool KeepSource = false);

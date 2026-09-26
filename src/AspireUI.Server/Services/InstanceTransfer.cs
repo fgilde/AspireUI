@@ -117,6 +117,8 @@ public static class InstanceTransfer
             if (key.StartsWith("git:", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("githook:", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("clonehook:", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("hook:", StringComparison.OrdinalIgnoreCase)
+                || key.Equals("hooks", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("sched:", StringComparison.OrdinalIgnoreCase)) continue;
             if (!includeSecrets && SecretSettings.Contains(key, StringComparer.OrdinalIgnoreCase)) continue;
             settingValues[key] = value;

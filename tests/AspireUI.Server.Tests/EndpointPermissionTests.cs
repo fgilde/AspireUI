@@ -111,4 +111,15 @@ public class EndpointPermissionTests : IClassFixture<NoAuthTestFactory>
             new { username = "sneaky", password = "userpassword1", isAdmin = true });
         Assert.Equal(HttpStatusCode.Forbidden, newAdmin.StatusCode);
     }
+
+    [Fact]
+    public async Task Hooks_need_their_own_permission()
+    {
+        var admin = await AdminAsync();
+        var (deployer, _) = await UserAsync(admin, "deployer-nohooks", Perm.Deploy);
+        var (hooker, _) = await UserAsync(admin, "hooker", Perm.Hooks);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await deployer.GetAsync("/api/hooks")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await hooker.GetAsync("/api/hooks")).StatusCode);
+    }
 }
