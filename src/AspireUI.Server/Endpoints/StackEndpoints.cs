@@ -667,8 +667,7 @@ public static class StackEndpoints
             var p = catalog.GetPresets().FirstOrDefault(x => x.Id.Equals(h.AppId, StringComparison.OrdinalIgnoreCase));
             if (p is null) return (null, new(404, "app no longer in store"));
             if (PresetBuilder.ForSource(p, h.SourceId) is not { } chosen) return (null, new(404, $"app has no source '{h.SourceId}' any more"));
-            chosen = chosen with { Params = (chosen.Params ?? new()).Select(x => vals.TryGetValue(x.Key, out var v) ? x with { Default = v } : x).ToList() };
-            var (nodes, edges) = PresetBuilder.Build(chosen);
+            var (nodes, edges) = PresetBuilder.Build(chosen, vals);
             var files = (chosen.Files ?? new()).Select(f => new ExtraFile(f.Name, f.Content)).ToList();
             return (new StackModel(newId, chosen.Label, "net10.0", nodes, edges, new(), files, new(), HostingUrlPath: chosen.UrlPath), null);
         }

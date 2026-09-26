@@ -43,4 +43,13 @@ public class PresetBuilderTests
         Assert.Equal(main.Id, edge.FromNodeId);
         Assert.Equal(db.Id, edge.ToNodeId);
     }
+
+    [Fact]
+    public void Given_values_are_written_as_literal_env_and_an_empty_one_stays_empty()
+    {
+        var (nodes, _) = PresetBuilder.Build(Sample(), new Dictionary<string, string> { ["pw"] = "" });
+        var main = nodes.First(n => n.ResourceName == "myapp");
+        Assert.Contains(main.WithCalls, w => w.Method == "WithEnvironment" && w.Args[0] == "\"APP_PW\"" && w.Args[1] == "\"\"");
+        Assert.DoesNotContain(nodes, n => n.AddMethod == "AddParameter");
+    }
 }

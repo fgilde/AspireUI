@@ -38,7 +38,7 @@ public static class PresetBuilder
         return src is null ? null : p with { Image = src.Image, Github = src.Github ?? p.Github };
     }
 
-    public static (List<NodeModel> Nodes, List<EdgeModel> Edges) Build(ContainerPreset p)
+    public static (List<NodeModel> Nodes, List<EdgeModel> Edges) Build(ContainerPreset p, IReadOnlyDictionary<string, string>? values = null)
     {
         var taken = new HashSet<string>();
         string Uniq(string b) { var n = b; var i = 2; while (!taken.Add(n)) n = $"{b}{i++}"; return n; }
@@ -81,6 +81,11 @@ public static class PresetBuilder
         for (var i = 0; i < prms.Count; i++)
         {
             var param = prms[i];
+            if (values is not null && values.TryGetValue(param.Key, out var literal))
+            {
+                paramEnvCalls.Add(new WithCall("WithEnvironment", new() { J(param.Env), J(literal) }));
+                continue;
+            }
             var pname = Uniq(!string.IsNullOrEmpty(param.Name) ? param.Name! : $"{p.Id}-{param.Key}");
             var varName = Sanitize(pname);
             paramEnvCalls.Add(new WithCall("WithEnvironment", new() { J(param.Env), varName }));
