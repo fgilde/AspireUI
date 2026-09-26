@@ -59,8 +59,8 @@ public class HookStore(SettingsStore settings)
     public void SaveSettings(HookSettings s)
     {
         settings.SetValue("HooksEnabled", s.Enabled ? "true" : "false");
-        settings.SetValue("HookMinDiskGb", s.MinDiskGb.ToString(CultureInfo.InvariantCulture));
-        settings.SetValue("HookMinRamGb", s.MinRamGb.ToString(CultureInfo.InvariantCulture));
+        settings.SetValue("HookMinDiskGb", Math.Max(0, s.MinDiskGb).ToString(CultureInfo.InvariantCulture));
+        settings.SetValue("HookMinRamGb", Math.Max(0, s.MinRamGb).ToString(CultureInfo.InvariantCulture));
     }
 
     public int MigrateCloneHooks(Func<string, string?> stackName)

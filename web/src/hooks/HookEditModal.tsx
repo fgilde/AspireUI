@@ -5,6 +5,7 @@ import * as api from "../api";
 import type { ContainerPreset, Stack as StackT, Deployment } from "../model";
 import { isSecretName, scanEnv } from "../hosting/GitImportModal";
 import { toastErr, toastOk } from "../ui";
+import { unmask } from "./curl";
 
 const MODES: { value: api.HookParamMode; label: string }[] = [
   { value: "fixed", label: "Fixed" },
@@ -33,13 +34,19 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
         setHosted(stacks.filter(s => deps.some(d => d.stackId === s.id) && !s.hookToken).map(s => ({ value: s.id, label: s.name }))))
         .catch(toastErr);
   }, [h.kind]);
+  useEffect(() => {
+    if (h.kind === "clone" && h.sourceStackId && !h.name) {
+      const label = hosted.find(x => x.value === h.sourceStackId)?.label;
+      if (label) setH(s => ({ ...s, name: s.name || label }));
+    }
+  }, [hosted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const preset = presets.find(p => p.id === h.appId);
   const pickApp = (id: string | null) => {
     const p = presets.find(x => x.id === id);
     if (!p) return;
     set({
-      appId: p.id, name: h.name || p.label, sourceId: p.sources?.find(s => s.default)?.id ?? p.sources?.[0]?.id ?? null,
+      appId: p.id, name: !h.name || h.name === preset?.label ? p.label : h.name, sourceId: p.sources?.find(s => s.default)?.id ?? p.sources?.[0]?.id ?? null,
       params: (p.params ?? []).map(x => ({
         key: x.key, secret: !!x.secret,
         mode: x.secret && x.generate !== false ? "generated" : x.secret ? "required" : "fixed",
@@ -66,7 +73,9 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
         ],
       });
       toastOk(`Detected ${mode || "nothing"}`);
-    } catch (e) { toastErr(e); } finally { setBusy(false); }
+    } catch (e) {
+      toastErr(h.authToken === api.MASKED ? new Error(`${e instanceof Error ? e.message : e} — re-enter the access token to analyze a private repository.`) : e);
+    } finally { setBusy(false); }
   };
 
   const save = async () => {
@@ -114,7 +123,7 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
               <TextInput label="Subdirectory" value={h.subdir ?? ""} onChange={e => set({ subdir: e.currentTarget.value || null })} />
             </Group>
             <Group grow align="flex-end">
-              <PasswordInput label="Access token" description="Only for private repositories." value={h.authToken ?? ""} onChange={e => set({ authToken: e.currentTarget.value || null })} />
+              <PasswordInput label="Access token" description="Only for private repositories." value={h.authToken ?? ""} onChange={e => set({ authToken: unmask(e.currentTarget.value) || null })} />
               <Button variant="light" loading={busy} disabled={!h.repo?.trim()} onClick={inspect}>Analyze repository</Button>
             </Group>
             {h.mode && <Text size="xs" c="dimmed">Mode: <b>{h.mode}</b>{h.mode === "dockerfile" && ` · image ${h.image || "built from Dockerfile"} · port ${h.port ?? "?"}`}</Text>}
@@ -138,7 +147,7 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
                   </Table.Td>
                   <Table.Td>
                     {(p.mode === "fixed" || p.mode === "optional") && (p.secret
-                      ? <PasswordInput size="xs" value={p.value ?? ""} onChange={e => setParam(p.key, { value: e.currentTarget.value })} />
+                      ? <PasswordInput size="xs" value={p.value ?? ""} onChange={e => setParam(p.key, { value: unmask(e.currentTarget.value) })} />
                       : <TextInput size="xs" value={p.value ?? ""} onChange={e => setParam(p.key, { value: e.currentTarget.value })} />)}
                     {p.mode === "required" && <Text size="xs" c="dimmed">Every call must send it.</Text>}
                     {p.mode === "generated" && <Text size="xs" c="dimmed">A new random value for each instance.</Text>}

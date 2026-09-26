@@ -153,4 +153,13 @@ public class HookEndpointTests : IClassFixture<TestWebAppFactory>
         Assert.Equal(JsonValueKind.Null, s.GetProperty("expireAt").ValueKind);
         Assert.Equal(JsonValueKind.Null, s.GetProperty("clonedFrom").ValueKind);
     }
+
+    [Fact]
+    public async Task A_corrupt_git_setting_does_not_break_the_overview()
+    {
+        new SettingsStore(_f.DbPath).SetValue("git:corrupt", "not json");
+        var r = await _f.CreateClient().GetAsync("/api/hooks");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        new SettingsStore(_f.DbPath).SetValue("git:corrupt", null);
+    }
 }

@@ -101,4 +101,12 @@ public class HookStoreTests
         var withLeftover = existing with { Params = [new("PW", "generated", "s3cret", true)] };
         Assert.Equal(HookStore.Masked, HookStore.Mask(withLeftover).Params![0].Value);
     }
+
+    [Fact]
+    public void Negative_floors_are_stored_as_zero()
+    {
+        var hooks = new HookStore(NewSettings());
+        hooks.SaveSettings(new HookSettings(true, -3, -1));
+        Assert.Equal(new HookSettings(true, 0, 0), hooks.Settings());
+    }
 }

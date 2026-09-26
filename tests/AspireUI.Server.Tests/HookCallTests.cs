@@ -85,4 +85,16 @@ public class HookCallTests
         Assert.Equal(new HookFailure(400, "missing parameter: repo"),
             HookCall.GitSource(h with { Repo = null }, new Dictionary<string, string>()).Failure);
     }
+
+    [Fact]
+    public void Errors_for_anonymous_callers_are_cut_to_their_tail()
+    {
+        var log = string.Join('\n', Enumerable.Range(1, 100).Select(i => $"line {i}"));
+        var tail = HookCall.Tail(log);
+        Assert.StartsWith("…", tail);
+        Assert.EndsWith("line 100", tail);
+        Assert.DoesNotContain("line 70" + '\n', tail);
+        Assert.Equal("short", HookCall.Tail("short"));
+        Assert.True(HookCall.Tail(new string('x', 5000)).Length <= 2001);
+    }
 }

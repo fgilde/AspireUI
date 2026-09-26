@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { callParams, curlFor } from "./curl";
+import { callParams, curlFor, unmask } from "./curl";
 
 describe("curlFor", () => {
   it("has no body when nothing comes from the call", () => {
@@ -19,5 +19,13 @@ describe("curlFor", () => {
   it("lists only parameters that come from the call", () => {
     expect(callParams([{ key: "a", mode: "fixed" }, { key: "b", mode: "required" }, { key: "c", mode: "optional" }, { key: "d", mode: "generated" }])
       .map(p => p.key)).toEqual(["b", "c"]);
+  });
+});
+
+describe("unmask", () => {
+  it("drops the mask when typing after a stored secret", () => {
+    expect(unmask("••••abc")).toBe("abc");
+    expect(unmask("••••")).toBe("••••");
+    expect(unmask("plain")).toBe("plain");
   });
 });

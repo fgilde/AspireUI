@@ -5,6 +5,7 @@ import { IconPlayerPlay, IconAlertTriangle, IconCheck } from "@tabler/icons-reac
 import { useNavigate } from "react-router-dom";
 import * as api from "../api";
 import { callParams } from "./curl";
+import { toastErr } from "../ui";
 
 export function HookCallModal({ row, targetName, onClose, onDone }: {
   row: api.HookRow; targetName: string; onClose: () => void; onDone: () => void;
@@ -24,7 +25,7 @@ export function HookCallModal({ row, targetName, onClose, onDone }: {
       setRes(await api.callHook(row.webhookPath, args));
       setStep("result");
       onDone();
-    } finally { setBusy(false); }
+    } catch (e) { toastErr(e); } finally { setBusy(false); }
   };
 
   return (

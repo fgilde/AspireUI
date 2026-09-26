@@ -683,6 +683,7 @@ public static class StackEndpoints
             return stack is null ? (null, new(500, err ?? "git import failed")) : (stack, null);
         }
 
+        var hookGates = new System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim>();
         async Task<IResult> RunHook(string token, HttpContext ctx)
         {
             IResult Fail(HookFailure f) => Results.Json(new { success = false, error = f.Error }, statusCode: f.Status);
@@ -693,7 +694,10 @@ public static class StackEndpoints
             var (vals, missing) = HookCall.ResolveParams(h, args);
             if (missing is not null) return Fail(missing);
             var target = targetStore.Resolve(h.TargetId);
-            if (HookCall.CheckResources(hs, target.Name, targets.Resources(target)) is { } low) return Fail(low);
+            var gate = hookGates.GetOrAdd(target.Id, _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync();
+            var low = HookCall.CheckResources(hs, target.Name, targets.Resources(target));
+            if (low is not null) { gate.Release(); return Fail(low); }
 
             var newId = Guid.NewGuid().ToString("n");
             var shortId = newId[..8];
@@ -743,15 +747,16 @@ public static class StackEndpoints
                         catch (Exception ex) { domainError = $"domain binding failed: {ex.Message}"; }
                     }
                 }
-                var error = dep.LastError ?? domainError ?? "";
+                var error = dep.LastError is { } le ? HookCall.Tail(le) : domainError ?? "";
                 return Results.Ok(new { success = dep.LastError is null, error, stackId = newId, url, expireDate = expireAt });
             }
             catch (Exception ex)
             {
                 if (saved) { try { DeleteStackFully(newId); } catch { } }
                 else { try { if (Directory.Exists(Dir(newId))) Directory.Delete(Dir(newId), true); } catch { } }
-                return Fail(new(500, ex.Message));
+                return Fail(new(500, HookCall.Tail(ex.Message)));
             }
+            finally { gate.Release(); }
         }
         app2.MapPost("/hook/{token}", RunHook).AllowAnonymous();
         app2.MapPost("/clone-hook/{token}", RunHook).AllowAnonymous();
@@ -784,9 +789,11 @@ public static class StackEndpoints
                 .Select(kv =>
                 {
                     var sid = kv.Key["git:".Length..];
-                    var g = System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(kv.Value, gitJson)!;
-                    return new { kind = "git-push", name = store.Get(sid)?.Name ?? sid, webhookPath = $"/api/git/hook/{g.Token}", link = $"/app/{sid}" };
+                    GitStackRef? g = null;
+                    try { g = System.Text.Json.JsonSerializer.Deserialize<GitStackRef>(kv.Value, gitJson); } catch (System.Text.Json.JsonException) { }
+                    return g is null ? null : new { kind = "git-push", name = store.Get(sid)?.Name ?? sid, webhookPath = $"/api/git/hook/{g.Token}", link = $"/app/{sid}" };
                 })
+                .OfType<object>()
                 .ToList();
             if (HasPerm(ctx, Perm.Settings) && settings.GetValue("ImageHookToken") is { Length: > 0 } itok)
                 readonlyHooks.Add(new { kind = "image", name = "Image webhook", webhookPath = $"/api/image-hook/{itok}?image=<image>", link = "/settings" });

@@ -1,4 +1,6 @@
-import type { HookParam } from "../api";
+import { MASKED, type HookParam } from "../api";
+
+export const unmask = (v: string): string => v.startsWith(MASKED) && v.length > MASKED.length ? v.slice(MASKED.length) : v;
 
 export const callParams = (params?: HookParam[] | null): HookParam[] =>
   (params ?? []).filter(p => p.mode === "required" || p.mode === "optional");

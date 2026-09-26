@@ -10,6 +10,8 @@ import { HookCallModal } from "../hooks/HookCallModal";
 import { curlFor } from "../hooks/curl";
 import { confirmDelete, toastErr, toastOk } from "../ui";
 import { hostingColor } from "../hosting/HostingActions";
+import { useAuth } from "../auth/AuthContext";
+import { canHooks } from "../model";
 
 const KIND: Record<api.HookKind, { label: string; color: string }> = {
   clone: { label: "Clone", color: "blue" }, store: { label: "Store", color: "grape" }, git: { label: "Git", color: "dark" },
@@ -38,17 +40,20 @@ export default function Hooks() {
   const [settings, setSettings] = useState<api.HookSettings | null>(null);
   const [edit, setEdit] = useState<(Partial<api.Hook> & { kind: api.HookKind }) | null>(null);
   const [calling, setCalling] = useState<api.HookRow | null>(null);
+  const { status } = useAuth();
+  const allowed = canHooks(status?.user);
   const load = () => api.listHooks().then(d => { setData(d); setSettings(d.settings); }).catch(toastErr);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (allowed) load(); }, [allowed]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!data || !hash) return;
     document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [data, hash]);
 
-  const saveSettings = (s: api.HookSettings) => { setSettings(s); api.saveHookSettings(s).catch(toastErr); };
+  const saveSettings = (s: api.HookSettings) => { setSettings(s); api.saveHookSettings(s).then(setSettings).catch(toastErr); };
   const targetName = (id?: string | null) => data?.targets.find(t => t.id === (id ?? "local"))?.name ?? id ?? "local";
   const origin = window.location.origin;
 
+  if (!allowed) return <PageShell title="Webhooks"><Alert color="gray" mt="md">You need the Webhooks and Install &amp; run apps permissions to see this page.</Alert></PageShell>;
   if (!data || !settings) return <PageShell title="Webhooks"><Center py={60}><Loader /></Center></PageShell>;
 
   return (
@@ -60,9 +65,9 @@ export default function Hooks() {
               checked={settings.enabled} onChange={e => saveSettings({ ...settings, enabled: e.currentTarget.checked })} />
             <Group gap="md">
               <NumberInput label="Min. free disk (GB)" min={0} step={1} decimalScale={1} w={160} value={settings.minDiskGb}
-                onChange={v => saveSettings({ ...settings, minDiskGb: Number(v) || 0 })} />
+                onChange={v => setSettings({ ...settings, minDiskGb: Math.max(0, Number(v) || 0) })} onBlur={() => saveSettings(settings)} />
               <NumberInput label="Min. free memory (GB)" min={0} step={0.5} decimalScale={1} w={180} value={settings.minRamGb}
-                onChange={v => saveSettings({ ...settings, minRamGb: Number(v) || 0 })} />
+                onChange={v => setSettings({ ...settings, minRamGb: Math.max(0, Number(v) || 0) })} onBlur={() => saveSettings(settings)} />
             </Group>
           </Group>
           {!settings.enabled && <Alert mt="sm" color="red" icon={<IconAlertTriangle size={16} />}>All hooks are disabled — every call is refused with 503.</Alert>}

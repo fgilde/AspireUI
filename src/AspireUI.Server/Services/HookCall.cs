@@ -71,6 +71,14 @@ public static class HookCall
         return (given, sameHost ? h.AuthToken : null, null);
     }
 
+    public static string Tail(string text, int lines = 20, int chars = 2000)
+    {
+        var all = text.TrimEnd().Split('\n');
+        var tail = string.Join('\n', all.TakeLast(lines));
+        if (tail.Length > chars) tail = tail[^chars..];
+        return tail.Length < text.TrimEnd().Length ? "…" + tail : tail;
+    }
+
     private static string Gb(double gb) => gb.ToString("0.#", CultureInfo.InvariantCulture);
 
     public static HookFailure? CheckResources(HookSettings s, string target, (long? DiskFreeMb, long? RamFreeMb)? measured)
