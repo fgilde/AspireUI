@@ -683,43 +683,51 @@ public static class StackEndpoints
 
         app2.MapPost("/clone-hook/{token}", async (string token, HttpContext ctx) =>
         {
-            if (settings.GetValue($"clonehook:{token}") is not { } raw) return Results.NotFound();
+            if (settings.GetValue($"clonehook:{token}") is not { } raw) return Results.NotFound(new { success = false, error = "unknown clone-hook token" });
             var cfg = System.Text.Json.JsonSerializer.Deserialize<CloneHookCfg>(raw, gitJson)!;
-            if (store.Get(cfg.SourceStackId) is not { } src) return Results.NotFound(new { message = "source stack no longer exists" });
-
-            var newId = Guid.NewGuid().ToString("n");
-            var shortId = newId[..8];
-            var expireAt = cfg.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(cfg.ExpireDays).ToString("O") : (string?)null;
-            var clone = src with { Id = newId, Name = $"{src.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = "clone-hook", ExpireAt = expireAt, ClonedFrom = src.Id };
-            try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
-            store.Save(clone);
-            gen.Materialize(clone, Dir(newId));
-
-            var dc = DashCfg();
-            var host = PublicHost(ctx);
-            var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token,
-                (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null, cfg.TargetId);
-            var url = dep.Urls.FirstOrDefault();
-
-            if (cfg.BindDomain && !string.IsNullOrWhiteSpace(cfg.DomainFormat))
+            if (store.Get(cfg.SourceStackId) is not { } src) return Results.NotFound(new { success = false, error = "source stack no longer exists" });
+            try
             {
-                var t = targetStore.Resolve(dep.TargetId);
-                var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-                if (domains.Configured(t) && port > 0)
+                var newId = Guid.NewGuid().ToString("n");
+                var shortId = newId[..8];
+                var expireAt = cfg.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(cfg.ExpireDays).ToString("O") : (string?)null;
+                var clone = src with { Id = newId, Name = $"{src.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"), CreatedBy = "clone-hook", ExpireAt = expireAt, ClonedFrom = src.Id };
+                try { if (Directory.Exists(Dir(src.Id))) GitService.CopyTree(Dir(src.Id), Dir(newId)); } catch { }
+                store.Save(clone);
+                gen.Materialize(clone, Dir(newId));
+
+                var dc = DashCfg();
+                var host = PublicHost(ctx);
+                var dep = hosting.Deploy(clone, PublishRoot(newId), host, dc.Host, dc.Token,
+                    (clone.FromGit || clone.HasSource) ? Path.GetFullPath(Dir(newId)) : null, cfg.TargetId);
+                var url = dep.Urls.FirstOrDefault();
+                string? domainError = null;
+
+                if (cfg.BindDomain && !string.IsNullOrWhiteSpace(cfg.DomainFormat))
                 {
-                    var domain = cfg.DomainFormat!.Replace("{id}", shortId)
-                        .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(src.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
-                    try
+                    var t = targetStore.Resolve(dep.TargetId);
+                    var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
+                    if (domains.Configured(t) && port > 0)
                     {
-                        var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
-                            domains.ForwardHost(t, host), port, true, false, 0);
-                        settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
-                        url = $"http://{domain}";
+                        var domain = cfg.DomainFormat!.Replace("{id}", shortId)
+                            .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(src.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
+                        try
+                        {
+                            var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
+                                domains.ForwardHost(t, host), port, true, false, 0);
+                            settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
+                            url = $"http://{domain}";
+                        }
+                        catch (Exception ex) { domainError = $"domain binding failed: {ex.Message}"; }
                     }
-                    catch { /* domain binding failed — clone still runs on its port */ }
                 }
+                var error = dep.LastError ?? domainError ?? "";
+                return Results.Ok(new { success = dep.LastError is null, error, stackId = newId, url, expireDate = expireAt });
             }
-            return Results.Ok(new { stackId = newId, url, expireDate = expireAt });
+            catch (Exception ex)
+            {
+                return Results.Json(new { success = false, error = ex.Message }, statusCode: 500);
+            }
         }).AllowAnonymous();
 
         // Sweep expired clones (auto-delete): on startup + every 30 min.
