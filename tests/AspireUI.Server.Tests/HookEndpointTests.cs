@@ -131,4 +131,26 @@ public class HookEndpointTests : IClassFixture<TestWebAppFactory>
         Assert.Equal(fresh, stacks.Get(sid)!.HookToken);
         Assert.Null(Hooks().Get("regen1"));
     }
+
+    [Fact]
+    public async Task An_absurd_expiry_is_rejected()
+    {
+        var r = await _f.CreateClient().PostAsJsonAsync("/api/hooks", new { kind = "store", name = "x", appId = "uptime-kuma", expireDays = 999999 });
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_copy_of_a_hook_instance_is_an_ordinary_stack()
+    {
+        var r = await _f.CreateClient().PostAsJsonAsync("/api/stacks", new
+        {
+            name = "copied", targetFramework = "net10.0", nodes = Array.Empty<object>(), edges = Array.Empty<object>(),
+            rawStatements = Array.Empty<string>(), extraFiles = Array.Empty<object>(), extraPackages = Array.Empty<object>(),
+            hookToken = "t", expireAt = "2026-01-01T00:00:00Z", clonedFrom = "src",
+        });
+        var s = await Body(r);
+        Assert.Equal(JsonValueKind.Null, s.GetProperty("hookToken").ValueKind);
+        Assert.Equal(JsonValueKind.Null, s.GetProperty("expireAt").ValueKind);
+        Assert.Equal(JsonValueKind.Null, s.GetProperty("clonedFrom").ValueKind);
+    }
 }

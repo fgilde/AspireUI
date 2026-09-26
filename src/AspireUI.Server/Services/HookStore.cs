@@ -84,19 +84,19 @@ public class HookStore(SettingsStore settings)
         return n;
     }
 
-    private static bool Stored(HookParam p) => p.Secret && p.Mode is "fixed" or "optional" && !string.IsNullOrEmpty(p.Value);
+    private static bool KeepsValue(HookParam p) => p.Mode is "fixed" or "optional";
 
     public static Hook Mask(Hook h) => h with
     {
         AuthToken = string.IsNullOrEmpty(h.AuthToken) ? h.AuthToken : Masked,
-        Params = h.Params?.Select(p => Stored(p) ? p with { Value = Masked } : p).ToList(),
+        Params = h.Params?.Select(p => p.Secret && !string.IsNullOrEmpty(p.Value) ? p with { Value = Masked } : p).ToList(),
     };
 
     public static Hook KeepSecrets(Hook incoming, Hook existing) => incoming with
     {
         AuthToken = incoming.AuthToken == Masked ? existing.AuthToken : incoming.AuthToken,
-        Params = incoming.Params?.Select(p => p.Value == Masked
-            ? p with { Value = existing.Params?.FirstOrDefault(e => e.Key == p.Key)?.Value }
+        Params = incoming.Params?.Select(p => !KeepsValue(p) ? p with { Value = null }
+            : p.Value == Masked ? p with { Value = existing.Params?.FirstOrDefault(e => e.Key == p.Key)?.Value }
             : p).ToList(),
     };
 }

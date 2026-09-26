@@ -61,6 +61,16 @@ public static class HookCall
         return (values, null);
     }
 
+    public static (string? Repo, string? AuthToken, HookFailure? Failure) GitSource(Hook h, IReadOnlyDictionary<string, string> vals)
+    {
+        if (!(vals.TryGetValue("repo", out var given) && given.Length > 0))
+            return string.IsNullOrWhiteSpace(h.Repo) ? (null, null, new(400, "missing parameter: repo")) : (h.Repo, h.AuthToken, null);
+        if (!Uri.TryCreate(given, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+            return (null, null, new(400, "repo must be an https:// URL"));
+        var sameHost = Uri.TryCreate(h.Repo, UriKind.Absolute, out var own) && string.Equals(own.Host, uri.Host, StringComparison.OrdinalIgnoreCase);
+        return (given, sameHost ? h.AuthToken : null, null);
+    }
+
     private static string Gb(double gb) => gb.ToString("0.#", CultureInfo.InvariantCulture);
 
     public static HookFailure? CheckResources(HookSettings s, string target, (long? DiskFreeMb, long? RamFreeMb)? measured)

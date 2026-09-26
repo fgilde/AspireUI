@@ -88,4 +88,17 @@ public class HookStoreTests
         Assert.Equal("real", merged.Params![0].Value);
         Assert.Equal("new", merged.Params[1].Value);
     }
+
+    [Fact]
+    public void A_secret_stays_masked_after_its_mode_changes()
+    {
+        var existing = new Hook("t", "store", "s", Params: [new("PW", "fixed", "s3cret", true)]);
+        var fromUi = HookStore.Mask(existing) with { Params = [new("PW", "required", HookStore.Masked, true)] };
+
+        var merged = HookStore.KeepSecrets(fromUi, existing);
+
+        Assert.Null(merged.Params![0].Value);
+        var withLeftover = existing with { Params = [new("PW", "generated", "s3cret", true)] };
+        Assert.Equal(HookStore.Masked, HookStore.Mask(withLeftover).Params![0].Value);
+    }
 }

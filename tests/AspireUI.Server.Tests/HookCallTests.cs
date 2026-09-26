@@ -66,4 +66,23 @@ public class HookCallTests
         Assert.Equal(new HookFailure(503, "cannot check resources on local"),
             HookCall.CheckResources(s, "local", (null, 2048)));
     }
+
+    [Fact]
+    public void A_repo_from_the_call_must_be_https_and_never_gets_the_token_of_another_host()
+    {
+        var h = new Hook("t", "git", "g", Repo: "https://github.com/acme/private.git", AuthToken: "ghp_secret");
+
+        Assert.Equal(("https://github.com/acme/private.git", "ghp_secret", (HookFailure?)null),
+            HookCall.GitSource(h, new Dictionary<string, string>()));
+        Assert.Equal(("https://github.com/acme/other.git", "ghp_secret", (HookFailure?)null),
+            HookCall.GitSource(h, new Dictionary<string, string> { ["repo"] = "https://github.com/acme/other.git" }));
+        Assert.Equal(("https://evil.example/x.git", (string?)null, (HookFailure?)null),
+            HookCall.GitSource(h, new Dictionary<string, string> { ["repo"] = "https://evil.example/x.git" }));
+        Assert.Equal(new HookFailure(400, "repo must be an https:// URL"),
+            HookCall.GitSource(h, new Dictionary<string, string> { ["repo"] = "file:///etc" }).Failure);
+        Assert.Equal(new HookFailure(400, "repo must be an https:// URL"),
+            HookCall.GitSource(h, new Dictionary<string, string> { ["repo"] = "--upload-pack=x" }).Failure);
+        Assert.Equal(new HookFailure(400, "missing parameter: repo"),
+            HookCall.GitSource(h with { Repo = null }, new Dictionary<string, string>()).Failure);
+    }
 }

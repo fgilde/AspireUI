@@ -162,6 +162,7 @@ public static class StackEndpoints
                 Id = Guid.NewGuid().ToString("n"),
                 CreatedAt = DateTime.UtcNow.ToString("O"),
                 CreatedBy = ctx.User.Identity?.Name ?? "admin",
+                HookToken = null, ExpireAt = null, ClonedFrom = null,
             };
             // The activity log reads its subject from the url, and a stack being created has no url yet.
             AuditMiddleware.Names(ctx, created.Id, created.Name);
@@ -673,12 +674,12 @@ public static class StackEndpoints
         }
         (StackModel? Stack, HookFailure? Failure) BuildGit(Hook h, string newId, Dictionary<string, string> vals)
         {
-            var repo = vals.TryGetValue("repo", out var r) && r.Length > 0 ? r : h.Repo;
-            if (string.IsNullOrWhiteSpace(repo)) return (null, new(400, "missing parameter: repo"));
+            var (repo, authToken, bad) = HookCall.GitSource(h, vals);
+            if (bad is not null) return (null, bad);
             vals.TryGetValue("branch", out var branch);
             var env = vals.Where(kv => kv.Key is not ("repo" or "branch")).ToDictionary(kv => kv.Key, kv => kv.Value);
-            var (stack, err) = ImportGit(newId, new GitImportRequest(repo, string.IsNullOrEmpty(branch) ? null : branch, h.Subdir, h.Name,
-                h.Mode, h.AuthToken, Env: env, Image: h.Image, Port: h.Port));
+            var (stack, err) = ImportGit(newId, new GitImportRequest(repo!, string.IsNullOrEmpty(branch) ? null : branch, h.Subdir, h.Name,
+                h.Mode, authToken, Env: env, Image: h.Image, Port: h.Port));
             return stack is null ? (null, new(500, err ?? "git import failed")) : (stack, null);
         }
 
@@ -696,6 +697,7 @@ public static class StackEndpoints
 
             var newId = Guid.NewGuid().ToString("n");
             var shortId = newId[..8];
+            var saved = false;
             try
             {
                 var (built, bf) = h.Kind switch
@@ -713,6 +715,7 @@ public static class StackEndpoints
                     CreatedBy = $"hook:{h.Kind}", ExpireAt = expireAt, HookToken = h.Token,
                 };
                 store.Save(stack);
+                saved = true;
                 gen.Materialize(stack, Dir(newId));
 
                 var dc = DashCfg();
@@ -745,6 +748,8 @@ public static class StackEndpoints
             }
             catch (Exception ex)
             {
+                if (saved) { try { DeleteStackFully(newId); } catch { } }
+                else { try { if (Directory.Exists(Dir(newId))) Directory.Delete(Dir(newId), true); } catch { } }
                 return Fail(new(500, ex.Message));
             }
         }
@@ -762,12 +767,16 @@ public static class StackEndpoints
             "clone" when store.Get(h.SourceStackId ?? "") is null => new(400, "source stack not found"),
             "store" when !catalog.GetPresets().Any(p => p.Id.Equals(h.AppId, StringComparison.OrdinalIgnoreCase)) => new(400, "app not found in store"),
             "git" when string.IsNullOrWhiteSpace(h.Repo) && !(h.Params ?? []).Any(p => p.Key == "repo" && p.Mode != "fixed") => new(400, "repo is required"),
+            "clone" or "store" or "git" when h.ExpireDays is < -1 or > 3650 => new(400, "expireDays must be between -1 and 3650"),
             "clone" or "store" or "git" => string.IsNullOrWhiteSpace(h.Name) ? new(400, "name is required") : null,
             _ => new(400, $"unknown hook kind '{h.Kind}'"),
         };
         IResult Invalid(HookFailure f) => Results.BadRequest(new { message = f.Error });
+        bool HasPerm(HttpContext ctx, string perm) => ctx.User.IsInRole("Admin")
+            || Perm.Has(app.Services.GetRequiredService<UserStore>().Get(ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? ""), perm);
+        IResult? GitGuard(HttpContext ctx, string kind) => kind == "git" && !HasPerm(ctx, Perm.OpenEditor) ? Results.Forbid() : null;
 
-        app2.MapGet("/hooks", () =>
+        app2.MapGet("/hooks", (HttpContext ctx) =>
         {
             var all = store.List();
             var readonlyHooks = settings.All()
@@ -779,7 +788,7 @@ public static class StackEndpoints
                     return new { kind = "git-push", name = store.Get(sid)?.Name ?? sid, webhookPath = $"/api/git/hook/{g.Token}", link = $"/app/{sid}" };
                 })
                 .ToList();
-            if (settings.GetValue("ImageHookToken") is { Length: > 0 } itok)
+            if (HasPerm(ctx, Perm.Settings) && settings.GetValue("ImageHookToken") is { Length: > 0 } itok)
                 readonlyHooks.Add(new { kind = "image", name = "Image webhook", webhookPath = $"/api/image-hook/{itok}?image=<image>", link = "/settings" });
             return Results.Ok(new
             {
@@ -796,43 +805,45 @@ public static class StackEndpoints
                 }),
                 @readonly = readonlyHooks,
             });
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
-        app2.MapPost("/hooks", (Hook b) =>
+        app2.MapPost("/hooks", (Hook b, HttpContext ctx) =>
         {
+            if (GitGuard(ctx, b.Kind) is { } no) return no;
             var h = b with { Token = Guid.NewGuid().ToString("n"), CreatedAt = DateTime.UtcNow.ToString("O"), Name = (b.Name ?? "").Trim() };
             if (ValidateHook(h) is { } f) return Invalid(f);
             hooks.Save(h);
             return Results.Ok(new { token = h.Token, webhookPath = $"/api/hook/{h.Token}" });
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
         app2.MapPut("/hooks/settings", (HookSettings b) =>
         {
             hooks.SaveSettings(b);
             return Results.Ok(hooks.Settings());
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
-        app2.MapPut("/hooks/{token}", (string token, Hook b) =>
+        app2.MapPut("/hooks/{token}", (string token, Hook b, HttpContext ctx) =>
         {
             if (hooks.Get(token) is not { } existing) return Results.NotFound();
+            if (GitGuard(ctx, existing.Kind) is { } no) return no;
             var h = HookStore.KeepSecrets(b, existing) with { Token = token, Kind = existing.Kind, CreatedAt = existing.CreatedAt, Name = (b.Name ?? "").Trim() };
             if (ValidateHook(h) is { } f) return Invalid(f);
             hooks.Save(h);
             return Results.Ok(HookStore.Mask(h));
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
         app2.MapDelete("/hooks/{token}", (string token) =>
         {
             hooks.Delete(token);
             return Results.NoContent();
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
         app2.MapPost("/hooks/{token}/enabled", (string token, HookEnabledRequest b) =>
         {
             if (hooks.Get(token) is not { } h) return Results.NotFound();
             hooks.Save(h with { Enabled = b.Enabled });
             return Results.NoContent();
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
         app2.MapPost("/hooks/{token}/regenerate", (string token) =>
         {
@@ -840,7 +851,7 @@ public static class StackEndpoints
             var fresh = hooks.Regenerate(token);
             foreach (var s in store.List().Where(s => s.HookToken == token)) store.Save(s with { HookToken = fresh.Token });
             return Results.Ok(new { token = fresh.Token, webhookPath = $"/api/hook/{fresh.Token}" });
-        }).RequirePerm(Perm.Hooks);
+        }).RequirePerm(Perm.Hooks).RequirePerm(Perm.Deploy);
 
         _ = Task.Run(async () =>
         {

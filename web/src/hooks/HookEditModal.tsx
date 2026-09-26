@@ -88,7 +88,7 @@ export function HookEditModal({ initial, overview, onClose, onSaved }: {
     <Modal opened onClose={onClose} size="xl" title={<Group gap={8}><IconWebhook size={18} /><Title order={5}>{editing ? `Edit ${h.name}` : "New hook"}</Title></Group>}>
       <Stack gap="md">
         {!editing && (
-          <SegmentedControl value={h.kind} onChange={v => setH({ kind: v as api.HookKind, expireDays: h.expireDays, bindDomain: false, enabled: true, params: [] })}
+          <SegmentedControl value={h.kind} onChange={v => setH({ kind: v as api.HookKind, expireDays: h.expireDays, bindDomain: false, enabled: true, params: v === "git" ? [{ key: "branch", mode: "optional", value: "" }] : [] })}
             data={[{ value: "clone", label: "Clone an app" }, { value: "store", label: "Install from store" }, { value: "git", label: "Install from Git" }]} />
         )}
 

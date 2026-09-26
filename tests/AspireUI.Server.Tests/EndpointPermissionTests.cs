@@ -117,9 +117,34 @@ public class EndpointPermissionTests : IClassFixture<NoAuthTestFactory>
     {
         var admin = await AdminAsync();
         var (deployer, _) = await UserAsync(admin, "deployer-nohooks", Perm.Deploy);
-        var (hooker, _) = await UserAsync(admin, "hooker", Perm.Hooks);
+        var (hooksOnly, _) = await UserAsync(admin, "hooks-only", Perm.Hooks);
+        var (hooker, _) = await UserAsync(admin, "hooker", Perm.Hooks, Perm.Deploy);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await deployer.GetAsync("/api/hooks")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await hooksOnly.GetAsync("/api/hooks")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await hooker.GetAsync("/api/hooks")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_git_hook_needs_the_builder_permission_too()
+    {
+        var admin = await AdminAsync();
+        var (hooker, _) = await UserAsync(admin, "hooker-nogit", Perm.Hooks, Perm.Deploy);
+        var r = await hooker.PostAsJsonAsync("/api/hooks", new { kind = "git", name = "g", repo = "https://example.invalid/r.git" });
+        Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_image_hook_token_is_only_shown_with_the_settings_permission()
+    {
+        var admin = await AdminAsync();
+        await admin.GetAsync("/api/hosting/image-hook");
+        var (hooker, _) = await UserAsync(admin, "hooker-nosettings", Perm.Hooks, Perm.Deploy);
+
+        var mine = await hooker.GetStringAsync("/api/hooks");
+        var theirs = await admin.GetStringAsync("/api/hooks");
+
+        Assert.DoesNotContain("image-hook", mine);
+        Assert.Contains("image-hook", theirs);
     }
 }

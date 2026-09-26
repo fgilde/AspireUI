@@ -54,7 +54,7 @@ public static class Perm
     /// <summary>Read the activity log: who did what, to which app, and when.</summary>
     public const string Audit = "audit";
 
-    /// <summary>Create, change, trigger and disable webhooks that spin up instances.</summary>
+    /// <summary>Create, change, trigger and disable webhooks that spin up instances. Also needs Deploy; a git hook also needs OpenEditor.</summary>
     public const string Hooks = "hooks";
 
     public static readonly string[] All =

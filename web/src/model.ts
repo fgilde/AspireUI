@@ -469,6 +469,7 @@ export const PERM_HOOKS = "hooks";
 export const can = (u: UserDto | null | undefined, perm: string): boolean =>
   !!u && !u.disabled && (u.isAdmin || !u.permissions || u.permissions.includes(perm));
 export const canOpenEditor = (u?: UserDto | null): boolean => can(u, PERM_OPEN_EDITOR);
+export const canHooks = (u?: UserDto | null): boolean => can(u, PERM_HOOKS) && can(u, PERM_DEPLOY);
 
 export const PERMISSIONS: { id: string; label: string; description: string }[] = [
   { id: PERM_OPEN_EDITOR, label: "Builder / editor", description: "Create, change and delete stacks, import code, run them locally. Off = the app-store view only." },
@@ -483,7 +484,7 @@ export const PERMISSIONS: { id: string; label: string; description: string }[] =
   { id: PERM_DOCKER, label: "Docker host", description: "See and prune the host's images, containers and volumes." },
   { id: PERM_USERS, label: "Users", description: "Create users and grant them permissions. Only an admin can make an admin." },
   { id: PERM_AUDIT, label: "Activity log", description: "Read who did what, to which app, and when." },
-  { id: PERM_HOOKS, label: "Webhooks", description: "Create, change, trigger and disable webhooks that spin up new instances without a login." },
+  { id: PERM_HOOKS, label: "Webhooks", description: "Create, change, trigger and disable webhooks that spin up new instances without a login. Also needs Install & run apps; Git hooks also need the builder." },
 ];
 
 export interface AppLimits { cpus?: number | null; memoryMb?: number | null; pidsLimit?: number | null; restart?: string | null }

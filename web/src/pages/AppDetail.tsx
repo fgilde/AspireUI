@@ -4,7 +4,7 @@ import { Badge, Anchor, ActionIcon, Menu, Text, Loader, Alert, Group, Table, But
 import { IconDots, IconExternalLink, IconAlertTriangle, IconFileText, IconPlayerPlay, IconPlayerStop, IconReload, IconServer, IconBrandGithub, IconCopyPlus, IconWorld, IconClockHour4 } from "@tabler/icons-react";
 import { PageShell } from "../components/PageShell";
 import type { Deployment, ServiceStatus, Stack } from "../model";
-import { hostingBroken, hostingHealthLabel, can, PERM_HOOKS } from "../model";
+import { hostingBroken, hostingHealthLabel, canHooks } from "../model";
 import { useAuth } from "../auth/AuthContext";
 import { HookEditModal } from "../hooks/HookEditModal";
 import * as api from "../api";
@@ -170,7 +170,7 @@ export function AppDetail() {
           </Card>
         )}
 
-        {can(status?.user, PERM_HOOKS) && <CloneHooksCard stackId={d.stackId} />}
+        {canHooks(status?.user) && <CloneHooksCard stackId={d.stackId} />}
 
         <div>
           <Text fw={600} mb="xs">Containers</Text>

@@ -12,7 +12,7 @@ import {
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
   IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld, IconCopyPlus, IconClockHour4,
 } from "@tabler/icons-react";
-import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, PERM_HOOKS, type Stack, type RunStatus, type Deployment } from "../model";
+import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, canHooks, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
 import * as api from "../api";
 import { useTitle } from "../useTitle";
@@ -92,7 +92,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const mayDeploy = can(status?.user, PERM_DEPLOY);
   const [hookNames, setHookNames] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (can(status?.user, PERM_HOOKS)) api.listHooks().then(d => setHookNames(Object.fromEntries(d.hooks.map(r => [r.hook.token, r.hook.name])))).catch(() => {});
+    if (canHooks(status?.user)) api.listHooks().then(d => setHookNames(Object.fromEntries(d.hooks.map(r => [r.hook.token, r.hook.name])))).catch(() => {});
   }, [status?.user]);
   useTitle(simple ? "Apps" : "Stacks");
   const [stacks, setStacks] = useState<Stack[]>([]);
