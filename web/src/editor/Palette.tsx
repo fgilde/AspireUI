@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Stack as MStack, TextInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
+import { Stack as MStack, TextInput, PasswordInput, Text, Highlight, ScrollArea, Tooltip, Badge, Group, Accordion, UnstyledButton, Modal, Button, Select, Tabs, ActionIcon } from "@mantine/core";
 import { IconFoldUp, IconFoldDown, IconPlus, IconMinus, IconCheck, IconTrash, IconSparkles, IconBookmark, IconInfoCircle } from "@tabler/icons-react";
 import { AppInfoModal } from "../components/AppInfoModal";
 import type { Stack, ResourceType, Node, Edge, ContainerPreset, PresetCompanion, CompanionChoice, Snippet } from "../model";
@@ -456,10 +456,13 @@ function CompanionPickerModal({ preset, stackNodes, onConfirm, onCancel }: {
               data={paramOptions(p.secret)} value={sel[`param:${p.key}`]}
               onChange={v => v && setSel(st => ({ ...st, [`param:${p.key}`]: v }))} />
             {sel[`param:${p.key}`] === "value" && (
-              <TextInput style={{ flex: 1 }} size="xs" placeholder={p.env}
-                type={p.secret ? "password" : undefined}
-                value={vals[p.key] ?? ""}
-                onChange={e => { const v = e.currentTarget.value; setVals(s => ({ ...s, [p.key]: v })); }} />
+              p.secret
+                ? <PasswordInput style={{ flex: 1 }} size="xs" placeholder={p.env}
+                    value={vals[p.key] ?? ""}
+                    onChange={e => { const v = e.currentTarget.value; setVals(s => ({ ...s, [p.key]: v })); }} />
+                : <TextInput style={{ flex: 1 }} size="xs" placeholder={p.env}
+                    value={vals[p.key] ?? ""}
+                    onChange={e => { const v = e.currentTarget.value; setVals(s => ({ ...s, [p.key]: v })); }} />
             )}
           </Group>
         ))}

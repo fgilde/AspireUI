@@ -49,7 +49,8 @@ export function InstallOptionsModal({ preset, npm, busy, onClose, onInstall }: {
           return p.secret
             ? <PasswordInput key={p.key} label={label} description={desc} value={vals[p.key] ?? ""}
                 onChange={e => set(p.key, e.currentTarget.value)}
-                rightSection={generated
+                leftSectionPointerEvents="all"
+                leftSection={generated
                   ? <Tooltip label="Generate a new value" withArrow>
                       <ActionIcon variant="subtle" color="gray" onClick={() => set(p.key, presetParamDefault({ ...p, default: "" }))} aria-label="Regenerate">
                         <IconRefresh size={15} />
