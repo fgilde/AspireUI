@@ -516,7 +516,7 @@ public class HostingServiceTests
         {
             File.WriteAllText(Path.Combine(dir, "Caddyfile"), ":8080 { respond \"ok\" }");
             var env = Path.Combine(dir, ".env");
-            File.WriteAllText(env, "CADDY_BINDMOUNT_0=\n");
+            File.WriteAllText(env, "CADDY_BINDMOUNT_0=/data/workspace/stale/Caddyfile\n");
             var yaml = """
             services:
               caddy:

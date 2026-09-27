@@ -421,7 +421,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         var lines = File.ReadAllLines(envPath);
         for (var i = 0; i < lines.Length; i++)
         {
-            var m = Regex.Match(lines[i], @"^([A-Za-z0-9_]+)=\s*$");
+            var m = Regex.Match(lines[i], @"^([A-Za-z0-9_]+)=");
             if (m.Success && sources.TryGetValue(m.Groups[1].Value, out var path)) lines[i] = $"{m.Groups[1].Value}={path}";
         }
         File.WriteAllText(envPath, string.Join("\n", lines));
