@@ -162,7 +162,7 @@ public static class StackEndpoints
                 Id = Guid.NewGuid().ToString("n"),
                 CreatedAt = DateTime.UtcNow.ToString("O"),
                 CreatedBy = ctx.User.Identity?.Name ?? "admin",
-                HookToken = null, ExpireAt = null, ClonedFrom = null,
+                HookToken = null, ExpireAt = null, ClonedFrom = null, PublicOrigin = null, PublicOriginPort = 0,
             };
             // The activity log reads its subject from the url, and a stack being created has no url yet.
             AuditMiddleware.Names(ctx, created.Id, created.Name);
@@ -719,7 +719,13 @@ public static class StackEndpoints
                     {
                         Id = newId, Name = $"{h.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"),
                         CreatedBy = $"hook:{h.Kind}", ExpireAt = expireAt, HookToken = h.Token,
+                        PublicOrigin = null, PublicOriginPort = 0,
                     };
+                    var hookDomain = h.BindDomain && !string.IsNullOrWhiteSpace(h.DomainFormat) && domains.Configured(target)
+                        ? h.DomainFormat!.Replace("{id}", shortId)
+                            .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(h.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"))
+                        : null;
+                    if (hookDomain is not null && HostingService.WritesOwnAddress(stack)) stack = stack with { PublicOrigin = $"https://{hookDomain}" };
                     store.Save(stack);
                     saved = true;
                     gen.Materialize(stack, Dir(newId));
@@ -734,10 +740,9 @@ public static class StackEndpoints
                     {
                         var t = targetStore.Resolve(dep.TargetId);
                         var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-                        if (domains.Configured(t) && port > 0)
+                        if (hookDomain is not null && domains.Configured(t) && port > 0)
                         {
-                            var domain = h.DomainFormat!.Replace("{id}", shortId)
-                                .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(h.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
+                            var domain = hookDomain;
                             try
                             {
                                 var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
@@ -1643,7 +1648,26 @@ public static class StackEndpoints
                 existing,
             });
         });
-        app2.MapPut("/stacks/{id}/hosting/domain", async (string id, DomainRequest b) =>
+        void RedeployWithOrigin(string id, string? origin, int port, HttpContext ctx)
+        {
+            if (store.Get(id) is not { } st || !HostingService.WritesOwnAddress(st)) return;
+            if (st.PublicOrigin == origin && st.PublicOriginPort == port) return;
+            var updated = st with { PublicOrigin = origin, PublicOriginPort = port };
+            store.Save(updated);
+            var dc = DashCfg();
+            var host = PublicHost(ctx);
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    gen.Materialize(updated, Dir(id));
+                    hosting.Deploy(updated, PublishRoot(id), host, dc.Host, dc.Token,
+                        (updated.FromGit || updated.HasSource) ? Path.GetFullPath(Dir(id)) : null);
+                }
+                catch (Exception ex) { Console.Error.WriteLine($"redeploy of {id} for its new address failed — {ex.Message}"); }
+            });
+        }
+        app2.MapPut("/stacks/{id}/hosting/domain", async (string id, DomainRequest b, HttpContext ctx) =>
         {
             if (deployments.GetByStack(id) is not { } dep) return Results.NotFound();
             var t = targetStore.Resolve(dep.TargetId);
@@ -1654,14 +1678,22 @@ public static class StackEndpoints
                 var pr = await domains.UpsertAsync(t, b.Id, b.DomainNames ?? new(), b.Scheme ?? "http",
                     b.ForwardHost, b.ForwardPort, b.Websockets, b.Ssl, b.CertificateId);
                 AddDomainHost(id, pr.Id);
+                if ((b.DomainNames ?? new()).Select(d => d.Trim()).FirstOrDefault(d => d.Length > 0) is { } first)
+                    RedeployWithOrigin(id, $"https://{first}", (dep.Ports ?? new()).FirstOrDefault(p => p.Host == b.ForwardPort)?.Container ?? 0, ctx);
                 return Results.Ok(pr);
             }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         }).RequirePerm(Perm.Configure);
-        app2.MapDelete("/stacks/{id}/hosting/domain/{proxyId:int}", async (string id, int proxyId, string? hostname) =>
+        app2.MapDelete("/stacks/{id}/hosting/domain/{proxyId:int}", async (string id, int proxyId, string? hostname, HttpContext ctx) =>
         {
             var t = targetStore.Resolve(deployments.GetByStack(id)?.TargetId);
-            try { await domains.DeleteAsync(t, proxyId, hostname); RemoveDomainHost(id, proxyId); return Results.NoContent(); }
+            try
+            {
+                await domains.DeleteAsync(t, proxyId, hostname);
+                RemoveDomainHost(id, proxyId);
+                if (hostname is null || store.Get(id)?.PublicOrigin == $"https://{hostname}") RedeployWithOrigin(id, null, 0, ctx);
+                return Results.NoContent();
+            }
             catch (Exception e) { return Results.BadRequest(new { message = e.Message }); }
         }).RequirePerm(Perm.Configure);
         app2.MapPost("/stacks/{id}/hosting/domain/{proxyId:int}/enabled", async (string id, int proxyId, EnabledRequest b) =>

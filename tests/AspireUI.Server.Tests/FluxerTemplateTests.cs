@@ -139,7 +139,8 @@ public class FluxerTemplateTests
         Assert.Contains(env, w => w.Args[0] == "\"FLUXER_PUBLIC_ORIGIN\"" && w.Args[1] == "\"__ASPIREUI_URL_8080__\"");
         Assert.Contains(env, w => w.Args[0] == "\"FLUXER_PUBLIC_PORT\"" && w.Args[1] == "\"__ASPIREUI_PORT_8080__\"");
         // The base domain is the passkey relying party and the cookie domain: a port has no place there.
-        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_BASE_DOMAIN\"" && w.Args[1] == "\"localhost\"");
+        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_BASE_DOMAIN\"" && w.Args[1] == "\"__ASPIREUI_DOMAIN_8080__\"");
+        Assert.Contains(env, w => w.Args[0] == "\"FLUXER_PUBLIC_SCHEME\"" && w.Args[1] == "\"__ASPIREUI_SCHEME_8080__\"");
     }
 
     [Fact]

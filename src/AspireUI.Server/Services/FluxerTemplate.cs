@@ -18,7 +18,8 @@ public static class FluxerTemplate
     // edge ends up published under is the deployment's to choose — so the origin and the port it
     // reports are placeholders HostingService fills once it has picked one. The base domain stays a
     // bare host: it is the passkey relying party and the cookie domain, where a port has no place.
-    private const string Host = "localhost";
+    private const string Domain = "__ASPIREUI_DOMAIN_8080__";
+    private const string Scheme = "__ASPIREUI_SCHEME_8080__";
     private const string Port = "8080";
     private const string PublicOrigin = "__ASPIREUI_URL_8080__";
     private const string PublicPort = "__ASPIREUI_PORT_8080__";
@@ -81,8 +82,8 @@ public static class FluxerTemplate
         var secrets = Secrets();
         var values = new Dictionary<string, string>(secrets)
         {
-            ["FLUXER_DOMAIN"] = Host,
-            ["FLUXER_PUBLIC_SCHEME"] = "http",
+            ["FLUXER_DOMAIN"] = Domain,
+            ["FLUXER_PUBLIC_SCHEME"] = Scheme,
             ["FLUXER_PUBLIC_PORT"] = PublicPort,
             ["FLUXER_PUBLIC_ORIGIN"] = PublicOrigin,
             ["FLUXER_EDGE_BIND"] = Port,

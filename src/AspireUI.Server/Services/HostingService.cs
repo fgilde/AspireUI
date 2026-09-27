@@ -345,15 +345,31 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // cannot know the port until the deployment picks one. It writes __ASPIREUI_URL_<containerPort>__,
     // __ASPIREUI_HOST_<containerPort>__ or __ASPIREUI_PORT_<containerPort>__ and gets the published
     // address here.
-    public static string FillPublicUrls(string yaml, string host, IReadOnlyDictionary<int, int> hostByContainer) =>
-        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST|PORT)_(\d+)__", m =>
+    public static bool WritesOwnAddress(StackModel stack) =>
+        stack.Nodes.Any(n => n.WithCalls.Any(w => w.Args.Any(a => a.Contains("__ASPIREUI_"))) || n.AddArgs.Any(a => a.Contains("__ASPIREUI_")))
+        || stack.ExtraFiles.Any(f => f.Content.Contains("__ASPIREUI_"));
+
+    public static string FillPublicUrls(string yaml, string host, IReadOnlyDictionary<int, int> hostByContainer,
+        (int Port, string Url)? origin = null) =>
+        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST|PORT|DOMAIN|SCHEME)_(\d+)__", m =>
         {
             var container = int.Parse(m.Groups[2].Value);
+            if (origin is { } o && o.Port == container && Uri.TryCreate(o.Url, UriKind.Absolute, out var u))
+                return m.Groups[1].Value switch
+                {
+                    "URL" => u.GetLeftPart(UriPartial.Authority),
+                    "HOST" => u.Authority,
+                    "PORT" => u.Port.ToString(),
+                    "DOMAIN" => u.Host,
+                    _ => u.Scheme,
+                };
             var published = hostByContainer.TryGetValue(container, out var h) ? h : container;
             return m.Groups[1].Value switch
             {
                 "URL" => $"http://{host}:{published}",
                 "HOST" => $"{host}:{published}",
+                "DOMAIN" => host,
+                "SCHEME" => "http",
                 _ => published.ToString(),
             };
         });
@@ -632,7 +648,9 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
                     ? pinned : AllocateHostPort(used, target.PortFrom, target.PortTo, Free);
                 used.Add(hostPort); portMap[cp] = hostPort; chosen.Add(new(cp, hostPort, true));
             }
-            var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap);
+            (int, string)? origin = stack.PublicOrigin is { Length: > 0 } po
+                ? (stack.PublicOriginPort > 0 ? stack.PublicOriginPort : chosen.FirstOrDefault(p => p.Public)?.Container ?? 0, po) : null;
+            var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap, origin);
             File.WriteAllText(path, processed);
             FillBindMountEnv(processed, stack, Path.Combine(publishRoot, "src"), Path.Combine(pub.OutputDir, ".env"),
                 target.Kind == TargetKind.Local ? p => ToHostPath(p, OwnMounts(runner)) : null);

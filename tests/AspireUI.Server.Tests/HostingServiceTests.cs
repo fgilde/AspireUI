@@ -438,6 +438,36 @@ public class HostingServiceTests
         Assert.Contains("OTHER: http://box.local:9000", yaml);
     }
 
+    [Fact]
+    public void FillPublicUrls_uses_the_domain_for_the_port_it_was_bound_to()
+    {
+        const string yaml = """
+            URL: __ASPIREUI_URL_8080__
+            HOST: __ASPIREUI_HOST_8080__
+            PORT: __ASPIREUI_PORT_8080__
+            DOMAIN: __ASPIREUI_DOMAIN_8080__
+            SCHEME: __ASPIREUI_SCHEME_8080__
+            OTHER: __ASPIREUI_URL_7880__
+            OTHERDOMAIN: __ASPIREUI_DOMAIN_7880__
+            """;
+        var ports = new Dictionary<int, int> { [8080] = 20011, [7880] = 20012 };
+        string[] Lines(string y) => y.ReplaceLineEndings("\n").Split('\n');
+
+        var bound = Lines(HostingService.FillPublicUrls(yaml, "192.168.1.5", ports, (8080, "https://chat.example.org")));
+        Assert.Contains("URL: https://chat.example.org", bound);
+        Assert.Contains("HOST: chat.example.org", bound);
+        Assert.Contains("PORT: 443", bound);
+        Assert.Contains("DOMAIN: chat.example.org", bound);
+        Assert.Contains("SCHEME: https", bound);
+        Assert.Contains("OTHER: http://192.168.1.5:20012", bound);
+        Assert.Contains("OTHERDOMAIN: 192.168.1.5", bound);
+
+        var plain = Lines(HostingService.FillPublicUrls(yaml, "192.168.1.5", ports));
+        Assert.Contains("DOMAIN: 192.168.1.5", plain);
+        Assert.Contains("SCHEME: http", plain);
+        Assert.Contains("URL: http://192.168.1.5:20011", plain);
+    }
+
     // `aspire publish` drops WithContainerRuntimeArgs — they are docker run flags, and a compose file
     // has nowhere to put them. An app that asked for the host's network was getting the bridge.
     [Fact]
@@ -535,5 +565,15 @@ public class HostingServiceTests
             Assert.Contains(File.ReadAllLines(env), l => l == $"CADDY_BINDMOUNT_0={expected}");
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
+    public void An_app_that_writes_its_own_address_is_recognised()
+    {
+        var plain = Stack(Node("web", new WithCall("WithEnvironment", new() { "\"A\"", "\"x\"" })));
+        var own = Stack(Node("web", new WithCall("WithEnvironment", new() { "\"ORIGIN\"", "\"__ASPIREUI_URL_8080__\"" })));
+        Assert.False(HostingService.WritesOwnAddress(plain));
+        Assert.True(HostingService.WritesOwnAddress(own));
+        Assert.True(HostingService.WritesOwnAddress(plain with { ExtraFiles = [new ExtraFile("app.toml", "url = \"__ASPIREUI_HOST_80__\"")] }));
     }
 }
