@@ -61,7 +61,7 @@ export function HookCallModal({ row, targetName, onClose, onDone }: {
       {step === "result" && res && (
         <Stack gap="sm">
           <Alert color={res.success ? (res.error ? "yellow" : "teal") : "red"} icon={res.success ? <IconCheck size={16} /> : <IconAlertTriangle size={16} />}
-            title={res.success ? "Instance created" : `Failed (HTTP ${res.status})`}>
+            title={res.status === 202 ? "Still deploying — the instance shows up here once it is running" : res.success ? "Instance created" : `Failed (HTTP ${res.status})`}>
             {res.error && <Code block mah={240} style={{ overflow: "auto" }}>{res.error}</Code>}
             {res.url && <Text size="sm" mt={4}>URL: <Anchor href={res.url} target="_blank" rel="noreferrer">{res.url}</Anchor></Text>}
           </Alert>

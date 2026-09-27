@@ -701,61 +701,67 @@ public static class StackEndpoints
             var newId = Guid.NewGuid().ToString("n");
             var shortId = newId[..8];
             var saved = false;
-            try
+            var host = PublicHost(ctx);
+            var expireAt = h.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(h.ExpireDays).ToString("O") : null;
+            var work = Task.Run(async () =>
             {
-                var (built, bf) = h.Kind switch
+                try
                 {
-                    "clone" => BuildClone(h, newId),
-                    "store" => BuildStore(h, newId, vals),
-                    "git" => BuildGit(h, newId, vals),
-                    _ => ((StackModel?)null, new HookFailure(400, $"unknown hook kind '{h.Kind}'")),
-                };
-                if (bf is not null) return Fail(bf);
-                var expireAt = h.ExpireDays >= 0 ? DateTime.UtcNow.AddDays(h.ExpireDays).ToString("O") : null;
-                var stack = built! with
-                {
-                    Id = newId, Name = $"{h.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"),
-                    CreatedBy = $"hook:{h.Kind}", ExpireAt = expireAt, HookToken = h.Token,
-                };
-                store.Save(stack);
-                saved = true;
-                gen.Materialize(stack, Dir(newId));
-
-                var dc = DashCfg();
-                var host = PublicHost(ctx);
-                var dep = hosting.Deploy(stack, PublishRoot(newId), host, dc.Host, dc.Token,
-                    (stack.FromGit || stack.HasSource) ? Path.GetFullPath(Dir(newId)) : null, h.TargetId);
-                var url = dep.Urls.FirstOrDefault();
-                string? domainError = null;
-
-                if (h.BindDomain && !string.IsNullOrWhiteSpace(h.DomainFormat))
-                {
-                    var t = targetStore.Resolve(dep.TargetId);
-                    var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
-                    if (domains.Configured(t) && port > 0)
+                    var (built, bf) = h.Kind switch
                     {
-                        var domain = h.DomainFormat!.Replace("{id}", shortId)
-                            .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(h.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
-                        try
+                        "clone" => BuildClone(h, newId),
+                        "store" => BuildStore(h, newId, vals),
+                        "git" => BuildGit(h, newId, vals),
+                        _ => ((StackModel?)null, new HookFailure(400, $"unknown hook kind '{h.Kind}'")),
+                    };
+                    if (bf is not null) return Fail(bf);
+                    var stack = built! with
+                    {
+                        Id = newId, Name = $"{h.Name}-{shortId}", CreatedAt = DateTime.UtcNow.ToString("O"),
+                        CreatedBy = $"hook:{h.Kind}", ExpireAt = expireAt, HookToken = h.Token,
+                    };
+                    store.Save(stack);
+                    saved = true;
+                    gen.Materialize(stack, Dir(newId));
+
+                    var dc = DashCfg();
+                    var dep = hosting.Deploy(stack, PublishRoot(newId), host, dc.Host, dc.Token,
+                        (stack.FromGit || stack.HasSource) ? Path.GetFullPath(Dir(newId)) : null, h.TargetId);
+                    var url = dep.Urls.FirstOrDefault();
+                    string? domainError = null;
+
+                    if (h.BindDomain && !string.IsNullOrWhiteSpace(h.DomainFormat))
+                    {
+                        var t = targetStore.Resolve(dep.TargetId);
+                        var port = (dep.Ports ?? new()).FirstOrDefault(p => p.Public)?.Host ?? 0;
+                        if (domains.Configured(t) && port > 0)
                         {
-                            var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
-                                domains.ForwardHost(t, host), port, true, false, 0);
-                            settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
-                            url = $"http://{domain}";
+                            var domain = h.DomainFormat!.Replace("{id}", shortId)
+                                .Replace("{name}", System.Text.RegularExpressions.Regex.Replace(h.Name.ToLowerInvariant(), "[^a-z0-9-]", "-"));
+                            try
+                            {
+                                var pr = await domains.UpsertAsync(t, null, new List<string> { domain }, "http",
+                                    domains.ForwardHost(t, host), port, true, false, 0);
+                                settings.SetValue($"clonedomain:{newId}", pr.Id.ToString());
+                                url = $"http://{domain}";
+                            }
+                            catch (Exception ex) { domainError = $"domain binding failed: {ex.Message}"; }
                         }
-                        catch (Exception ex) { domainError = $"domain binding failed: {ex.Message}"; }
                     }
+                    var error = dep.LastError is { } le ? HookCall.Tail(le) : domainError ?? "";
+                    return Results.Ok(new { success = dep.LastError is null, error, stackId = newId, url, expireDate = expireAt });
                 }
-                var error = dep.LastError is { } le ? HookCall.Tail(le) : domainError ?? "";
-                return Results.Ok(new { success = dep.LastError is null, error, stackId = newId, url, expireDate = expireAt });
-            }
-            catch (Exception ex)
-            {
-                if (saved) { try { DeleteStackFully(newId); } catch { } }
-                else { try { if (Directory.Exists(Dir(newId))) Directory.Delete(Dir(newId), true); } catch { } }
-                return Fail(new(500, HookCall.Tail(ex.Message)));
-            }
-            finally { gate.Release(); }
+                catch (Exception ex)
+                {
+                    if (saved) { try { DeleteStackFully(newId); } catch { } }
+                    else { try { if (Directory.Exists(Dir(newId))) Directory.Delete(Dir(newId), true); } catch { } }
+                    return Fail(new(500, HookCall.Tail(ex.Message)));
+                }
+                finally { gate.Release(); }
+            });
+            if (await Task.WhenAny(work, Task.Delay(TimeSpan.FromSeconds(60))) == work) return await work;
+            return Results.Json(new { success = true, error = "", stackId = newId, url = (string?)null, expireDate = expireAt, state = "deploying" },
+                statusCode: StatusCodes.Status202Accepted);
         }
         app2.MapPost("/hook/{token}", RunHook).AllowAnonymous();
         app2.MapPost("/clone-hook/{token}", RunHook).AllowAnonymous();
@@ -1105,15 +1111,22 @@ public static class StackEndpoints
         // Admin-controlled: host the Aspire dashboard with each deployment? + a browser token so AspireUI
         // can hand out a one-click login link.
         (bool Host, string? Token) DashCfg() => ((settings.GetValue("HostDashboard") ?? "false") == "true", settings.GetValue("DashboardToken"));
-        app2.MapPost("/stacks/{id}/hosting/deploy", (string id, HttpContext ctx, HostingDeployRequest? body) =>
+        async Task<IResult> AnswerInTime(Func<Deployment> run, string stackId)
+        {
+            var work = Task.Run(run);
+            if (await Task.WhenAny(work, Task.Delay(TimeSpan.FromSeconds(60))) == work) return Results.Ok(await work);
+            return Results.Json(deployments.GetByStack(stackId), statusCode: StatusCodes.Status202Accepted);
+        }
+        app2.MapPost("/stacks/{id}/hosting/deploy", async (string id, HttpContext ctx, HostingDeployRequest? body) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             if (body?.TargetId is { Length: > 0 } tid && targetStore.Get(tid) is null)
                 return Results.BadRequest(new { message = $"unknown deploy target '{tid}'" });
             gen.Materialize(s, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(s, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token,
-                (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, body?.TargetId));
+            var host = PublicHost(ctx);
+            return await AnswerInTime(() => hosting.Deploy(s, PublishRoot(id), host, dc.Host, dc.Token,
+                (s.FromGit || s.HasSource) ? Path.GetFullPath(Dir(id)) : null, body?.TargetId), id);
         }).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/stop", (string id) =>
         {
@@ -1141,8 +1154,8 @@ public static class StackEndpoints
             RemoveAllDomainHosts(id); // and its bound NPM domains (dead target otherwise)
             return Results.NoContent();
         }).RequirePerm(Perm.Deploy);
-        app2.MapPost("/stacks/{id}/hosting/update", (string id) =>
-            deployments.GetByStack(id) is { } d ? Results.Ok(hosting.Update(d.Id)) : Results.NotFound()).RequirePerm(Perm.Deploy);
+        app2.MapPost("/stacks/{id}/hosting/update", async (string id) =>
+            deployments.GetByStack(id) is { } d ? await AnswerInTime(() => hosting.Update(d.Id), id) : Results.NotFound()).RequirePerm(Perm.Deploy);
         app2.MapPost("/stacks/{id}/hosting/check-updates", (string id) =>
         {
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
@@ -1430,7 +1443,7 @@ public static class StackEndpoints
             finally { try { if (Directory.Exists(tmp)) Directory.Delete(tmp, true); } catch { } }
         }).RequirePerm(Perm.Deploy);
 
-        app2.MapPost("/stacks/{id}/hosting/reconfigure", (string id, ReconfigureRequest body, HttpContext ctx) =>
+        app2.MapPost("/stacks/{id}/hosting/reconfigure", async (string id, ReconfigureRequest body, HttpContext ctx) =>
         {
             if (store.Get(id) is not { } s) return Results.NotFound();
             if (deployments.GetByStack(id) is not { } d) return Results.NotFound();
@@ -1453,7 +1466,8 @@ public static class StackEndpoints
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var dc = DashCfg();
-            return Results.Ok(hosting.Deploy(updated, PublishRoot(id), PublicHost(ctx), dc.Host, dc.Token, (updated.FromGit || updated.HasSource) ? Path.GetFullPath(Dir(id)) : null));
+            var host = PublicHost(ctx);
+            return await AnswerInTime(() => hosting.Deploy(updated, PublishRoot(id), host, dc.Host, dc.Token, (updated.FromGit || updated.HasSource) ? Path.GetFullPath(Dir(id)) : null), id);
         }).RequirePerm(Perm.Configure);
         // Move an app to another target: data goes with it unless asked otherwise.
         app2.MapPost("/stacks/{id}/hosting/move", (string id, MoveRequest b, HttpContext ctx) =>

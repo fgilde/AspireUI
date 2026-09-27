@@ -16,11 +16,19 @@ let onUnauthorized: () => void = () => {};
 export const setOnUnauthorized = (fn: () => void) => { onUnauthorized = fn; };
 
 // The API answers errors as { message }; show that, not the raw body with a status code glued on.
-async function fail(r: Response): Promise<never> {
-  const text = await r.text();
+export function errorMessage(status: number, statusText: string, text: string): string {
+  const line = `${status} ${statusText}`.trim();
+  if (/^\s*</.test(text))
+    return status === 502 || status === 504
+      ? `${line || status}: no answer in time — the action is most likely still running on the server, check again in a moment.`
+      : line || String(status);
   let message = text;
   try { const j = JSON.parse(text); if (typeof j?.message === "string" && j.message) message = j.message; } catch { /* not JSON */ }
-  throw new Error(message.trim() || `${r.status} ${r.statusText}`.trim());
+  return message.trim() || line;
+}
+
+async function fail(r: Response): Promise<never> {
+  throw new Error(errorMessage(r.status, r.statusText, await r.text()));
 }
 
 async function ok(r: Response) {
@@ -325,7 +333,7 @@ export interface HooksOverview {
   settings: HookSettings; npmConfigured: boolean; targets: { id: string; name: string; domains: boolean }[];
   hooks: HookRow[]; readonly: ReadonlyHook[];
 }
-export interface HookResult { status: number; success: boolean; error: string; stackId?: string; url?: string | null; expireDate?: string | null }
+export interface HookResult { status: number; success: boolean; error: string; stackId?: string; url?: string | null; expireDate?: string | null; state?: string }
 export const MASKED = "••••";
 const json = (method: string, b?: unknown): RequestInit =>
   ({ method, headers: { "content-type": "application/json" }, body: b === undefined ? undefined : JSON.stringify(b) });
@@ -386,11 +394,18 @@ export const assistStackCode = (id: string, prompt: string): Promise<{ reply: st
   fetch(`${base}/stacks/${id}/assist-code`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt }) }).then(ok);
 
 export const listHosting = (): Promise<import("./model").Deployment[]> => fetch(`${base}/hosting`).then(ok);
+export async function settle(stackId: string, dep: import("./model").Deployment, wait = 3000): Promise<import("./model").Deployment> {
+  for (let i = 0; dep?.state === "deploying" && i < 600; i++) {
+    await new Promise(r => setTimeout(r, wait));
+    dep = (await listHosting()).find(d => d.stackId === stackId) ?? dep;
+  }
+  return dep;
+}
 export const hostingDeploy = (id: string, targetId?: string): Promise<import("./model").Deployment> =>
   fetch(`${base}/stacks/${id}/hosting/deploy`, {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ targetId: targetId ?? null }),
-  }).then(ok);
+  }).then(ok).then(d => settle(id, d));
 // Moves an app to another target (its data comes along unless told otherwise).
 export const moveHosting = (id: string, targetId: string, withData = true): Promise<{ ok: boolean; log: string; deployment: import("./model").Deployment }> =>
   fetch(`${base}/stacks/${id}/hosting/move`, {
@@ -461,7 +476,7 @@ export const restartHosting = (id: string): Promise<import("./model").Deployment
 export const undeployHosting = (id: string, wipe = false): Promise<void> =>
   fetch(`${base}/stacks/${id}/hosting/undeploy${wipe ? "?wipe=true" : ""}`, { method: "POST" }).then(() => undefined);
 export const updateHosting = (id: string): Promise<import("./model").Deployment> =>
-  fetch(`${base}/stacks/${id}/hosting/update`, { method: "POST" }).then(ok);
+  fetch(`${base}/stacks/${id}/hosting/update`, { method: "POST" }).then(ok).then(d => settle(id, d));
 export const checkUpdates = (id: string): Promise<{ images: { image: string; updateAvailable: boolean }[]; anyUpdate: boolean }> =>
   fetch(`${base}/stacks/${id}/hosting/check-updates`, { method: "POST" }).then(ok);
 export const execInContainer = (depId: string, container: string, cmd: string): Promise<{ ok: boolean; output: string }> =>
@@ -520,7 +535,7 @@ export const hostingConfig = (stackId: string): Promise<import("./model").NodeCo
   fetch(`${base}/stacks/${stackId}/hosting/config`).then(ok);
 export const reconfigureHosting = (stackId: string, env: Record<string, string[][]>, ports?: import("./model").PortMapping[],
   limits?: import("./model").AppLimits, healthchecks?: import("./model").AppHealthcheck[]): Promise<import("./model").Deployment> =>
-  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports, limits, healthchecks }) }).then(ok);
+  fetch(`${base}/stacks/${stackId}/hosting/reconfigure`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ env, ports, limits, healthchecks }) }).then(ok).then(d => settle(stackId, d));
 
 export const listApiTokens = (): Promise<import("./model").ApiToken[]> => fetch(`${base}/api-tokens`).then(ok);
 export const createApiToken = (name: string): Promise<{ token: string; record: import("./model").ApiToken }> =>
