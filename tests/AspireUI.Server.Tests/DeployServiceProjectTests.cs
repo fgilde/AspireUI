@@ -30,7 +30,7 @@ public class DeployServiceProjectTests
         Assert.Contains("compose -p p stop", calls);
         Assert.Contains("compose -p p start", calls);
         Assert.Contains("compose -p p down", calls);
-        Assert.Contains("compose -p p ps --format json", calls);
+        Assert.Contains("compose -p p ps --all --format json", calls);
     }
     [Fact]
     public void VolumeRm_refuses_a_path_that_would_mean_the_whole_volume()

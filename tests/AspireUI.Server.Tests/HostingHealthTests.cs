@@ -96,4 +96,25 @@ public class HostingHealthTests
         Assert.Equal("failing", read.Health);
         Assert.Contains("keeps restarting", read.HealthDetail);
     }
+
+    [Fact]
+    public void A_container_that_was_never_started_is_failing()
+    {
+        var (health, detail) = HostingService.HealthOf([
+            Svc("edge", "created", "Created"),
+            Svc("api", "running", "Up 19 minutes"),
+        ]);
+        Assert.Equal("failing", health);
+        Assert.Contains("edge", detail);
+    }
+
+    [Fact]
+    public void A_one_shot_job_that_finished_cleanly_is_not_a_failure()
+    {
+        var (health, _) = HostingService.HealthOf([
+            Svc("init", "exited", "Exited (0) 3 minutes ago"),
+            Svc("api", "running", "Up 3 minutes"),
+        ]);
+        Assert.Equal("ok", health);
+    }
 }

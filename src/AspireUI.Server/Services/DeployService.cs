@@ -55,7 +55,7 @@ public class DeployService
     public DeployResult StartProject(string dir, string project) => Run(dir, $"compose -p {project} start");
     public DeployResult RestartProject(string dir, string project) => Run(dir, $"compose -p {project} restart");
     public DeployResult DownProject(string dir, string project, bool volumes = false) => Run(dir, $"compose -p {project} down{(volumes ? " -v" : "")}");
-    public DeployResult Ps(string dir, string project) => Run(dir, $"compose -p {project} ps --format json");
+    public DeployResult Ps(string dir, string project) => Run(dir, $"compose -p {project} ps --all --format json");
     public DeployResult PullProject(string dir, string project) => Run(dir, $"compose -p {project} pull");
     public DeployResult ConfigImages(string dir, string project) => Run(dir, $"compose -p {project} config --images");
     public DeployResult Logs(string dir, string project, int tail = 200) => Run(dir, $"compose -p {project} logs --tail {tail}");
@@ -189,6 +189,8 @@ public class DeployService
     }
 
     // Ports already taken on the target daemon, so a remote host's ports are not guessed from ours.
+    public DeployResult InspectMounts(string container) => RunArgv(20_000, "inspect", "--format", "{{json .Mounts}}", container);
+
     public DeployResult UsedPorts() => RunArgv(20_000, "ps", "--all", "--format", "{{.Ports}}");
 
     public DeployResult Version() => RunArgv(20_000, "version", "--format", "{{json .}}");

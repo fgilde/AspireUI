@@ -361,7 +361,46 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
     // `aspire publish` turns every bind mount into an empty variable and leaves the path to whoever
     // runs the compose file. Nobody filled it, so FillParameterEnv gave it the same placeholder it
     // gives an unknown parameter and docker created a directory where the file belonged.
-    public static void FillBindMountEnv(string yaml, StackModel stack, string projectDir, string envPath)
+    public static List<(string Source, string Destination)> ParseMounts(string inspectJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(inspectJson);
+            return doc.RootElement.EnumerateArray()
+                .Select(m => (m.GetProperty("Source").GetString() ?? "", m.GetProperty("Destination").GetString() ?? ""))
+                .Where(m => m.Item1.Length > 0 && m.Item2.Length > 0).ToList();
+        }
+        catch { return []; }
+    }
+
+    public static string ToHostPath(string path, IReadOnlyList<(string Source, string Destination)> mounts)
+    {
+        var norm = path.Replace('\\', '/');
+        foreach (var (src, dst) in mounts.OrderByDescending(m => m.Destination.Length))
+        {
+            var d = dst.TrimEnd('/');
+            if (norm == d || norm.StartsWith(d + "/", StringComparison.Ordinal)) return src.TrimEnd('/') + norm[d.Length..];
+        }
+        return norm;
+    }
+
+    private static List<(string Source, string Destination)>? _ownMounts;
+    private static List<(string Source, string Destination)> OwnMounts(DeployService runner)
+    {
+        if (_ownMounts is { } known) return known;
+        if (!File.Exists("/.dockerenv")) return _ownMounts = [];
+        var self = Environment.MachineName;
+        try
+        {
+            var m = Regex.Match(File.ReadAllText("/proc/self/mountinfo"), "/containers/([0-9a-f]{64})/");
+            if (m.Success) self = m.Groups[1].Value;
+        }
+        catch { }
+        var r = runner.InspectMounts(self);
+        return _ownMounts = r.Ok ? ParseMounts(r.Log.Trim()) : [];
+    }
+
+    public static void FillBindMountEnv(string yaml, StackModel stack, string projectDir, string envPath, Func<string, string>? toHost = null)
     {
         if (!File.Exists(envPath)) return;
         var sources = new Dictionary<string, string>();
@@ -375,7 +414,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             var src = Regex.Match(line, @"^\s*source:\s*""\$\{([A-Za-z0-9_]+)\}""\s*$");
             if (!src.Success) continue;
             if (BindMountSource(stack, service, target) is { } path)
-                sources[src.Groups[1].Value] = Path.GetFullPath(Path.Combine(projectDir, path)).Replace('\\', '/');
+                sources[src.Groups[1].Value] = (toHost ?? (x => x))(Path.GetFullPath(Path.Combine(projectDir, path)).Replace('\\', '/'));
         }
         if (sources.Count == 0) return;
 
@@ -595,7 +634,8 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             }
             var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap);
             File.WriteAllText(path, processed);
-            FillBindMountEnv(processed, stack, Path.Combine(publishRoot, "src"), Path.Combine(pub.OutputDir, ".env"));
+            FillBindMountEnv(processed, stack, Path.Combine(publishRoot, "src"), Path.Combine(pub.OutputDir, ".env"),
+                target.Kind == TargetKind.Local ? p => ToHostPath(p, OwnMounts(runner)) : null);
             FillParameterEnv(stack, Path.Combine(pub.OutputDir, ".env"));
             var up = runner.UpProject(pub.OutputDir, project, needsBuild);
             var urls = up.Ok ? UrlsFromServices(ParseServices(runner.Ps(pub.OutputDir, project).Log), host) : new();
@@ -734,7 +774,10 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
                                            || Regex.IsMatch(s.Status, @"Restarting", RegexOptions.IgnoreCase));
         if (broken is not null) return ("failing", $"{Name(broken)} keeps restarting — {broken.Status}");
 
-        var dead = list.FirstOrDefault(s => s.State.Contains("exited", StringComparison.OrdinalIgnoreCase)
+        var never = list.FirstOrDefault(s => s.State.Equals("created", StringComparison.OrdinalIgnoreCase));
+        if (never is not null) return ("failing", $"{Name(never)} was never started — check the deploy log");
+
+        var dead = list.FirstOrDefault(s => (s.State.Contains("exited", StringComparison.OrdinalIgnoreCase) && !s.Status.StartsWith("Exited (0)", StringComparison.OrdinalIgnoreCase))
                                          || s.State.Contains("dead", StringComparison.OrdinalIgnoreCase));
         if (dead is not null) return ("failing", $"{Name(dead)} stopped — {dead.Status}");
 

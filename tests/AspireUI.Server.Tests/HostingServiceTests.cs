@@ -490,4 +490,50 @@ public class HostingServiceTests
         var plain = "services:\n  box:\n    image: \"box:1\"\n";
         Assert.Equal(plain, HostingService.ApplyContainerRuntimeArgs(plain, Stack(Node("box"))).Yaml);
     }
+
+    [Fact]
+    public void A_path_inside_our_own_container_is_handed_to_the_daemon_as_the_path_on_the_host()
+    {
+        var mounts = HostingService.ParseMounts("""
+            [{"Type":"volume","Name":"aspireui-data","Source":"/var/lib/docker/volumes/aspireui-data/_data","Destination":"/data"},
+             {"Type":"bind","Source":"/var/run/docker.sock","Destination":"/var/run/docker.sock"},
+             {"Type":"bind","Source":"/srv/ws","Destination":"/data/workspace"}]
+            """);
+
+        Assert.Equal("/srv/ws/_publish/x/src/Caddyfile", HostingService.ToHostPath("/data/workspace/_publish/x/src/Caddyfile", mounts));
+        Assert.Equal("/var/lib/docker/volumes/aspireui-data/_data/aspireui.db", HostingService.ToHostPath("/data/aspireui.db", mounts));
+        Assert.Equal("/database/x", HostingService.ToHostPath("/database/x", mounts));
+        Assert.Equal("/opt/app", HostingService.ToHostPath("/opt/app", []));
+        Assert.Empty(HostingService.ParseMounts("not json"));
+    }
+
+    [Fact]
+    public void FillBindMountEnv_hands_the_daemon_the_host_path_when_given_a_translation()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "aspireui-bindmount-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "Caddyfile"), ":8080 { respond \"ok\" }");
+            var env = Path.Combine(dir, ".env");
+            File.WriteAllText(env, "CADDY_BINDMOUNT_0=\n");
+            var yaml = """
+            services:
+              caddy:
+                image: "docker.io/caddy:2"
+                volumes:
+                  - type: "bind"
+                    target: "/etc/caddy/Caddyfile"
+                    source: "${CADDY_BINDMOUNT_0}"
+            """;
+            var stack = Stack(Node("caddy",
+                new WithCall("WithBindMount", new() { "\"./Caddyfile\"", "\"/etc/caddy/Caddyfile\"" })));
+
+            HostingService.FillBindMountEnv(yaml, stack, dir, env, p => "/host" + p);
+
+            var expected = "/host" + Path.GetFullPath(Path.Combine(dir, "Caddyfile")).Replace('\\', '/');
+            Assert.Contains(File.ReadAllLines(env), l => l == $"CADDY_BINDMOUNT_0={expected}");
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
 }
