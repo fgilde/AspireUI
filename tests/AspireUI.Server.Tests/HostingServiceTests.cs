@@ -576,4 +576,18 @@ public class HostingServiceTests
         Assert.True(HostingService.WritesOwnAddress(own));
         Assert.True(HostingService.WritesOwnAddress(plain with { ExtraFiles = [new ExtraFile("app.toml", "url = \"__ASPIREUI_HOST_80__\"")] }));
     }
+    [Fact]
+    public void The_proxy_source_is_the_proxy_elsewhere_and_docker_on_the_same_machine()
+    {
+        var ips = new Dictionary<string, string> { ["npm.lan"] = "192.168.1.20", ["box.lan"] = "192.168.1.10", ["npm.box"] = "192.168.1.10" };
+        System.Net.IPAddress[] Resolve(string h) => ips.TryGetValue(h, out var ip) ? [System.Net.IPAddress.Parse(ip)] : [];
+        DeployTarget With(string baseUrl) => new("t1", "box", TargetKind.Ssh, PublicHost: "box.lan",
+            Domains: new TargetDomains(DomainService.KindNpm, new TargetNpm(baseUrl, "a@b.c", null, "")));
+
+        Assert.Equal("127.0.0.1", HostingService.ProxySource(new DeployTarget("t1", "box", TargetKind.Ssh, PublicHost: "box.lan"), Resolve));
+        Assert.Equal("192.168.1.20", HostingService.ProxySource(With("http://npm.lan:81"), Resolve));
+        Assert.Equal(HostingService.DockerRange, HostingService.ProxySource(With("http://npm.box:81"), Resolve));
+        Assert.Equal(HostingService.DockerRange, HostingService.ProxySource(With("http://172.18.0.5:81"), Resolve));
+        Assert.Equal("cmd 10.0.0.1", HostingService.FillPublicUrls("cmd __ASPIREUI_PROXY__", "h", new Dictionary<int, int>(), proxy: "10.0.0.1"));
+    }
 }

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -349,9 +351,24 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
         stack.Nodes.Any(n => n.WithCalls.Any(w => w.Args.Any(a => a.Contains("__ASPIREUI_"))) || n.AddArgs.Any(a => a.Contains("__ASPIREUI_")))
         || stack.ExtraFiles.Any(f => f.Content.Contains("__ASPIREUI_"));
 
+    public const string DockerRange = "172.16.0.0/12";
+
+    public static string ProxySource(DeployTarget target, Func<string, IPAddress[]>? resolve = null)
+    {
+        if (target.Domains?.Kind != DomainService.KindNpm || !Uri.TryCreate(target.Domains.Npm?.BaseUrl, UriKind.Absolute, out var npm))
+            return "127.0.0.1";
+        resolve ??= h => { try { return Dns.GetHostAddresses(h); } catch { return []; } };
+        IEnumerable<IPAddress> V4(string? h) => string.IsNullOrWhiteSpace(h) ? [] : resolve(h).Where(a => a.AddressFamily == AddressFamily.InterNetwork);
+        if (V4(npm.Host).FirstOrDefault() is not { } ip) return DockerRange;
+        var b = ip.GetAddressBytes();
+        var here = V4(target.HostForUrls()).Concat(V4(target.Domains.Npm?.ForwardHost))
+            .Concat(target.IsLocal ? HostUrls.CandidateIPs().Select(IPAddress.Parse) : []);
+        return IPAddress.IsLoopback(ip) || (b[0] == 172 && b[1] is >= 16 and < 32) || here.Contains(ip) ? DockerRange : ip.ToString();
+    }
+
     public static string FillPublicUrls(string yaml, string host, IReadOnlyDictionary<int, int> hostByContainer,
-        (int Port, string Url)? origin = null) =>
-        Regex.Replace(yaml, @"__ASPIREUI_(URL|HOST|PORT|DOMAIN|SCHEME)_(\d+)__", m =>
+        (int Port, string Url)? origin = null, string proxy = "127.0.0.1") =>
+        Regex.Replace(yaml.Replace("__ASPIREUI_PROXY__", proxy), @"__ASPIREUI_(URL|HOST|PORT|DOMAIN|SCHEME)_(\d+)__", m =>
         {
             var container = int.Parse(m.Groups[2].Value);
             if (origin is { } o && o.Port == container && Uri.TryCreate(o.Url, UriKind.Absolute, out var u))
@@ -650,7 +667,7 @@ public class HostingService(DeploymentStore store, PublishService publish, Deplo
             }
             (int, string)? origin = stack.PublicOrigin is { Length: > 0 } po
                 ? (stack.PublicOriginPort > 0 ? stack.PublicOriginPort : chosen.FirstOrDefault(p => p.Public)?.Container ?? 0, po) : null;
-            var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap, origin);
+            var processed = FillPublicUrls(PublishExposedPorts(raw, portMap, keepInternal), host, portMap, origin, ProxySource(target));
             File.WriteAllText(path, processed);
             FillBindMountEnv(processed, stack, Path.Combine(publishRoot, "src"), Path.Combine(pub.OutputDir, ".env"),
                 target.Kind == TargetKind.Local ? p => ToHostPath(p, OwnMounts(runner)) : null);
