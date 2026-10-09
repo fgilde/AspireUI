@@ -67,6 +67,7 @@ const MAP: Record<string, Visual> = {
   localagi:            { img: localagiLogo, color: "#0EA5E9" },
   localrecall:         { img: localrecallLogo, color: "#16A34A" },
   openwebui:           { tabler: IconMessageChatbot, color: "#10A37F" },
+  "claude-code-router": { tabler: IconRouter, color: "#D97757" },
   comfyui:             { tabler: IconPhoto, color: "#7C3AED" },
   sdnext:              { tabler: IconPhoto, color: "#EC4899" },
   acestep:             { tabler: IconMusic, color: "#F59E0B" },

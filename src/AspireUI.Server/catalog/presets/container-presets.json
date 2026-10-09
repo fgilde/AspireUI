@@ -187,6 +187,40 @@
     ]
   },
   {
+    "id": "claude-code-router",
+    "label": "Claude Code Router",
+    "group": "AI Apps",
+    "image": "musistudio/claude-code-router:latest",
+    "port": 8080,
+    "icon": "claude-code-router",
+    "description": "Claude Code Router — a local control plane between Claude Code (and other agents) and any model provider. Route requests per task to OpenRouter, DeepSeek, Ollama, Gemini and more, with transformers that adapt each provider's format. Open the dashboard, add providers under Providers, then point Claude Code at this address (ANTHROPIC_BASE_URL). The dashboard opens without a password, so keep it off the public internet or behind a login.",
+    "env": [
+      [
+        "CCR_PUBLIC_BASE_URL",
+        "__ASPIREUI_URL_8080__"
+      ]
+    ],
+    "volumes": [
+      [
+        "data",
+        "/data"
+      ]
+    ],
+    "website": "https://ccrdesk.top",
+    "github": "https://github.com/musistudio/claude-code-router",
+    "stars": 37599,
+    "license": "MIT",
+    "language": "TypeScript",
+    "topics": [
+      "claude-code",
+      "llm-router",
+      "ai-gateway",
+      "openrouter",
+      "deepseek",
+      "ollama"
+    ]
+  },
+  {
     "id": "comfyui",
     "label": "ComfyUI",
     "group": "AI Apps",
