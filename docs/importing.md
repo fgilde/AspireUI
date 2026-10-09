@@ -21,6 +21,9 @@ The Import menu's **docker-compose.yml** option converts a Compose file into a s
 - each **service** → an `AddContainer("name", "image")` node,
 - **ports** → `WithHttpEndpoint(port:, targetPort:)`,
 - **environment** (list or map form) → `WithEnvironment(...)`,
+- **env_file** → `WithEnvironment(...)` for every key the `environment` block doesn't set. A repository
+  keeps its `.env` out of git, so the committed `.env.example` supplies the keys; the import asks for
+  their values next to the `${...}` variables and generates fresh values for secrets,
 - **volumes** → `WithBindMount(...)` (host path) or `WithVolume(...)` (named),
 - **command** → `WithArgs(...)`,
 - **depends_on** → `WaitFor` edges between the resulting nodes.

@@ -6,7 +6,7 @@ import { toastOk, toastErr } from "../ui";
 
 type ComposeFile = { path: string; content: string };
 type Manifest = { file: string; app: string; image: string; port: number };
-type Detected = { hasCompose: boolean; hasAppHost: boolean; hasDockerfile?: boolean; name?: string; composeFiles: ComposeFile[]; manifest?: Manifest | null; dockerfile?: api.DockerfileInfo | null };
+type Detected = { hasCompose: boolean; hasAppHost: boolean; hasDockerfile?: boolean; name?: string; composeFiles: ComposeFile[]; envFiles?: ComposeFile[]; manifest?: Manifest | null; dockerfile?: api.DockerfileInfo | null };
 type EnvVar = { name: string; def: string; secret: boolean };
 type Service = { name: string; image: string; proxy: boolean; port?: number };
 type Step = "form" | "choice" | "files" | "services" | "env" | "dockerfile";
@@ -57,6 +57,26 @@ export const scanEnv = (contents: string[]): EnvVar[] => {
   const re = /\$\{([A-Za-z0-9_]+)(?::-([^}]*))?\}/g;
   for (const c of contents) { let m: RegExpExecArray | null; while ((m = re.exec(c))) if (!seen.has(m[1])) seen.set(m[1], m[2] ?? ""); }
   return [...seen].map(([name, def]) => ({ name, def, secret: isSecretName(name) }));
+};
+
+const randomSecret = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, "0")).join("");
+
+export const scanEnvFiles = (compose: string[], envFiles: ComposeFile[], known: EnvVar[]): EnvVar[] => {
+  const text = compose.join("\n");
+  if (!/^\s*env_file\s*:/m.test(text)) return [];
+  const referenced = envFiles.filter(f => text.includes(f.path.replace(/\.example$/, "")))
+    .sort((a, b) => Number(!a.path.endsWith(".example")) - Number(!b.path.endsWith(".example")));
+  const seen = new Map<string, { value: string; example: boolean }>();
+  for (const f of referenced)
+    for (const raw of f.content.split(/\r?\n/)) {
+      const m = raw.trim().replace(/^export\s+/, "").match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (m) seen.set(m[1], { value: m[2].replace(/^(["'])(.*)\1$/, "$2").replace(/\s+#.*$/, ""), example: f.path.endsWith(".example") });
+    }
+  const declared = (k: string) => new RegExp(`^\\s*-?\\s*["']?${k}["']?\\s*[:=]`, "m").test(text);
+  return [...seen].filter(([k]) => !declared(k) && !known.some(v => v.name === k))
+    .map(([name, { value, example }]) => isSecretName(name)
+      ? { name, def: example || !value ? randomSecret() : value, secret: true }
+      : { name, def: value, secret: false });
 };
 
 const parseServices = (contents: string[]): Service[] => {
@@ -161,7 +181,8 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
   };
 
   const toEnv = (files: string[], svcNames: string[]) => {
-    const vars = scanEnv(contentsOf(files));
+    const known = scanEnv(contentsOf(files));
+    const vars = [...known, ...scanEnvFiles(contentsOf(files), detected?.envFiles ?? [], known)];
     if (vars.length === 0) { doImport("compose", files, {}, svcNames); return; }
     setEnvVars(vars);
     setEnvVals(Object.fromEntries(vars.map(v => [v.name, v.def])));
@@ -237,10 +258,11 @@ export function GitImportModal({ onClose, onImported, local, hosting }: { onClos
     const hasAppHost = local.sources.some(s => /\.csproj$/i.test(s.path) && /(Aspire\.AppHost\.Sdk|<IsAspireHost>\s*true)/i.test(b64Text(s.content)));
     const manifestSrc = local.sources.find(s => s.path === "aspireui-app.json");
     const manifest = manifestSrc ? parseManifest(b64Text(manifestSrc.content)) : null;
+    const envFiles = local.sources.filter(s => /^\.env/.test(s.path)).map(s => ({ path: s.path, content: b64Text(s.content) }));
     const dockerfileSrc = local.sources.find(s => s.path === "Dockerfile");
     const dockerfile = dockerfileSrc ? parseDockerfile(b64Text(dockerfileSrc.content)) : null;
     if (composeFiles.length === 0 && !hasAppHost && !manifest && !dockerfile) { toastErr("No aspireui-app.json, no .NET Aspire AppHost, no docker-compose file and no Dockerfile found in these files"); onClose(); return; }
-    const d: Detected = { hasCompose: composeFiles.length > 0, hasAppHost, hasDockerfile: !!dockerfile, name: local.name, composeFiles, manifest, dockerfile };
+    const d: Detected = { hasCompose: composeFiles.length > 0, hasAppHost, hasDockerfile: !!dockerfile, name: local.name, composeFiles, envFiles, manifest, dockerfile };
     setDetected(d);
     if (waysIn(d) > 1) { setMode(manifest ? "manifest" : hasAppHost ? "apphost" : "compose"); setStep("choice"); }
     else if (manifest) doImport("manifest");

@@ -93,6 +93,7 @@ public class ComposeImporter
         public List<string>? Ports { get; set; }
         public List<object>? Expose { get; set; }
         public object? Environment { get; set; }
+        public object? EnvFile { get; set; }
         public object? DependsOn { get; set; }
         public object? Command { get; set; }
         public object? Entrypoint { get; set; }
@@ -127,7 +128,7 @@ public class ComposeImporter
     }
 
     public (StackModel? stack, string? error) Import(string id, string name, string yaml, IReadOnlySet<string>? include = null,
-        string? srcDir = null, IReadOnlyDictionary<string, int>? servicePorts = null)
+        string? srcDir = null, IReadOnlyDictionary<string, int>? servicePorts = null, IReadOnlyDictionary<string, string>? env = null)
     {
         ComposeFile? file;
         yaml = ResolveEnv(yaml, null);
@@ -165,8 +166,12 @@ public class ComposeImporter
             foreach (var e in ReadExpose(def.Expose))
                 if (endpointTargets.Add(e))
                     withs.Add(new WithCall("WithHttpEndpoint", [$"targetPort: {e}"]));
-            foreach (var (k, v) in ReadEnv(def.Environment))
+            var declared = ReadEnv(def.Environment).ToList();
+            foreach (var (k, v) in declared)
                 withs.Add(new WithCall("WithEnvironment", [Quote(k), Quote(v)]));
+            foreach (var (k, v) in ReadEnvFiles(srcDir, def.EnvFile, env))
+                if (!declared.Any(d => d.Item1 == k))
+                    withs.Add(new WithCall("WithEnvironment", [Quote(k), Quote(v)]));
             foreach (var vol in def.Volumes ?? [])
             {
                 var parts = vol.Split(':');
@@ -287,6 +292,42 @@ public class ComposeImporter
         else if (env is Dictionary<object, object> map)
             foreach (var (k, v) in map)
                 yield return (k?.ToString() ?? "", v?.ToString() ?? "");
+    }
+
+    public static IEnumerable<(string, string)> ReadEnvFiles(string? srcDir, object? envFile, IReadOnlyDictionary<string, string>? env)
+    {
+        var names = envFile switch
+        {
+            string s => [s],
+            List<object> list => list.Select(x => x is Dictionary<object, object> d && d.TryGetValue("path", out var p) ? p?.ToString() : x?.ToString()),
+            _ => [],
+        };
+        var values = new Dictionary<string, string>();
+        foreach (var name in names.Where(n => !string.IsNullOrWhiteSpace(n)))
+            foreach (var path in new[] { name + ".example", name! })
+            {
+                var full = Path.Combine(srcDir ?? "", path!);
+                if (srcDir is null || !File.Exists(full)) continue;
+                foreach (var (k, v) in ParseDotEnv(File.ReadAllText(full))) values[k] = v;
+            }
+        foreach (var k in values.Keys.ToList())
+            if (env is not null && env.TryGetValue(k, out var given) && given.Length > 0) values[k] = given;
+        return values.Where(kv => kv.Value.Length > 0).Select(kv => (kv.Key, kv.Value));
+    }
+
+    public static IEnumerable<(string, string)> ParseDotEnv(string text)
+    {
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("export ")) line = line[7..].TrimStart();
+            var eq = line.IndexOf('=');
+            if (line.StartsWith('#') || eq <= 0) continue;
+            var value = line[(eq + 1)..].Trim();
+            if (value.Length >= 2 && (value[0] == '"' || value[0] == '\'') && value[^1] == value[0]) value = value[1..^1];
+            else if (value.IndexOf(" #") is var hash and >= 0) value = value[..hash].TrimEnd();
+            yield return (line[..eq].Trim(), value);
+        }
     }
 
     private static IEnumerable<string> ReadDependsOn(object? dep)

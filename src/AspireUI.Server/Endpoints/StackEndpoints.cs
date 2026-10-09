@@ -537,7 +537,7 @@ public static class StackEndpoints
             var suggested = r.HasDockerfile && apps.Count == 0 && ImageRegistry.SuggestFor(b.Url) is { } guess && ImageRegistry.Exists(guess) ? guess : null;
             return Results.Ok(new
             {
-                r.HasCompose, r.HasAppHost, r.HasDockerfile, r.Name, composeFiles = r.ComposeFiles ?? new(),
+                r.HasCompose, r.HasAppHost, r.HasDockerfile, r.Name, composeFiles = r.ComposeFiles ?? new(), envFiles = r.EnvFiles ?? new(),
                 manifest = apps.Count == 0 ? null : new { file = GitService.ManifestName, app = apps[0].Label, apps[0].Image, apps[0].Port },
                 dockerfile = r.Dockerfile is null ? null : new
                 {

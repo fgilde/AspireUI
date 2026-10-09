@@ -73,7 +73,7 @@ public class DirImporter(ImportService import, ComposeImporter compose)
         }
         var yaml = MergeComposeYaml(dir, files, env);
         if (yaml is null) return (null, "no docker-compose file found");
-        var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null, dir, ports);
+        var (cs, cerr) = compose.Import(sid, name, yaml, services is { Length: > 0 } ? services.ToHashSet() : null, dir, ports, env);
         return cs is null ? (null, cerr) : (cs with { HasSource = true, ExtraFiles = [] }, null);
     }
 

@@ -16,7 +16,13 @@ public static class GitService
 
     public record ComposeFileDto(string Path, string Content);
     public record RepoInfo(bool HasCompose, bool HasAppHost, string? Name, string? Error, List<ComposeFileDto>? ComposeFiles = null,
-        string? Manifest = null, bool HasDockerfile = false, DockerfileInfo? Dockerfile = null);
+        string? Manifest = null, bool HasDockerfile = false, DockerfileInfo? Dockerfile = null, List<ComposeFileDto>? EnvFiles = null);
+
+    public static List<ComposeFileDto> FindEnvFiles(string dir) =>
+        !Directory.Exists(dir) ? new() : Directory.EnumerateFiles(dir, ".env*")
+            .Where(f => new FileInfo(f).Length < 64_000)
+            .Select(f => new ComposeFileDto(System.IO.Path.GetFileName(f), TryRead(f)))
+            .ToList();
 
     public static string? FindManifest(string dir)
     {
@@ -38,7 +44,7 @@ public static class GitService
             var hasAppHost = FindAppHost(root) is not null;
             var dockerfile = DockerfileReader.Read(root);
             return new(composeFiles.Count > 0, hasAppHost, RepoName(url), null, composeFiles, FindManifest(root),
-                dockerfile is not null, dockerfile);
+                dockerfile is not null, dockerfile, FindEnvFiles(root));
         }
         catch (Exception e) { return new(false, false, null, e.Message); }
         finally { Cleanup(dir); }
