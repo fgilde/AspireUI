@@ -163,6 +163,7 @@ public static class StackEndpoints
                 CreatedAt = DateTime.UtcNow.ToString("O"),
                 CreatedBy = ctx.User.Identity?.Name ?? "admin",
                 HookToken = null, ExpireAt = null, ClonedFrom = null, PublicOrigin = null, PublicOriginPort = 0,
+                RetrieveHidden = null,
             };
             // The activity log reads its subject from the url, and a stack being created has no url yet.
             AuditMiddleware.Names(ctx, created.Id, created.Name);
@@ -1006,7 +1007,8 @@ public static class StackEndpoints
             catch (Exception ex) { return Results.Problem(ex.Message); }
         });
 
-        app2.MapGet("/stacks/{id}/resources", (string id, HttpContext ctx) =>
+        app2.MapGet("/stacks/{id}/resources", (string id, HttpContext ctx) => Results.Ok(PublicResources(id, ctx)));
+        List<LiveResource> PublicResources(string id, HttpContext ctx)
         {
             var host = PublicHost(ctx);
             var res = graph.GetResources(id).ToList();
@@ -1020,8 +1022,8 @@ public static class StackEndpoints
                     Url = byRes.TryGetValue(r.Name, out var rp) ? HostUrls.WithHostPort(u.Url, host, rp) : HostUrls.Rewrite(u.Url, host),
                 }).ToList(),
             }).ToList();
-            return Results.Ok(mapped);
-        });
+            return mapped;
+        }
         app2.MapGet("/stacks/{id}/stats", (string id) => Results.Ok(DockerStatsSnapshot()));
         app2.MapGet("/hosting/stats", () => Results.Ok(DockerStatsSnapshot()));
         app2.MapGet("/hosting/summary", () =>
@@ -1705,14 +1707,15 @@ public static class StackEndpoints
 
         // Every target answers for its own apps: its own proxy for domains, and its own address for
         // URLs — rewriting a remote app's URL to the request host would point at the wrong machine.
-        app2.MapGet("/hosting", async (HttpContext ctx) =>
+        app2.MapGet("/hosting", async (HttpContext ctx) => Results.Ok(await HostingView(ctx)));
+        async Task<List<Deployment>> HostingView(HttpContext ctx)
         {
             var host = PublicHost(ctx);
             var list = deployments.List().Select(d => hosting.Refresh(d.Id) ?? d).ToList();
             var hostsByTarget = new Dictionary<string, List<NpmProxyHost>>();
             foreach (var tid in list.Select(d => d.Target).Distinct())
                 hostsByTarget[tid] = await domains.ListAsync(targetStore.Resolve(tid));
-            return Results.Ok(list.Select(d =>
+            return list.Select(d =>
             {
                 var t = targetStore.Resolve(d.TargetId);
                 return d with
@@ -1722,8 +1725,39 @@ public static class StackEndpoints
                     TargetName = t.Name, TargetKind = t.Kind, TargetCompose = TargetKind.IsCompose(t.Kind),
                     Tags = store.Get(d.StackId)?.Tags,
                 };
-            }));
-        });
+            }).ToList();
+        }
+
+        // The retrieve API: what runs here, for another app to pick up. Anonymous unless a key is set.
+        app2.MapGet("/retrieve/apps", async (HttpContext ctx) =>
+        {
+            if (!RetrieveApi.Enabled) return Results.NotFound();
+            if (!RetrieveApi.Authorized(ctx.Request)) return Results.Unauthorized();
+            var apps = new List<RetrievedApp>();
+            foreach (var d in await HostingView(ctx))
+                if (!RetrieveApi.IsHidden(store.Get(d.StackId), d.Name))
+                    apps.Add(new(d.Name, "hosted", RetrieveApi.HostedHealthy(d), (d.Domains ?? []).Concat(d.Urls).Distinct().ToList()));
+            foreach (var s in store.List())
+            {
+                if (run.Status(s.Id).State != RunState.Running || RetrieveApi.IsHidden(s, s.Name)) continue;
+                var res = PublicResources(s.Id, ctx);
+                apps.Add(new(s.Name, "stack", RetrieveApi.StackHealthy(res), RetrieveApi.PublicUrls(res)));
+            }
+            return Results.Ok(apps);
+        }).AllowAnonymous();
+        app2.MapGet("/retrieve/info", () => Results.Ok(new
+        {
+            enabled = RetrieveApi.Enabled,
+            keyRequired = RetrieveApi.Key is not null,
+            path = RetrieveApi.Path,
+            hiddenStackIds = store.List().Where(s => RetrieveApi.IsHidden(s, s.Name)).Select(s => s.Id).ToList(),
+        }));
+        app2.MapPut("/stacks/{id}/retrieve-hidden", (string id, RetrieveHiddenRequest b) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            store.Save(s with { RetrieveHidden = b.Hidden });
+            return Results.Ok(new { hidden = b.Hidden });
+        }).RequirePerm(Perm.Configure);
         app2.MapGet("/hosting/{id}/logs", async (string id, HttpContext ctx) =>
         {
             if (deployments.Get(id) is not { } d) { ctx.Response.StatusCode = 404; return; }
@@ -1846,6 +1880,7 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record SchedulesRequest(List<AspireUI.Server.Models.AppSchedule>? Schedules);
     public record TagsRequest(List<string>? Tags);
+    public record RetrieveHiddenRequest(bool Hidden);
 
     private static string? Str(System.Text.Json.JsonElement e, string name) =>
         e.ValueKind == System.Text.Json.JsonValueKind.Object && e.TryGetProperty(name, out var v)

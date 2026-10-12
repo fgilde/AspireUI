@@ -7,6 +7,7 @@ import { can, canOpenEditor, PERM_CONFIGURE, PERM_DEPLOY, PERM_FILES, PERM_FILES
 import { useAuth } from "../auth/AuthContext";
 import * as api from "../api";
 import { confirmDelete, toastOk, toastErr } from "../ui";
+import { RetrieveMenuItem } from "./Retrieve";
 
 // Border/chip color for a stack's hosting state; shared so cards & badges stay consistent.
 export const hostingColor = (s: string) => s === "running" ? "green" : s === "failed" ? "red" : s === "deploying" ? "yellow" : "gray";
@@ -58,6 +59,7 @@ export function HostingMenuItems({ d, onConfigure, onLogs, onBackups, onDomain, 
       {onBackups && mayDeploy && d.targetCompose !== false && <Menu.Item leftSection={<IconArchive size={14} />} onClick={onBackups}>Backups…</Menu.Item>}
       {onDomain && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconWorld size={14} />} onClick={onDomain}>Domain (proxy)…</Menu.Item>}
       {onTags && can(user, PERM_CONFIGURE) && <Menu.Item leftSection={<IconTag size={14} />} onClick={onTags}>Tags…</Menu.Item>}
+      <RetrieveMenuItem stackId={d.stackId} />
       {onDiff && mayDeploy && <Menu.Item leftSection={<IconGitCompare size={14} />} onClick={onDiff}>Preview changes…</Menu.Item>}
       {onOpenEditor && canOpenEditor(user) && <Menu.Item leftSection={<IconPencil size={14} />} onClick={onOpenEditor}>Open in editor</Menu.Item>}
       {mayDeploy && <>

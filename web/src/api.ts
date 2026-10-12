@@ -159,6 +159,11 @@ export const listTags = (): Promise<{ tag: string; count: number }[]> => fetch(`
 export const setStackTags = (stackId: string, tags: string[]): Promise<string[]> =>
   fetch(`${base}/stacks/${stackId}/tags`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ tags }) }).then(ok);
 
+export const retrieveInfo = (): Promise<{ enabled: boolean; keyRequired: boolean; path: string; hiddenStackIds: string[] }> =>
+  fetch(`${base}/retrieve/info`).then(ok);
+export const setRetrieveHidden = (stackId: string, hidden: boolean): Promise<{ hidden: boolean }> =>
+  fetch(`${base}/stacks/${stackId}/retrieve-hidden`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ hidden }) }).then(ok);
+
 export const hostingSchedules = (stackId: string): Promise<import("./model").AppSchedules> =>
   fetch(`${base}/stacks/${stackId}/schedules`).then(ok);
 export const setHostingSchedules = (stackId: string, schedules: import("./model").AppSchedule[]): Promise<import("./model").AppSchedule[]> =>

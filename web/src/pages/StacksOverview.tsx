@@ -20,6 +20,7 @@ import type { TemplateInfo } from "../api";
 import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
+import { RetrieveBadge, RetrieveMenuItem } from "../hosting/Retrieve";
 import { stackContainers } from "./Hosting";
 import { InstallAppModal } from "../hosting/InstallAppModal";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
@@ -448,6 +449,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           </Badge>
                         </Tooltip>
                       )}
+                      <RetrieveBadge stackId={s.id} live={!!dep || state === "Running"} />
                       {s.expireAt && (
                         <Tooltip label={`Removed automatically on ${new Date(s.expireAt).toLocaleString()}`} withArrow>
                           <Badge size="xs" variant="light" color="orange" leftSection={<IconClockHour4 size={10} />}>{expiresIn(s.expireAt)}</Badge>
@@ -487,6 +489,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                               {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                              <RetrieveMenuItem stackId={s.id} />
                               <Menu.Item leftSection={<IconServer size={14} />} disabled={isBusy(s.id)}
                                 onClick={() => withBusy(s.id, async () => { toastOk(`Deploying "${s.name}" to hosting…`); await api.hostingDeploy(s.id); loadDeps(); nav("/hosting"); })}>
                                 Deploy to hosting

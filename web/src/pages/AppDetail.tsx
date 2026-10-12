@@ -12,6 +12,7 @@ import { useTitle } from "../useTitle";
 import { Spark } from "../components/Spark";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
+import { RetrieveBadge } from "../hosting/Retrieve";
 import { stackContainers, healthOf, type AppStat } from "./Hosting";
 import { toastOk, toastErr } from "../ui";
 
@@ -98,6 +99,7 @@ export function AppDetail() {
                     {d.targetName ?? "This machine"}
                   </Badge>
                 </Tooltip>
+                <RetrieveBadge stackId={d.stackId} live size="lg" />
               </Group>
               {stat && active && (
                 <Tooltip label={`CPU ${stat.cpu}% · ${stat.memMb} MB`} withArrow>

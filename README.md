@@ -276,6 +276,9 @@ containers on the host; see the security note in `docker-compose.yml`.
 | `ASPIREUI_SEED_DEPLOY` | `false`               | `true` = deploy the seeded stacks and apps once hosting is up |
 | `ASPIREUI_SET_<Key>` | *(unset)*              | **Seed any setting** from env (see below) — ships a pre-configured image |
 | `ASPIREUI_SET_FORCE` | `false`                | `true` = `ASPIREUI_SET_*` overrides existing values on every start (default: fill only what's unset) |
+| `ASPIREUI_RETRIEVE_API` | `false`             | `true` = `GET /api/retrieve/apps` lists hosted apps and running stacks as `[{ name, kind, healthy, urls }]`, anonymously |
+| `ASPIREUI_RETRIEVE_API_KEY` | *(unset)*       | Turns the retrieve API on and requires this key in the `X-Api-Key` header |
+| `ASPIREUI_RETRIEVE_API_HIDDEN` | *(unset)*    | App/stack names (`;`-separated) left out of the retrieve API until shown again from their menu |
 
 ### Pre-seeding settings (`ASPIREUI_SET_*`)
 
