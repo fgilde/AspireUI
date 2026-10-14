@@ -1707,7 +1707,8 @@ public static class StackEndpoints
 
         // Every target answers for its own apps: its own proxy for domains, and its own address for
         // URLs — rewriting a remote app's URL to the request host would point at the wrong machine.
-        app2.MapGet("/hosting", async (HttpContext ctx) => Results.Ok(await HostingView(ctx)));
+        // Block body on purpose: an expression lambda over only HttpContext binds as RequestDelegate and drops the result.
+        app2.MapGet("/hosting", async (HttpContext ctx) => { return Results.Ok(await HostingView(ctx)); });
         async Task<List<Deployment>> HostingView(HttpContext ctx)
         {
             var host = PublicHost(ctx);
