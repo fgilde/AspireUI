@@ -96,6 +96,9 @@ matching resource that is already on the canvas instead of starting a second one
 - **Store presentation** — `icon` (a slug from
   [dashboard-icons](https://github.com/homarr-labs/dashboard-icons), e.g. `nextcloud`), `logo`,
   `card`, `screenshots` (URLs), `tags`, `website`, `github`, `license`, `language`.
+  For the built-in store, `stars`, `license`, `language` and `topics` come from the `github` repo:
+  `scripts/sync-github-meta.mjs` refreshes them weekly (workflow *Store metadata*). A license
+  GitHub cannot name (`NOASSERTION`) or a dual license written as `"A / B"` is left as typed.
 - **Provenance** — `submitter` and `source` are shown in the details dialog, so users can see where
   an app came from.
 - **`sources`** — the same app from more than one place: the official image and a maintained fork,
