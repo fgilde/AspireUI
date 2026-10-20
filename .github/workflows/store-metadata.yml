@@ -1,0 +1,33 @@
+name: Store metadata
+
+# Stars, license, language and topics of the store apps come from their GitHub repos. Typed in
+# by hand they go stale or are simply wrong (HaVeWa was listed as MIT), so this refreshes them
+# weekly and commits the result. A commit made with GITHUB_TOKEN does not start other workflows,
+# so this does not rebuild the image; the next regular push carries the data along.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test scripts/sync-github-meta.test.mjs
+      - run: node scripts/sync-github-meta.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit if changed
+        run: |
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "store metadata refreshed from github"
+          git push
