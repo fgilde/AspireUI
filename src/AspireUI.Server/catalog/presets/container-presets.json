@@ -382,6 +382,7 @@
       "music",
       "gpu"
     ],
+    "logo": "/media/maestro/logo.png",
     "card": "/media/maestro/card.webp",
     "screenshots": [
       "/media/maestro/screenshot_1.webp"
@@ -452,6 +453,7 @@
       "gpu",
       "mcp"
     ],
+    "logo": "/media/museforge/logo.webp",
     "card": "/media/museforge/banner.webp",
     "screenshots": [
       "/media/museforge/screenshot_1.webp"
