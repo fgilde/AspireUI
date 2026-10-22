@@ -116,6 +116,7 @@ public static class InstanceTransfer
             if (LocalSettings.Contains(key, StringComparer.OrdinalIgnoreCase)) continue;
             if (key.StartsWith("git:", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("githook:", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("gitenv:", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("clonehook:", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("hook:", StringComparison.OrdinalIgnoreCase)
                 || key.Equals("hooks", StringComparison.OrdinalIgnoreCase)

@@ -366,6 +366,7 @@ public static class StackEndpoints
                 catch { }
                 settings.SetValue($"git:{id}", null);
             }
+            settings.SetValue($"gitenv:{id}", null);
         }
         app2.MapDelete("/stacks/{id}", (string id) =>
         {
@@ -516,7 +517,11 @@ public static class StackEndpoints
 
             var (rebuilt, err) = dirs.Build(id, dir, existing.RunAsIs ? "runasis" : g.Mode ?? "compose", existing.Name, g.Files, g.Services, g.Env, g.ServicePorts, g.Image, g.Port);
             if (rebuilt is null) return Results.UnprocessableEntity(new { message = err });
-            var updated = rebuilt with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true };
+            var baseline = settings.GetValue($"gitenv:{id}") is { } envRaw
+                ? System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(envRaw, gitJson) : null;
+            var updated = GitRedeploy.Carry(existing, rebuilt, baseline)
+                with { Id = id, CreatedAt = existing.CreatedAt, CreatedBy = existing.CreatedBy, FromGit = true };
+            SaveGitBaseline(id, rebuilt);
             store.Save(updated);
             gen.Materialize(updated, Dir(id));
             var redeployed = false;
@@ -528,6 +533,10 @@ public static class StackEndpoints
             }
             return Results.Ok(new { stackId = id, redeployed });
         }
+        // What the repository alone gives each service, so the next pull can tell an edited value from
+        // one the repository changed.
+        void SaveGitBaseline(string id, StackModel fromRepo) =>
+            settings.SetValue($"gitenv:{id}", System.Text.Json.JsonSerializer.Serialize(GitRedeploy.EnvByResource(fromRepo), gitJson));
         app2.MapPost("/git/inspect", (GitImportRequest b) =>
         {
             var r = GitService.Inspect(b.Url, b.Branch, b.Subdir, b.AuthToken);
@@ -579,6 +588,7 @@ public static class StackEndpoints
             settings.SetValue($"git:{sid}", System.Text.Json.JsonSerializer.Serialize(new GitStackRef(b.Url, b.Branch, b.Subdir, token, b.AuthToken, b.Files, b.Env, b.Services, b.ServicePorts,
                 Mode: effectiveMode, Image: b.Image, Port: b.Port), gitJson));
             settings.SetValue($"githook:{token}", sid);
+            SaveGitBaseline(sid, withMeta);
             store.Save(withMeta);
             gen.Materialize(withMeta, Dir(sid));
             return Results.Ok(withMeta);
