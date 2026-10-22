@@ -159,6 +159,13 @@ export const listTags = (): Promise<{ tag: string; count: number }[]> => fetch(`
 export const setStackTags = (stackId: string, tags: string[]): Promise<string[]> =>
   fetch(`${base}/stacks/${stackId}/tags`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ tags }) }).then(ok);
 
+export const setStackCategory = (stackId: string, category: string | null): Promise<{ category: string | null }> =>
+  fetch(`${base}/stacks/${stackId}/category`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ category }) }).then(ok);
+export const lockStack = (stackId: string, needsPassword: boolean): Promise<unknown> =>
+  fetch(`${base}/stacks/${stackId}/lock`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ needsPassword }) }).then(ok);
+export const unlockStack = (stackId: string, password?: string): Promise<unknown> =>
+  fetch(`${base}/stacks/${stackId}/unlock`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ password }) }).then(okVoid);
+
 export const retrieveInfo = (): Promise<{ enabled: boolean; keyRequired: boolean; path: string; hiddenStackIds: string[] }> =>
   fetch(`${base}/retrieve/info`).then(ok);
 export const setRetrieveHidden = (stackId: string, hidden: boolean): Promise<{ hidden: boolean }> =>

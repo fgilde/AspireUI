@@ -5,12 +5,12 @@ import JSZip from "jszip";
 import ignore from "ignore";
 import {
   Group, Title, Text, Button, SimpleGrid, Card, ActionIcon, Divider, Anchor,
-  Modal, TextInput, Badge, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select,
+  Modal, TextInput, Badge, Center, Loader, Stack as MStack, ThemeIcon, Menu, Tooltip, Select, MultiSelect,
 } from "@mantine/core";
 import {
   IconPlus, IconTrash, IconLayoutGrid, IconChevronDown, IconSparkles,
   IconUpload, IconFileZip, IconFolder, IconDots, IconCopy, IconPencil, IconSearch, IconServer,
-  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld, IconCopyPlus, IconClockHour4,
+  IconPlayerPlay, IconPlayerStop, IconExternalLink, IconBookmark, IconUser, IconDownload, IconLayoutDashboard, IconBrandGithub, IconWorld, IconCopyPlus, IconClockHour4, IconLock, IconLockOpen,
 } from "@tabler/icons-react";
 import { runStateColor, can, canOpenEditor, hostingBroken, hostingHealthLabel, PERM_DEPLOY, canHooks, type Stack, type RunStatus, type Deployment } from "../model";
 import { ResourceGlyph } from "../resourceIcons";
@@ -21,6 +21,7 @@ import { PageShell } from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { HostingMenuItems, ConfigureModal, LogsModal, BackupsModal, DomainModal, TerminalModal, VolumesModal, hostingColor, deploymentColor } from "../hosting/HostingActions";
 import { RetrieveBadge, RetrieveMenuItem } from "../hosting/Retrieve";
+import { moveToCategory, lockApp, unlockApp } from "../hosting/Organize";
 import { stackContainers } from "./Hosting";
 import { InstallAppModal } from "../hosting/InstallAppModal";
 import { MoveAppModal, targetIcon } from "../hosting/TargetsPanel";
@@ -119,6 +120,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
   const [query, setQuery] = useState("");
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [sectionFilter, setSectionFilter] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("aspireui.sectionFilter") ?? "[]"); } catch { return []; }
+  });
+  const pickSections = (v: string[]) => {
+    setSectionFilter(v);
+    try { localStorage.setItem("aspireui.sectionFilter", JSON.stringify(v)); } catch { /* storage blocked */ }
+  };
   const [statuses, setStatuses] = useState<Record<string, RunStatus>>({});
   const [liveByStack, setLiveByStack] = useState<Record<string, { name: string; url?: string; running: boolean }[]>>({});
   const [hostStat, setHostStat] = useState<Record<string, { cpu: number; memMb: number }>>({});
@@ -387,8 +395,12 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     </>
   );
 
+  const sectionOf = (s: Stack) => !deps[s.id] ? "Stacks" : s.category || (s.hookToken || s.clonedFrom ? "From hooks" : "Hosting");
+  const categories = [...new Set(stacks.filter(s => deps[s.id] && s.category).map(s => s.category!))].sort((a, b) => a.localeCompare(b));
+  const sectionOptions = [...new Set([...(simple ? [] : ["Stacks"]), "Hosting", "From hooks", ...categories])];
   const passesFilters = (s: typeof stacks[number]) => {
     if (!s.name.toLowerCase().includes(query.trim().toLowerCase())) return false;
+    if (sectionFilter.length > 0 && !sectionFilter.includes(sectionOf(s))) return false;
     if (creatorFilter && s.createdBy !== creatorFilter) return false;
     if (statusFilter) {
       const running = ["Running", "Starting"].includes(statuses[s.id]?.state ?? "NotRunning");
@@ -398,9 +410,11 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
     return true;
   };
   const visible = stacks.filter(passesFilters);
-  const cloneStacks = visible.filter(s => deps[s.id] && (s.hookToken || s.clonedFrom))
+  const cloneStacks = visible.filter(s => sectionOf(s) === "From hooks")
     .sort((a, b) => (a.expireAt ?? "￿").localeCompare(b.expireAt ?? "￿"));
-  const hostingStacks = visible.filter(s => deps[s.id] && !s.hookToken && !s.clonedFrom);
+  const hostingStacks = visible.filter(s => sectionOf(s) === "Hosting");
+  const categorySections = categories.filter(c => c !== "Hosting" && c !== "From hooks")
+    .map(c => [c, visible.filter(s => sectionOf(s) === c)] as const).filter(([, list]) => list.length > 0);
   const buildStacks = simple ? [] : visible.filter(s => !deps[s.id]); // dev/build stacks (hidden in appliance view)
   const runningHosted = hostingStacks.filter(s => deps[s.id]?.state === "running" && !hostingBroken(deps[s.id])).length;
   const brokenHosted = hostingStacks.filter(s => hostingBroken(deps[s.id])).length;
@@ -440,6 +454,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                       </Tooltip>
                       <Text fw={600} lineClamp={1}>{s.name}</Text>
                       {s.fromGit && <Tooltip label="Imported from Git" withArrow><IconBrandGithub size={14} style={{ flexShrink: 0, opacity: 0.55 }} /></Tooltip>}
+                      {s.lockedBy && <Tooltip label={`Locked by ${s.lockedBy}${s.lockNeedsPassword ? " (password to unlock)" : ""}`} withArrow><IconLock size={14} style={{ flexShrink: 0, opacity: 0.7 }} /></Tooltip>}
                     </Group>
                     <Group gap={6} wrap="nowrap">
                       {dep && (
@@ -472,7 +487,13 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown onClick={e => e.stopPropagation()}>
-                          {dep ? (
+                          {dep && s.lockedBy ? (
+                            <>
+                              <Menu.Item leftSection={<IconLockOpen size={14} />} onClick={() => unlockApp(s).then(ok => { if (ok) load(); })}>Unlock…</Menu.Item>
+                              <Menu.Item leftSection={<IconFolder size={14} />} onClick={() => moveToCategory(s, categories).then(ok => { if (ok) load(); })}>Move to category…</Menu.Item>
+                              <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                            </>
+                          ) : dep ? (
                             <>
                               <HostingMenuItems d={dep} onConfigure={() => setConfigFor(dep)} onLogs={() => setLogsFor(dep)}
                                 onBackups={() => setBackupsFor(dep)} onDomain={() => setDomainFor(dep)}
@@ -483,6 +504,8 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                               {s.fromGit && <Menu.Item leftSection={<IconBrandGithub size={14} />} onClick={() => updateFromGit(s)}>Update from Git</Menu.Item>}
                               <Menu.Item leftSection={<IconPencil size={14} />} onClick={() => rename(s)}>Rename</Menu.Item>
                               <Menu.Item leftSection={<IconCopy size={14} />} onClick={() => duplicate(s)}>Duplicate</Menu.Item>
+                              <Menu.Item leftSection={<IconFolder size={14} />} onClick={() => moveToCategory(s, categories).then(ok => { if (ok) load(); })}>Move to category…</Menu.Item>
+                              <Menu.Item leftSection={<IconLock size={14} />} onClick={() => lockApp(s).then(ok => { if (ok) load(); })}>Lock…</Menu.Item>
                             </>
                           ) : (
                             <>
@@ -542,7 +565,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                     <Group gap={4} onClick={e => e.stopPropagation()}>
                       {dep ? (
                         <>
-                          {dep.state === "deploying" || isBusy(s.id)
+                          {s.lockedBy
+                            ? <Tooltip label={`Locked by ${s.lockedBy}`} withArrow><ActionIcon size="sm" variant="subtle" color="gray"
+                                onClick={() => unlockApp(s).then(ok => { if (ok) load(); })}><IconLock size={15} /></ActionIcon></Tooltip>
+                            : dep.state === "deploying" || isBusy(s.id)
                             ? <Tooltip label={isBusy(s.id) ? "Working…" : "Deploying — pulling images &amp; starting…"} withArrow><Loader size="xs" color="yellow" /></Tooltip>
                             : active
                             ? <Tooltip label="Stop (hosting)" withArrow><ActionIcon size="sm" variant="subtle" color="red" disabled={isBusy(s.id)}
@@ -615,6 +641,10 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                   <Select w={150} placeholder="Any creator" clearable value={creatorFilter} onChange={setCreatorFilter}
                     data={creators} leftSection={<IconUser size={14} />} />
                 )}
+                {hostedCount > 0 && (
+                  <MultiSelect w={220} placeholder={sectionFilter.length ? undefined : "All categories"} clearable
+                    data={sectionOptions} value={sectionFilter} onChange={pickSections} leftSection={<IconFolder size={14} />} />
+                )}
                 <Select w={140} placeholder="Any status" clearable value={statusFilter} onChange={setStatusFilter}
                   data={[{ value: "running", label: "Running" }, { value: "stopped", label: "Not running" }]} />
               </Group>
@@ -681,7 +711,7 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                 </MStack>
               )}
               {hostingStacks.length > 0 && (
-                <MStack gap="sm" mb={cloneStacks.length > 0 ? "xl" : 0}>
+                <MStack gap="sm" mb={cloneStacks.length + categorySections.length > 0 ? "xl" : 0}>
                   {!simple && buildStacks.length > 0 && <Divider />}
                   <Group justify="space-between" wrap="nowrap">
                     <Group gap="xs">
@@ -701,9 +731,22 @@ export function StacksOverview({ simple = false }: { simple?: boolean }) {
                   </SimpleGrid>
                 </MStack>
               )}
+              {categorySections.map(([c, list], i) => (
+                <MStack key={c} gap="sm" mb={i < categorySections.length - 1 || cloneStacks.length > 0 ? "xl" : 0}>
+                  {(buildStacks.length + hostingStacks.length > 0 || i > 0) && <Divider />}
+                  <Group gap="xs">
+                    <IconFolder size={16} />
+                    <Title order={5} fw={600}>{c}</Title>
+                    <Badge variant="light" color="grape" size="sm">{list.length}</Badge>
+                  </Group>
+                  <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                    {list.map(renderCard)}
+                  </SimpleGrid>
+                </MStack>
+              ))}
               {cloneStacks.length > 0 && (
                 <MStack gap="sm">
-                  {buildStacks.length + hostingStacks.length > 0 && <Divider />}
+                  {buildStacks.length + hostingStacks.length + categorySections.length > 0 && <Divider />}
                   <Group gap="xs">
                     <IconCopyPlus size={16} />
                     <Title order={5} fw={600}>From hooks</Title>

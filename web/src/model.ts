@@ -33,6 +33,7 @@ export interface Stack {
   appHostProject?: string | null;
   fromGit?: boolean;
   expireAt?: string | null; clonedFrom?: string | null; hookToken?: string | null;
+  category?: string | null; lockedBy?: string | null; lockNeedsPassword?: boolean;
 }
 
 // Stack deployed persistently; long-lived docker-compose project.

@@ -163,7 +163,7 @@ public static class StackEndpoints
                 CreatedAt = DateTime.UtcNow.ToString("O"),
                 CreatedBy = ctx.User.Identity?.Name ?? "admin",
                 HookToken = null, ExpireAt = null, ClonedFrom = null, PublicOrigin = null, PublicOriginPort = 0,
-                RetrieveHidden = null,
+                RetrieveHidden = null, LockedBy = null, LockNeedsPassword = false,
             };
             // The activity log reads its subject from the url, and a stack being created has no url yet.
             AuditMiddleware.Names(ctx, created.Id, created.Name);
@@ -338,7 +338,8 @@ public static class StackEndpoints
         }).RequirePerm(Perm.OpenEditor);
 
         app2.MapPut("/stacks/{id}", (string id, StackModel body) =>
-            LockGuard(id) ?? (store.Get(id) is null ? Results.NotFound() : Persist(body with { Id = id }))).RequirePerm(Perm.OpenEditor);
+            LockGuard(id) ?? (store.Get(id) is not { } old ? Results.NotFound()
+                : Persist(body with { Id = id, Category = old.Category, LockedBy = old.LockedBy, LockNeedsPassword = old.LockNeedsPassword }))).RequirePerm(Perm.OpenEditor);
 
         void DeleteStackFully(string id)
         {
@@ -1193,6 +1194,35 @@ public static class StackEndpoints
             return Results.Ok(clean);
         }).RequirePerm(Perm.Configure);
 
+        app2.MapPut("/stacks/{id}/category", (string id, CategoryRequest b) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var c = b.Category?.Trim() is { Length: > 0 and <= 40 } t ? t : null;
+            store.Save(s with { Category = c });
+            return Results.Ok(new { category = c });
+        }).RequirePerm(Perm.Configure);
+        app2.MapPut("/stacks/{id}/lock", (string id, LockRequest b, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            var by = ctx.User.Identity?.Name ?? "admin";
+            store.Save(s with { LockedBy = by, LockNeedsPassword = b.NeedsPassword });
+            return Results.Ok(new { lockedBy = by, b.NeedsPassword });
+        }).RequirePerm(Perm.Configure);
+        app2.MapPost("/stacks/{id}/unlock", (string id, UnlockRequest b, HttpContext ctx) =>
+        {
+            if (store.Get(id) is not { } s) return Results.NotFound();
+            if (s.LockNeedsPassword)
+            {
+                var user = app.Services.GetRequiredService<UserStore>().Get(ctx.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
+                if (user is not { PasswordHash.Length: > 0 } || string.IsNullOrEmpty(b.Password)
+                    || new Microsoft.AspNetCore.Identity.PasswordHasher<User>().VerifyHashedPassword(user, user.PasswordHash, b.Password)
+                        == Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed)
+                    return Results.BadRequest(new { message = "password is incorrect" });
+            }
+            store.Save(s with { LockedBy = null, LockNeedsPassword = false });
+            return Results.Ok();
+        }).RequirePerm(Perm.Configure);
+
         // Scheduled actions live on the stack but are not part of its code, so this does not go through
         // the edit lock: setting a nightly restart on a running app is the point of it.
         app2.MapGet("/stacks/{id}/schedules", (string id) =>
@@ -1881,6 +1911,9 @@ public static class StackEndpoints
     public record NotifySettingsRequest(string? WebhookUrl, string? TelegramToken, string? TelegramChat);
     public record SchedulesRequest(List<AspireUI.Server.Models.AppSchedule>? Schedules);
     public record TagsRequest(List<string>? Tags);
+    public record CategoryRequest(string? Category);
+    public record LockRequest(bool NeedsPassword);
+    public record UnlockRequest(string? Password);
     public record RetrieveHiddenRequest(bool Hidden);
 
     private static string? Str(System.Text.Json.JsonElement e, string name) =>

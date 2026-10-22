@@ -89,6 +89,7 @@ app.UseAuthentication();
 // log is for, and a refusal never reaches anything downstream of the authorization middleware.
 app.UseMiddleware<AuditMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<StackLockMiddleware>();
 app.MapAuthEndpoints();
 app.MapAuditEndpoints();
 app.MapInstanceEndpoints();

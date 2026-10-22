@@ -28,7 +28,10 @@ public record StackModel(
     string? PublicOrigin = null,
     int PublicOriginPort = 0,
     // Null follows ASPIREUI_RETRIEVE_API_HIDDEN; true/false is what someone chose in the UI.
-    bool? RetrieveHidden = null);
+    bool? RetrieveHidden = null,
+    string? Category = null,
+    string? LockedBy = null,
+    bool LockNeedsPassword = false);
 
 /// <summary>
 /// Something the app should do by itself, on a clock: restart, stop, start, update (pull and
