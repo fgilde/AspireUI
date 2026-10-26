@@ -29,7 +29,7 @@
     ],
     "website": "https://github.com/mudler/LocalAGI",
     "github": "https://github.com/mudler/LocalAGI",
-    "stars": 2004,
+    "stars": 2007,
     "license": "MIT License (MIT)",
     "language": "Go",
     "logo": "/media/localagi/logo.webp",
@@ -50,7 +50,7 @@
     "description": "LocalRecall — local RAG / long-term memory server (mudler, pairs with LocalAI).",
     "website": "https://github.com/mudler/LocalRecall",
     "github": "https://github.com/mudler/LocalRecall",
-    "stars": 980,
+    "stars": 982,
     "license": "MIT License (MIT)",
     "language": "Go",
     "logo": "/media/localrecall/logo.webp",
@@ -70,7 +70,7 @@
     "description": "Open WebUI — chat UI for Ollama / OpenAI-compatible backends. Point OLLAMA_BASE_URL / OPENAI_API_BASE_URL at your model resource.",
     "website": "https://openwebui.com",
     "github": "https://github.com/open-webui/open-webui",
-    "stars": 156238,
+    "stars": 156765,
     "license": "Other (NOASSERTION)",
     "language": "Python",
     "topics": [
@@ -173,7 +173,7 @@
     ],
     "website": "https://9router.com",
     "github": "https://github.com/decolua/9router",
-    "stars": 31114,
+    "stars": 31412,
     "license": "MIT License (MIT)",
     "language": "JavaScript",
     "topics": [
@@ -221,7 +221,7 @@
     ],
     "website": "https://ccrdesk.top",
     "github": "https://github.com/musistudio/claude-code-router",
-    "stars": 37766,
+    "stars": 37850,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -244,7 +244,7 @@
     "gpu": true,
     "website": "https://github.com/comfyanonymous/ComfyUI",
     "github": "https://github.com/Comfy-Org/ComfyUI",
-    "stars": 140222,
+    "stars": 143000,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Python",
     "topics": [
@@ -274,7 +274,7 @@
     "gpu": true,
     "website": "https://github.com/vladmandic/sdnext",
     "github": "https://github.com/vladmandic/automatic",
-    "stars": 7357,
+    "stars": 7362,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Python",
     "topics": [
@@ -308,7 +308,7 @@
     "gpu": true,
     "website": "https://github.com/ace-step/ACE-Step",
     "github": "https://github.com/ace-step/ACE-Step",
-    "stars": 4962,
+    "stars": 4986,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Python",
     "logo": "/media/acestep/logo.webp",
@@ -490,7 +490,7 @@
     ],
     "website": "https://www.langflow.org",
     "github": "https://github.com/langflow-ai/langflow",
-    "stars": 155863,
+    "stars": 156024,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -519,7 +519,7 @@
     "description": "Build AI Agents, Visually",
     "website": "https://flowiseai.com",
     "github": "https://github.com/FlowiseAI/Flowise",
-    "stars": 55512,
+    "stars": 55528,
     "license": "NOASSERTION",
     "language": "TypeScript",
     "topics": [
@@ -557,7 +557,7 @@
     "description": "Whisper ASR web service — speech-to-text HTTP API (openai-whisper / faster-whisper).",
     "website": "https://github.com/ahmetoner/whisper-asr-webservice",
     "github": "https://github.com/ahmetoner/whisper-asr-webservice",
-    "stars": 3357,
+    "stars": 3365,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -594,7 +594,7 @@
     ],
     "website": "https://github.com/coder/code-server",
     "github": "https://github.com/coder/code-server",
-    "stars": 79658,
+    "stars": 79705,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -624,7 +624,7 @@
     "description": "Uptime Kuma — self-hosted uptime/status monitoring.",
     "website": "https://github.com/louislam/uptime-kuma",
     "github": "https://github.com/louislam/uptime-kuma",
-    "stars": 92662,
+    "stars": 92912,
     "license": "MIT License (MIT)",
     "language": "JavaScript",
     "topics": [
@@ -759,7 +759,7 @@
     ],
     "website": "https://docs.paperless-ngx.com",
     "github": "https://github.com/paperless-ngx/paperless-ngx",
-    "stars": 46900,
+    "stars": 47098,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Python",
     "topics": [
@@ -800,7 +800,7 @@
     ],
     "website": "https://nextcloud.com",
     "github": "https://github.com/nextcloud/server",
-    "stars": 37179,
+    "stars": 37298,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "logo": "/media/nextcloud/logo.webp",
     "card": "/media/nextcloud/card.webp",
@@ -849,7 +849,7 @@
     ],
     "website": "https://github.com/dani-garcia/vaultwarden",
     "github": "https://github.com/dani-garcia/vaultwarden",
-    "stars": 69333,
+    "stars": 69676,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Rust",
     "topics": [
@@ -883,7 +883,7 @@
     ],
     "website": "https://about.gitea.com",
     "github": "https://github.com/go-gitea/gitea",
-    "stars": 58588,
+    "stars": 58691,
     "license": "MIT License (MIT)",
     "language": "Go",
     "topics": [
@@ -926,7 +926,7 @@
     "description": "Metabase — BI dashboards & ad-hoc analytics over your databases.",
     "website": "https://www.metabase.com",
     "github": "https://github.com/metabase/metabase",
-    "stars": 49754,
+    "stars": 49844,
     "license": "Other (NOASSERTION)",
     "language": "Clojure",
     "topics": [
@@ -967,7 +967,7 @@
     "description": "Jaeger backend is released as a single binary or container image (see Downloads). Despite that, it can be configured to operate in different roles, such as all-in-one, collector, query, and ingester (see Architecture). ... An explicit YAML configuration file must be provided via the`--config` command line argument (see Configuration). When running in a container, the path to the config file must be mapped into the…",
     "website": "https://www.jaegertracing.io",
     "github": "https://github.com/jaegertracing/jaeger",
-    "stars": 23317,
+    "stars": 23342,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Go",
     "topics": [
@@ -1008,7 +1008,7 @@
     ],
     "website": "https://gethomepage.dev",
     "github": "https://github.com/benphelps/homepage",
-    "stars": 207,
+    "stars": 209,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "JavaScript",
     "logo": "/media/homepage/logo.webp",
@@ -1029,7 +1029,7 @@
     "description": "I believe this is just a description based on the fact, that ONLYOFFICE Docs is a web-based application. Therefore it has to be “hosted” on a machine (PC) and can then also be accessed and used from other PCs via web-browser, either from outside and/or inside a network-environment, depending on the configuration of the host/network … As in comparison to ONLYOFFICE Destktop installations. ... Firstly, Desktop…",
     "website": "https://www.onlyoffice.com",
     "github": "https://github.com/ONLYOFFICE/DocumentServer",
-    "stars": 7033,
+    "stars": 7054,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "logo": "/media/onlyoffice/logo.webp",
     "card": "/media/onlyoffice/card.webp",
@@ -1070,7 +1070,7 @@
     "description": "Lightweight selfhosted Firefox Send alternative without public upload. AWS S3 supported.",
     "website": "https://github.com/Forceu/Gokapi",
     "github": "https://github.com/Forceu/Gokapi",
-    "stars": 2910,
+    "stars": 2923,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Go",
     "topics": [
@@ -1104,7 +1104,7 @@
     "description": "Stirling PDF is a locally hosted web application that allows you to perform various operations on PDF files. With 60+ tools, flexible deployment options, and enterprise features, it's the comprehensive PDF solution for individuals and organizations.",
     "website": "https://www.stirlingpdf.com",
     "github": "https://github.com/Stirling-Tools/Stirling-PDF",
-    "stars": 94586,
+    "stars": 95015,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -1140,7 +1140,7 @@
     "description": "A local-first personal finance app",
     "website": "https://actualbudget.org",
     "github": "https://github.com/actualbudget/actual",
-    "stars": 29623,
+    "stars": 29761,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -1167,7 +1167,7 @@
     "description": "IT-Tools — a big box of handy dev utilities (encoders, converters, generators…).",
     "website": "https://it-tools.tech",
     "github": "https://github.com/CorentinTh/it-tools",
-    "stars": 40913,
+    "stars": 40973,
     "logo": "/media/it-tools/logo.webp",
     "card": "/media/it-tools/card.webp",
     "screenshots": [
@@ -1204,7 +1204,7 @@
     ],
     "website": "https://ntfy.sh",
     "github": "https://github.com/binwiederhier/ntfy",
-    "stars": 34931,
+    "stars": 35071,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Go",
     "topics": [
@@ -1234,7 +1234,7 @@
     "description": "A free, self-hostable news aggregator…",
     "website": "https://freshrss.org",
     "github": "https://github.com/FreshRSS/FreshRSS",
-    "stars": 16332,
+    "stars": 16420,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "PHP",
     "topics": [
@@ -1330,7 +1330,7 @@
     ],
     "website": "https://immich.app",
     "github": "https://github.com/immich-app/immich",
-    "stars": 116712,
+    "stars": 117256,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -1369,7 +1369,7 @@
     "description": "A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager",
     "website": "https://github.com/louislam/dockge",
     "github": "https://github.com/louislam/dockge",
-    "stars": 24642,
+    "stars": 24689,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -1412,7 +1412,7 @@
     ],
     "website": "https://dozzle.dev",
     "github": "https://github.com/amir20/dozzle",
-    "stars": 14675,
+    "stars": 14734,
     "license": "MIT License (MIT)",
     "language": "Go",
     "topics": [
@@ -1456,7 +1456,7 @@
     "gpu": true,
     "website": "https://jellyfin.org",
     "github": "https://github.com/jellyfin/jellyfin",
-    "stars": 58281,
+    "stars": 58600,
     "license": "GNU General Public License v2.0 (GPL-2.0)",
     "language": "C#",
     "topics": [
@@ -1570,7 +1570,7 @@
     ],
     "website": "https://www.navidrome.org",
     "github": "https://github.com/navidrome/navidrome",
-    "stars": 24252,
+    "stars": 24360,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Go",
     "topics": [
@@ -1617,7 +1617,7 @@
     ],
     "website": "https://www.audiobookshelf.org",
     "github": "https://github.com/advplyr/audiobookshelf",
-    "stars": 14713,
+    "stars": 14794,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "JavaScript",
     "topics": [
@@ -1664,7 +1664,7 @@
     ],
     "website": "https://www.photoprism.app",
     "github": "https://github.com/photoprism/photoprism",
-    "stars": 40329,
+    "stars": 40359,
     "license": "Other (NOASSERTION)",
     "language": "Go",
     "topics": [
@@ -1694,7 +1694,7 @@
     "description": "## Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is an internet PVR for Usenet and Torrents. ... Sonarr is supported natively on Windows. Sonarr can be installed as Windows Service or System Tray Application.",
     "website": "https://sonarr.tv",
     "github": "https://github.com/Sonarr/Sonarr",
-    "stars": 17335,
+    "stars": 17430,
     "logo": "/media/sonarr/logo.webp",
     "card": "/media/sonarr/card.webp",
     "screenshots": [
@@ -1715,7 +1715,7 @@
     "description": "Movie organizer/manager for usenet and torrent users. ... Radarr is a movie collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new movies and will interface with clients and indexers to grab, sort, and rename them. It can also be configured to automatically upgrade the quality of existing files in the library when a better quality format becomes available.",
     "website": "https://radarr.video",
     "github": "https://github.com/Radarr/Radarr",
-    "stars": 14613,
+    "stars": 14651,
     "logo": "/media/radarr/logo.webp",
     "card": "/media/radarr/card.webp",
     "screenshots": [
@@ -1746,7 +1746,7 @@
     "description": "Prowlarr is an indexer manager/proxy built on the popular *arr .net/reactjs base stack to integrate with your various PVR apps, supporting management of both Torrent Trackers and Usenet Indexers. ... Prowlarr is an indexer manager/proxy built on the popular \\*arr .net/reactjs base stack to integrate with your various PVR apps. Prowlarr supports management of both Torrent Trackers and Usenet Indexers. It integrates…",
     "website": "https://prowlarr.com",
     "github": "https://github.com/Prowlarr/Prowlarr",
-    "stars": 7405,
+    "stars": 7443,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "C#",
     "topics": [
@@ -1800,7 +1800,7 @@
     ],
     "website": "https://www.qbittorrent.org",
     "github": "https://github.com/qbittorrent/qBittorrent",
-    "stars": 40933,
+    "stars": 41118,
     "license": "Other (NOASSERTION)",
     "language": "C++",
     "topics": [
@@ -1839,7 +1839,7 @@
     "website": "https://pi-hole.net",
     "urlPath": "/admin",
     "github": "https://github.com/pi-hole/pi-hole",
-    "stars": 61350,
+    "stars": 61462,
     "license": "Other (NOASSERTION)",
     "language": "Shell",
     "topics": [
@@ -1874,7 +1874,7 @@
     "hostNetwork": true,
     "website": "https://adguard.com/adguard-home/overview.html",
     "github": "https://github.com/AdguardTeam/AdGuardHome",
-    "stars": 37553,
+    "stars": 37703,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -2005,7 +2005,7 @@
     ],
     "website": "https://nginxproxymanager.com",
     "github": "https://github.com/jc21/nginx-proxy-manager",
-    "stars": 34453,
+    "stars": 34535,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -2029,7 +2029,7 @@
     "hostNetwork": true,
     "website": "https://www.home-assistant.io",
     "github": "https://github.com/home-assistant/core",
-    "stars": 91613,
+    "stars": 91731,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Python",
     "topics": [
@@ -2060,7 +2060,7 @@
     "description": "Node-RED is a flow-based programming tool, originally developed by IBM Emerging Technology Services team and now a part of the OpenJS Foundation. ... Node-RED provides a browser-based flow editor that makes it easy to wire together flows using the wide range of nodes in the palette. Flows can be then deployed to the runtime in a single-click. ... The light-weight runtime is built on Node.js, taking full advantage…",
     "website": "https://nodered.org",
     "github": "https://github.com/node-red/node-red",
-    "stars": 23762,
+    "stars": 23782,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "JavaScript",
     "topics": [
@@ -2109,7 +2109,7 @@
     ],
     "website": "https://vikunja.io",
     "github": "https://github.com/go-vikunja/vikunja",
-    "stars": 5795,
+    "stars": 5854,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Go",
     "topics": [
@@ -2140,7 +2140,7 @@
     "description": "Memos — lightweight, privacy-first note/memo hub.",
     "website": "https://www.usememos.com",
     "github": "https://github.com/usememos/memos",
-    "stars": 63937,
+    "stars": 64076,
     "license": "MIT License (MIT)",
     "language": "Go",
     "topics": [
@@ -2177,7 +2177,7 @@
     "description": "Virtual whiteboard for sketching hand-drawn like diagrams",
     "website": "https://excalidraw.com",
     "github": "https://github.com/excalidraw/excalidraw",
-    "stars": 134233,
+    "stars": 134554,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -2207,7 +2207,7 @@
     "description": "draw.io is a JavaScript, client-side editor for general diagramming.",
     "website": "https://www.drawio.com",
     "github": "https://github.com/jgraph/drawio",
-    "stars": 8887,
+    "stars": 8990,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "JavaScript",
     "topics": [
@@ -2245,7 +2245,7 @@
     ],
     "website": "https://anythingllm.com",
     "github": "https://github.com/Mintplex-Labs/anything-llm",
-    "stars": 67343,
+    "stars": 67563,
     "license": "MIT License (MIT)",
     "language": "JavaScript",
     "topics": [
@@ -2353,7 +2353,7 @@
     ],
     "website": "https://www.librechat.ai",
     "github": "https://github.com/danny-avila/LibreChat",
-    "stars": 46044,
+    "stars": 46325,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -2391,7 +2391,7 @@
     "description": "Search without being tracked. ... SearXNG is a free internet metasearch engine which aggregates results from up to 279 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor for online anonymity. ... Get started with SearXNG by using one of the instances listed at searx.space. If you don’t trust anyone, you can set up your own, see Installation.",
     "website": "https://docs.searxng.org",
     "github": "https://github.com/searxng/searxng",
-    "stars": 38631,
+    "stars": 38847,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Python",
     "topics": [
@@ -2435,7 +2435,7 @@
     ],
     "website": "https://www.bazarr.media",
     "github": "https://github.com/morpheus65535/bazarr",
-    "stars": 4370,
+    "stars": 4381,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Python",
     "topics": [
@@ -2488,7 +2488,7 @@
     ],
     "website": "https://docs.seerr.dev",
     "github": "https://github.com/seerr-team/seerr",
-    "stars": 12949,
+    "stars": 13031,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -2552,7 +2552,7 @@
     ],
     "website": "https://dispatcharr.tv/",
     "github": "https://github.com/Dispatcharr/Dispatcharr",
-    "stars": 4331,
+    "stars": 4386,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Python"
   },
@@ -2572,7 +2572,7 @@
     ],
     "website": "https://github.com/Jackett/Jackett",
     "github": "https://github.com/Jackett/Jackett",
-    "stars": 16232,
+    "stars": 16261,
     "license": "GNU General Public License v2.0 (GPL-2.0)",
     "language": "C#",
     "topics": [
@@ -2646,7 +2646,7 @@
     ],
     "website": "https://komga.org",
     "github": "https://github.com/gotson/komga",
-    "stars": 6768,
+    "stars": 6786,
     "license": "MIT License (MIT)",
     "language": "Kotlin",
     "topics": [
@@ -2687,7 +2687,7 @@
     ],
     "website": "https://www.kavitareader.com",
     "github": "https://github.com/Kareadita/Kavita",
-    "stars": 11895,
+    "stars": 11939,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "C#",
     "topics": [
@@ -2738,7 +2738,7 @@
     ],
     "website": "https://github.com/janeczku/calibre-web",
     "github": "https://github.com/janeczku/calibre-web",
-    "stars": 18419,
+    "stars": 18466,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Fluent",
     "topics": [
@@ -2776,7 +2776,7 @@
     ],
     "website": "https://filebrowser.org",
     "github": "https://github.com/filebrowser/filebrowser",
-    "stars": 35885,
+    "stars": 35891,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Go",
     "topics": [
@@ -2812,7 +2812,7 @@
     ],
     "website": "https://heimdall.site",
     "github": "https://github.com/linuxserver/Heimdall",
-    "stars": 9362,
+    "stars": 9367,
     "license": "MIT License (MIT)",
     "language": "PHP",
     "topics": [
@@ -2859,7 +2859,7 @@
     ],
     "website": "https://github.com/bastienwirtz/homer",
     "github": "https://github.com/bastienwirtz/homer",
-    "stars": 11678,
+    "stars": 11679,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Vue",
     "topics": [
@@ -2897,7 +2897,7 @@
     ],
     "website": "https://www.duplicati.com",
     "github": "https://github.com/duplicati/duplicati",
-    "stars": 15142,
+    "stars": 15167,
     "license": "NOASSERTION",
     "language": "C#",
     "topics": [
@@ -2932,7 +2932,7 @@
     ],
     "website": "https://gotify.net",
     "github": "https://github.com/gotify/server",
-    "stars": 16103,
+    "stars": 16125,
     "license": "NOASSERTION",
     "language": "Go",
     "topics": [
@@ -2974,7 +2974,7 @@
     ],
     "website": "https://grocy.info",
     "github": "https://github.com/grocy/grocy",
-    "stars": 9601,
+    "stars": 9614,
     "license": "MIT License (MIT)",
     "language": "Blade",
     "topics": [
@@ -3012,7 +3012,7 @@
     ],
     "website": "https://libretranslate.com",
     "github": "https://github.com/uav4geo/LibreTranslate",
-    "stars": 17128,
+    "stars": 17184,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "logo": "/media/libretranslate/logo.webp",
     "card": "/media/libretranslate/card.webp",
@@ -3040,7 +3040,7 @@
     "description": "LobeChat — polished chat UI for OpenAI/Claude/Ollama and more (enter your API keys in-app).",
     "website": "https://lobehub.com",
     "github": "https://github.com/lobehub/lobe-chat",
-    "stars": 83354,
+    "stars": 83494,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -3087,7 +3087,7 @@
     ],
     "website": "https://grafana.com",
     "github": "https://github.com/grafana/grafana",
-    "stars": 77397,
+    "stars": 77510,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -3138,7 +3138,7 @@
     ],
     "website": "https://nicolargo.github.io/glances/",
     "github": "https://github.com/nicolargo/glances",
-    "stars": 33810,
+    "stars": 33852,
     "license": "NOASSERTION",
     "language": "Python",
     "topics": [
@@ -3181,7 +3181,7 @@
     ],
     "website": "https://www.portainer.io",
     "github": "https://github.com/portainer/portainer",
-    "stars": 38690,
+    "stars": 38720,
     "license": "zlib License (Zlib)",
     "language": "TypeScript",
     "topics": [
@@ -3223,7 +3223,7 @@
     ],
     "website": "https://nocodb.com",
     "github": "https://github.com/nocodb/nocodb",
-    "stars": 65307,
+    "stars": 65361,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -3266,7 +3266,7 @@
     ],
     "website": "https://mealie.io",
     "github": "https://github.com/mealie-recipes/mealie",
-    "stars": 13634,
+    "stars": 13687,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Python",
     "topics": [
@@ -3349,7 +3349,7 @@
     ],
     "website": "https://linkding.link",
     "github": "https://github.com/sissbruecker/linkding",
-    "stars": 11319,
+    "stars": 11347,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -3393,7 +3393,7 @@
     ],
     "website": "https://github.com/go-shiori/shiori",
     "github": "https://github.com/go-shiori/shiori",
-    "stars": 11673,
+    "stars": 11684,
     "license": "MIT License (MIT)",
     "logo": "/media/shiori/logo.webp",
     "card": "/media/shiori/card.webp",
@@ -3427,7 +3427,7 @@
     ],
     "website": "https://changedetection.io",
     "github": "https://github.com/dgtlmoon/changedetection.io",
-    "stars": 35140,
+    "stars": 35298,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Python",
     "topics": [
@@ -3470,7 +3470,7 @@
     "description": "The Cyber Swiss Army Knife - a web app for encryption, encoding, compression and data analysis",
     "website": "https://gchq.github.io/CyberChef/",
     "github": "https://github.com/gchq/CyberChef",
-    "stars": 36165,
+    "stars": 36209,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "JavaScript",
     "topics": [
@@ -3499,7 +3499,7 @@
     "description": "🚀 A self-hostable personal dashboard built for you. Includes status-checking, widgets, themes, icon packs, a UI editor and tons more!",
     "website": "https://dashy.to",
     "github": "https://github.com/lissy93/dashy",
-    "stars": 26763,
+    "stars": 26812,
     "license": "MIT License (MIT)",
     "language": "Vue",
     "topics": [
@@ -3535,7 +3535,7 @@
     "description": ":file_folder: Universal File Storage Client",
     "website": "https://www.filestash.app",
     "github": "https://github.com/mickael-kerjean/filestash",
-    "stars": 14814,
+    "stars": 14828,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Go",
     "topics": [
@@ -3587,7 +3587,7 @@
     ],
     "website": "https://syncthing.net",
     "github": "https://github.com/syncthing/syncthing",
-    "stars": 89546,
+    "stars": 89750,
     "license": "Mozilla Public License 2.0 (MPL-2.0)",
     "language": "Go",
     "topics": [
@@ -3624,7 +3624,7 @@
     ],
     "website": "https://github.com/ellite/Wallos",
     "github": "https://github.com/ellite/Wallos",
-    "stars": 8720,
+    "stars": 8741,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "logo": "/media/wallos/logo.webp",
     "card": "/media/wallos/card.webp",
@@ -3653,7 +3653,7 @@
     "description": "Whoogle — private, ad-free Google search proxy (no JS, no tracking).",
     "website": "https://github.com/benbusby/whoogle-search",
     "github": "https://github.com/benbusby/whoogle-search",
-    "stars": 11562,
+    "stars": 11559,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -3686,7 +3686,7 @@
     "description": "LibreSpeed — self-hosted network speed test (no Flash/Java, single container).",
     "website": "https://librespeed.org",
     "github": "https://github.com/librespeed/speedtest",
-    "stars": 15235,
+    "stars": 15258,
     "license": "GNU Lesser General Public License v3.0 (LGPL-3.0)",
     "logo": "/media/librespeed/logo.webp",
     "card": "/media/librespeed/card.webp",
@@ -3724,7 +3724,7 @@
     ],
     "website": "https://overseerr.dev",
     "github": "https://github.com/sct/overseerr",
-    "stars": 4970,
+    "stars": 4964,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -3761,7 +3761,7 @@
     ],
     "website": "https://tautulli.com",
     "github": "https://github.com/Tautulli/Tautulli",
-    "stars": 6616,
+    "stars": 6618,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "Python",
     "topics": [
@@ -3791,7 +3791,7 @@
     "description": "Proxy server to bypass Cloudflare protection",
     "website": "https://github.com/FlareSolverr/FlareSolverr",
     "github": "https://github.com/FlareSolverr/FlareSolverr",
-    "stars": 15982,
+    "stars": 16038,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -3887,7 +3887,7 @@
     ],
     "website": "https://www.firefly-iii.org",
     "github": "https://github.com/firefly-iii/firefly-iii",
-    "stars": 24947,
+    "stars": 24994,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "PHP",
     "topics": [
@@ -3977,9 +3977,9 @@
     ],
     "website": "https://js.wiki",
     "github": "https://github.com/requarks/wiki",
-    "stars": 29057,
+    "stars": 29090,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
-    "language": "Vue",
+    "language": "TypeScript",
     "topics": [
       "cross-platform",
       "documentation",
@@ -4042,7 +4042,7 @@
     "website": "https://linkwarden.app",
     "fixedPort": true,
     "github": "https://github.com/linkwarden/linkwarden",
-    "stars": 20157,
+    "stars": 20203,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -4142,7 +4142,7 @@
     "website": "https://www.bookstackapp.com",
     "fixedPort": true,
     "github": "https://github.com/BookStackApp/BookStack",
-    "stars": 19089,
+    "stars": 19098,
     "license": "MIT License (MIT)",
     "language": "PHP",
     "topics": [
@@ -4232,7 +4232,7 @@
     "website": "https://hedgedoc.org",
     "fixedPort": true,
     "github": "https://github.com/hedgedoc/hedgedoc",
-    "stars": 7486,
+    "stars": 7492,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -4328,7 +4328,7 @@
     "website": "https://ghost.org",
     "fixedPort": true,
     "github": "https://github.com/TryGhost/Ghost",
-    "stars": 55575,
+    "stars": 55605,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -4421,7 +4421,7 @@
     "website": "https://planka.app",
     "fixedPort": true,
     "github": "https://github.com/plankanban/planka",
-    "stars": 12626,
+    "stars": 12644,
     "license": "Other (NOASSERTION)",
     "language": "JavaScript",
     "topics": [
@@ -4504,7 +4504,7 @@
     ],
     "website": "https://emby.media",
     "github": "https://github.com/MediaBrowser/Emby",
-    "stars": 4999,
+    "stars": 5005,
     "license": "GNU General Public License v2.0 (GPL-2.0)",
     "language": "C#",
     "logo": "/media/emby/logo.webp",
@@ -4580,7 +4580,7 @@
     ],
     "website": "https://lidarr.audio",
     "github": "https://github.com/Lidarr/Lidarr",
-    "stars": 5759,
+    "stars": 5770,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "logo": "/media/lidarr/logo.webp",
     "card": "/media/lidarr/card.webp",
@@ -4649,7 +4649,7 @@
     ],
     "website": "https://mattermost.com",
     "github": "https://github.com/mattermost/mattermost",
-    "stars": 39384,
+    "stars": 39432,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -4750,7 +4750,7 @@
     "website": "https://www.getoutline.com",
     "fixedPort": true,
     "github": "https://github.com/outline/outline",
-    "stars": 40983,
+    "stars": 41060,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -4843,7 +4843,7 @@
     ],
     "website": "https://ghostfol.io",
     "github": "https://github.com/ghostfolio/ghostfolio",
-    "stars": 9535,
+    "stars": 9580,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -4961,7 +4961,7 @@
     ],
     "website": "https://www.librephotos.com",
     "github": "https://github.com/LibrePhotos/librephotos",
-    "stars": 8112,
+    "stars": 8116,
     "logo": "/media/librephotos/logo.webp",
     "card": "/media/librephotos/card.webp",
     "screenshots": [
@@ -5137,7 +5137,7 @@
     "website": "https://penpot.app",
     "fixedPort": true,
     "github": "https://github.com/penpot/penpot",
-    "stars": 61412,
+    "stars": 61672,
     "license": "Mozilla Public License 2.0 (MPL-2.0)",
     "language": "Clojure",
     "topics": [
@@ -5181,7 +5181,7 @@
     ],
     "website": "https://homarr.dev",
     "github": "https://github.com/ajnart/homarr",
-    "stars": 7201,
+    "stars": 7200,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -5220,7 +5220,7 @@
     ],
     "website": "https://homebridge.io",
     "github": "https://github.com/homebridge/homebridge",
-    "stars": 25521,
+    "stars": 25531,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "TypeScript",
     "topics": [
@@ -5255,7 +5255,7 @@
     ],
     "website": "https://octoprint.org",
     "github": "https://github.com/OctoPrint/OctoPrint",
-    "stars": 9151,
+    "stars": 9161,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "logo": "/media/octoprint/logo.webp",
     "card": "/media/octoprint/card.webp",
@@ -5288,7 +5288,7 @@
     ],
     "website": "https://esphome.io",
     "github": "https://github.com/esphome/esphome",
-    "stars": 11924,
+    "stars": 11959,
     "license": "NOASSERTION",
     "language": "C++",
     "topics": [
@@ -5339,7 +5339,7 @@
     ],
     "website": "https://frigate.video",
     "github": "https://github.com/blakeblackshear/frigate",
-    "stars": 36765,
+    "stars": 36939,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -5396,7 +5396,7 @@
     ],
     "website": "https://github.com/alexta69/metube",
     "github": "https://github.com/alexta69/metube",
-    "stars": 15043,
+    "stars": 15094,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Python",
     "topics": [
@@ -5462,7 +5462,7 @@
     ],
     "website": "https://www.influxdata.com",
     "github": "https://github.com/influxdata/influxdb",
-    "stars": 31772,
+    "stars": 31786,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "Rust",
     "topics": [
@@ -5518,7 +5518,7 @@
     ],
     "website": "https://min.io",
     "github": "https://github.com/minio/minio",
-    "stars": 61314,
+    "stars": 61300,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "Go",
     "topics": [
@@ -5561,7 +5561,7 @@
     ],
     "website": "https://etherpad.org",
     "github": "https://github.com/ether/etherpad",
-    "stars": 18594,
+    "stars": 18596,
     "license": "Apache License 2.0 (Apache-2.0)",
     "language": "TypeScript",
     "topics": [
@@ -5612,7 +5612,7 @@
     ],
     "website": "https://jupyter.org",
     "github": "https://github.com/jupyterlab/jupyterlab",
-    "stars": 15369,
+    "stars": 15374,
     "license": "BSD 3-Clause \"New\" or \"Revised\" License (BSD-3-Clause)",
     "logo": "/media/jupyterlab/logo.webp",
     "card": "/media/jupyterlab/card.webp",
@@ -5648,7 +5648,7 @@
     ],
     "website": "https://archivebox.io",
     "github": "https://github.com/ArchiveBox/ArchiveBox",
-    "stars": 28825,
+    "stars": 28886,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -5697,7 +5697,7 @@
     ],
     "website": "https://autobrr.com",
     "github": "https://github.com/autobrr/autobrr",
-    "stars": 3166,
+    "stars": 3174,
     "license": "GNU General Public License v2.0 (GPL-2.0)",
     "language": "Go",
     "topics": [
@@ -5749,7 +5749,7 @@
     ],
     "website": "https://sabre.io/baikal/",
     "github": "https://github.com/sabre-io/Baikal",
-    "stars": 3337,
+    "stars": 3350,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "language": "PHP",
     "logo": "/media/baikal/logo.webp",
@@ -5861,7 +5861,7 @@
     ],
     "website": "https://myspeed.dev",
     "github": "https://github.com/gnmyt/myspeed",
-    "stars": 3037,
+    "stars": 3041,
     "license": "MIT License (MIT)",
     "logo": "/media/myspeed/logo.webp",
     "card": "/media/myspeed/card.webp",
@@ -5900,7 +5900,7 @@
     ],
     "website": "https://cosmos-cloud.io",
     "github": "https://github.com/azukaar/Cosmos-Server",
-    "stars": 6189,
+    "stars": 6185,
     "license": "NOASSERTION",
     "language": "Go",
     "topics": [
@@ -5958,7 +5958,7 @@
     ],
     "website": "https://github.com/romanz/electrs",
     "github": "https://github.com/romanz/electrs",
-    "stars": 1396,
+    "stars": 1401,
     "license": "MIT License (MIT)",
     "logo": "/media/electrs/logo.webp",
     "card": "/media/electrs/card.webp",
@@ -6037,7 +6037,7 @@
     ],
     "website": "https://github.com/lukechilds/docker-electrumx",
     "github": "https://github.com/spesmilo/electrumx",
-    "stars": 568,
+    "stars": 570,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -6096,7 +6096,7 @@
     ],
     "website": "https://github.com/janoside/btc-rpc-explorer",
     "github": "https://github.com/janoside/btc-rpc-explorer",
-    "stars": 1793,
+    "stars": 1792,
     "license": "MIT License (MIT)",
     "language": "JavaScript",
     "topics": [
@@ -6225,7 +6225,7 @@
     ],
     "website": "https://github.com/mempool/mempool",
     "github": "https://github.com/mempool/mempool",
-    "stars": 2865,
+    "stars": 2872,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -6276,7 +6276,7 @@
     ],
     "website": "https://lnbits.com",
     "github": "https://github.com/lnbits/lnbits",
-    "stars": 1242,
+    "stars": 1247,
     "license": "MIT License (MIT)",
     "logo": "/media/lnbits/logo.webp",
     "card": "/media/lnbits/card.webp",
@@ -6317,7 +6317,7 @@
     ],
     "website": "https://github.com/ElementsProject/lightning",
     "github": "https://github.com/ElementsProject/lightning",
-    "stars": 3102,
+    "stars": 3103,
     "license": "NOASSERTION",
     "language": "C",
     "topics": [
@@ -6407,7 +6407,7 @@
     ],
     "website": "https://bitcoinknots.org",
     "github": "https://github.com/bitcoinknots/bitcoin",
-    "stars": 738,
+    "stars": 742,
     "license": "MIT License (MIT)",
     "language": "C++",
     "topics": [
@@ -6558,7 +6558,7 @@
     ],
     "website": "https://github.com/foldergram/foldergram",
     "github": "https://github.com/foldergram/foldergram",
-    "stars": 576,
+    "stars": 580,
     "license": "GNU Affero General Public License v3.0 (AGPL-3.0)",
     "language": "TypeScript",
     "topics": [
@@ -6612,7 +6612,7 @@
     ],
     "website": "https://umbrel.com",
     "github": "https://github.com/getumbrel/umbrel",
-    "stars": 12421,
+    "stars": 12455,
     "license": "Other (NOASSERTION)",
     "language": "TypeScript",
     "topics": [
@@ -6670,7 +6670,7 @@
     ],
     "website": "https://nousresearch.com",
     "github": "https://github.com/NousResearch/hermes-agent",
-    "stars": 255394,
+    "stars": 257106,
     "license": "MIT License (MIT)",
     "language": "Python",
     "topics": [
@@ -6729,7 +6729,7 @@
     ],
     "website": "https://openclaw.ai",
     "github": "https://github.com/openclaw/openclaw",
-    "stars": 392930,
+    "stars": 393065,
     "license": "MIT License (MIT)",
     "language": "TypeScript",
     "topics": [
@@ -7102,7 +7102,7 @@
     ],
     "website": "https://runtipi.io",
     "github": "https://github.com/meienberger/runtipi",
-    "stars": 9694,
+    "stars": 9700,
     "license": "GNU General Public License v3.0 (GPL-3.0)",
     "logo": "/media/runtipi/logo.webp",
     "card": "/media/runtipi/card.webp",
@@ -7186,7 +7186,7 @@
     "screenshots": [
       "/media/yuvomi/screenshot_1.webp"
     ],
-    "stars": 1718,
+    "stars": 2008,
     "topics": [
       "calendar",
       "docker",
@@ -7200,7 +7200,6 @@
       "privacy-first",
       "progressive-web-app",
       "pwa",
-      "self-hosted",
       "selfhosted",
       "selfhosted-apps",
       "sqlite"
@@ -7278,7 +7277,7 @@
       "/media/lx-family-planner/screenshot_2.webp",
       "/media/lx-family-planner/screenshot_3.webp"
     ],
-    "stars": 64,
+    "stars": 67,
     "topics": [
       "android",
       "chore-tracker",
@@ -7418,7 +7417,7 @@
       "blog",
       "wordpress"
     ],
-    "stars": 21485
+    "stars": 21502
   },
   {
     "id": "joomla",
@@ -7522,7 +7521,7 @@
       "php-cms",
       "website-builder"
     ],
-    "stars": 5150
+    "stars": 5155
   },
   {
     "id": "drupal",
@@ -7587,7 +7586,7 @@
       "cms",
       "drupal"
     ],
-    "stars": 4292
+    "stars": 4296
   },
   {
     "id": "grav",
@@ -7630,7 +7629,7 @@
       "website-generation",
       "yaml"
     ],
-    "stars": 15689
+    "stars": 15698
   },
   {
     "id": "matomo",
@@ -7725,7 +7724,7 @@
     "screenshots": [
       "/media/matomo/screenshot_1.webp"
     ],
-    "stars": 21963
+    "stars": 21982
   },
   {
     "id": "kimai",
@@ -7821,7 +7820,7 @@
       "/media/kimai/screenshot_1.webp",
       "/media/kimai/screenshot_2.webp"
     ],
-    "stars": 5084
+    "stars": 5098
   },
   {
     "id": "snipe-it",
@@ -7938,7 +7937,7 @@
       "/media/snipe-it/screenshot_2.webp",
       "/media/snipe-it/screenshot_3.webp"
     ],
-    "stars": 15052
+    "stars": 15089
   },
   {
     "id": "kanboard",
@@ -7978,7 +7977,7 @@
     "screenshots": [
       "/media/kanboard/screenshot_1.webp"
     ],
-    "stars": 9915
+    "stars": 9933
   },
   {
     "id": "limesurvey",
@@ -8094,7 +8093,7 @@
       "/media/limesurvey/screenshot_2.webp",
       "/media/limesurvey/screenshot_3.webp"
     ],
-    "stars": 3770
+    "stars": 3778
   },
   {
     "id": "dolibarr",
@@ -8211,7 +8210,7 @@
     "screenshots": [
       "/media/dolibarr/screenshot_1.webp"
     ],
-    "stars": 7752
+    "stars": 7784
   },
   {
     "id": "monica",
@@ -8309,7 +8308,7 @@
       "prm",
       "social"
     ],
-    "stars": 25507
+    "stars": 25530
   },
   {
     "id": "piwigo",
@@ -8381,7 +8380,7 @@
     "screenshots": [
       "/media/piwigo/screenshot_1.webp"
     ],
-    "stars": 3867
+    "stars": 3868
   },
   {
     "id": "wallabag",
@@ -8458,7 +8457,7 @@
     "screenshots": [
       "/media/wallabag/screenshot_1.webp"
     ],
-    "stars": 13016
+    "stars": 13026
   },
   {
     "id": "shaarli",
@@ -8498,7 +8497,7 @@
       "/media/shaarli/screenshot_1.webp",
       "/media/shaarli/screenshot_2.webp"
     ],
-    "stars": 3910
+    "stars": 3911
   },
   {
     "id": "phpmyadmin",
@@ -8536,7 +8535,7 @@
       "phpmyadmin",
       "web-app"
     ],
-    "stars": 7956
+    "stars": 7959
   },
   {
     "id": "coworkee",
@@ -8756,7 +8755,7 @@
       "https://havewa.app/marketing/screenshots/tickets.png",
       "https://havewa.app/marketing/screenshots/calendar.png"
     ],
-    "stars": 15
+    "stars": 18
   },
   {
     "id": "webdatastudio",
@@ -9024,7 +9023,7 @@
     "license": "GPL-3.0 / Bitwarden License",
     "language": "Shell",
     "urlPath": "/",
-    "stars": 764
+    "stars": 767
   },
   {
     "id": "passbolt",
@@ -9188,7 +9187,7 @@
     "screenshots": [
       "/media/passbolt/screenshot_1.webp"
     ],
-    "stars": 6179
+    "stars": 6187
   },
   {
     "id": "android",
@@ -9226,7 +9225,7 @@
     "requires": [
       "kvm"
     ],
-    "stars": 15992,
+    "stars": 16033,
     "topics": [
       "ai-agent",
       "android",
